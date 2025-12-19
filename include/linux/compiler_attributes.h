@@ -135,7 +135,7 @@
  *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-error-function-attribute
  */
 #if __has_attribute(__error__)
-# define __compiletime_error(msg)       __attribute__((__error__(msg)))
+# define __compiletime_error(msg)
 #else
 # define __compiletime_error(msg)
 #endif

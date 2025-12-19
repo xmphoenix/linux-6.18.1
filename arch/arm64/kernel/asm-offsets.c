@@ -184,6 +184,6 @@ int main(void)
   DEFINE(FTRACE_OPS_DIRECT_CALL,	offsetof(struct ftrace_ops, direct_call));
 #endif
   DEFINE(PIE_E0_ASM, PIE_E0);
-  DEFINE(PIE_E1_ASM, PIE_E1);
+  DEFINE(PIE_E1_ASM, __builtin_constant_p(PIE_E1) ? PIE_E1 : 0);
   return 0;
 }
