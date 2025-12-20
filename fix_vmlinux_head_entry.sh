@@ -1,12 +1,13 @@
 #!/bin/bash
 
+#set -x
 ELF_FILE="vmlinux"
 
 get_section_address_objdump() {
     local section=$1
     local address=$(objdump -h "$ELF_FILE" | awk -v section="$section" '$2 == section {print $4}')
     # 转换为十六进制数，加上 0x40200000，然后减去 0x8000000，只保留低8位
-    local modified_address=$(printf "0x%x" $(( (0x$address + 0x40200000 - 0x8000000) & 0xffffffff )))
+    local modified_address=$(printf "0x%x" $(( (0x$address + 0x40200000 - 0x80000000) & 0xffffffff )))
     echo "$modified_address"
 }
 

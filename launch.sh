@@ -5,6 +5,8 @@ ROOTFS_ARM64=rootfs
 NULL_DEV_NODE=dev/null                                                                                                                                                                                             
 CONSOLE_DEV_NODE=dev/console                                                                                                                                                                                       
 DEV_DIR_NODE=$PWD/$ROOTFS_ARM64/dev
+export KCFLAGS="-Wno-return-type -Wno-error=return-type"
+
 
 if [ $# -ne 2 ]; then
     echo "Usage: $0 [arch] [compile/compiled/run/debug/]"
@@ -66,8 +68,8 @@ elif [ $1 == "arm64" ] && [ $2 == "debug" ]; then
                         --append "nokaslr rdinit=/linuxrc console=ttyAMA0" -nographic \
                         --fsdev local,id=kmod_dev,path=$PWD/kmodules,security_model=none \
                         -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount &
-    #gdb-multiarch
-    #killall qemu-system-aarch64
+    gdb-multiarch
+    killall qemu-system-aarch64
 elif [ $1 == "arm64" ] && [ $2 == "run" ]; then
     echo "running kernel on QEMU for $1"
 
