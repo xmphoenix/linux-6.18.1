@@ -57,7 +57,7 @@ elif [ $1 == "arm64" ] && [ $2 == "compiled" ]; then
     fi
 
     cd $LROOT
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- ybzhang_defconfig
+    #make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- ybzhang_defconfig
     make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j8
 
 elif [ $1 == "arm64" ] && [ $2 == "debug" ]; then
