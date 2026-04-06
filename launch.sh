@@ -15,25 +15,12 @@ fi
 
 if [ $1 == "arm64" ] && [ $2 == "compile" ]; then
     echo "start to build the kernel for $1"
-    if [ ! -c $LROOT/$ROOTFS_ARM64/$CONSOLE_DEV_NODE ];then
-        echo "please create console device node first"
-        if [ ! -d "$DEV_DIR_NODE" ];then
-           mkdir -p $DEV_DIR_NODE
-        fi
-        cd $DEV_DIR_NODE && sudo mknod console c 5 1
-    fi
-    if [ ! -c $LROOT/$ROOTFS_ARM64/$NULL_DEV_NODE ];then
-        echo "please create null device node first"
-        if [ ! -d "$DEV_DIR_NODE" ];then
-           mkdir -p $DEV_DIR_NODE
-        fi
-        cd $DEV_DIR_NODE && sudo mknod null c 1 3
-    fi
     cd $LROOT
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- distclean
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- clean
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- ybzhang_defconfig
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j16
+    
+    make LLVM=/repo/ybzhang/kernel/rootfs/bin/ ARCH=arm64 distclean -j20
+    make LLVM=/repo/ybzhang/kernel/rootfs/bin/ ARCH=arm64 ybzhang_defconfig -j20
+    make LLVM=/repo/ybzhang/kernel/rootfs/bin/ ARCH=arm64  CONFIG_INITRAMFS_SOURCE="rootfs extra_nodes.txt" -j20
+    make LLVM=/repo/ybzhang/kernel/rootfs/bin/ ARCH=arm64 compile_commands.json -j20
 
 elif [ $1 == "arm64" ] && [ $2 == "compiled" ]; then
     echo "start to build the kernel for $1 (direct compile)"
@@ -68,8 +55,8 @@ elif [ $1 == "arm64" ] && [ $2 == "debug" ]; then
                         --append "nokaslr rdinit=/linuxrc console=ttyAMA0" -nographic \
                         --fsdev local,id=kmod_dev,path=$PWD/kmodules,security_model=none \
                         -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount &
-    gdb-multiarch
-    killall qemu-system-aarch64
+    #gdb
+    #killall qemu-system-aarch64
 elif [ $1 == "arm64" ] && [ $2 == "run" ]; then
     echo "running kernel on QEMU for $1"
 
@@ -80,6 +67,19 @@ elif [ $1 == "arm64" ] && [ $2 == "run" ]; then
               -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount
 
 fi
+
+###################################
+#{
+#  "clangd.path": "/usr/bin/clangd-17",
+#  "clangd.arguments": [
+#    "--background-index",
+#    "--compile-commands-dir=${workspaceFolder}",
+#    "--header-insertion=never",
+#    "--log=error"
+#  ],
+#  "C_Cpp.intelliSenseEngine": "disabled"
+#}
+
 
 ##################gdbinit script########################
 #target remote localhost:1234
