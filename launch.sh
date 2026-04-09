@@ -55,8 +55,8 @@ elif [ $1 == "arm64" ] && [ $2 == "debug" ]; then
                         --append "nokaslr rdinit=/linuxrc console=ttyAMA0" -nographic \
                         --fsdev local,id=kmod_dev,path=$PWD/kmodules,security_model=none \
                         -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount &
-    #gdb
-    #killall qemu-system-aarch64
+    gdb
+    killall qemu-system-aarch64
 elif [ $1 == "arm64" ] && [ $2 == "run" ]; then
     echo "running kernel on QEMU for $1"
 
