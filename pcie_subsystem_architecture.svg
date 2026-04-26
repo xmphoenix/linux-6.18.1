@@ -1,0 +1,314 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 980" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <linearGradient id="gUser" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#78909c"/><stop offset="100%" stop-color="#546e7a"/></linearGradient>
+    <linearGradient id="gDrv" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5c6bc0"/><stop offset="100%" stop-color="#3949ab"/></linearGradient>
+    <linearGradient id="gModel" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7e57c2"/><stop offset="100%" stop-color="#5e35b1"/></linearGradient>
+    <linearGradient id="gCore" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1565c0"/><stop offset="100%" stop-color="#0d47a1"/></linearGradient>
+    <linearGradient id="gPort" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c62828"/><stop offset="100%" stop-color="#b71c1c"/></linearGradient>
+    <linearGradient id="gIntr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ef6c00"/><stop offset="100%" stop-color="#e65100"/></linearGradient>
+    <linearGradient id="gAccess" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00838f"/><stop offset="100%" stop-color="#006064"/></linearGradient>
+    <linearGradient id="gHost" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2e7d32"/><stop offset="100%" stop-color="#1b5e20"/></linearGradient>
+    <linearGradient id="gEP" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6a1b9a"/><stop offset="100%" stop-color="#4a148c"/></linearGradient>
+    <linearGradient id="gHW" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#37474f"/><stop offset="100%" stop-color="#263238"/></linearGradient>
+    <filter id="sh"><feDropShadow dx="1.5" dy="2" stdDeviation="2.5" flood-opacity="0.15"/></filter>
+    <marker id="aDown" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#546e7a" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aUp" markerWidth="10" markerHeight="7" refX="1" refY="3.5" orient="auto"><path d="M9,1 L1,3.5 L9,6" fill="none" stroke="#546e7a" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aBi" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565c0" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#263238">Linux PCIe 子系统软件架构</text>
+  <text x="550" y="50" text-anchor="middle" font-size="12" fill="#78909c">Linux 6.18.1 — drivers/pci/ · include/linux/pci.h · include/uapi/linux/pci_regs.h</text>
+
+  <!-- ==================== Layer 1: Userspace ==================== -->
+  <g transform="translate(50,68)" filter="url(#sh)">
+    <rect width="1000" height="72" rx="8" fill="#fff" stroke="#78909c" stroke-width="2"/>
+    <rect width="1000" height="30" rx="8" fill="url(#gUser)"/>
+    <rect x="0" y="22" width="1000" height="8" fill="url(#gUser)"/>
+    <text x="500" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">用户空间 (Userspace)</text>
+    <text x="30" y="52" font-size="11" fill="#37474f" font-family="monospace">lspci</text>
+    <text x="100" y="52" font-size="11" fill="#37474f" font-family="monospace">setpci</text>
+    <text x="180" y="52" font-size="11" fill="#37474f" font-family="monospace">sysfs /sys/bus/pci/</text>
+    <text x="390" y="52" font-size="11" fill="#37474f" font-family="monospace">/proc/bus/pci</text>
+    <text x="560" y="52" font-size="11" fill="#37474f" font-family="monospace">/dev/vfio/*</text>
+    <text x="700" y="52" font-size="11" fill="#37474f" font-family="monospace">configfs (EP)</text>
+    <text x="870" y="52" font-size="11" fill="#78909c">用户工具 &amp; 接口</text>
+  </g>
+
+  <!-- ==================== Layer 2: Device Drivers ==================== -->
+  <g transform="translate(50,156)" filter="url(#sh)">
+    <rect width="1000" height="72" rx="8" fill="#fff" stroke="#5c6bc0" stroke-width="2"/>
+    <rect width="1000" height="30" rx="8" fill="url(#gDrv)"/>
+    <rect x="0" y="22" width="1000" height="8" fill="url(#gDrv)"/>
+    <text x="500" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">设备驱动层 (Device Drivers)</text>
+    <!-- Driver boxes -->
+    <rect x="20" y="40" width="110" height="24" rx="4" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+    <text x="75" y="56" text-anchor="middle" font-size="10" fill="#3949ab" font-weight="bold">NVMe</text>
+    <rect x="145" y="40" width="110" height="24" rx="4" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+    <text x="200" y="56" text-anchor="middle" font-size="10" fill="#3949ab" font-weight="bold">GPU (DRM)</text>
+    <rect x="270" y="40" width="110" height="24" rx="4" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+    <text x="325" y="56" text-anchor="middle" font-size="10" fill="#3949ab" font-weight="bold">网卡 (netdev)</text>
+    <rect x="395" y="40" width="110" height="24" rx="4" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+    <text x="450" y="56" text-anchor="middle" font-size="10" fill="#3949ab" font-weight="bold">USB xHCI</text>
+    <rect x="520" y="40" width="110" height="24" rx="4" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+    <text x="575" y="56" text-anchor="middle" font-size="10" fill="#3949ab" font-weight="bold">VFIO</text>
+    <rect x="645" y="40" width="110" height="24" rx="4" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+    <text x="700" y="56" text-anchor="middle" font-size="10" fill="#3949ab" font-weight="bold">SCSI / SAS</text>
+    <rect x="770" y="40" width="110" height="24" rx="4" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+    <text x="825" y="56" text-anchor="middle" font-size="10" fill="#3949ab" font-weight="bold">Crypto</text>
+    <rect x="895" y="40" width="86" height="24" rx="4" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1"/>
+    <text x="938" y="56" text-anchor="middle" font-size="10" fill="#9e9e9e">etc.</text>
+  </g>
+
+  <!-- ==================== Layer 3: PCI Driver Model ==================== -->
+  <g transform="translate(50,244)" filter="url(#sh)">
+    <rect width="1000" height="62" rx="8" fill="#fff" stroke="#7e57c2" stroke-width="2"/>
+    <rect width="1000" height="30" rx="8" fill="url(#gModel)"/>
+    <rect x="0" y="22" width="1000" height="8" fill="url(#gModel)"/>
+    <text x="500" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">PCI 驱动模型 (Driver Model) — pci-driver.c</text>
+    <text x="30" y="50" font-size="10" fill="#4a148c" font-family="monospace">pci_register_driver()</text>
+    <text x="210" y="50" font-size="10" fill="#4a148c" font-family="monospace">probe() / remove()</text>
+    <text x="385" y="50" font-size="10" fill="#4a148c" font-family="monospace">pci_device_id 匹配</text>
+    <text x="570" y="50" font-size="10" fill="#4a148c" font-family="monospace">动态 ID (dynids)</text>
+    <text x="730" y="50" font-size="10" fill="#4a148c" font-family="monospace">sysfs 属性</text>
+    <text x="870" y="50" font-size="10" fill="#78909c" font-family="monospace">struct pci_driver</text>
+  </g>
+
+  <!-- ==================== Layer 4: PCI Core ==================== -->
+  <g transform="translate(50,322)" filter="url(#sh)">
+    <rect width="1000" height="110" rx="8" fill="#fff" stroke="#1565c0" stroke-width="2"/>
+    <rect width="1000" height="30" rx="8" fill="url(#gCore)"/>
+    <rect x="0" y="22" width="1000" height="8" fill="url(#gCore)"/>
+    <text x="500" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">PCI 核心层 (Core)</text>
+    <!-- Row 1 -->
+    <rect x="20" y="40" width="145" height="26" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+    <text x="92" y="57" text-anchor="middle" font-size="10" fill="#0d47a1" font-weight="bold">probe.c — 设备枚举</text>
+    <rect x="180" y="40" width="145" height="26" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+    <text x="252" y="57" text-anchor="middle" font-size="10" fill="#0d47a1" font-weight="bold">pci.c — 核心服务</text>
+    <rect x="340" y="40" width="145" height="26" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+    <text x="412" y="57" text-anchor="middle" font-size="10" fill="#0d47a1" font-weight="bold">bus.c — 总线操作</text>
+    <rect x="500" y="40" width="155" height="26" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+    <text x="577" y="57" text-anchor="middle" font-size="10" fill="#0d47a1" font-weight="bold">setup-bus.c — 资源分配</text>
+    <rect x="670" y="40" width="150" height="26" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+    <text x="745" y="57" text-anchor="middle" font-size="10" fill="#0d47a1" font-weight="bold">setup-res.c — BAR 配置</text>
+    <rect x="835" y="40" width="145" height="26" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+    <text x="907" y="57" text-anchor="middle" font-size="10" fill="#0d47a1" font-weight="bold">quirks.c — 设备修复</text>
+    <!-- Row 2 -->
+    <rect x="20" y="76" width="120" height="24" rx="4" fill="#e3f2fd" stroke="#90caf9" stroke-width="1"/>
+    <text x="80" y="92" text-anchor="middle" font-size="9" fill="#1565c0">search.c 查找</text>
+    <rect x="155" y="76" width="100" height="24" rx="4" fill="#e3f2fd" stroke="#90caf9" stroke-width="1"/>
+    <text x="205" y="92" text-anchor="middle" font-size="9" fill="#1565c0">slot.c 槽位</text>
+    <rect x="270" y="76" width="110" height="24" rx="4" fill="#e3f2fd" stroke="#90caf9" stroke-width="1"/>
+    <text x="325" y="92" text-anchor="middle" font-size="9" fill="#1565c0">rom.c Option ROM</text>
+    <rect x="395" y="76" width="100" height="24" rx="4" fill="#e3f2fd" stroke="#90caf9" stroke-width="1"/>
+    <text x="445" y="92" text-anchor="middle" font-size="9" fill="#1565c0">vpd.c 产品数据</text>
+    <rect x="510" y="76" width="120" height="24" rx="4" fill="#e3f2fd" stroke="#90caf9" stroke-width="1"/>
+    <text x="570" y="92" text-anchor="middle" font-size="9" fill="#1565c0">devres.c devm_</text>
+    <rect x="645" y="76" width="100" height="24" rx="4" fill="#e3f2fd" stroke="#90caf9" stroke-width="1"/>
+    <text x="695" y="92" text-anchor="middle" font-size="9" fill="#1565c0">iov.c SR-IOV</text>
+    <rect x="760" y="76" width="110" height="24" rx="4" fill="#e3f2fd" stroke="#90caf9" stroke-width="1"/>
+    <text x="815" y="92" text-anchor="middle" font-size="9" fill="#1565c0">p2pdma.c P2P</text>
+    <rect x="885" y="76" width="95" height="24" rx="4" fill="#e3f2fd" stroke="#90caf9" stroke-width="1"/>
+    <text x="932" y="92" text-anchor="middle" font-size="9" fill="#1565c0">vc.c 虚拟通道</text>
+  </g>
+
+  <!-- ==================== Layer 5: PCIe Port Services ==================== -->
+  <g transform="translate(50,448)" filter="url(#sh)">
+    <rect width="590" height="80" rx="8" fill="#fff" stroke="#c62828" stroke-width="2"/>
+    <rect width="590" height="30" rx="8" fill="url(#gPort)"/>
+    <rect x="0" y="22" width="590" height="8" fill="url(#gPort)"/>
+    <text x="295" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">PCIe 端口服务层 (Port Services) — portdrv.c</text>
+    <!-- Service boxes -->
+    <rect x="15" y="40" width="100" height="30" rx="4" fill="#ffebee" stroke="#c62828" stroke-width="1"/>
+    <text x="65" y="55" text-anchor="middle" font-size="10" fill="#b71c1c" font-weight="bold">AER</text>
+    <text x="65" y="66" text-anchor="middle" font-size="8" fill="#c62828">高级错误报告</text>
+    <rect x="125" y="40" width="100" height="30" rx="4" fill="#ffebee" stroke="#c62828" stroke-width="1"/>
+    <text x="175" y="55" text-anchor="middle" font-size="10" fill="#b71c1c" font-weight="bold">ASPM</text>
+    <text x="175" y="66" text-anchor="middle" font-size="8" fill="#c62828">L0s/L1 电源</text>
+    <rect x="235" y="40" width="100" height="30" rx="4" fill="#ffebee" stroke="#c62828" stroke-width="1"/>
+    <text x="285" y="55" text-anchor="middle" font-size="10" fill="#b71c1c" font-weight="bold">DPC</text>
+    <text x="285" y="66" text-anchor="middle" font-size="8" fill="#c62828">端口遏制</text>
+    <rect x="345" y="40" width="100" height="30" rx="4" fill="#ffebee" stroke="#c62828" stroke-width="1"/>
+    <text x="395" y="55" text-anchor="middle" font-size="10" fill="#b71c1c" font-weight="bold">PME</text>
+    <text x="395" y="66" text-anchor="middle" font-size="8" fill="#c62828">电源事件</text>
+    <rect x="455" y="40" width="120" height="30" rx="4" fill="#ffebee" stroke="#c62828" stroke-width="1"/>
+    <text x="515" y="55" text-anchor="middle" font-size="10" fill="#b71c1c" font-weight="bold">Hotplug</text>
+    <text x="515" y="66" text-anchor="middle" font-size="8" fill="#c62828">pciehp 原生热插拔</text>
+  </g>
+
+  <!-- ==================== Layer 5b: Interrupt + Config Access (right side) ==================== -->
+  <!-- MSI/IRQ -->
+  <g transform="translate(660,448)" filter="url(#sh)">
+    <rect width="185" height="80" rx="8" fill="#fff" stroke="#ef6c00" stroke-width="2"/>
+    <rect width="185" height="30" rx="8" fill="url(#gIntr)"/>
+    <rect x="0" y="22" width="185" height="8" fill="url(#gIntr)"/>
+    <text x="92" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">中断子系统</text>
+    <text x="15" y="50" font-size="10" fill="#e65100" font-family="monospace">msi/ MSI/MSI-X</text>
+    <text x="15" y="66" font-size="10" fill="#e65100" font-family="monospace">irq.c IRQ 路由</text>
+  </g>
+  <!-- Config Access -->
+  <g transform="translate(865,448)" filter="url(#sh)">
+    <rect width="185" height="80" rx="8" fill="#fff" stroke="#00838f" stroke-width="2"/>
+    <rect width="185" height="30" rx="8" fill="url(#gAccess)"/>
+    <rect x="0" y="22" width="185" height="8" fill="url(#gAccess)"/>
+    <text x="92" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">配置空间访问</text>
+    <text x="15" y="50" font-size="10" fill="#006064" font-family="monospace">access.c 读/写</text>
+    <text x="15" y="66" font-size="10" fill="#006064" font-family="monospace">ECAM · IO Port</text>
+  </g>
+
+  <!-- ==================== Layer 6: Host Bridge Drivers ==================== -->
+  <g transform="translate(50,544)" filter="url(#sh)">
+    <rect width="640" height="94" rx="8" fill="#fff" stroke="#2e7d32" stroke-width="2"/>
+    <rect width="640" height="30" rx="8" fill="url(#gHost)"/>
+    <rect x="0" y="22" width="640" height="8" fill="url(#gHost)"/>
+    <text x="320" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">主机桥驱动层 (Host Bridge / Controller) — controller/</text>
+    <!-- Controller sub-boxes -->
+    <rect x="15" y="40" width="140" height="42" rx="4" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1"/>
+    <text x="85" y="56" text-anchor="middle" font-size="10" fill="#1b5e20" font-weight="bold">ECAM 通用</text>
+    <text x="85" y="70" text-anchor="middle" font-size="8" fill="#2e7d32">pci-host-common.c</text>
+    <rect x="170" y="40" width="130" height="42" rx="4" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1"/>
+    <text x="235" y="56" text-anchor="middle" font-size="10" fill="#1b5e20" font-weight="bold">DesignWare</text>
+    <text x="235" y="70" text-anchor="middle" font-size="8" fill="#2e7d32">dwc/ 系列</text>
+    <rect x="315" y="40" width="110" height="42" rx="4" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1"/>
+    <text x="370" y="56" text-anchor="middle" font-size="10" fill="#1b5e20" font-weight="bold">Cadence</text>
+    <text x="370" y="70" text-anchor="middle" font-size="8" fill="#2e7d32">cadence/</text>
+    <rect x="440" y="40" width="90" height="42" rx="4" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1"/>
+    <text x="485" y="56" text-anchor="middle" font-size="10" fill="#1b5e20" font-weight="bold">VMD</text>
+    <text x="485" y="70" text-anchor="middle" font-size="8" fill="#2e7d32">vmd.c</text>
+    <rect x="545" y="40" width="80" height="42" rx="4" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1"/>
+    <text x="585" y="56" text-anchor="middle" font-size="10" fill="#1b5e20" font-weight="bold">70+ ...</text>
+    <text x="585" y="70" text-anchor="middle" font-size="8" fill="#9e9e9e">其他平台</text>
+  </g>
+
+  <!-- ==================== Layer 6b: Endpoint Subsystem (right) ==================== -->
+  <g transform="translate(710,544)" filter="url(#sh)">
+    <rect width="340" height="94" rx="8" fill="#fff" stroke="#6a1b9a" stroke-width="2"/>
+    <rect width="340" height="30" rx="8" fill="url(#gEP)"/>
+    <rect x="0" y="22" width="340" height="8" fill="url(#gEP)"/>
+    <text x="170" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Endpoint 子系统 — endpoint/</text>
+    <rect x="15" y="40" width="145" height="42" rx="4" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="1"/>
+    <text x="87" y="56" text-anchor="middle" font-size="10" fill="#4a148c" font-weight="bold">EPC 控制器核心</text>
+    <text x="87" y="70" text-anchor="middle" font-size="8" fill="#6a1b9a">pci-epc-core.c</text>
+    <rect x="175" y="40" width="148" height="42" rx="4" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="1"/>
+    <text x="249" y="56" text-anchor="middle" font-size="10" fill="#4a148c" font-weight="bold">EPF 功能层</text>
+    <text x="249" y="70" text-anchor="middle" font-size="8" fill="#6a1b9a">epf-test / epf-ntb / configfs</text>
+  </g>
+
+  <!-- ==================== Layer 7: Hardware ==================== -->
+  <g transform="translate(50,656)" filter="url(#sh)">
+    <rect width="1000" height="72" rx="8" fill="#fff" stroke="#37474f" stroke-width="2"/>
+    <rect width="1000" height="30" rx="8" fill="url(#gHW)"/>
+    <rect x="0" y="22" width="1000" height="8" fill="url(#gHW)"/>
+    <text x="500" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">硬件层 (Hardware)</text>
+    <rect x="30" y="40" width="180" height="24" rx="4" fill="#eceff1" stroke="#546e7a" stroke-width="1"/>
+    <text x="120" y="56" text-anchor="middle" font-size="10" fill="#37474f" font-weight="bold">Root Complex (RC)</text>
+    <rect x="230" y="40" width="150" height="24" rx="4" fill="#eceff1" stroke="#546e7a" stroke-width="1"/>
+    <text x="305" y="56" text-anchor="middle" font-size="10" fill="#37474f" font-weight="bold">PCIe Switch</text>
+    <rect x="400" y="40" width="180" height="24" rx="4" fill="#eceff1" stroke="#546e7a" stroke-width="1"/>
+    <text x="490" y="56" text-anchor="middle" font-size="10" fill="#37474f" font-weight="bold">Endpoint Devices</text>
+    <rect x="600" y="40" width="190" height="24" rx="4" fill="#eceff1" stroke="#546e7a" stroke-width="1"/>
+    <text x="695" y="56" text-anchor="middle" font-size="10" fill="#37474f" font-weight="bold">PCIe PHY + Link</text>
+    <rect x="810" y="40" width="170" height="24" rx="4" fill="#eceff1" stroke="#546e7a" stroke-width="1"/>
+    <text x="895" y="56" text-anchor="middle" font-size="10" fill="#37474f" font-weight="bold">Config Space (4KB)</text>
+  </g>
+
+  <!-- ==================== Key Data Structures (right panel) ==================== -->
+  <g transform="translate(50,748)" filter="url(#sh)">
+    <rect width="1000" height="116" rx="8" fill="#fafafa" stroke="#bdbdbd" stroke-width="1.5"/>
+    <text x="500" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#424242">关键数据结构 (include/linux/pci.h)</text>
+    <line x1="15" y1="28" x2="985" y2="28" stroke="#e0e0e0" stroke-width="1"/>
+    <!-- pci_dev -->
+    <rect x="15" y="36" width="185" height="68" rx="5" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+    <text x="107" y="52" text-anchor="middle" font-size="11" fill="#0d47a1" font-weight="bold">struct pci_dev</text>
+    <text x="25" y="66" font-size="8.5" fill="#546e7a">vendor/device · BDF · resource[]</text>
+    <text x="25" y="78" font-size="8.5" fill="#546e7a">pcie_cap · msi_cap · current_state</text>
+    <text x="25" y="90" font-size="8.5" fill="#546e7a">driver · irq · dma_mask · dev</text>
+    <text x="25" y="100" font-size="8" fill="#9e9e9e">/* 每个 PCI/PCIe 设备一个实例 */</text>
+    <!-- pci_bus -->
+    <rect x="215" y="36" width="185" height="68" rx="5" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+    <text x="307" y="52" text-anchor="middle" font-size="11" fill="#1b5e20" font-weight="bold">struct pci_bus</text>
+    <text x="225" y="66" font-size="8.5" fill="#546e7a">parent · children · devices</text>
+    <text x="225" y="78" font-size="8.5" fill="#546e7a">self · ops · number · domain_nr</text>
+    <text x="225" y="90" font-size="8.5" fill="#546e7a">resource[] · slots · max_bus_speed</text>
+    <text x="225" y="100" font-size="8" fill="#9e9e9e">/* 每条 PCI 总线一个实例 */</text>
+    <!-- pci_host_bridge -->
+    <rect x="415" y="36" width="195" height="68" rx="5" fill="#fff3e0" stroke="#ef6c00" stroke-width="1.5"/>
+    <text x="512" y="52" text-anchor="middle" font-size="11" fill="#e65100" font-weight="bold">struct pci_host_bridge</text>
+    <text x="425" y="66" font-size="8.5" fill="#546e7a">bus · ops · windows · dma_ranges</text>
+    <text x="425" y="78" font-size="8.5" fill="#546e7a">native_aer/pme/hotplug/dpc</text>
+    <text x="425" y="90" font-size="8.5" fill="#546e7a">map_irq() · align_resource()</text>
+    <text x="425" y="100" font-size="8" fill="#9e9e9e">/* 每个 Root Complex 一个实例 */</text>
+    <!-- pci_driver -->
+    <rect x="625" y="36" width="170" height="68" rx="5" fill="#f3e5f5" stroke="#7e57c2" stroke-width="1.5"/>
+    <text x="710" y="52" text-anchor="middle" font-size="11" fill="#5e35b1" font-weight="bold">struct pci_driver</text>
+    <text x="635" y="66" font-size="8.5" fill="#546e7a">name · id_table · dynids</text>
+    <text x="635" y="78" font-size="8.5" fill="#546e7a">probe() · remove()</text>
+    <text x="635" y="90" font-size="8.5" fill="#546e7a">suspend() · resume() · driver</text>
+    <text x="635" y="100" font-size="8" fill="#9e9e9e">/* 每个 PCI 驱动一个实例 */</text>
+    <!-- pci_ops -->
+    <rect x="810" y="36" width="175" height="68" rx="5" fill="#ffebee" stroke="#c62828" stroke-width="1.5"/>
+    <text x="897" y="52" text-anchor="middle" font-size="11" fill="#b71c1c" font-weight="bold">struct pci_ops</text>
+    <text x="820" y="66" font-size="8.5" fill="#546e7a">map_bus(bus, devfn, where)</text>
+    <text x="820" y="78" font-size="8.5" fill="#546e7a">read(bus, devfn, where, sz, val)</text>
+    <text x="820" y="90" font-size="8.5" fill="#546e7a">write(bus, devfn, where, sz, val)</text>
+    <text x="820" y="100" font-size="8" fill="#9e9e9e">/* 配置空间读写回调 */</text>
+  </g>
+
+  <!-- ==================== INTER-LAYER ARROWS ==================== -->
+  <!-- Userspace → Drivers -->
+  <path d="M550,140 L550,156" fill="none" stroke="#546e7a" stroke-width="1.5" marker-end="url(#aDown)"/>
+  <!-- Drivers → Driver Model -->
+  <path d="M550,228 L550,244" fill="none" stroke="#546e7a" stroke-width="1.5" marker-end="url(#aDown)"/>
+  <!-- Driver Model → Core -->
+  <path d="M550,306 L550,322" fill="none" stroke="#546e7a" stroke-width="1.5" marker-end="url(#aDown)"/>
+  <!-- Core → Port Services -->
+  <path d="M340,432 L340,448" fill="none" stroke="#546e7a" stroke-width="1.5" marker-end="url(#aDown)"/>
+  <!-- Core → MSI -->
+  <path d="M750,432 L750,448" fill="none" stroke="#546e7a" stroke-width="1.5" marker-end="url(#aDown)"/>
+  <!-- Core → Config Access -->
+  <path d="M960,432 L960,448" fill="none" stroke="#546e7a" stroke-width="1.5" marker-end="url(#aDown)"/>
+  <!-- Port Services → Host Bridge -->
+  <path d="M340,528 L340,544" fill="none" stroke="#546e7a" stroke-width="1.5" marker-end="url(#aDown)"/>
+  <!-- MSI → Host Bridge (cross-connect) -->
+  <path d="M750,528 Q750,536 690,540 L690,544" fill="none" stroke="#546e7a" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#aDown)"/>
+  <!-- Config Access → Host Bridge -->
+  <path d="M957,528 Q957,536 600,540 L600,544" fill="none" stroke="#546e7a" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#aDown)"/>
+  <!-- Host Bridge → HW -->
+  <path d="M370,638 L370,656" fill="none" stroke="#546e7a" stroke-width="1.5" marker-end="url(#aDown)"/>
+  <!-- Endpoint → HW -->
+  <path d="M880,638 L880,656" fill="none" stroke="#546e7a" stroke-width="1.5" marker-end="url(#aDown)"/>
+
+  <!-- ==================== Side Annotations ==================== -->
+  <!-- Left: API flow arrows -->
+  <text x="22" y="104" font-size="9" fill="#78909c" transform="rotate(-90,22,104)">系统调用 / ioctl / sysfs</text>
+  <text x="22" y="400" font-size="9" fill="#1565c0" transform="rotate(-90,22,400)">pci_enable_device() · pci_set_master()</text>
+  <text x="22" y="620" font-size="9" fill="#2e7d32" transform="rotate(-90,22,620)">ECAM mmio / DT 解析</text>
+
+  <!-- ==================== Legend ==================== -->
+  <g transform="translate(50,882)">
+    <rect width="1000" height="68" rx="6" fill="#fafafa" stroke="#e0e0e0" stroke-width="1" filter="url(#sh)"/>
+    <text x="20" y="18" font-size="12" font-weight="bold" fill="#424242">图例</text>
+    <!-- Color legend -->
+    <rect x="20" y="28" width="16" height="10" rx="2" fill="url(#gCore)"/>
+    <text x="42" y="37" font-size="9" fill="#424242">PCI 核心层</text>
+    <rect x="120" y="28" width="16" height="10" rx="2" fill="url(#gPort)"/>
+    <text x="142" y="37" font-size="9" fill="#424242">PCIe 端口服务</text>
+    <rect x="245" y="28" width="16" height="10" rx="2" fill="url(#gIntr)"/>
+    <text x="267" y="37" font-size="9" fill="#424242">中断 (MSI)</text>
+    <rect x="340" y="28" width="16" height="10" rx="2" fill="url(#gAccess)"/>
+    <text x="362" y="37" font-size="9" fill="#424242">配置空间访问</text>
+    <rect x="465" y="28" width="16" height="10" rx="2" fill="url(#gHost)"/>
+    <text x="487" y="37" font-size="9" fill="#424242">主机桥驱动</text>
+    <rect x="575" y="28" width="16" height="10" rx="2" fill="url(#gEP)"/>
+    <text x="597" y="37" font-size="9" fill="#424242">Endpoint</text>
+    <rect x="665" y="28" width="16" height="10" rx="2" fill="url(#gHW)"/>
+    <text x="687" y="37" font-size="9" fill="#424242">硬件</text>
+    <!-- Arrow legend -->
+    <line x1="20" y1="53" x2="55" y2="53" stroke="#546e7a" stroke-width="1.5" marker-end="url(#aDown)"/>
+    <text x="63" y="57" font-size="9" fill="#424242">调用/依赖方向</text>
+    <line x1="180" y1="53" x2="215" y2="53" stroke="#546e7a" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#aDown)"/>
+    <text x="223" y="57" font-size="9" fill="#424242">间接依赖</text>
+    <text x="370" y="57" font-size="9" fill="#78909c">源码: drivers/pci/ · include/linux/pci.h · include/uapi/linux/pci_regs.h</text>
+  </g>
+
+</svg>
