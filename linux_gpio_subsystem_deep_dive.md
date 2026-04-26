@@ -1218,3 +1218,602 @@ devm_gpiod_get(dev, con_id, flags)      // 获取 (自动释放)
 devm_gpiod_get_optional(...)            // 获取可选 (自动释放)
 devm_gpiod_get_array(dev, con_id, flags)// 批量获取 (自动释放)
 ```
+
+---
+
+## 16. 实战：如何申请 GPIO 和 Button
+
+### 16.1 内核驱动中申请 GPIO 的三种方式
+
+#### 方式一：描述符 API (推荐，现代方式)
+
+```c
+#include <linux/gpio/consumer.h>
+
+static int my_probe(struct platform_device *pdev)
+{
+    struct device *dev = &pdev->dev;
+    struct gpio_desc *led_gpio, *reset_gpio;
+
+    /* 1. 从 DT/ACPI/查找表 获取 GPIO 描述符 */
+    led_gpio = devm_gpiod_get(dev, "led", GPIOD_OUT_LOW);
+    if (IS_ERR(led_gpio))
+        return PTR_ERR(led_gpio);
+
+    /* 可选 GPIO (不存在时返回 NULL 而非错误) */
+    reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
+    if (IS_ERR(reset_gpio))
+        return PTR_ERR(reset_gpio);
+
+    /* 2. 读/写 GPIO (逻辑值，自动处理 active-low) */
+    gpiod_set_value(led_gpio, 1);       /* 点亮 LED */
+    int val = gpiod_get_value(led_gpio); /* 读取状态 */
+
+    /* 3. 获取中断号 */
+    int irq = gpiod_to_irq(led_gpio);
+    if (irq < 0)
+        return irq;
+
+    devm_request_irq(dev, irq, my_isr, IRQF_TRIGGER_RISING, "my-gpio", dev);
+
+    /* 4. devm_ 系列无需手动释放，驱动卸载时自动清理 */
+    return 0;
+}
+```
+
+**对应 DT 节点：**
+```dts
+my-device {
+    compatible = "vendor,my-device";
+    /* "led" 对应 devm_gpiod_get(dev, "led", ...) */
+    led-gpios = <&gpio0 5 GPIO_ACTIVE_LOW>;
+    /* "reset" 对应 devm_gpiod_get(dev, "reset", ...) */
+    reset-gpios = <&gpio1 3 GPIO_ACTIVE_HIGH>;
+};
+```
+
+> **命名规则：** `devm_gpiod_get(dev, "xxx", flags)` 对应 DT 属性 `xxx-gpios`。
+
+#### 方式二：批量获取 GPIO
+
+```c
+/* 获取一组 GPIO (如 8-bit 数据总线) */
+struct gpio_descs *bus = devm_gpiod_get_array(dev, "data", GPIOD_OUT_LOW);
+if (IS_ERR(bus))
+    return PTR_ERR(bus);
+
+/* bus->ndescs = GPIO 数量 */
+/* bus->desc[i] = 每个 GPIO 描述符 */
+for (int i = 0; i < bus->ndescs; i++)
+    gpiod_set_value(bus->desc[i], (byte >> i) & 1);
+
+/* 高性能批量操作 */
+DECLARE_BITMAP(values, 8);
+bitmap_zero(values, bus->ndescs);
+values[0] = 0xAB;  /* 一次设置所有 GPIO */
+gpiod_set_array_value(bus->ndescs, bus->desc, bus->info, values);
+```
+
+#### 方式三：从 Device Tree 固件节点获取 (用于子设备)
+
+```c
+/* 在遍历子节点时使用 */
+struct fwnode_handle *child;
+device_for_each_child_node(dev, child) {
+    struct gpio_desc *gpiod;
+    gpiod = devm_fwnode_gpiod_get(dev, child, NULL, GPIOD_IN, "button");
+    if (IS_ERR(gpiod)) {
+        fwnode_handle_put(child);
+        return PTR_ERR(gpiod);
+    }
+    /* gpio-keys 驱动就使用此方式 */
+}
+```
+
+### 16.2 GPIO flags 参数详解
+
+| Flag | 含义 |
+|------|------|
+| `GPIOD_ASIS` | 保持当前方向不变 |
+| `GPIOD_IN` | 设为输入 |
+| `GPIOD_OUT_LOW` | 设为输出，逻辑低 |
+| `GPIOD_OUT_HIGH` | 设为输出，逻辑高 |
+| `GPIOD_OUT_LOW_OPEN_DRAIN` | 输出低 + 开漏模式 |
+| `GPIOD_OUT_HIGH_OPEN_DRAIN` | 输出高 + 开漏模式 |
+
+### 16.3 gpio-keys 驱动深度解析
+
+`gpio-keys` 是内核标准的**按键/开关**驱动，把 GPIO 事件转换为 Input 子系统事件。
+
+**核心数据结构：**
+
+```c
+/* 单个按钮配置 (include/linux/gpio_keys.h) */
+struct gpio_keys_button {
+    unsigned int code;              /* KEY_POWER, KEY_UP 等 */
+    int          gpio;              /* GPIO 号 (legacy, -1 禁用) */
+    int          active_low;        /* 1 = 低电平有效 */
+    const char   *desc;             /* 按钮标签 */
+    unsigned int type;              /* EV_KEY / EV_SW */
+    int          debounce_interval; /* 去抖间隔 (ms) */
+    int          wakeup;            /* 可唤醒系统 */
+    unsigned int irq;               /* 显式 IRQ 号 (可选) */
+};
+
+/* 运行时按钮数据 (gpio_keys.c 内部) */
+struct gpio_button_data {
+    struct gpio_desc     *gpiod;           /* GPIO 描述符 */
+    struct input_dev     *input;           /* Input 设备 */
+    unsigned int          irq;             /* 中断号 */
+    unsigned int          software_debounce; /* 软件去抖 (ms) */
+    struct delayed_work   work;            /* 去抖工作队列 */
+    struct hrtimer        debounce_timer;  /* 高精度去抖定时器 */
+    bool                  key_pressed;     /* 按键状态 */
+};
+```
+
+**Probe 流程：**
+
+```
+gpio_keys_probe(pdev)
+  │
+  ├─ gpio_keys_get_devtree_pdata(dev)    // 解析 DT 属性
+  │    └─ device_for_each_child_node()    // 遍历子节点
+  │         fwnode_property_read_u32(child, "linux,code", &code)
+  │
+  ├─ devm_input_allocate_device(dev)      // 分配 Input 设备
+  │
+  ├─ for each button:
+  │    gpio_keys_setup_key(pdev, input, ddata, button, child)
+  │    │
+  │    ├─ devm_fwnode_gpiod_get(dev, child, NULL, GPIOD_IN, desc)
+  │    │                                   // 申请 GPIO (描述符)
+  │    ├─ gpiod_set_debounce(gpiod, ms*1000)
+  │    │                                   // 尝试硬件去抖
+  │    │   如果失败 → software_debounce = ms
+  │    │
+  │    ├─ gpiod_to_irq(gpiod)             // GPIO → IRQ 号
+  │    │
+  │    └─ devm_request_any_context_irq(dev, irq,
+  │         gpio_keys_gpio_isr,
+  │         IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+  │         desc, bdata)                   // 注册中断
+  │
+  └─ input_register_device(input)          // 注册 Input 设备
+```
+
+**中断处理与去抖流程：**
+
+```
+GPIO 电平变化
+  │
+  ▼
+gpio_keys_gpio_isr()                  ← 硬件中断
+  │ pm_stay_awake()                    ← 保持唤醒
+  │ hrtimer_start(debounce_timer, ms)  ← 启动去抖定时器
+  │
+  ▼ (去抖超时后)
+gpio_keys_debounce_event()
+  │
+  ├─ gpio_keys_gpio_report_event()
+  │    state = gpiod_get_value(gpiod)  ← 读取 GPIO 逻辑值
+  │    input_event(input, EV_KEY, code, state)
+  │
+  └─ input_sync(input)                ← 同步事件到用户空间
+      pm_relax()                       ← 释放唤醒
+```
+
+### 16.4 gpio-keys DT 绑定规范
+
+```dts
+gpio-keys {
+    compatible = "gpio-keys";         /* 必须 */
+    autorepeat;                        /* 可选：启用按键重复 */
+
+    button-power {                     /* 子节点 = 一个按钮 */
+        label = "Power Button";        /* 按钮标签 */
+        linux,code = <116>;            /* KEY_POWER (input-event-codes.h) */
+        gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;  /* GPIO 引用 */
+        debounce-interval = <10>;      /* 去抖 10ms */
+        wakeup-source;                 /* 可唤醒系统 */
+    };
+
+    button-vol-up {
+        label = "Volume Up";
+        linux,code = <115>;            /* KEY_VOLUMEUP */
+        gpios = <&gpio0 4 GPIO_ACTIVE_LOW>;
+        debounce-interval = <10>;
+    };
+
+    switch-lid {
+        label = "Lid Switch";
+        linux,code = <0>;              /* SW_LID */
+        linux,input-type = <5>;        /* EV_SW (开关事件) */
+        gpios = <&gpio1 0 GPIO_ACTIVE_LOW>;
+    };
+};
+```
+
+**关键属性：**
+
+| 属性 | 类型 | 必须 | 说明 |
+|------|------|------|------|
+| `compatible` | string | 是 | `"gpio-keys"` 或 `"gpio-keys-polled"` |
+| `linux,code` | u32 | 是 | 事件码，见 `include/uapi/linux/input-event-codes.h` |
+| `gpios` | phandle | 是* | GPIO 引用 (`&控制器 引脚 标志`) |
+| `interrupts` | - | 是* | 或使用中断替代 GPIO (* 二选一) |
+| `label` | string | 否 | 按钮描述 |
+| `linux,input-type` | u32 | 否 | 默认 EV_KEY(1)，开关用 EV_SW(5) |
+| `debounce-interval` | u32 | 否 | 去抖间隔 ms，默认 5 |
+| `wakeup-source` | bool | 否 | 系统唤醒源 |
+
+### 16.5 常用 KEY 码速查
+
+```c
+/* include/uapi/linux/input-event-codes.h */
+#define KEY_POWER       116
+#define KEY_VOLUMEUP    115
+#define KEY_VOLUMEDOWN  114
+#define KEY_HOME        102
+#define KEY_BACK        158
+#define KEY_MENU        139
+#define KEY_UP          103
+#define KEY_DOWN        108
+#define KEY_LEFT        105
+#define KEY_RIGHT       106
+#define KEY_ENTER       28
+#define KEY_ESC         1
+#define KEY_WAKEUP      143
+#define BTN_0           0x100
+#define SW_LID          0x00     /* 盖子开关 */
+#define SW_HEADPHONE_INSERT 0x02 /* 耳机插入 */
+```
+
+---
+
+## 17. QEMU GPIO/Button 实践
+
+### 17.1 QEMU virt 平台 GPIO 硬件
+
+QEMU ARM virt 平台默认提供 **PL061 GPIO 控制器**（ARM PrimeCell GPIO）：
+
+| 特性 | 值 |
+|------|---|
+| 控制器 | PL061 (AMBA ID: 0x00041061) |
+| 每控制器 GPIO 数 | 8 |
+| 驱动 | `drivers/gpio/gpio-pl061.c` |
+| 发现方式 | AMBA 总线自动探测 (非 DT compatible) |
+| 中断 | 每引脚可独立配置边沿/电平触发 |
+| Kconfig | `CONFIG_GPIO_PL061=y` |
+
+**PL061 寄存器映射：**
+
+```
+偏移     名称       功能
+0x400    GPIODIR    方向寄存器 (0=输入, 1=输出)
+0x404    GPIOIS     中断类型 (0=边沿, 1=电平)
+0x408    GPIOIBE    双边沿触发使能
+0x40C    GPIOIEV    中断事件 (0=下降/低, 1=上升/高)
+0x410    GPIOIE     中断使能
+0x414    GPIORIS    原始中断状态
+0x418    GPIOMIS    屏蔽后中断状态
+0x41C    GPIOIC     中断清除
+0x000~   GPIODATA   数据寄存器 (地址线选位掩码)
+```
+
+### 17.2 实践一：编写 GPIO 测试内核模块
+
+创建一个内核模块，演示 GPIO 申请、读写和中断：
+
+```c
+/* kmodules/gpio_test/gpio_test.c */
+#include <linux/module.h>
+#include <linux/platform_device.h>
+#include <linux/gpio/consumer.h>
+#include <linux/interrupt.h>
+
+struct gpio_test_data {
+    struct gpio_desc *out_gpio;
+    struct gpio_desc *in_gpio;
+    int irq;
+};
+
+static irqreturn_t gpio_test_isr(int irq, void *dev_id)
+{
+    struct gpio_test_data *data = dev_id;
+    int val = gpiod_get_value(data->in_gpio);
+    pr_info("gpio_test: IRQ! input GPIO value = %d\n", val);
+    /* 翻转输出 GPIO */
+    gpiod_set_value(data->out_gpio, !gpiod_get_value(data->out_gpio));
+    return IRQ_HANDLED;
+}
+
+static int gpio_test_probe(struct platform_device *pdev)
+{
+    struct device *dev = &pdev->dev;
+    struct gpio_test_data *data;
+
+    data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
+    if (!data)
+        return -ENOMEM;
+
+    /* 申请输出 GPIO */
+    data->out_gpio = devm_gpiod_get(dev, "output", GPIOD_OUT_LOW);
+    if (IS_ERR(data->out_gpio)) {
+        dev_err(dev, "Failed to get output GPIO: %ld\n",
+                PTR_ERR(data->out_gpio));
+        return PTR_ERR(data->out_gpio);
+    }
+
+    /* 申请输入 GPIO (可选) */
+    data->in_gpio = devm_gpiod_get_optional(dev, "input", GPIOD_IN);
+    if (IS_ERR(data->in_gpio))
+        return PTR_ERR(data->in_gpio);
+
+    /* 注册中断 */
+    if (data->in_gpio) {
+        data->irq = gpiod_to_irq(data->in_gpio);
+        if (data->irq < 0) {
+            dev_err(dev, "Failed to get IRQ: %d\n", data->irq);
+            return data->irq;
+        }
+
+        int ret = devm_request_irq(dev, data->irq, gpio_test_isr,
+                                   IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+                                   "gpio-test", data);
+        if (ret) {
+            dev_err(dev, "Failed to request IRQ: %d\n", ret);
+            return ret;
+        }
+        dev_info(dev, "Registered IRQ %d for input GPIO\n", data->irq);
+    }
+
+    /* 测试：设置输出 GPIO 为高 */
+    gpiod_set_value(data->out_gpio, 1);
+    dev_info(dev, "GPIO test probe OK, output GPIO set HIGH\n");
+
+    platform_set_drvdata(pdev, data);
+    return 0;
+}
+
+static const struct of_device_id gpio_test_of_match[] = {
+    { .compatible = "test,gpio-demo" },
+    { }
+};
+MODULE_DEVICE_TABLE(of, gpio_test_of_match);
+
+static struct platform_driver gpio_test_driver = {
+    .probe  = gpio_test_probe,
+    .driver = {
+        .name = "gpio-test",
+        .of_match_table = gpio_test_of_match,
+    },
+};
+module_platform_driver(gpio_test_driver);
+
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("GPIO Test Module for QEMU virt");
+```
+
+**对应 Makefile：**
+
+```makefile
+# kmodules/gpio_test/Makefile
+obj-m += gpio_test.o
+```
+
+### 17.3 实践二：用户空间 GPIO 操作 (chardev 方式)
+
+QEMU virt 启动后，可通过 `/dev/gpiochipN` 操作 GPIO：
+
+**查看 GPIO 控制器信息：**
+
+```bash
+# 查看系统中的 GPIO 芯片
+ls /sys/class/gpio/
+cat /sys/kernel/debug/gpio    # 需要 CONFIG_DEBUG_FS=y
+
+# 或使用 gpioinfo (libgpiod)
+gpioinfo
+```
+
+**使用 libgpiod 命令行工具：**
+
+```bash
+# 列出所有 GPIO 芯片
+gpiodetect
+# gpiochip0 [9030000.gpio] (8 lines)
+
+# 列出某芯片的所有引脚
+gpioinfo gpiochip0
+# line   0: unnamed unused input active-high
+# line   1: unnamed unused input active-high
+# ...
+
+# 读取 GPIO 值
+gpioget gpiochip0 0
+
+# 设置 GPIO 输出
+gpioset gpiochip0 3=1    # Pin 3 输出高
+
+# 监控 GPIO 事件 (中断)
+gpiomon gpiochip0 0      # 等待 Pin 0 边沿事件
+# event: RISING  EDGE offset: 0 timestamp: [1234567.890]
+```
+
+**使用 C 语言 chardev API：**
+
+```c
+/* userspace gpio_chardev_example.c */
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <linux/gpio.h>
+
+int main(void)
+{
+    int fd, ret;
+
+    /* 1. 打开 GPIO 芯片 */
+    fd = open("/dev/gpiochip0", O_RDONLY);
+    if (fd < 0) {
+        perror("open gpiochip0");
+        return 1;
+    }
+
+    /* 2. 获取芯片信息 */
+    struct gpiochip_info chip_info;
+    ret = ioctl(fd, GPIO_GET_CHIPINFO_IOCTL, &chip_info);
+    if (ret == 0) {
+        printf("Chip: %s, label: %s, lines: %u\n",
+               chip_info.name, chip_info.label, chip_info.lines);
+    }
+
+    /* 3. 获取线路信息 */
+    struct gpio_v2_line_info line_info = { .offset = 0 };
+    ret = ioctl(fd, GPIO_V2_GET_LINEINFO_IOCTL, &line_info);
+    if (ret == 0) {
+        printf("Line 0: name=%s, consumer=%s, flags=0x%llx\n",
+               line_info.name, line_info.consumer, 
+               (unsigned long long)line_info.flags);
+    }
+
+    /* 4. 请求线路 (GPIO Pin 3 设为输出) */
+    struct gpio_v2_line_request req;
+    memset(&req, 0, sizeof(req));
+    req.offsets[0] = 3;
+    req.num_lines = 1;
+    req.config.flags = GPIO_V2_LINE_FLAG_OUTPUT;
+    strncpy(req.consumer, "my-app", sizeof(req.consumer) - 1);
+
+    ret = ioctl(fd, GPIO_V2_GET_LINE_IOCTL, &req);
+    if (ret < 0) {
+        perror("request line");
+        close(fd);
+        return 1;
+    }
+
+    /* 5. 设置输出值 */
+    struct gpio_v2_line_values vals = {
+        .bits = 1,     /* Pin 3 = HIGH */
+        .mask = 1,     /* 操作第一个偏移 */
+    };
+    ioctl(req.fd, GPIO_V2_LINE_SET_VALUES_IOCTL, &vals);
+    printf("Set GPIO pin 3 = HIGH\n");
+
+    /* 6. 清理 */
+    close(req.fd);
+    close(fd);
+    return 0;
+}
+```
+
+### 17.4 实践三：sysfs GPIO 操作 (Legacy，已废弃)
+
+```bash
+# 注意：sysfs GPIO 接口已被标记为废弃 (deprecated)
+# 新代码应使用 chardev (/dev/gpiochipN) 接口
+# 以下仅供参考
+
+# 导出 GPIO (假设 PL061 base=480, pin=3 → GPIO 483)
+echo 483 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio483/direction
+echo 1 > /sys/class/gpio/gpio483/value
+cat /sys/class/gpio/gpio483/value
+
+# 取消导出
+echo 483 > /sys/class/gpio/unexport
+```
+
+### 17.5 QEMU 调试 GPIO 状态
+
+**通过 QEMU Monitor 查看设备状态：**
+
+在 QEMU 运行时按 `Ctrl+A, C` 进入 Monitor 模式：
+
+```
+(qemu) info qtree
+# 可以看到 PL061 GPIO 控制器的设备树
+
+(qemu) info mtree
+# 查看内存映射，PL061 寄存器地址
+```
+
+**通过内核 debugfs 查看：**
+
+```bash
+# 需要 CONFIG_DEBUG_FS=y
+mount -t debugfs none /sys/kernel/debug
+
+# 查看所有 GPIO 状态
+cat /sys/kernel/debug/gpio
+# gpiochip0: GPIOs 480-487, parent: 9030000.gpio, pl061_gpio:
+#  gpio-480 (                    |output              ) out hi
+#  gpio-483 (                    |my-app              ) out lo
+
+# 查看 GPIO 设备详情
+ls /sys/bus/gpio/devices/
+# gpiochip0 → 指向 PL061 实例
+```
+
+### 17.6 完整 QEMU GPIO 实践步骤
+
+```bash
+# === 步骤 1: 确保内核配置正确 ===
+cd /repo/ybzhang/kernel/linux-6.18.1
+grep -E "GPIO_PL061|KEYBOARD_GPIO|INPUT_EVDEV|DEBUG_FS" \
+    arch/arm64/configs/ybzhang_defconfig
+# CONFIG_GPIO_PL061=y
+# CONFIG_KEYBOARD_GPIO=y
+# CONFIG_INPUT_EVDEV=y
+
+# === 步骤 2: 编译内核 (如需) ===
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc)
+
+# === 步骤 3: 启动 QEMU ===
+./launch.sh arm64 run
+
+# === 步骤 4: 在 QEMU 内查看 GPIO 信息 ===
+# (进入 QEMU shell 后)
+cat /sys/kernel/debug/gpio
+
+# === 步骤 5: 用户空间 GPIO 操作 ===
+# 查看 gpiochip 设备
+ls -la /dev/gpiochip*
+
+# 使用 sysfs 快速测试 (legacy)
+echo 480 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio480/direction
+echo 1 > /sys/class/gpio/gpio480/value
+cat /sys/class/gpio/gpio480/value
+echo 480 > /sys/class/gpio/unexport
+
+# === 步骤 6: 加载自定义内核模块 (可选) ===
+# 编译模块
+# make -C /repo/ybzhang/kernel/linux-6.18.1 M=kmodules/gpio_test modules
+# 通过 9p 挂载后 insmod
+mount -t 9p -o trans=virtio kmod_mount /mnt
+insmod /mnt/gpio_test/gpio_test.ko
+dmesg | grep gpio_test
+```
+
+### 17.7 GPIO 用户空间接口对比
+
+| 接口 | 方式 | 状态 | 功能 |
+|------|------|------|------|
+| **chardev** (`/dev/gpiochipN`) | ioctl (GPIO_V2_*) | **推荐** | 完整功能：读/写/事件/配置/批量 |
+| **sysfs** (`/sys/class/gpio/`) | echo/cat | **已废弃** | 仅基础读写，无事件/批量 |
+| **libgpiod** | 命令行 + C 库 | **推荐** | chardev 的用户友好封装 |
+
+**chardev vs sysfs 的优势：**
+
+| 特性 | chardev (V2 API) | sysfs (Legacy) |
+|------|------------------|----------------|
+| 原子批量操作 | ✅ 一次 ioctl 操作多线路 | ❌ 只能逐个操作 |
+| 边沿事件监听 | ✅ poll/epoll + 时间戳 | ❌ 不支持 |
+| 消费者标识 | ✅ 自动追踪请求者 | ❌ 匿名 |
+| 线路配置 | ✅ 上拉/下拉/去抖/开漏 | ❌ 仅方向和值 |
+| 生命周期管理 | ✅ fd 关闭自动释放 | ❌ 需手动 unexport |
+| 多进程安全 | ✅ 内核强制排他 | ❌ 竞争条件 |
