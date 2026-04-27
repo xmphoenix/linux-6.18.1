@@ -4,6 +4,50 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#1-核心问题free_area-是在哪里填充的">1. 核心问题：free_area 是在哪里填充的？</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#2-完整调用链">2. 完整调用链</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#3-关键函数说明">3. 关键函数说明</a></summary>
+
+- [3.1 `__free_pages_memory()` — 按对齐分配 order（memblock.c）](#31-__free_pages_memory--按对齐分配-ordermemblockc)
+- [3.2 `free_one_page()` — 中间层（page_alloc.c:1528）](#32-free_one_page--中间层page_allocc1528)
+- [3.3 `__free_one_page()` — buddy 合并核心（page_alloc.c:940）](#33-__free_one_page--buddy-合并核心page_allocc940)
+- [3.4 `__add_to_free_list()` — 最终插入（page_alloc.c:803）](#34-__add_to_free_list--最终插入page_allocc803)
+
+</details>
+
+<details>
+<summary><a href="#4-memblock_free_all-完成后-buddy-分配器是否可用">4. memblock_free_all() 完成后 Buddy 分配器是否可用？</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#5-为什么不是全部都放进最大-order">5. 为什么不是全部都放进最大 order？</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#6-数据结构回顾">6. 数据结构回顾</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#7-今日讨论总结">7. 今日讨论总结</a></summary>
+
+</details>
+
+---
+
 ## 1. 核心问题：free_area 是在哪里填充的？
 
 `free_area_init()` → `zone_init_free_lists()` 只是建立了**空骨架**（`INIT_LIST_HEAD` + `nr_free = 0`），真正把页面挂进去是在 `memblock_free_all()` 调用链中完成的。

@@ -6,6 +6,311 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#1-先给结论arm64-下锁到底是怎么分层的">1. 先给结论：ARM64 下锁到底是怎么分层的</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#2-源码导航图">2. 源码导航图</a></summary>
+
+- [2.1 spinlock 相关](#21-spinlock-相关)
+- [2.2 semaphore 相关](#22-semaphore-相关)
+- [2.3 mutex 相关](#23-mutex-相关)
+- [2.4 锁调试相关](#24-锁调试相关)
+- [2.5 SLUB 实战延伸](#25-slub-实战延伸)
+
+</details>
+
+<details>
+<summary><a href="#3-arm64-锁实现的底层基础原子有序访存与等待">3. ARM64 锁实现的底层基础：原子、有序访存与等待</a></summary>
+
+- [3.1 Acquire / Release 是整个锁实现的根](#31-acquire--release-是整个锁实现的根)
+- [3.2 ARM64 的条件等待不是忙等死转，而是借助 `wfe`](#32-arm64-的条件等待不是忙等死转而是借助-wfe)
+- [3.3 一个很容易忽视的点：rqspinlock 有 arm64 特化](#33-一个很容易忽视的点rqspinlock-有-arm64-特化)
+
+</details>
+
+<details>
+<summary><a href="#4-spinlockarm64-上的实际实现原理">4. spinlock：ARM64 上的实际实现原理</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#41-类型层次">4.1 类型层次</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#42-qspinlock-的-32-bit-锁字布局">4.2 qspinlock 的 32-bit 锁字布局</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#43-fastpath先试图一把抢到">4.3 fastpath：先试图一把抢到</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#44-slowpathpending--mcs-队列">4.4 slowpath：pending + MCS 队列</a></summary>
+
+- [阶段 A：先尝试 pending holder 优化](#阶段-a先尝试-pending-holder-优化)
+- [阶段 B：竞争明显时，进入 MCS 队列](#阶段-b竞争明显时进入-mcs-队列)
+
+</details>
+
+<details>
+<summary><a href="#45-为什么-qspinlock-比简单-test-and-set-更适合多核竞争">4.5 为什么 qspinlock 比简单 test-and-set 更适合多核竞争</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#46-arm64-在-spinlock-中真正负责什么">4.6 ARM64 在 spinlock 中真正负责什么</a></summary>
+
+- [负责 1：等待循环的正确性](#负责-1等待循环的正确性)
+- [负责 2：解锁的 release 语义](#负责-2解锁的-release-语义)
+- [负责 3：前进性](#负责-3前进性)
+
+</details>
+
+<details>
+<summary><a href="#47-qspinlock-关键源码逐行解释">4.7 qspinlock 关键源码逐行解释</a></summary>
+
+- [4.7.1 fastpath 逐行解释](#471-fastpath-逐行解释)
+- [4.7.2 slowpath 逐行解释：pending 优化段](#472-slowpath-逐行解释pending-优化段)
+- [4.7.3 slowpath 逐行解释：MCS 入队段](#473-slowpath-逐行解释mcs-入队段)
+
+</details>
+
+<details>
+<summary><a href="#48-qspinlock-时序图与状态迁移图">4.8 qspinlock 时序图与状态迁移图</a></summary>
+
+- [4.8.1 轻度竞争时序图](#481-轻度竞争时序图)
+- [4.8.2 重度竞争状态图](#482-重度竞争状态图)
+
+</details>
+
+<details>
+<summary><a href="#5-semaphore本质是计数--等待队列--内部自旋锁">5. semaphore：本质是“计数 + 等待队列 + 内部自旋锁”</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#51-数据结构">5.1 数据结构</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#52-fastpathcount-大于-0-直接减-1">5.2 fastpath：count 大于 0 直接减 1</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#53-slowpath挂等待队列并睡眠">5.3 slowpath：挂等待队列并睡眠</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#54-up-为什么和-mutex_unlock-语义不同">5.4 up() 为什么和 mutex_unlock() 语义不同</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#55-semaphore-的本质特点">5.5 semaphore 的本质特点</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#56-semaphore-关键源码逐行解释">5.6 semaphore 关键源码逐行解释</a></summary>
+
+- [5.6.1 `down()` 快路径逐行解释](#561-down-快路径逐行解释)
+- [5.6.2 `___down_common()` 慢路径逐行解释](#562-___down_common-慢路径逐行解释)
+
+</details>
+
+<details>
+<summary><a href="#6-mutex所有权明确的睡眠互斥锁">6. mutex：所有权明确的睡眠互斥锁</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#61-数据结构比-semaphore-更复杂">6.1 数据结构比 semaphore 更复杂</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#62-fastpathowner-从-0-原子改成-current">6.2 fastpath：owner 从 0 原子改成 current</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#63-midpathoptimistic-spinning">6.3 midpath：optimistic spinning</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#64-slowpathwait_list--wait_lock--handoff">6.4 slowpath：wait_list + wait_lock + handoff</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#65-mutex-为什么比-semaphore-更适合纯互斥">6.5 mutex 为什么比 semaphore 更适合“纯互斥”</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#66-一个必须记住的特例preempt_rt">6.6 一个必须记住的特例：PREEMPT_RT</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#67-mutex-关键源码逐行解释">6.7 mutex 关键源码逐行解释</a></summary>
+
+- [6.7.1 `mutex_lock()` fastpath 逐行解释](#671-mutex_lock-fastpath-逐行解释)
+- [6.7.2 `mutex_optimistic_spin()` 逐行解释](#672-mutex_optimistic_spin-逐行解释)
+- [6.7.3 `__mutex_lock_common()` 慢路径逐行解释](#673-__mutex_lock_common-慢路径逐行解释)
+- [6.7.4 `__mutex_unlock_slowpath()` 逐行解释](#674-__mutex_unlock_slowpath-逐行解释)
+
+</details>
+
+<details>
+<summary><a href="#68-mutex-时序图与状态迁移图">6.8 mutex 时序图与状态迁移图</a></summary>
+
+- [6.8.1 optimistic spinning + 睡眠时序图](#681-optimistic-spinning--睡眠时序图)
+- [6.8.2 mutex owner 状态图](#682-mutex-owner-状态图)
+
+</details>
+
+<details>
+<summary><a href="#7-三种锁放在一起对比">7. 三种锁放在一起对比</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#8-从-arm64-角度理解这三类锁的统一模型">8. 从 ARM64 角度理解这三类锁的统一模型</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#9-实验环境建议">9. 实验环境建议</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#10-实验一用-locktorture-观察自旋锁与-mutex-的竞争特征">10. 实验一：用 locktorture 观察自旋锁与 mutex 的竞争特征</a></summary>
+
+- [10.1 编译模块](#101-编译模块)
+- [10.2 跑 spinlock 压测](#102-跑-spinlock-压测)
+- [10.3 跑 mutex 压测](#103-跑-mutex-压测)
+- [10.4 结论预期](#104-结论预期)
+
+</details>
+
+<details>
+<summary><a href="#11-实验二观察-semaphore-与-mutex-的语义差异">11. 实验二：观察 semaphore 与 mutex 的语义差异</a></summary>
+
+- [11.1 semaphore 实验思路](#111-semaphore-实验思路)
+- [11.2 mutex 实验思路](#112-mutex-实验思路)
+
+</details>
+
+<details>
+<summary><a href="#12-实验三在-arm64-上观察-qspinlock-的竞争热点">12. 实验三：在 ARM64 上观察 qspinlock 的竞争热点</a></summary>
+
+- [12.1 开启 lockstat](#121-开启-lockstat)
+- [12.2 寻找典型热点 spinlock](#122-寻找典型热点-spinlock)
+- [12.3 关注 `rqspinlock`](#123-关注-rqspinlock)
+
+</details>
+
+<details>
+<summary><a href="#13-实验四用-tracepoint-直接观察锁争用开始与结束">13. 实验四：用 tracepoint 直接观察锁争用开始与结束</a></summary>
+
+- [13.1 用 tracefs 打开事件](#131-用-tracefs-打开事件)
+- [13.2 如何把地址对应回具体锁](#132-如何把地址对应回具体锁)
+
+</details>
+
+<details>
+<summary><a href="#14-调试锁问题的完整方法论">14. 调试锁问题的完整方法论</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#141-第一层先抓违规语义">14.1 第一层：先抓“违规语义”</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#142-第二层用-lockdep-查锁顺序">14.2 第二层：用 lockdep 查锁顺序</a></summary>
+
+- [lockdep 最擅长抓什么](#lockdep-最擅长抓什么)
+- [lockdep 不擅长抓什么](#lockdep-不擅长抓什么)
+
+</details>
+
+<details>
+<summary><a href="#143-第三层用-lockstat--perf-lock-查性能热点">14.3 第三层：用 lockstat / perf lock 查性能热点</a></summary>
+
+- [lockstat](#lockstat)
+- [perf lock](#perf-lock)
+
+</details>
+
+<details>
+<summary><a href="#144-第四层用-tracepoint-看时间线">14.4 第四层：用 tracepoint 看时间线</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#145-第五层怀疑死锁或长时间卡住时看-hung-task">14.5 第五层：怀疑死锁或长时间卡住时，看 hung task</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#146-第六层在代码里加断言而不是靠猜">14.6 第六层：在代码里加断言，而不是靠猜</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#15-arm64-锁调试时最常见的几类坑">15. ARM64 锁调试时最常见的几类坑</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#151-误把-semaphore-当-mutex">15.1 误把 semaphore 当 mutex</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#152-在-spinlock-保护区里走到了可睡眠路径">15.2 在 spinlock 保护区里走到了可睡眠路径</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#153-只看功能正确不看锁顺序">15.3 只看功能正确，不看锁顺序</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#154-误解-arm64-上的等待行为">15.4 误解 ARM64 上的等待行为</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#16-建议的阅读顺序">16. 建议的阅读顺序</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#17-最后的总结">17. 最后的总结</a></summary>
+
+</details>
+
+---
+
 ## 1. 先给结论：ARM64 下锁到底是怎么分层的
 
 在当前内核里，`arm64` 并没有单独维护一套“完全独立”的 `spinlock/semaphore/mutex` 算法，而是采用下面这套分层：

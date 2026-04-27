@@ -7,232 +7,155 @@
 ## 目录
 
 <details>
-<summary><b>1. Perf 相关代码文件总览</b></summary>
+<summary><a href="#1-perf-相关代码文件总览">1. Perf 相关代码文件总览</a></summary>
 
-- 1.1 [用户态工具 (`tools/perf/`)](#11-用户态工具-toolsperf)
-  - 1.1.1 [主入口与构建系统](#111-主入口与构建系统)
-  - 1.1.2 [Builtin 子命令 (31 个)](#112-builtin-子命令-31-个)
-  - 1.1.3 [核心工具库 (`tools/perf/util/`)](#113-核心工具库-toolsperfutil)
-  - 1.1.4 [ARM64 架构特定代码](#114-arm64-架构特定代码-toolsperfarcharm64)
-- 1.2 [内核态代码](#12-内核态代码)
-  - 1.2.1 [核心子系统 (`kernel/events/`)](#121-核心子系统-kernelevents)
-  - 1.2.2 [ARM64 架构内核代码](#122-arm64-架构内核代码)
-  - 1.2.3 [ARM64 PMU 驱动 (`drivers/perf/`)](#123-arm64-pmu-驱动-driversperf)
-  - 1.2.4 [公共头文件](#124-公共头文件)
+- [1.1 用户态工具 (`tools/perf/`)](#11-用户态工具-toolsperf)
+- [1.2 内核态代码](#12-内核态代码)
+
 </details>
 
 <details>
-<summary><b>2. Perf 依赖的内核选项与用户态依赖</b></summary>
+<summary><a href="#2-perf-依赖的内核选项与用户态依赖">2. Perf 依赖的内核选项与用户态依赖</a></summary>
 
-- 2.1 [内核配置选项](#21-内核配置选项)
-  - 2.1.1 [核心选项（必选）](#211-核心选项必选)
-  - 2.1.2 [ARM64 架构选项](#212-arm64-架构选项)
-  - 2.1.3 [推荐开启的辅助选项](#213-推荐开启的辅助选项)
-  - 2.1.4 [调试选项](#214-调试选项)
-  - 2.1.5 [运行时内核参数](#215-运行时内核参数)
-- 2.2 [用户态依赖库](#22-用户态依赖库)
-  - 2.2.1 [必需依赖](#221-必需依赖)
-  - 2.2.2 [强烈推荐](#222-强烈推荐)
-  - 2.2.3 [可选依赖](#223-可选依赖)
+- [2.1 内核配置选项](#21-内核配置选项)
+- [2.2 用户态依赖库](#22-用户态依赖库)
+
 </details>
 
 <details>
-<summary><b>3. Perf 实现原理</b></summary>
+<summary><a href="#3-perf-实现原理">3. Perf 实现原理</a></summary>
 
-- 3.1 [整体架构](#31-整体架构)
-- 3.2 [核心系统调用：`perf_event_open()`](#32-核心系统调用perf_event_open)
-- 3.3 [事件类型体系](#33-事件类型体系)
-- 3.4 [两种工作模式](#34-两种工作模式)
-  - 3.4.1 [计数模式 (Counting)](#341-计数模式-counting)
-  - 3.4.2 [采样模式 (Sampling)](#342-采样模式-sampling)
-- 3.5 [PMU 驱动模型 (`struct pmu`)](#35-pmu-驱动模型-struct-pmu)
-- 3.6 [环形缓冲区机制](#36-环形缓冲区机制)
-- 3.7 [事件调度算法](#37-事件调度算法)
-- 3.8 [用户态工具工作流](#38-用户态工具工作流)
-- 3.9 [`perf_event_attr` 关键字段](#39-perf_event_attr-关键字段)
+- [3.1 整体架构](#31-整体架构)
+- [3.2 核心系统调用：`perf_event_open()`](#32-核心系统调用perf_event_open)
+- [3.3 事件类型体系](#33-事件类型体系)
+- [3.4 两种工作模式](#34-两种工作模式)
+- [3.5 PMU 驱动模型 (`struct pmu`)](#35-pmu-驱动模型-struct-pmu)
+- [3.6 环形缓冲区机制](#36-环形缓冲区机制)
+- [3.7 事件调度算法](#37-事件调度算法)
+- [3.8 用户态工具工作流](#38-用户态工具工作流)
+- [3.9 `perf_event_attr` 关键字段](#39-perf_event_attr-关键字段)
+
 </details>
 
 <details>
-<summary><b>4. ARM64 架构 Perf 编译指南</b></summary>
+<summary><a href="#4-arm64-架构-perf-编译指南">4. ARM64 架构 Perf 编译指南</a></summary>
 
-- 4.1 [前置条件](#41-前置条件)
-  - 4.1.1 [交叉编译工具链](#411-交叉编译工具链)
-  - 4.1.2 [用户态依赖库（交叉编译版本）](#412-用户态依赖库交叉编译版本)
-- 4.2 [编译方法](#42-编译方法)
-  - 4.2.1 [完整编译（在内核源码树中）](#421-完整编译在内核源码树中)
-  - 4.2.2 [最小化编译（禁用可选依赖）](#422-最小化编译禁用可选依赖)
-  - 4.2.3 [推荐编译（平衡功能与依赖）](#423-推荐编译平衡功能与依赖)
-  - 4.2.4 [指定输出目录](#424-指定输出目录)
-  - 4.2.5 [静态编译（适合目标系统无共享库）](#425-静态编译适合目标系统无共享库)
-- 4.3 [安装与部署](#43-安装与部署)
-- 4.4 [编译特性检测](#44-编译特性检测)
-- 4.5 [验证编译结果](#45-验证编译结果)
-- 4.6 [常见编译问题](#46-常见编译问题)
+- [4.1 前置条件](#41-前置条件)
+- [4.2 编译方法](#42-编译方法)
+- [4.3 安装与部署](#43-安装与部署)
+- [4.4 编译特性检测](#44-编译特性检测)
+- [4.5 验证编译结果](#45-验证编译结果)
+- [4.6 常见编译问题](#46-常见编译问题)
+
 </details>
 
 <details>
-<summary><b>5. ARM64 PMU 硬件内部细节</b></summary>
+<summary><a href="#附录-a常用-perf-命令速查">附录 A：常用 Perf 命令速查</a></summary>
 
-- 5.1 [PMUv3 架构概述](#51-pmuv3-架构概述)
-- 5.2 [关键寄存器详解](#52-关键寄存器详解)
-  - 5.2.1 [PMCR_EL0 — PMU 控制寄存器](#521-pmcr_el0--pmu-控制寄存器)
-  - 5.2.2 [PMEVTYPERn_EL0 — 事件类型寄存器](#522-pmevtypern_el0--事件类型寄存器)
-  - 5.2.3 [PMUv3 事件编号空间](#523-pmuv3-事件编号空间)
-- 5.3 [PMUv3 版本演进](#53-pmuv3-版本演进)
-- 5.4 [计数器宽度与溢出机制](#54-计数器宽度与溢出机制)
-- 5.5 [Bias 技术（长计数器 32 位溢出模拟）](#55-bias-技术长计数器-32-位溢出模拟)
-- 5.6 [链式计数器（Chained Events）](#56-链式计数器chained-events)
-- 5.7 [中断流程](#57-中断流程)
-  - 5.7.1 [PMU 采样中断路径时序图](#571-pmu-采样中断路径时序图)
 </details>
 
 <details>
-<summary><b>6. ARM64 PMU 驱动重要数据结构</b></summary>
+<summary><a href="#附录-b关键源码文件索引">附录 B：关键源码文件索引</a></summary>
 
-- 6.1 [`struct arm_pmu`（核心 PMU 抽象）](#61-struct-arm_pmu核心-pmu-抽象)
-- 6.2 [`struct pmu_hw_events`（每 CPU 硬件事件状态）](#62-struct-pmu_hw_events每-cpu-硬件事件状态)
-- 6.3 [`struct hw_perf_event`（通用 perf 硬件事件状态）](#63-struct-hw_perf_event通用-perf-硬件事件状态)
-- 6.4 [关键数据结构关系图](#64-关键数据结构关系图)
 </details>
 
 <details>
-<summary><b>7. ARM64 PMU 初始化流程与重要接口</b></summary>
+<summary><a href="#5-arm64-pmu-硬件内部细节">5. ARM64 PMU 硬件内部细节</a></summary>
 
-- 7.1 [完整初始化流程](#71-完整初始化流程)
-  - 7.1.1 [PMU 初始化 / 注册路径时序图](#711-pmu-初始化--注册路径时序图)
-  - 7.1.2 [DT 路径 vs ACPI 路径差异对照图](#712-dt-路径-vs-acpi-路径差异对照图)
-- 7.2 [事件生命周期接口](#72-事件生命周期接口)
-  - 7.2.1 [事件创建：`armpmu_event_init()`](#721-事件创建armpmu_event_init)
-  - 7.2.2 [事件安装：`armpmu_add()`](#722-事件安装armpmu_add)
-  - 7.2.3 [事件移除：`armpmu_del()`](#723-事件移除armpmu_del)
-  - 7.2.4 [从创建到上 PMU 的生命周期图](#724-从创建到上-pmu-的生命周期图)
-- 7.3 [事件映射机制](#73-事件映射机制)
+- [5.1 PMUv3 架构概述](#51-pmuv3-架构概述)
+- [5.2 关键寄存器详解](#52-关键寄存器详解)
+- [5.3 PMUv3 版本演进](#53-pmuv3-版本演进)
+- [5.4 计数器宽度与溢出机制](#54-计数器宽度与溢出机制)
+- [5.5 Bias 技术（长计数器 32 位溢出模拟）](#55-bias-技术长计数器-32-位溢出模拟)
+- [5.6 链式计数器（Chained Events）](#56-链式计数器chained-events)
+- [5.7 中断流程](#57-中断流程)
+
 </details>
 
 <details>
-<summary><b>8. ARM64 PMU 代码中的关键算法</b></summary>
+<summary><a href="#6-arm64-pmu-驱动重要数据结构">6. ARM64 PMU 驱动重要数据结构</a></summary>
 
-- 8.1 [计数器分配算法](#81-计数器分配算法armv8pmu_get_event_idx)
-- 8.2 [采样周期设置算法](#82-采样周期设置算法armpmu_event_set_period)
-- 8.3 [计数器更新算法](#83-计数器更新算法armpmu_event_update)
-- 8.4 [事件组验证算法](#84-事件组验证算法validate_group)
-- 8.5 [中断处理算法](#85-中断处理算法armv8pmu_handle_irq)
+- [6.1 `struct arm_pmu`（核心 PMU 抽象）](#61-struct-arm_pmu核心-pmu-抽象)
+- [6.2 `struct pmu_hw_events`（每 CPU 硬件事件状态）](#62-struct-pmu_hw_events每-cpu-硬件事件状态)
+- [6.3 `struct hw_perf_event`（通用 perf 硬件事件状态）](#63-struct-hw_perf_event通用-perf-硬件事件状态)
+- [6.4 关键数据结构关系图](#64-关键数据结构关系图)
+
 </details>
 
 <details>
-<summary><b>9. ARM64 PMU 驱动软件框架图</b></summary>
+<summary><a href="#7-arm64-pmu-初始化流程与重要接口">7. ARM64 PMU 初始化流程与重要接口</a></summary>
 
-&nbsp;&nbsp;（单节，点击章节标题直接跳转）→ [查看框架图](#9-arm64-pmu-驱动软件框架图)
+- [7.1 完整初始化流程](#71-完整初始化流程)
+- [7.2 事件生命周期接口](#72-事件生命周期接口)
+- [7.3 事件映射机制](#73-事件映射机制)
+
 </details>
 
 <details>
-<summary><b>10. ARM64 PMUv3 驱动源码注释详解</b></summary>
+<summary><a href="#8-arm64-pmu-代码中的关键算法">8. ARM64 PMU 代码中的关键算法</a></summary>
 
-- 10.1 [PMU 初始化函数](#101-pmu-初始化函数)
-- 10.2 [硬件探测函数](#102-硬件探测函数)
-- 10.3 [中断处理函数](#103-中断处理函数)
-- 10.4 [事件使能/禁用函数](#104-事件使能禁用函数)
-- 10.5 [计数器读写函数](#105-计数器读写函数)
-- 10.6 [PMU 重置函数](#106-pmu-重置函数)
-- 10.7 [平台驱动注册](#107-平台驱动注册)
-- 10.8 [厂商特定 PMU 初始化宏](#108-厂商特定-pmu-初始化宏)
+- [8.1 计数器分配算法（`armv8pmu_get_event_idx`）](#81-计数器分配算法armv8pmu_get_event_idx)
+- [8.2 采样周期设置算法（`armpmu_event_set_period`）](#82-采样周期设置算法armpmu_event_set_period)
+- [8.3 计数器更新算法（`armpmu_event_update`）](#83-计数器更新算法armpmu_event_update)
+- [8.4 事件组验证算法（`validate_group`）](#84-事件组验证算法validate_group)
+- [8.5 中断处理算法（`armv8pmu_handle_irq`）](#85-中断处理算法armv8pmu_handle_irq)
+
 </details>
 
 <details>
-<summary><b>11. ARM64 Perf 全部命令详解与实战案例</b></summary>
+<summary><a href="#9-arm64-pmu-驱动软件框架图">9. ARM64 PMU 驱动软件框架图</a></summary>
 
-- 11.1 [命令总览](#111-命令总览)
-- 11.2 [性能剖析类命令](#112-性能剖析类命令) — `stat`, `record`, `report`, `annotate`, `top`
-  - 11.2.1 [`perf stat` — 精确性能计数器统计](#1121-perf-stat--精确性能计数器统计)
-  - 11.2.2 [`perf record` — 采样记录](#1122-perf-record--采样记录)
-  - 11.2.3 [`perf report` — 采样数据分析](#1123-perf-report--采样数据分析)
-  - 11.2.4 [`perf annotate` — 源码/汇编级标注](#1124-perf-annotate--源码汇编级标注)
-  - 11.2.5 [`perf top` — 实时性能监视](#1125-perf-top--实时性能监视)
-- 11.3 [追踪调试类命令](#113-追踪调试类命令) — `trace`, `probe`, `ftrace`, `script`
-  - 11.3.1 [`perf trace` — 系统调用追踪](#1131-perf-trace--系统调用追踪-)
-  - 11.3.2 [`perf probe` — 动态探测点](#1132-perf-probe--动态探测点-)
-  - 11.3.3 [`perf ftrace` — 内核 ftrace 前端](#1133-perf-ftrace--内核-ftrace-前端)
-  - 11.3.4 [`perf script` — 脚本化事件输出](#1134-perf-script--脚本化事件输出)
-- 11.4 [专项分析类命令](#114-专项分析类命令) — `c2c`, `mem`, `lock`, `sched`, `kmem`, `kvm`, `kwork`, `timechart`, `bench`, `diff`
-  - 11.4.1 [`perf c2c` — 缓存伪共享检测](#1141-perf-c2c--缓存伪共享检测)
-  - 11.4.2 [`perf mem` — 内存访问分析](#1142-perf-mem--内存访问分析)
-  - 11.4.3 [`perf lock` — 锁竞争分析](#1143-perf-lock--锁竞争分析-)
-  - 11.4.4 [`perf sched` — 调度器分析](#1144-perf-sched--调度器分析-)
-  - 11.4.5 [`perf kmem` — 内核内存分配分析](#1145-perf-kmem--内核内存分配分析-)
-  - 11.4.6 [`perf kvm` — KVM 虚拟化分析](#1146-perf-kvm--kvm-虚拟化分析)
-  - 11.4.7 [`perf kwork` — 内核 work 分析](#1147-perf-kwork--内核-work-分析-)
-  - 11.4.8 [`perf timechart` — SVG 时间图](#1148-perf-timechart--svg-时间图-)
-  - 11.4.9 [`perf bench` — 性能基准测试](#1149-perf-bench--性能基准测试)
-  - 11.4.10 [`perf diff` — 对比分析](#11410-perf-diff--对比分析)
-- 11.5 [数据管理类命令](#115-数据管理类命令) — `evlist`, `data`, `inject`, `buildid-cache`, `buildid-list`, `archive`
-  - 11.5.1 [`perf evlist` — 事件列表查看](#1151-perf-evlist--事件列表查看)
-  - 11.5.2 [`perf data` — 数据格式转换](#1152-perf-data--数据格式转换)
-  - 11.5.3 [`perf inject` — 事件注入](#1153-perf-inject--事件注入)
-  - 11.5.4 [`perf buildid-cache` — Build-ID 缓存管理](#1154-perf-buildid-cache--build-id-缓存管理)
-  - 11.5.5 [`perf buildid-list` — Build-ID 查询](#1155-perf-buildid-list--build-id-查询)
-  - 11.5.6 [`perf archive` — 归档符号文件](#1156-perf-archive--归档符号文件)
-- 11.6 [系统工具类命令](#116-系统工具类命令) — `list`, `kallsyms`, `config`, `check`, `daemon`, `version`, `iostat`
-  - 11.6.1 [`perf list` — 事件列表](#1161-perf-list--事件列表)
-    - 11.6.1.1 [perf list 与 sysfs event_source 关联图](#11611-perf-list-与-sysfs-event_source-关联图)
-  - 11.6.2 [`perf kallsyms` — 内核符号查找](#1162-perf-kallsyms--内核符号查找)
-  - 11.6.3 [`perf config` — 配置管理](#1163-perf-config--配置管理)
-  - 11.6.4 [`perf check` — 功能检测](#1164-perf-check--功能检测)
-  - 11.6.5 [`perf daemon` — 守护进程模式](#1165-perf-daemon--守护进程模式)
-  - 11.6.6 [`perf version` — 版本信息](#1166-perf-version--版本信息)
-  - 11.6.7 [`perf iostat` — IO 统计](#1167-perf-iostat--io-统计)
-- 11.7 [ARM64 特有的 Perf 使用技巧](#117-arm64-特有的-perf-使用技巧)
-  - 11.7.1 [使用原始 PMU 事件编号](#1171-使用原始-pmu-事件编号)
-  - 11.7.2 [ARM64 SPE（Statistical Profiling Extension）](#1172-arm64-spestatistical-profiling-extension)
-  - 11.7.3 [ARM64 交叉分析工作流](#1173-arm64-交叉分析工作流)
-  - 11.7.4 [ARM64 Cache 全方位追踪与分析](#1174-arm64-cache-全方位追踪与分析)
-  - 11.7.5 [常用性能调试场景速查](#1175-常用性能调试场景速查)
-  - 11.7.6 [定位软中断（SoftIRQ）过高](#1176-使用-perf-定位软中断softirq过高问题)
-  - 11.7.7 [定位 System（%sys）负载过高](#1177-使用-perf-定位-top-中-systemsys负载过高问题)
-  - 11.7.8 [定位应用程序（用户态）负载过高](#1178-使用-perf-定位应用程序用户态负载过高)
-  - 11.7.9 [生成火焰图完全指南](#1179-使用-perf-生成火焰图flame-graph完全指南)
-  - 11.7.10 [`perf_event_paranoid` 权限控制](#11710-perf_event_paranoid-权限控制)
 </details>
 
 <details>
-<summary><b>12. QEMU 上 Perf 实践经典 Case</b></summary>
+<summary><a href="#10-arm64-pmuv3-驱动源码注释详解">10. ARM64 PMUv3 驱动源码注释详解</a></summary>
 
-- 12.1 [Case 1：CPU 热点函数定位 — 死循环 / 计算密集](#121-case-1cpu-热点函数定位--死循环--计算密集)
-- 12.2 [Case 2：Cache Miss 分析 — 数组遍历顺序](#122-case-2cache-miss-分析--数组遍历顺序)
-- 12.3 [Case 3：上下文切换分析 — 多线程锁竞争](#123-case-3上下文切换分析--多线程锁竞争)
-- 12.4 [Case 4：Page Fault 分析 — 内存分配模式](#124-case-4page-fault-分析--内存分配模式)
-- 12.5 [Case 5：内核 tracepoint 追踪 — 调度延迟与 I/O](#125-case-5内核-tracepoint-追踪--调度延迟与-io)
-- 12.6 [Case 6：False Sharing 检测 — 多核缓存行冲突](#126-case-6false-sharing-检测--多核缓存行冲突)
-- 12.7 [Case 7：内核模块性能分析 — 自定义驱动热点](#127-case-7内核模块性能分析--自定义驱动热点)
-- 12.8 [QEMU Perf 实践注意事项汇总](#128-qemu-perf-实践注意事项汇总)
+- [10.1 PMU 初始化函数](#101-pmu-初始化函数)
+- [10.2 硬件探测函数](#102-硬件探测函数)
+- [10.3 中断处理函数](#103-中断处理函数)
+- [10.4 事件使能/禁用函数](#104-事件使能禁用函数)
+- [10.5 计数器读写函数](#105-计数器读写函数)
+- [10.6 PMU 重置函数](#106-pmu-重置函数)
+- [10.7 平台驱动注册](#107-平台驱动注册)
+- [10.8 厂商特定 PMU 初始化宏](#108-厂商特定-pmu-初始化宏)
+
 </details>
 
 <details>
-<summary><b>13. Perf 高频面试题精选（附详细答案）</b></summary>
+<summary><a href="#11-arm64-perf-全部命令详解与实战案例">11. ARM64 Perf 全部命令详解与实战案例</a></summary>
 
-- 13.1 [基础概念类](#131-基础概念类) — Q1~Q4
-  - Q1 [perf 的工作原理是什么？它是如何采样的？](#q1perf-的工作原理是什么它是如何采样的)
-  - Q2 [perf stat 和 perf record 的区别？](#q2perf-stat-和-perf-record-的区别各用在什么场景)
-  - Q3 [什么是 PMU？ARM64 的 PMU 有什么特点？](#q3什么是-pmuarm64-的-pmu-有什么特点)
-  - Q4 [perf 中的 IPC 是什么？如何判断 CPU 是否被充分利用？](#q4perf-中的-ipc-是什么如何判断-cpu-是否被充分利用)
-- 13.2 [实战分析类](#132-实战分析类) — Q5~Q10
-  - Q5 [CPU 使用率高但 IPC 低，如何排查？](#q5cpu-使用率高但-ipc-低可能是什么原因如何用-perf-排查)
-  - Q6 [如何用 perf 排查进程调度延迟？](#q6如何用-perf-排查一个进程的调度延迟)
-  - Q7 [如何用 perf 分析内存分配热点？](#q7如何用-perf-分析一个内存泄漏或内存分配热点)
-  - Q8 [perf record -g 调用栈回溯方式对比](#q8perf-record--g-的调用栈回溯有哪几种方式各有什么优缺点)
-  - Q9 [什么是多路复用（multiplexing）？](#q9什么是多路复用multiplexing为什么-perf-stat-有时显示-not-counted)
-  - Q10 [perf 和 ftrace 的区别？](#q10perf-和-ftrace-的区别什么时候用-perf什么时候用-ftrace)
-- 13.3 [内核原理类](#133-内核原理类) — Q11~Q14
-  - Q11 [perf_event_open() 核心参数](#q11perf_event_open-系统调用的核心参数有哪些)
-  - Q12 [perf 的 ring buffer 无锁原理](#q12perf-的-ring-buffer-是如何工作的为什么是无锁的)
-  - Q13 [perf 如何获取调用栈？](#q13perf-如何获取调用栈内核态和用户态分别怎么处理)
-  - Q14 [exclude_kernel / exclude_user 的硬件实现](#q14perf-事件的-exclude_kernel--exclude_user-是怎么实现的)
-- 13.4 [高级场景类](#134-高级场景类) — Q15~Q20
-  - Q15 [如何用 perf 分析中断/软中断性能影响？](#q15如何用-perf-分析中断--软中断的性能影响)
-  - Q16 [如何在生产环境安全使用 perf？](#q16如何在生产环境安全地使用-perf)
-  - Q17 [perf probe 动态追踪内核函数](#q17perf-probe-是什么如何动态追踪内核函数)
-  - Q18 [火焰图怎么看？如何得出优化建议？](#q18火焰图应该怎么看举例说明如何从火焰图得出优化建议)
-  - Q19 [perf 可以分析 Off-CPU 时间吗？](#q19perf-可以分析-off-cpu-时间吗如何做)
-  - Q20 [perf 采样的 "skid" 问题与 ARM64 缓解](#q20解释-perf-采样的-skid-问题以及-arm64-上如何缓解)
+- [11.1 命令总览](#111-命令总览)
+- [11.2 性能剖析类命令](#112-性能剖析类命令)
+- [11.3 追踪调试类命令](#113-追踪调试类命令)
+- [11.4 专项分析类命令](#114-专项分析类命令)
+- [11.5 数据管理类命令](#115-数据管理类命令)
+- [11.6 系统工具类命令](#116-系统工具类命令)
+- [11.7 ARM64 特有的 Perf 使用技巧](#117-arm64-特有的-perf-使用技巧)
+
+</details>
+
+<details>
+<summary><a href="#12-qemu-上-perf-实践经典-case">12. QEMU 上 Perf 实践经典 Case</a></summary>
+
+- [12.1 Case 1：CPU 热点函数定位 — 死循环 / 计算密集](#121-case-1cpu-热点函数定位--死循环--计算密集)
+- [12.2 Case 2：Cache Miss 分析 — 数组遍历顺序](#122-case-2cache-miss-分析--数组遍历顺序)
+- [12.3 Case 3：上下文切换分析 — 多线程锁竞争](#123-case-3上下文切换分析--多线程锁竞争)
+- [12.4 Case 4：Page Fault 分析 — 内存分配模式](#124-case-4page-fault-分析--内存分配模式)
+- [12.5 Case 5：内核 tracepoint 追踪 — 调度延迟与 I/O](#125-case-5内核-tracepoint-追踪--调度延迟与-io)
+- [12.6 Case 6：False Sharing 检测 — 多核缓存行冲突](#126-case-6false-sharing-检测--多核缓存行冲突)
+- [12.7 Case 7：内核模块性能分析 — 自定义驱动热点](#127-case-7内核模块性能分析--自定义驱动热点)
+- [12.8 QEMU Perf 实践注意事项汇总](#128-qemu-perf-实践注意事项汇总)
+
+</details>
+
+<details>
+<summary><a href="#13-perf-高频面试题精选附详细答案">13. Perf 高频面试题精选（附详细答案）</a></summary>
+
+- [13.1 基础概念类](#131-基础概念类)
+- [13.2 实战分析类](#132-实战分析类)
+- [13.3 内核原理类](#133-内核原理类)
+- [13.4 高级场景类](#134-高级场景类)
+
 </details>
 
 ---

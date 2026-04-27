@@ -6,33 +6,132 @@
 
 ## 目录
 
-- [第一部分：DMA 硬件基础](#第一部分dma-硬件基础)
-  - [1.1 DMA 概念与动机](#11-dma-概念与动机)
-  - [1.2 ARMv8 DMA 硬件架构](#12-armv8-dma-硬件架构)
-  - [1.3 DMA 传输模式](#13-dma-传输模式)
-  - [1.4 MMU、IOMMU、SMMU：区别与联系](#14-mmuiommusmmu区别与联系)
-  - [1.5 ARM SMMU (System MMU) 详解](#15-arm-smmu-system-mmu-详解)
-  - [1.6 Cache 一致性与 DMA](#16-cache-一致性与-dma)
-  - [1.7 DMA 地址空间与总线拓扑](#17-dma-地址空间与总线拓扑)
-- [第二部分：内核 DMA 软件框架](#第二部分内核-dma-软件框架)
-  - [2.1 DMA Mapping API（流式映射）](#21-dma-mapping-api流式映射)
-  - [2.2 DMA Engine 框架（DMA 控制器抽象）](#22-dma-engine-框架dma-控制器抽象)
-  - [2.3 地址转换流程](#23-地址转换流程)
-  - [2.4 三条 DMA 映射路径](#24-三条-dma-映射路径)
-  - [2.5 Bounce Buffer (swiotlb) 机制](#25-bounce-buffer-swiotlb-机制)
-  - [2.6 CMA 连续内存分配器](#26-cma-连续内存分配器)
-  - [2.7 Coherent DMA 内存池](#27-coherent-dma-内存池)
-- [第三部分：ARM64 平台特有实现](#第三部分arm64-平台特有实现)
-  - [3.1 Cache 维护操作](#31-cache-维护操作)
-  - [3.2 DMA Zone 配置](#32-dma-zone-配置)
-  - [3.3 ARM SMMUv3 驱动](#33-arm-smmuv3-驱动)
-- [第四部分：核心数据结构](#第四部分核心数据结构)
-- [第五部分：关键 API 速查](#第五部分关键-api-速查)
-- [第六部分：典型使用模式](#第六部分典型使用模式)
-- [第七部分：调试与问题排查](#第七部分调试与问题排查)
-- [第八部分：内核经典 DMA 映射案例分析](#第八部分内核经典-dma-映射案例分析)
-- [第九部分：QEMU ARM64 DMA 实验](#第九部分qemu-arm64-dma-实验)
-- [第十部分：DMA 面试高频问题与解答](#第十部分dma-面试高频问题与解答)
+<details>
+<summary><a href="#第一部分dma-硬件基础">第一部分：DMA 硬件基础</a></summary>
+
+- [1.1 DMA 概念与动机](#11-dma-概念与动机)
+- [1.2 ARMv8 DMA 硬件架构](#12-armv8-dma-硬件架构)
+- [1.3 DMA 传输模式](#13-dma-传输模式)
+- [1.4 MMU、IOMMU、SMMU：区别与联系](#14-mmuiommusmmu区别与联系)
+- [1.5 ARM SMMU (System MMU) 详解](#15-arm-smmu-system-mmu-详解)
+- [1.6 Cache 一致性与 DMA](#16-cache-一致性与-dma)
+- [1.7 DMA 地址空间与总线拓扑](#17-dma-地址空间与总线拓扑)
+
+</details>
+
+<details>
+<summary><a href="#第二部分内核-dma-软件框架">第二部分：内核 DMA 软件框架</a></summary>
+
+- [2.1 DMA Mapping API（流式映射）](#21-dma-mapping-api流式映射)
+- [2.2 DMA Engine 框架（DMA 控制器抽象）](#22-dma-engine-框架dma-控制器抽象)
+- [2.3 地址转换流程](#23-地址转换流程)
+- [2.4 三条 DMA 映射路径](#24-三条-dma-映射路径)
+- [2.5 Bounce Buffer (swiotlb) 机制](#25-bounce-buffer-swiotlb-机制)
+- [2.6 CMA 连续内存分配器](#26-cma-连续内存分配器)
+- [2.7 Coherent DMA 内存池](#27-coherent-dma-内存池)
+
+</details>
+
+<details>
+<summary><a href="#第三部分arm64-平台特有实现">第三部分：ARM64 平台特有实现</a></summary>
+
+- [3.1 Cache 维护操作](#31-cache-维护操作)
+- [3.2 DMA Zone 配置](#32-dma-zone-配置)
+- [3.3 ARM SMMUv3 驱动](#33-arm-smmuv3-驱动)
+
+</details>
+
+<details>
+<summary><a href="#第四部分核心数据结构">第四部分：核心数据结构</a></summary>
+
+- [设备 DMA 配置（`struct device` 相关字段）](#设备-dma-配置struct-device-相关字段)
+- [DMA Cookie 机制](#dma-cookie-机制)
+- [DMA Slave 配置](#dma-slave-配置)
+
+</details>
+
+<details>
+<summary><a href="#第五部分关键-api-速查">第五部分：关键 API 速查</a></summary>
+
+- [DMA Mapping API（驱动开发者必知）](#dma-mapping-api驱动开发者必知)
+- [DMA Engine API（DMA 控制器使用者）](#dma-engine-apidma-控制器使用者)
+
+</details>
+
+<details>
+<summary><a href="#第六部分典型使用模式">第六部分：典型使用模式</a></summary>
+
+- [模式一：流式 DMA 映射（网络驱动典型）](#模式一流式-dma-映射网络驱动典型)
+- [模式二：一致性 DMA 内存（设备描述符环典型）](#模式二一致性-dma-内存设备描述符环典型)
+- [模式三：DMA Engine 从设备传输（UART/SPI 典型）](#模式三dma-engine-从设备传输uartspi-典型)
+- [模式四：Scatter-Gather 映射（块设备典型）](#模式四scatter-gather-映射块设备典型)
+
+</details>
+
+<details>
+<summary><a href="#第七部分调试与问题排查">第七部分：调试与问题排查</a></summary>
+
+- [常见 DMA 问题](#常见-dma-问题)
+- [调试工具与内核配置](#调试工具与内核配置)
+- [DMA 编程检查清单](#dma-编程检查清单)
+
+</details>
+
+<details>
+<summary><a href="#第八部分内核经典-dma-映射案例分析">第八部分：内核经典 DMA 映射案例分析</a></summary>
+
+- [案例一：流式 DMA 映射 + DMA Engine（PL011 UART TX）](#案例一流式-dma-映射--dma-enginepl011-uart-tx)
+- [案例二：Coherent DMA 内存分配（PL011 DMA 缓冲区）](#案例二coherent-dma-内存分配pl011-dma-缓冲区)
+- [案例三：Scatter-Gather DMA 映射（DW MMC 控制器）](#案例三scatter-gather-dma-映射dw-mmc-控制器)
+- [案例四：SPI DMA 全双工传输 + SG（PL022 SPI 控制器）](#案例四spi-dma-全双工传输--sgpl022-spi-控制器)
+- [案例五：网络驱动 Coherent 描述符环 + 流式数据映射（STMMAC）](#案例五网络驱动-coherent-描述符环--流式数据映射stmmac)
+
+</details>
+
+<details>
+<summary><a href="#第九部分qemu-arm64-dma-实验">第九部分：QEMU ARM64 DMA 实验</a></summary>
+
+- [9.1 实验环境准备](#91-实验环境准备)
+- [9.2 实验一：DMA Coherent 内存分配内核模块](#92-实验一dma-coherent-内存分配内核模块)
+- [9.3 实验二：流式 DMA 映射 + Cache 同步](#93-实验二流式-dma-映射--cache-同步)
+- [9.4 实验三：DMA Engine + PL011 UART 观察](#94-实验三dma-engine--pl011-uart-观察)
+- [9.5 Makefile（通用，适用于以上三个模块）](#95-makefile通用适用于以上三个模块)
+- [9.6 实验操作步骤](#96-实验操作步骤)
+- [9.7 实验观察要点](#97-实验观察要点)
+- [9.8 进阶实验：QEMU 开启 SMMU 对比](#98-进阶实验qemu-开启-smmu-对比)
+
+</details>
+
+<details>
+<summary><a href="#第十部分dma-面试高频问题与解答">第十部分：DMA 面试高频问题与解答</a></summary>
+
+- [Q1：什么是 DMA？为什么需要 DMA？](#q1什么是-dma为什么需要-dma)
+- [Q2：DMA 和 CPU 都要访问内存，为什么 DMA 还能提升性能？](#q2dma-和-cpu-都要访问内存为什么-dma-还能提升性能)
+- [Q3：DMA 传输有哪几种模式？分别应用在什么场景？](#q3dma-传输有哪几种模式分别应用在什么场景)
+- [Q4：`dma_alloc_coherent()` 和 `dma_map_single()` 有什么区别？什么时候用哪个？](#q4dma_alloc_coherent-和-dma_map_single-有什么区别什么时候用哪个)
+- [Q5：什么是 DMA 的 Cache 一致性问题？ARM64 上如何解决？](#q5什么是-dma-的-cache-一致性问题arm64-上如何解决)
+- [Q6：什么是 IOMMU？和 MMU 有什么区别？ARM 平台的 IOMMU 叫什么？](#q6什么是-iommu和-mmu-有什么区别arm-平台的-iommu-叫什么)
+- [Q7：`dma_map_single()` 之后、`dma_unmap_single()` 之前，CPU 能不能访问这块内存？](#q7dma_map_single-之后dma_unmap_single-之前cpu-能不能访问这块内存)
+- [Q8：什么是 Bounce Buffer（swiotlb）？什么时候会触发？](#q8什么是-bounce-bufferswiotlb什么时候会触发)
+- [Q9：`dma_map_sg()` 返回值和传入的 nents 可能不同，为什么？](#q9dma_map_sg-返回值和传入的-nents-可能不同为什么)
+- [Q10：DMA 缓冲区为什么必须 Cache 行对齐？](#q10dma-缓冲区为什么必须-cache-行对齐)
+- [Q11：Linux DMA 子系统中有几条映射路径？如何选择？](#q11linux-dma-子系统中有几条映射路径如何选择)
+- [Q12：`dma_set_mask()` 和 `dma_set_coherent_mask()` 有什么区别？](#q12dma_set_mask-和-dma_set_coherent_mask-有什么区别)
+- [Q13：DMA mapping 之后必须检查错误吗？怎么检查？](#q13dma-mapping-之后必须检查错误吗怎么检查)
+- [Q14：什么是 CMA？为什么 DMA 需要 CMA？](#q14什么是-cma为什么-dma-需要-cma)
+- [Q15：驱动开发中最常见的 DMA bug 有哪些？](#q15驱动开发中最常见的-dma-bug-有哪些)
+- [Q16：解释 DMA 地址转换的完整链路（从内核虚拟地址到设备访问物理内存）](#q16解释-dma-地址转换的完整链路从内核虚拟地址到设备访问物理内存)
+- [Q17：Linux 中 DMA Engine 框架和 DMA Mapping API 是什么关系？](#q17linux-中-dma-engine-框架和-dma-mapping-api-是什么关系)
+- [Q18：ARM64 上 `dma_coherent` 设备和非 coherent 设备的区别？性能差异？](#q18arm64-上-dma_coherent-设备和非-coherent-设备的区别性能差异)
+- [Q19：如何调试 DMA 相关问题？](#q19如何调试-dma-相关问题)
+- [Q20：简述一个网络驱动收包的完整 DMA 流程](#q20简述一个网络驱动收包的完整-dma-流程)
+
+</details>
+
+<details>
+<summary><a href="#附录源码文件索引">附录：源码文件索引</a></summary>
+
+</details>
 
 ---
 

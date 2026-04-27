@@ -7,110 +7,169 @@
 
 ## 目录
 
-- [1. PCIe 协议规范总结](#1-pcie-协议规范总结)
-  - [1.1 协议分层模型](#11-协议分层模型)
-  - [1.2 事务层协议 (TLP)](#12-事务层协议-tlp)
-  - [1.3 数据链路层协议 (DLLP)](#13-数据链路层协议-dllp)
-  - [1.4 物理层协议](#14-物理层协议)
-  - [1.5 配置空间规范](#15-配置空间规范)
-  - [1.6 电源管理规范](#16-电源管理规范)
-  - [1.7 中断机制规范](#17-中断机制规范)
-  - [1.8 相关规范文档索引](#18-相关规范文档索引)
-- [2. PCIe 发展历史](#2-pcie-发展历史)
-  - [2.1 从 PCI 到 PCIe 的演进](#21-从-pci-到-pcie-的演进)
-  - [2.2 PCIe 版本演进时间线](#22-pcie-版本演进时间线)
-  - [2.3 关键里程碑](#23-关键里程碑)
-- [3. PCIe 各版本速率总结](#3-pcie-各版本速率总结)
-  - [3.1 速率对照表](#31-速率对照表)
-  - [3.2 编码方式演进](#32-编码方式演进)
-  - [3.3 带宽计算示例](#33-带宽计算示例)
-- [4. PCIe 专业术语词典](#4-pcie-专业术语词典)
-  - [4.1 拓扑与设备术语](#41-拓扑与设备术语)
-  - [4.2 协议与传输术语](#42-协议与传输术语)
-  - [4.3 配置空间与能力术语](#43-配置空间与能力术语)
-  - [4.4 电源与链路状态术语](#44-电源与链路状态术语)
-  - [4.5 错误处理与可靠性术语](#45-错误处理与可靠性术语)
-  - [4.6 高级特性术语](#46-高级特性术语)
-- [5. Linux PCIe 子系统软件架构](#5-linux-pcie-子系统软件架构)
-  - [5.1 总体分层架构](#51-总体分层架构)
-  - [5.2 核心源码文件与职责](#52-核心源码文件与职责)
-  - [5.3 关键数据结构](#53-关键数据结构)
-  - [5.4 PCIe 端口服务框架](#54-pcie-端口服务框架)
-  - [5.5 主机桥驱动层](#55-主机桥驱动层)
-  - [5.6 设备枚举流程](#56-设备枚举流程)
-  - [5.7 中断子系统 (MSI/MSI-X)](#57-中断子系统-msimsi-x)
-  - [5.8 Endpoint 子系统](#58-endpoint-子系统)
-  - [5.9 关键 Kconfig 配置](#59-关键-kconfig-配置)
-  - [5.10 目录结构总览](#510-目录结构总览)
-  - [5.11 核心调用链速览](#511-核心调用链速览)
-- [6. WiFi PCIe 驱动案例分析](#6-wifi-pcie-驱动案例分析)
-  - [6.1 为什么选 mt7915 PCIe 驱动](#61-为什么选-mt7915-pcie-驱动)
-  - [6.2 设备匹配与 Probe 主路径](#62-设备匹配与-probe-主路径)
-  - [6.3 BAR 映射、DMA、IRQ 和第二 HIF](#63-bar-映射dmairq-和第二-hif)
-  - [6.4 它和 PCIe 核心数据结构的对应关系](#64-它和-pcie-核心数据结构的对应关系)
-  - [6.5 调试这个 WiFi PCIe 驱动时看什么](#65-调试这个-wifi-pcie-驱动时看什么)
-- [7. QEMU 中 PCIe 实践测试例子](#7-qemu-中-pcie-实践测试例子)
-  - [7.1 当前工作区里的 QEMU PCIe 基线环境](#71-当前工作区里的-qemu-pcie-基线环境)
-  - [7.2 实践一：观察默认 PCIe 根总线和设备枚举](#72-实践一观察默认-pcie-根总线和设备枚举)
-  - [7.3 实践二：给 QEMU 挂一个 NVMe PCIe 设备](#73-实践二给-qemu-挂一个-nvme-pcie-设备)
-  - [7.4 实践三：用 root port 观察桥和下级总线](#74-实践三用-root-port-观察桥和下级总线)
-  - [7.5 如果想在 QEMU 里进一步逼近 WiFi PCIe 场景](#75-如果想在-qemu-里进一步逼近-wifi-pcie-场景)
-- [8. PCIe 面试高频问题与答案](#8-pcie-面试高频问题与答案)
-  - [8.1 PCI 和 PCIe 最大区别是什么](#81-pci-和-pcie-最大区别是什么)
-  - [8.2 PCIe 为什么是点对点还需要 bus 概念](#82-pcie-为什么是点对点还需要-bus-概念)
-  - [8.3 PCIe 的三层分别做什么](#83-pcie-的三层分别做什么)
-  - [8.4 TLP 和 DLLP 的区别是什么](#84-tlp-和-dllp-的区别是什么)
-  - [8.5 Posted 和 Non-Posted 请求有什么区别](#85-posted-和-non-posted-请求有什么区别)
-  - [8.6 MSI 和 MSI-X 的区别是什么](#86-msi-和-msi-x-的区别是什么)
-  - [8.7 BAR 是什么，本质上在做什么](#87-bar-是什么本质上在做什么)
-  - [8.8 为什么驱动里常常要 pci_set_master](#88-为什么驱动里常常要-pci_set_master)
-  - [8.9 PCIe 设备枚举的大致流程是什么](#89-pcie-设备枚举的大致流程是什么)
-  - [8.10 struct pci_dev 和 struct pci_bus 分别代表什么](#810-struct-pci_dev-和-struct-pci_bus-分别代表什么)
-  - [8.11 Root Complex、Root Port、Switch、Endpoint 分别是什么](#811-root-complexroot-portswitchendpoint-分别是什么)
-  - [8.12 SR-IOV 里 PF 和 VF 的区别是什么](#812-sr-iov-里-pf-和-vf-的区别是什么)
-  - [8.13 ATS、PRI、PASID 分别解决什么问题](#813-atspripasid-分别解决什么问题)
-  - [8.14 ASPM 是什么，为什么有些驱动会关闭它](#814-aspm-是什么为什么有些驱动会关闭它)
-  - [8.15 AER 和 DPC 是做什么的](#815-aer-和-dpc-是做什么的)
-  - [8.16 面试里如果让你分析一个 PCIe 驱动，你应该怎么答](#816-面试里如果让你分析一个-pcie-驱动你应该怎么答)
-- [9. PCIe 软件框架涉及到的算法](#9-pcie-软件框架涉及到的算法)
-  - [9.1 总线递归扫描算法](#91-总线递归扫描算法)
-  - [9.2 BAR 大小探测算法](#92-bar-大小探测算法)
-  - [9.3 桥窗口 sizing 与资源分配算法](#93-桥窗口-sizing-与资源分配算法)
-  - [9.4 MSI/MSI-X 向量分配与降级算法](#94-msimsi-x-向量分配与降级算法)
-  - [9.5 错误恢复与状态机算法](#95-错误恢复与状态机算法)
-- [10. PCIe debug 调试工具和内核方法](#10-pcie-debug-调试工具和内核方法)
-  - [10.1 用户态排查工具](#101-用户态排查工具)
-  - [10.2 sysfs 和配置空间直接观察法](#102-sysfs-和-配置空间直接观察法)
-  - [10.3 内核日志、dynamic debug 和驱动内埋点](#103-内核日志dynamic-debug-和-驱动内埋点)
-  - [10.4 ftrace、trace-cmd 和函数调用链跟踪](#104-ftracetrace-cmd-和-函数调用链跟踪)
-  - [10.5 PCIe 专项 debug 方法](#105-pcie-专项-debug-方法)
-  - [10.6 一个实用的 PCIe 调试顺序](#106-一个实用的-pcie-调试顺序)
-  - [10.7 PCIe 调试命令速查表](#107-pcie-调试命令速查表)
-  - [10.8 PCIe debug checklist](#108-pcie-debug-checklist)
-- [11. PCIe 面试追问题](#11-pcie-面试追问题)
-  - [11.1 pci_enable_device() 和 pcim_enable_device() 的区别](#111-pci_enable_device-和-pcim_enable_device-的区别)
-  - [11.2 pci_request_regions()、pci_iomap()、pcim_iomap_regions() 的关系](#112-pci_request_regionspci_iomappcim_iomap_regions-的关系)
-  - [11.3 resource 是怎么分配出来的](#113-resource-是怎么分配出来的)
-  - [11.4 MSI 申请失败时 Linux 一般怎么降级](#114-msi-申请失败时-linux-一般怎么降级)
-  - [11.5 为什么 remove 路径经常比 probe 更难写对](#115-为什么-remove-路径经常比-probe-更难写对)
-  - [11.6 为什么有些驱动 prefer devm 或 pcim 管理接口](#116-为什么有些驱动-prefer-devm-或-pcim-管理接口)
-  - [11.7 什么时候要重新分配桥资源或重新扫描总线](#117-什么时候要重新分配桥资源或重新扫描总线)
-  - [11.8 pci_enable_device_mem() 和 pci_enable_device() 怎么选](#118-pci_enable_device_mem-和-pci_enable_device-怎么选)
-  - [11.9 pci_select_bars() 是干什么的](#119-pci_select_bars-是干什么的)
-  - [11.10 pci_save_state() 和 pci_restore_state() 什么时候必须关心](#1110-pci_save_state-和-pci_restore_state-什么时候必须关心)
-  - [11.11 AER 回调顺序和 pci_error_handlers 应该怎么理解](#1111-aer-回调顺序和-pci_error_handlers-应该怎么理解)
-  - [11.12 热插拔、rescan 和 remove 为什么要加锁](#1112-热插拔rescan-和-remove-为什么要加锁)
-- [12. PCIe 故障定位面试题](#12-pcie-故障定位面试题)
-  - [12.1 场景一：设备枚举不到](#121-场景一设备枚举不到)
-  - [12.2 场景二：BAR 映射失败](#122-场景二bar-映射失败)
-  - [12.3 场景三：MSI 或 MSI-X 不工作](#123-场景三msi-或-msi-x-不工作)
-  - [12.4 场景四：驱动 probe 失败但设备已经枚举到](#124-场景四驱动-probe-失败但设备已经枚举到)
-  - [12.5 场景五：链路能起来但吞吐异常或不稳定](#125-场景五链路能起来但吞吐异常或不稳定)
-  - [12.6 真实案例题：mt7915 这类 WiFi PCIe 驱动 probe 失败怎么排](#126-真实案例题mt7915-这类-wifi-pcie-驱动-probe-失败怎么排)
-  - [12.7 真实案例题：QEMU 里 NVMe 已挂载但 guest 看不到怎么排](#127-真实案例题qemu-里-nvme-已挂载但-guest-看不到怎么排)
-  - [12.8 真实案例题：系统报 AER fatal error 该怎么答](#128-真实案例题系统报-aer-fatal-error-该怎么答)
-  - [12.9 真实案例题：SR-IOV 打开后 VF 起不来怎么排](#129-真实案例题sr-iov-打开后-vf-起不来怎么排)
-  - [12.10 真实案例题：suspend/resume 后设备失效怎么排](#1210-真实案例题suspendresume-后设备失效怎么排)
+<details>
+<summary><a href="#1-pcie-协议规范总结">1. PCIe 协议规范总结</a></summary>
+
+- [1.1 协议分层模型](#11-协议分层模型)
+- [1.2 事务层协议 (TLP)](#12-事务层协议-tlp)
+- [1.3 数据链路层协议 (DLLP)](#13-数据链路层协议-dllp)
+- [1.4 物理层协议](#14-物理层协议)
+- [1.5 配置空间规范](#15-配置空间规范)
+- [1.6 电源管理规范](#16-电源管理规范)
+- [1.7 中断机制规范](#17-中断机制规范)
+- [1.8 相关规范文档索引](#18-相关规范文档索引)
+
+</details>
+
+<details>
+<summary><a href="#2-pcie-发展历史">2. PCIe 发展历史</a></summary>
+
+- [2.1 从 PCI 到 PCIe 的演进](#21-从-pci-到-pcie-的演进)
+- [2.2 PCIe 版本演进时间线](#22-pcie-版本演进时间线)
+- [2.3 关键里程碑](#23-关键里程碑)
+
+</details>
+
+<details>
+<summary><a href="#3-pcie-各版本速率总结">3. PCIe 各版本速率总结</a></summary>
+
+- [3.1 速率对照表](#31-速率对照表)
+- [3.2 编码方式演进](#32-编码方式演进)
+- [3.3 带宽计算示例](#33-带宽计算示例)
+
+</details>
+
+<details>
+<summary><a href="#4-pcie-专业术语词典">4. PCIe 专业术语词典</a></summary>
+
+- [4.1 拓扑与设备术语](#41-拓扑与设备术语)
+- [4.2 协议与传输术语](#42-协议与传输术语)
+- [4.3 配置空间与能力术语](#43-配置空间与能力术语)
+- [4.4 电源与链路状态术语](#44-电源与链路状态术语)
+- [4.5 错误处理与可靠性术语](#45-错误处理与可靠性术语)
+- [4.6 高级特性术语](#46-高级特性术语)
+
+</details>
+
+<details>
+<summary><a href="#5-linux-pcie-子系统软件架构">5. Linux PCIe 子系统软件架构</a></summary>
+
+- [5.1 总体分层架构](#51-总体分层架构)
+- [5.2 核心源码文件与职责](#52-核心源码文件与职责)
+- [5.3 关键数据结构](#53-关键数据结构)
+- [5.4 PCIe 端口服务框架](#54-pcie-端口服务框架)
+- [5.5 主机桥驱动层](#55-主机桥驱动层)
+- [5.6 设备枚举流程](#56-设备枚举流程)
+- [5.7 中断子系统 (MSI/MSI-X)](#57-中断子系统-msimsi-x)
+- [5.8 Endpoint 子系统](#58-endpoint-子系统)
+- [5.9 关键 Kconfig 配置](#59-关键-kconfig-配置)
+- [5.10 目录结构总览](#510-目录结构总览)
+- [5.11 核心调用链速览](#511-核心调用链速览)
+
+</details>
+
+<details>
+<summary><a href="#6-wifi-pcie-驱动案例分析">6. WiFi PCIe 驱动案例分析</a></summary>
+
+- [6.1 为什么选 `mt7915` PCIe 驱动](#61-为什么选-mt7915-pcie-驱动)
+- [6.2 设备匹配与 `probe` 主路径](#62-设备匹配与-probe-主路径)
+- [6.3 BAR 映射、DMA、IRQ 和第二 HIF](#63-bar-映射dmairq-和第二-hif)
+- [6.4 它和 PCIe 核心数据结构的对应关系](#64-它和-pcie-核心数据结构的对应关系)
+- [6.5 调试这个 WiFi PCIe 驱动时看什么](#65-调试这个-wifi-pcie-驱动时看什么)
+
+</details>
+
+<details>
+<summary><a href="#7-qemu-中-pcie-实践测试例子">7. QEMU 中 PCIe 实践测试例子</a></summary>
+
+- [7.1 当前工作区里的 QEMU PCIe 基线环境](#71-当前工作区里的-qemu-pcie-基线环境)
+- [7.2 实践一：观察默认 PCIe 根总线和设备枚举](#72-实践一观察默认-pcie-根总线和设备枚举)
+- [7.3 实践二：给 QEMU 挂一个 NVMe PCIe 设备](#73-实践二给-qemu-挂一个-nvme-pcie-设备)
+- [7.4 实践三：用 root port 观察桥和下级总线](#74-实践三用-root-port-观察桥和下级总线)
+- [7.5 如果想在 QEMU 里进一步逼近 WiFi PCIe 场景](#75-如果想在-qemu-里进一步逼近-wifi-pcie-场景)
+
+</details>
+
+<details>
+<summary><a href="#8-pcie-面试高频问题与答案">8. PCIe 面试高频问题与答案</a></summary>
+
+- [8.1 PCI 和 PCIe 最大区别是什么](#81-pci-和-pcie-最大区别是什么)
+- [8.2 PCIe 为什么是点对点还需要 bus 概念](#82-pcie-为什么是点对点还需要-bus-概念)
+- [8.3 PCIe 的三层分别做什么](#83-pcie-的三层分别做什么)
+- [8.4 TLP 和 DLLP 的区别是什么](#84-tlp-和-dllp-的区别是什么)
+- [8.5 Posted 和 Non-Posted 请求有什么区别](#85-posted-和-non-posted-请求有什么区别)
+- [8.6 MSI 和 MSI-X 的区别是什么](#86-msi-和-msi-x-的区别是什么)
+- [8.7 BAR 是什么，本质上在做什么](#87-bar-是什么本质上在做什么)
+- [8.8 为什么驱动里常常要 `pci_set_master`](#88-为什么驱动里常常要-pci_set_master)
+- [8.9 PCIe 设备枚举的大致流程是什么](#89-pcie-设备枚举的大致流程是什么)
+- [8.10 `struct pci_dev` 和 `struct pci_bus` 分别代表什么](#810-struct-pci_dev-和-struct-pci_bus-分别代表什么)
+- [8.11 Root Complex、Root Port、Switch、Endpoint 分别是什么](#811-root-complexroot-portswitchendpoint-分别是什么)
+- [8.12 SR-IOV 里 PF 和 VF 的区别是什么](#812-sr-iov-里-pf-和-vf-的区别是什么)
+- [8.13 ATS、PRI、PASID 分别解决什么问题](#813-atspripasid-分别解决什么问题)
+- [8.14 ASPM 是什么，为什么有些驱动会关闭它](#814-aspm-是什么为什么有些驱动会关闭它)
+- [8.15 AER 和 DPC 是做什么的](#815-aer-和-dpc-是做什么的)
+- [8.16 面试里如果让你分析一个 PCIe 驱动，你应该怎么答](#816-面试里如果让你分析一个-pcie-驱动你应该怎么答)
+
+</details>
+
+<details>
+<summary><a href="#9-pcie-软件框架涉及到的算法">9. PCIe 软件框架涉及到的算法</a></summary>
+
+- [9.1 总线递归扫描算法](#91-总线递归扫描算法)
+- [9.2 BAR 大小探测算法](#92-bar-大小探测算法)
+- [9.3 桥窗口 sizing 与资源分配算法](#93-桥窗口-sizing-与资源分配算法)
+- [9.4 MSI/MSI-X 向量分配与降级算法](#94-msimsi-x-向量分配与降级算法)
+- [9.5 错误恢复与状态机算法](#95-错误恢复与状态机算法)
+
+</details>
+
+<details>
+<summary><a href="#10-pcie-debug-调试工具和内核方法">10. PCIe debug 调试工具和内核方法</a></summary>
+
+- [10.1 用户态排查工具](#101-用户态排查工具)
+- [10.2 sysfs 和配置空间直接观察法](#102-sysfs-和配置空间直接观察法)
+- [10.3 内核日志、dynamic debug 和驱动内埋点](#103-内核日志dynamic-debug-和驱动内埋点)
+- [10.4 ftrace、trace-cmd 和函数调用链跟踪](#104-ftracetrace-cmd-和函数调用链跟踪)
+- [10.5 PCIe 专项 debug 方法](#105-pcie-专项-debug-方法)
+- [10.6 一个实用的 PCIe 调试顺序](#106-一个实用的-pcie-调试顺序)
+- [10.7 PCIe 调试命令速查表](#107-pcie-调试命令速查表)
+- [10.8 PCIe debug checklist](#108-pcie-debug-checklist)
+
+</details>
+
+<details>
+<summary><a href="#11-pcie-面试追问题">11. PCIe 面试追问题</a></summary>
+
+- [11.1 `pci_enable_device()` 和 `pcim_enable_device()` 的区别](#111-pci_enable_device-和-pcim_enable_device-的区别)
+- [11.2 `pci_request_regions()`、`pci_iomap()`、`pcim_iomap_regions()` 的关系](#112-pci_request_regionspci_iomappcim_iomap_regions-的关系)
+- [11.3 `resource` 是怎么分配出来的](#113-resource-是怎么分配出来的)
+- [11.4 MSI 申请失败时 Linux 一般怎么降级](#114-msi-申请失败时-linux-一般怎么降级)
+- [11.5 为什么 `remove` 路径经常比 `probe` 更难写对](#115-为什么-remove-路径经常比-probe-更难写对)
+- [11.6 为什么有些驱动 prefer `devm` 或 `pcim` 管理接口](#116-为什么有些驱动-prefer-devm-或-pcim-管理接口)
+- [11.7 什么时候要重新分配桥资源或重新扫描总线](#117-什么时候要重新分配桥资源或重新扫描总线)
+- [11.8 `pci_enable_device_mem()` 和 `pci_enable_device()` 怎么选](#118-pci_enable_device_mem-和-pci_enable_device-怎么选)
+- [11.9 `pci_select_bars()` 是干什么的](#119-pci_select_bars-是干什么的)
+- [11.10 `pci_save_state()` 和 `pci_restore_state()` 什么时候必须关心](#1110-pci_save_state-和-pci_restore_state-什么时候必须关心)
+- [11.11 AER 回调顺序和 `pci_error_handlers` 应该怎么理解](#1111-aer-回调顺序和-pci_error_handlers-应该怎么理解)
+- [11.12 热插拔、rescan 和 remove 为什么要加锁](#1112-热插拔rescan-和-remove-为什么要加锁)
+
+</details>
+
+<details>
+<summary><a href="#12-pcie-故障定位面试题">12. PCIe 故障定位面试题</a></summary>
+
+- [12.1 场景一：设备枚举不到](#121-场景一设备枚举不到)
+- [12.2 场景二：BAR 映射失败](#122-场景二bar-映射失败)
+- [12.3 场景三：MSI 或 MSI-X 不工作](#123-场景三msi-或-msi-x-不工作)
+- [12.4 场景四：驱动 probe 失败但设备已经枚举到](#124-场景四驱动-probe-失败但设备已经枚举到)
+- [12.5 场景五：链路能起来但吞吐异常或不稳定](#125-场景五链路能起来但吞吐异常或不稳定)
+- [12.6 真实案例题：mt7915 这类 WiFi PCIe 驱动 probe 失败怎么排](#126-真实案例题mt7915-这类-wifi-pcie-驱动-probe-失败怎么排)
+- [12.7 真实案例题：QEMU 里 NVMe 已挂载但 guest 看不到怎么排](#127-真实案例题qemu-里-nvme-已挂载但-guest-看不到怎么排)
+- [12.8 真实案例题：系统报 AER fatal error 该怎么答](#128-真实案例题系统报-aer-fatal-error-该怎么答)
+- [12.9 真实案例题：SR-IOV 打开后 VF 起不来怎么排](#129-真实案例题sr-iov-打开后-vf-起不来怎么排)
+- [12.10 真实案例题：suspend/resume 后设备失效怎么排](#1210-真实案例题suspendresume-后设备失效怎么排)
+
+</details>
 
 ---
 

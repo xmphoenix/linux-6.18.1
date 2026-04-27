@@ -7,6 +7,181 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#为什么这份指南适合当前内核">为什么这份指南适合当前内核</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#学习路线总览">学习路线总览</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#先给结论学习-ebpf-最容易走偏的地方">先给结论：学习 eBPF 最容易走偏的地方</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#理解-ebpf-字节码的故事">理解 eBPF 字节码的故事</a></summary>
+
+- [为什么 eBPF 要有自己的字节码](#为什么-ebpf-要有自己的字节码)
+- [这段“字节码故事”到底是怎样流动的](#这段字节码故事到底是怎样流动的)
+- [eBPF 字节码和普通虚拟机字节码有什么不同](#ebpf-字节码和普通虚拟机字节码有什么不同)
+- [为什么说 map 和 helper 也是这段故事的一部分](#为什么说-map-和-helper-也是这段故事的一部分)
+- [字节码、解释器、JIT 三者的关系](#字节码解释器jit-三者的关系)
+
+</details>
+
+<details>
+<summary><a href="#从-linux-ebpf-ybzhang-ppt-吸收的历史与工程视角">从 Linux ebpf ybzhang PPT 吸收的历史与工程视角</a></summary>
+
+- [1. 用历史线索建立全局感](#1-用历史线索建立全局感)
+- [2. PPT 里的使用场景分类值得保留](#2-ppt-里的使用场景分类值得保留)
+- [3. 嵌入式和 ARM64 场景下的工具选型](#3-嵌入式和-arm64-场景下的工具选型)
+- [4. 嵌入式/交叉编译视角的补足](#4-嵌入式交叉编译视角的补足)
+
+</details>
+
+<details>
+<summary><a href="#第0部分开始之前必须先建立的五条主线">第0部分：开始之前必须先建立的五条主线</a></summary>
+
+- [0.1 如何使用 libbpf 编写一个 eBPF 程序](#01-如何使用-libbpf-编写一个-ebpf-程序)
+- [0.2 当前 eBPF 的系统调用](#02-当前-ebpf-的系统调用)
+- [0.3 kprobe、ftrace、tracepoint 以及其他 hook 怎么理解](#03-kprobeftracetracepoint-以及其他-hook-怎么理解)
+- [0.4 eBPF 内核如何加载并运行程序](#04-ebpf-内核如何加载并运行程序)
+- [0.5 用户空间如何使用 eBPF 程序](#05-用户空间如何使用-ebpf-程序)
+
+</details>
+
+<details>
+<summary><a href="#第a部分8周学习计划按天拆解">第A部分：8周学习计划，按天拆解</a></summary>
+
+- [第0周：建立对象模型与环境直觉](#第0周建立对象模型与环境直觉)
+- [第1周：Verifier 是第一大关](#第1周verifier-是第一大关)
+- [第2周：libbpf、BTF、CO-RE](#第2周libbpfbtfco-re)
+- [第3周：第一个 tracing 闭环项目](#第3周第一个-tracing-闭环项目)
+- [第4周：Map 与数据通道](#第4周map-与数据通道)
+- [第5周：Attach Type 横向比较](#第5周attach-type-横向比较)
+- [第6周：网络路径，TC 先于 XDP](#第6周网络路径tc-先于-xdp)
+- [第7周：ARM64 JIT 精读](#第7周arm64-jit-精读)
+- [第8周：内核开发者视角](#第8周内核开发者视角)
+
+</details>
+
+<details>
+<summary><a href="#第b部分第一个可运行的-ebpf-tracing-项目实战">第B部分：第一个可运行的 eBPF Tracing 项目实战</a></summary>
+
+- [1. 项目目标](#1-项目目标)
+- [2. 先看 BPF 侧到底做了什么](#2-先看-bpf-侧到底做了什么)
+- [3. 用户态程序做了什么](#3-用户态程序做了什么)
+- [4. 这个项目涉及的理论点](#4-这个项目涉及的理论点)
+- [5. 你应该如何自己做一版最小项目](#5-你应该如何自己做一版最小项目)
+- [6. 建议的编译与运行准备](#6-建议的编译与运行准备)
+- [7. 这个项目完成后你应该具备什么能力](#7-这个项目完成后你应该具备什么能力)
+
+</details>
+
+<details>
+<summary><a href="#第c部分arm64-ebpf-jit-精读路线">第C部分：ARM64 eBPF JIT 精读路线</a></summary>
+
+- [1. 第一个入口：寄存器映射](#1-第一个入口寄存器映射)
+- [2. 第二个入口：立即数与地址装载](#2-第二个入口立即数与地址装载)
+- [3. 第三个入口：prologue 与栈布局](#3-第三个入口prologue-与栈布局)
+- [4. 第四个入口：helper call 如何落到 AArch64 调用](#4-第四个入口helper-call-如何落到-aarch64-调用)
+- [5. 第五个入口：helper 特化内联](#5-第五个入口helper-特化内联)
+- [6. 第六个入口：tail call](#6-第六个入口tail-call)
+- [7. 第七个入口：BTI 与 KCFI](#7-第七个入口bti-与-kcfi)
+- [8. 第八个入口：从一条 BPF 指令追到一串 A64 指令](#8-第八个入口从一条-bpf-指令追到一串-a64-指令)
+- [9. 推荐的 JIT 精读顺序](#9-推荐的-jit-精读顺序)
+- [10. JIT 学习阶段的实践要求](#10-jit-学习阶段的实践要求)
+
+</details>
+
+<details>
+<summary><a href="#第d部分基于当前源码树的阅读顺序">第D部分：基于当前源码树的阅读顺序</a></summary>
+
+- [第一层：官方文档层](#第一层官方文档层)
+- [第二层：用户态工程层](#第二层用户态工程层)
+- [第三层：内核实现层](#第三层内核实现层)
+- [第四层：测试与维护层](#第四层测试与维护层)
+
+</details>
+
+<details>
+<summary><a href="#第e部分实践环境建议">第E部分：实践环境建议</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#第f部分每阶段的结果判定标准">第F部分：每阶段的结果判定标准</a></summary>
+
+- [Verifier 阶段通过标准](#verifier-阶段通过标准)
+- [CO-RE 阶段通过标准](#co-re-阶段通过标准)
+- [Tracing 阶段通过标准](#tracing-阶段通过标准)
+- [ARM64 JIT 阶段通过标准](#arm64-jit-阶段通过标准)
+
+</details>
+
+<details>
+<summary><a href="#第g部分最后的学习建议">第G部分：最后的学习建议</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#第h部分前14天函数级精读清单">第H部分：前14天函数级精读清单</a></summary>
+
+- [Day 1：建立对象模型](#day-1建立对象模型)
+- [Day 2：把 BPF 指令模型和 C 前端分开](#day-2把-bpf-指令模型和-c-前端分开)
+- [Day 3：Verifier 总体流程](#day-3verifier-总体流程)
+- [Day 4：Verifier 状态结构](#day-4verifier-状态结构)
+- [Day 5：Verifier 日志与失败案例](#day-5verifier-日志与失败案例)
+- [Day 6：libbpf 和 skeleton 的角色](#day-6libbpf-和-skeleton-的角色)
+- [Day 7：BTF 与 CO-RE](#day-7btf-与-co-re)
+- [Day 8：选一个真实 tracing 工具](#day-8选一个真实-tracing-工具)
+- [Day 9：先读 BPF 侧](#day-9先读-bpf-侧)
+- [Day 10：再读用户态侧](#day-10再读用户态侧)
+- [Day 11：从 tracing 扩展到 attach type 比较](#day-11从-tracing-扩展到-attach-type-比较)
+- [Day 12：进入 ARM64 JIT 的第一层](#day-12进入-arm64-jit-的第一层)
+- [Day 13：ARM64 JIT 的立即数与调用路径](#day-13arm64-jit-的立即数与调用路径)
+- [Day 14：ARM64 JIT 的 prologue、tail call、helper 特化](#day-14arm64-jit-的-prologuetail-callhelper-特化)
+
+</details>
+
+<details>
+<summary><a href="#第i部分可直接执行的命令模板">第I部分：可直接执行的命令模板</a></summary>
+
+- [1. 先确认内核/BPF 基本能力](#1-先确认内核bpf-基本能力)
+- [2. 构建基础工具](#2-构建基础工具)
+- [3. ARM64 交叉编译时的常用环境变量](#3-arm64-交叉编译时的常用环境变量)
+- [4. 观察已加载程序与 map](#4-观察已加载程序与-map)
+- [5. 查看 BPF IR 和 JIT 后机器码](#5-查看-bpf-ir-和-jit-后机器码)
+- [6. 观察 tracing 输出](#6-观察-tracing-输出)
+- [7. 打开程序统计信息](#7-打开程序统计信息)
+- [8. 观察和调整 JIT 行为](#8-观察和调整-jit-行为)
+- [9. 运行 selftests](#9-运行-selftests)
+- [10. 用 vmtest 跑隔离环境](#10-用-vmtest-跑隔离环境)
+- [11. 建议的最小日常闭环命令](#11-建议的最小日常闭环命令)
+
+</details>
+
+<details>
+<summary><a href="#第j部分学习过程中最值得记录的笔记模板">第J部分：学习过程中最值得记录的笔记模板</a></summary>
+
+- [笔记模板](#笔记模板)
+- [一个最小示例](#一个最小示例)
+
+</details>
+
+<details>
+<summary><a href="#第k部分继续深入时的自然下一步">第K部分：继续深入时的自然下一步</a></summary>
+
+</details>
+
+---
+
 ## 为什么这份指南适合当前内核
 
 这不是一份泛泛的 eBPF 教程，而是专门围绕你当前这棵 Linux 6.18.1 ARM64 源码树组织的学习路径。

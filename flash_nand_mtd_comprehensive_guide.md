@@ -6,16 +6,126 @@
 
 ## 目录
 
-1. [Flash 涉及的标准协议](#1-flash-涉及的标准协议)
-2. [SPI Flash 硬件属性分析](#2-spi-flash-硬件属性分析)
-3. [NAND Flash SPI 接口代码框架](#3-nand-flash-spi-接口代码框架)
-4. [NAND Flash 与 MTD 驱动框架及数据结构](#4-nand-flash-与-mtd-驱动框架及数据结构)
-5. [坏块处理机制与流程](#5-坏块处理机制与流程)
-6. [Flash 经典测试 Case](#6-flash-经典测试-case)
-7. [如何适配一个新的 Flash](#7-如何适配一个新的-flash)
-8. [QEMU 上测试 Flash 特性的 Case 和驱动代码](#8-qemu-上测试-flash-特性的-case-和驱动代码)
-9. [SoC BootROM 从 NAND Flash 启动流程](#9-soc-bootrom-从-nand-flash-启动流程)
-10. [面试问题与答案](#10-面试问题与答案)
+<details>
+<summary><a href="#1-flash-涉及的标准协议">1. Flash 涉及的标准协议</a></summary>
+
+- [1.1 SPI 协议标准](#11-spi-协议标准)
+- [1.2 JEDEC 标准](#12-jedec-标准)
+- [1.3 ONFI (Open NAND Flash Interface)](#13-onfi-open-nand-flash-interface)
+- [1.4 CFI (Common Flash Interface)](#14-cfi-common-flash-interface)
+- [1.5 SPI NAND 标准命令集](#15-spi-nand-标准命令集)
+- [1.6 SPI NOR 标准命令集](#16-spi-nor-标准命令集)
+
+</details>
+
+<details>
+<summary><a href="#2-spi-flash-硬件属性分析">2. SPI Flash 硬件属性分析</a></summary>
+
+- [2.1 存储组织结构](#21-存储组织结构)
+- [2.2 内核中的内存组织数据结构](#22-内核中的内存组织数据结构)
+- [2.3 Block Size（块大小）](#23-block-size块大小)
+- [2.4 OTP (One-Time Programmable)](#24-otp-one-time-programmable)
+- [2.5 ECC (Error Correction Code)](#25-ecc-error-correction-code)
+- [2.6 Block 数据布局与坏块/有效块 Layout](#26-block-数据布局与坏块有效块-layout)
+- [2.7 OOB 区域内容详细布局](#27-oob-区域内容详细布局)
+- [2.8 坏块标记 (Bad Block Marker) 详解](#28-坏块标记-bad-block-marker-详解)
+- [2.9 如何区分出厂坏块、首次烧写坏块和运行时坏块](#29-如何区分出厂坏块首次烧写坏块和运行时坏块)
+- [2.10 SPI Flash 关键寄存器](#210-spi-flash-关键寄存器)
+- [2.11 时钟频率：Datasheet 标称 vs SoC 实际提供](#211-时钟频率datasheet-标称-vs-soc-实际提供)
+- [3.1 源码目录结构](#31-源码目录结构)
+- [3.2 软件架构层次](#32-软件架构层次)
+- [3.3 SPI NAND 核心操作流程](#33-spi-nand-核心操作流程)
+
+</details>
+
+<details>
+<summary><a href="#4-nand-flash-与-mtd-驱动框架及数据结构">4. NAND Flash 与 MTD 驱动框架及数据结构</a></summary>
+
+- [4.1 核心数据结构关系图](#41-核心数据结构关系图)
+- [4.2 MTD 核心数据结构](#42-mtd-核心数据结构)
+- [4.3 NAND 设备数据结构](#43-nand-设备数据结构)
+- [4.4 ECC 引擎数据结构](#44-ecc-引擎数据结构)
+- [4.5 SPI NAND 芯片描述结构](#45-spi-nand-芯片描述结构)
+
+</details>
+
+<details>
+<summary><a href="#5-坏块处理机制与流程">5. 坏块处理机制与流程</a></summary>
+
+- [5.1 坏块类型](#51-坏块类型)
+- [5.2 BBT (Bad Block Table) 实现](#52-bbt-bad-block-table-实现)
+- [5.3 坏块检测流程](#53-坏块检测流程)
+- [5.4 坏块标记流程](#54-坏块标记流程)
+- [5.5 擦除时的坏块保护](#55-擦除时的坏块保护)
+- [5.6 BBT 惰性加载策略](#56-bbt-惰性加载策略)
+- [5.7 坏块池 (Bad Block Reserve) 与 BMT (Bad Block Management Table)](#57-坏块池-bad-block-reserve-与-bmt-bad-block-management-table)
+
+</details>
+
+<details>
+<summary><a href="#6-flash-经典测试-case">6. Flash 经典测试 Case</a></summary>
+
+- [6.1 内核自带 MTD 测试模块](#61-内核自带-mtd-测试模块)
+- [6.2 使用方法](#62-使用方法)
+- [6.3 用户空间测试工具 (mtd-utils)](#63-用户空间测试工具-mtd-utils)
+- [6.4 典型测试场景](#64-典型测试场景)
+
+</details>
+
+<details>
+<summary><a href="#7-如何适配一个新的-flash">7. 如何适配一个新的 Flash</a></summary>
+
+- [7.1 适配 SPI NAND 步骤](#71-适配-spi-nand-步骤)
+- [7.2 适配检查清单](#72-适配检查清单)
+
+</details>
+
+<details>
+<summary><a href="#8-qemu-上测试-flash-特性的-case-和驱动代码">8. QEMU 上测试 Flash 特性的 Case 和驱动代码</a></summary>
+
+- [8.1 QEMU Flash 模拟支持](#81-qemu-flash-模拟支持)
+- [8.2 QEMU 启动配置](#82-qemu-启动配置)
+- [8.3 使用 mtd_nandsim 模拟 NAND Flash](#83-使用-mtd_nandsim-模拟-nand-flash)
+- [8.4 QEMU + nandsim 测试脚本](#84-qemu--nandsim-测试脚本)
+- [8.5 模拟坏块测试](#85-模拟坏块测试)
+
+</details>
+
+<details>
+<summary><a href="#9-soc-bootrom-从-nand-flash-启动流程">9. SoC BootROM 从 NAND Flash 启动流程</a></summary>
+
+- [9.1 上电启动全景](#91-上电启动全景)
+- [9.2 BootROM 如何识别外部 Flash](#92-bootrom-如何识别外部-flash)
+- [9.3 BootROM 如何读取 Flash 数据](#93-bootrom-如何读取-flash-数据)
+- [9.4 BootROM 碰到坏块怎么处理](#94-bootrom-碰到坏块怎么处理)
+- [9.5 BootROM vs Linux 内核 — 坏块处理对比](#95-bootrom-vs-linux-内核--坏块处理对比)
+- [9.6 量产烧录时的坏块处理](#96-量产烧录时的坏块处理)
+- [9.7 如果 Block 0 本身就是坏块怎么办](#97-如果-block-0-本身就是坏块怎么办)
+
+</details>
+
+<details>
+<summary><a href="#10-面试问题与答案">10. 面试问题与答案</a></summary>
+
+- [Q1: NOR Flash 和 NAND Flash 的区别是什么？](#q1-nor-flash-和-nand-flash-的区别是什么)
+- [Q2: SPI NAND 的读取操作分为哪几步？为什么需要两步？](#q2-spi-nand-的读取操作分为哪几步为什么需要两步)
+- [Q3: 什么是 ECC？SPI NAND 支持哪些 ECC 方式？](#q3-什么是-eccspi-nand-支持哪些-ecc-方式)
+- [Q4: NAND Flash 为什么会有坏块？如何管理？](#q4-nand-flash-为什么会有坏块如何管理)
+- [Q5: MTD 子系统的层次结构是怎样的？](#q5-mtd-子系统的层次结构是怎样的)
+- [Q6: `mtd_info` 结构中 `erasesize` 和 `writesize` 分别代表什么？](#q6-mtd_info-结构中-erasesize-和-writesize-分别代表什么)
+- [Q7: SPI Flash 支持的 Quad/Dual 模式有什么区别？命名含义是什么？](#q7-spi-flash-支持的-quaddual-模式有什么区别命名含义是什么)
+- [Q8: 如何在 Linux 内核中为一款新的 SPI NAND Flash 添加支持？](#q8-如何在-linux-内核中为一款新的-spi-nand-flash-添加支持)
+- [Q9: OOB (Out-Of-Band) 区域是做什么的？](#q9-oob-out-of-band-区域是做什么的)
+- [Q10: 什么是磨损均衡 (Wear Leveling)？为什么 NAND Flash 需要它？](#q10-什么是磨损均衡-wear-leveling为什么-nand-flash-需要它)
+- [Q11: SPI NAND 和 Raw NAND 的区别？](#q11-spi-nand-和-raw-nand-的区别)
+- [Q12: 描述一下 `spinand_probe()` 函数的完整流程。](#q12-描述一下-spinand_probe-函数的完整流程)
+
+</details>
+
+<details>
+<summary><a href="#附录-关键文件索引">附录: 关键文件索引</a></summary>
+
+</details>
 
 ---
 

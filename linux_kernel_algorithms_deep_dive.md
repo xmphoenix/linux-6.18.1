@@ -4,6 +4,149 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#1-cfs-完全公平调度器-completely-fair-scheduler">1. CFS 完全公平调度器 (Completely Fair Scheduler)</a></summary>
+
+- [1.1 核心思想](#11-核心思想)
+- [1.2 Virtual Runtime (vruntime) 计算](#12-virtual-runtime-vruntime-计算)
+- [1.3 Nice-to-Weight 映射](#13-nice-to-weight-映射)
+- [1.4 EEVDF: Earliest Eligible Virtual Deadline First](#14-eevdf-earliest-eligible-virtual-deadline-first)
+- [1.5 Red-Black Tree 调度](#15-red-black-tree-调度)
+- [1.5 `enqueue_entity()` — 完整入队流程](#15-enqueue_entity--完整入队流程)
+- [1.6 `pick_next_task_fair()` — 选择下一个任务](#16-pick_next_task_fair--选择下一个任务)
+- [1.7 Load Balancing](#17-load-balancing)
+- [1.8 复杂度](#18-复杂度)
+
+</details>
+
+<details>
+<summary><a href="#2-slub-allocator-小对象分配器">2. SLUB Allocator (小对象分配器)</a></summary>
+
+- [2.1 核心思想](#21-核心思想)
+- [2.2 关键数据结构](#22-关键数据结构)
+- [2.3 Slab 状态分类](#23-slab-状态分类)
+- [2.4 分配快速路径 (Fast Path)](#24-分配快速路径-fast-path)
+- [2.5 分配慢速路径 (Slow Path)](#25-分配慢速路径-slow-path)
+- [2.6 释放快速路径](#26-释放快速路径)
+- [2.7 `__slab_free()` 慢路径](#27-__slab_free-慢路径)
+- [2.8 复杂度](#28-复杂度)
+
+</details>
+
+<details>
+<summary><a href="#3-buddy-system-伙伴系统">3. Buddy System (伙伴系统)</a></summary>
+
+- [3.1 核心思想](#31-核心思想)
+- [3.2 关键数据结构](#32-关键数据结构)
+- [3.3 分配算法: `__rmqueue_smallest()` ([page_alloc.c](mm/page_alloc.c#L1880))](#33-分配算法-__rmqueue_smallest-page_alloccmmpage_alloccl1880)
+- [3.4 释放与合并: `__free_one_page()` ([page_alloc.c](mm/page_alloc.c#L940))](#34-释放与合并-__free_one_page-page_alloccmmpage_alloccl940)
+- [3.5 Fallback 机制](#35-fallback-机制)
+- [3.6 复杂度](#36-复杂度)
+
+</details>
+
+<details>
+<summary><a href="#4-page-reclaim--lru-页面回收">4. Page Reclaim / LRU (页面回收)</a></summary>
+
+- [4.1 核心思想](#41-核心思想)
+- [4.2 LRU 链表](#42-lru-链表)
+- [4.3 `scan_control` 结构](#43-scan_control-结构)
+- [4.4 Second Chance / Reference Checking](#44-second-chance--reference-checking)
+- [4.5 `shrink_folio_list()` — 回收决策核心 ([vmscan.c](mm/vmscan.c#L1099))](#45-shrink_folio_list--回收决策核心-vmscancmmvmscancl1099)
+- [4.6 `shrink_inactive_list()`](#46-shrink_inactive_list)
+- [4.7 kswapd vs Direct Reclaim](#47-kswapd-vs-direct-reclaim)
+- [4.8 复杂度](#48-复杂度)
+
+</details>
+
+<details>
+<summary><a href="#5-vma-management-maple-tree">5. VMA Management (Maple Tree)</a></summary>
+
+- [5.1 核心思想](#51-核心思想)
+- [5.2 关键数据结构](#52-关键数据结构)
+- [5.3 `find_vma()` — O(log n) 查找](#53-find_vma--olog-n-查找)
+- [5.4 `find_vma_intersection()`](#54-find_vma_intersection)
+- [5.5 `do_mmap()` — 创建映射](#55-do_mmap--创建映射)
+- [5.6 Maple Tree vs RB-tree](#56-maple-tree-vs-rb-tree)
+- [5.7 复杂度](#57-复杂度)
+
+</details>
+
+<details>
+<summary><a href="#6-writeback-algorithm-写回算法">6. Writeback Algorithm (写回算法)</a></summary>
+
+- [6.1 核心思想](#61-核心思想)
+- [6.2 关键参数](#62-关键参数)
+- [6.3 Dirty Limits 计算](#63-dirty-limits-计算)
+- [6.4 两阶段写回机制](#64-两阶段写回机制)
+- [6.5 `balance_dirty_pages()`](#65-balance_dirty_pages)
+- [6.6 BDI (Backing Device Info)](#66-bdi-backing-device-info)
+
+</details>
+
+<details>
+<summary><a href="#7-io-schedulers">7. I/O Schedulers</a></summary>
+
+- [7.1 mq-deadline](#71-mq-deadline)
+- [7.2 BFQ (Budget Fair Queueing)](#72-bfq-budget-fair-queueing)
+- [7.3 复杂度](#73-复杂度)
+
+</details>
+
+<details>
+<summary><a href="#8-rcu-grace-period-detection">8. RCU Grace Period Detection</a></summary>
+
+- [8.1 核心思想](#81-核心思想)
+- [8.2 rcu_node 树结构](#82-rcu_node-树结构)
+- [8.3 Grace Period 初始化 — `rcu_gp_init()` ([tree.c](kernel/rcu/tree.c#L1803))](#83-grace-period-初始化--rcu_gp_init-treeckernelrcutreecl1803)
+- [8.4 Grace Period Kthread 主循环](#84-grace-period-kthread-主循环)
+- [8.5 Quiescent State 报告 — 自底向上传播](#85-quiescent-state-报告--自底向上传播)
+- [8.6 复杂度](#86-复杂度)
+
+</details>
+
+<details>
+<summary><a href="#9-timer-wheel-定时器轮">9. Timer Wheel (定时器轮)</a></summary>
+
+- [9.1 核心思想](#91-核心思想)
+- [9.2 层次结构 (HZ=1000)](#92-层次结构-hz1000)
+- [9.3 `timer_base` 结构](#93-timer_base-结构)
+- [9.4 定时器添加](#94-定时器添加)
+- [9.5 到期定时器的收集与处理](#95-到期定时器的收集与处理)
+- [9.5 优势 vs 经典实现](#95-优势-vs-经典实现)
+- [9.6 复杂度](#96-复杂度)
+
+</details>
+
+<details>
+<summary><a href="#10-kernel-sort-内核排序">10. Kernel Sort (内核排序)</a></summary>
+
+- [10.1 核心思想](#101-核心思想)
+- [10.2 `__sort_r()` 完整实现源码注释 ([sort.c](lib/sort.c#L196))](#102-__sort_r-完整实现源码注释-sortclibsortcl196)
+- [10.3 Bottom-up 优化](#103-bottom-up-优化)
+- [10.4 Swap 优化](#104-swap-优化)
+- [10.5 复杂度](#105-复杂度)
+
+</details>
+
+<details>
+<summary><a href="#11-crchash-algorithms">11. CRC/Hash Algorithms</a></summary>
+
+- [11.1 Multiplicative Hash (`hash_long`)](#111-multiplicative-hash-hash_long)
+- [11.2 Jenkins Hash (jhash)](#112-jenkins-hash-jhash)
+- [11.3 CRC32](#113-crc32)
+
+</details>
+
+<details>
+<summary><a href="#总结对比">总结对比</a></summary>
+
+</details>
+
+---
+
 ## 1. CFS 完全公平调度器 (Completely Fair Scheduler)
 
 **Source**: `kernel/sched/fair.c`, `kernel/sched/core.c`

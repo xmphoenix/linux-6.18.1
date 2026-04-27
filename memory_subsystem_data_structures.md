@@ -6,18 +6,121 @@
 
 ## 目录
 
-1. [总览：五大子系统关系图](#1-总览五大子系统关系图)
-2. [Memblock — 早期启动内存管理](#2-memblock--早期启动内存管理)
-3. [NUMA — 节点拓扑描述](#3-numa--节点拓扑描述)
-4. [Sparse Memory — 物理内存到 struct page 的映射](#4-sparse-memory--物理内存到-struct-page-的映射)
-5. [Buddy — 页帧分配器](#5-buddy--页帧分配器)
-6. [SLUB — 小对象分配器](#6-slub--小对象分配器)
-7. [struct page — 万能元数据载体](#7-struct-page--万能元数据载体)
-8. [数据结构关联全图](#8-数据结构关联全图)
-9. [生命周期流程图](#9-生命周期流程图)
-12. [五大子系统的角色分类](#12-五大子系统的角色分类)
-13. [为什么 Buddy 不能独立工作？](#13-为什么-buddy-不能独立工作)
-14. [PFN 与 struct page 深入详解](#14-pfn-与-struct-page-深入详解)
+<details>
+<summary><a href="#1-总览五大子系统关系图">1. 总览：五大子系统关系图</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#2-memblock--早期启动内存管理">2. Memblock — 早期启动内存管理</a></summary>
+
+- [2.1 数据结构](#21-数据结构)
+- [2.2 结构关系图](#22-结构关系图)
+- [2.3 设计目的](#23-设计目的)
+
+</details>
+
+<details>
+<summary><a href="#3-numa--节点拓扑描述">3. NUMA — 节点拓扑描述</a></summary>
+
+- [3.1 数据结构](#31-数据结构)
+- [3.2 结构关系图（QEMU 1GB 单 node）](#32-结构关系图qemu-1gb-单-node)
+- [3.3 设计目的](#33-设计目的)
+
+</details>
+
+<details>
+<summary><a href="#4-sparse-memory--物理内存到-struct-page-的映射">4. Sparse Memory — 物理内存到 struct page 的映射</a></summary>
+
+- [4.1 数据结构](#41-数据结构)
+- [4.2 结构关系图](#42-结构关系图)
+- [4.3 PFN ↔ struct page 转换（VMEMMAP 模式）](#43-pfn-↔-struct-page-转换vmemmap-模式)
+- [4.4 设计目的](#44-设计目的)
+
+</details>
+
+<details>
+<summary><a href="#5-buddy--页帧分配器">5. Buddy — 页帧分配器</a></summary>
+
+- [5.1 数据结构](#51-数据结构)
+- [5.2 Buddy 核心结构图](#52-buddy-核心结构图)
+- [5.3 分配与释放流程](#53-分配与释放流程)
+- [5.4 设计目的](#54-设计目的)
+
+</details>
+
+<details>
+<summary><a href="#6-slub--小对象分配器">6. SLUB — 小对象分配器</a></summary>
+
+- [6.1 数据结构](#61-数据结构)
+- [6.2 SLUB 三级缓存结构](#62-slub-三级缓存结构)
+- [6.3 分配流程](#63-分配流程)
+- [6.4 设计目的](#64-设计目的)
+
+</details>
+
+<details>
+<summary><a href="#7-struct-page--万能元数据载体">7. struct page — 万能元数据载体</a></summary>
+
+- [7.1 struct page 在不同子系统中的身份](#71-struct-page-在不同子系统中的身份)
+- [7.2 设计目的](#72-设计目的)
+
+</details>
+
+<details>
+<summary><a href="#8-数据结构关联全图">8. 数据结构关联全图</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#9-生命周期流程图">9. 生命周期流程图</a></summary>
+
+- [9.1 启动阶段（从硬件到 kmalloc 可用）](#91-启动阶段从硬件到-kmalloc-可用)
+- [9.2 运行时分配路径](#92-运行时分配路径)
+
+</details>
+
+<details>
+<summary><a href="#10-各子系统对比总结">10. 各子系统对比总结</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#11-为什么要这么设计设计哲学">11. 为什么要这么设计？设计哲学</a></summary>
+
+- [11.1 分层的必要性](#111-分层的必要性)
+- [11.2 核心设计原则](#112-核心设计原则)
+
+</details>
+
+<details>
+<summary><a href="#12-五大子系统的角色分类">12. 五大子系统的角色分类</a></summary>
+
+- [12.1 三个分配器（有对外分配 API）](#121-三个分配器有对外分配-api)
+- [12.2 两个基础设施（无独立分配 API）](#122-两个基础设施无独立分配-api)
+
+</details>
+
+<details>
+<summary><a href="#13-为什么-buddy-不能独立工作">13. 为什么 Buddy 不能独立工作？</a></summary>
+
+- [13.1 没有 Sparse 会怎样？](#131-没有-sparse-会怎样)
+- [13.2 没有 Zone 会怎样？](#132-没有-zone-会怎样)
+- [13.3 没有 NUMA 会怎样？](#133-没有-numa-会怎样)
+- [13.4 总结](#134-总结)
+
+</details>
+
+<details>
+<summary><a href="#14-pfn-与-struct-page-深入详解">14. PFN 与 struct page 深入详解</a></summary>
+
+- [14.1 PFN（Page Frame Number）— 物理页的编号](#141-pfnpage-frame-number-物理页的编号)
+- [14.2 struct page — 物理页的元数据](#142-struct-page--物理页的元数据)
+- [14.3 PFN ↔ struct page 转换](#143-pfn-↔-struct-page-转换)
+- [14.4 具体场景举例](#144-具体场景举例)
+- [14.5 一句话总结](#145-一句话总结)
+
+</details>
 
 ---
 

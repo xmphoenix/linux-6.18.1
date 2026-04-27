@@ -6,6 +6,170 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#1-为什么-slub-是分析锁实现的最好切入点之一">1. 为什么 SLUB 是分析锁实现的最好切入点之一</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#2-slubc-文件头已经把锁层级写出来了">2. `slub.c` 文件头已经把锁层级写出来了</a></summary>
+
+- [2.1 逐行解释这段锁顺序注释](#21-逐行解释这段锁顺序注释)
+
+</details>
+
+<details>
+<summary><a href="#3-slub-里四种对象页状态">3. SLUB 里四种对象/页状态</a></summary>
+
+- [3.1 对这四种状态的直观理解](#31-对这四种状态的直观理解)
+- [3.2 状态迁移图](#32-状态迁移图)
+
+</details>
+
+<details>
+<summary><a href="#4-分配热路径总览kmalloc-到-slubc">4. 分配热路径总览：`kmalloc()` 到 `slub.c`</a></summary>
+
+- [4.1 分配热路径时序图](#41-分配热路径时序图)
+
+</details>
+
+<details>
+<summary><a href="#5-__slab_alloc_node真正的无锁快路径">5. `__slab_alloc_node()`：真正的无锁快路径</a></summary>
+
+- [5.1 逐行解释](#51-逐行解释)
+- [5.2 这里为什么不需要 `spinlock`](#52-这里为什么不需要-spinlock)
+
+</details>
+
+<details>
+<summary><a href="#6-___slab_alloc慢路径如何一步步把对象找出来">6. `___slab_alloc()`：慢路径如何一步步把对象找出来</a></summary>
+
+- [6.1 关键代码片段](#61-关键代码片段)
+- [6.2 逐行解释](#62-逐行解释)
+- [6.3 `get_freelist()` 的锁语义](#63-get_freelist-的锁语义)
+
+</details>
+
+<details>
+<summary><a href="#7-partial-路径什么时候会碰-node-list_lock">7. partial 路径：什么时候会碰 `node->list_lock`</a></summary>
+
+- [7.1 关键代码片段](#71-关键代码片段)
+- [7.2 逐行解释](#72-逐行解释)
+- [7.3 debug cache 为什么更依赖 `list_lock`](#73-debug-cache-为什么更依赖-list_lock)
+
+</details>
+
+<details>
+<summary><a href="#8-freeze_slab为什么说-cpu-slab-是冻结态">8. `freeze_slab()`：为什么说 cpu slab 是“冻结态”</a></summary>
+
+- [8.1 关键代码片段](#81-关键代码片段)
+- [8.2 逐行解释](#82-逐行解释)
+
+</details>
+
+<details>
+<summary><a href="#9-deactivate_slab把-cpu-slab-再放回共享世界">9. `deactivate_slab()`：把 cpu slab 再放回共享世界</a></summary>
+
+- [9.1 关键代码片段](#91-关键代码片段)
+- [9.2 逐行解释](#92-逐行解释)
+- [9.3 这条路径用了哪些锁](#93-这条路径用了哪些锁)
+
+</details>
+
+<details>
+<summary><a href="#10-释放热路径kfree-到-do_slab_free">10. 释放热路径：`kfree()` 到 `do_slab_free()`</a></summary>
+
+- [10.1 释放热路径时序图](#101-释放热路径时序图)
+
+</details>
+
+<details>
+<summary><a href="#11-do_slab_free当前-cpu-slab-的-lockless-fast-free">11. `do_slab_free()`：当前 CPU slab 的 lockless fast free</a></summary>
+
+- [11.1 关键代码片段](#111-关键代码片段)
+- [11.2 逐行解释](#112-逐行解释)
+- [11.3 为什么 free fastpath 和 alloc fastpath 几乎镜像对称](#113-为什么-free-fastpath-和-alloc-fastpath-几乎镜像对称)
+
+</details>
+
+<details>
+<summary><a href="#12-__slab_free释放慢路径如何决定是否碰-list_lock">12. `__slab_free()`：释放慢路径如何决定是否碰 `list_lock`</a></summary>
+
+- [12.1 关键代码片段](#121-关键代码片段)
+- [12.2 逐行解释](#122-逐行解释)
+- [12.3 这条路径体现出的性能策略](#123-这条路径体现出的性能策略)
+
+</details>
+
+<details>
+<summary><a href="#13-free_to_partial_listdebug-cache-下的集中式路径">13. `free_to_partial_list()`：debug cache 下的集中式路径</a></summary>
+
+- [13.1 关键代码片段](#131-关键代码片段)
+- [13.2 逐行解释](#132-逐行解释)
+
+</details>
+
+<details>
+<summary><a href="#14-slab_lock没有-cmpxchg_double-时的兜底">14. `slab_lock()`：没有 `cmpxchg_double` 时的兜底</a></summary>
+
+- [14.1 这里和 ARM64 的关系](#141-这里和-arm64-的关系)
+
+</details>
+
+<details>
+<summary><a href="#15-slab_mutex-和-flush_lock为什么热路径里几乎看不到-mutex">15. `slab_mutex` 和 `flush_lock`：为什么热路径里几乎看不到 mutex</a></summary>
+
+- [15.1 这说明什么](#151-这说明什么)
+
+</details>
+
+<details>
+<summary><a href="#16-把主文档里的三类锁重新映射回-slub">16. 把主文档里的三类锁重新映射回 SLUB</a></summary>
+
+- [16.1 spinlock 在 SLUB 里的真实位置](#161-spinlock-在-slub-里的真实位置)
+- [16.2 mutex 在 SLUB 里的真实位置](#162-mutex-在-slub-里的真实位置)
+- [16.3 semaphore 在 SLUB 里几乎不是核心角色](#163-semaphore-在-slub-里几乎不是核心角色)
+
+</details>
+
+<details>
+<summary><a href="#17-最值得下断点打-trace-的函数">17. 最值得下断点/打 trace 的函数</a></summary>
+
+- [分配路径](#分配路径)
+- [释放路径](#释放路径)
+- [管理路径](#管理路径)
+
+</details>
+
+<details>
+<summary><a href="#18-建议的-slub-锁实验">18. 建议的 SLUB 锁实验</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#181-实验一验证-debug-cache-会放大-list_lock-争用">18.1 实验一：验证 debug cache 会放大 `list_lock` 争用</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#182-实验二观察-percpu-fastpath-是否真的占主导">18.2 实验二：观察 percpu fastpath 是否真的占主导</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#183-实验三观察-full-slab-第一次-free-如何重新回到-partial">18.3 实验三：观察 full slab 第一次 free 如何重新回到 partial</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#19-最后的总结">19. 最后的总结</a></summary>
+
+</details>
+
+---
+
 ## 1. 为什么 SLUB 是分析锁实现的最好切入点之一
 
 前面的主文档解释了 `spinlock`、`semaphore`、`mutex` 各自的实现原理，但这些分析仍然偏“锁框架自身”。

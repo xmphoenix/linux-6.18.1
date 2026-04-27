@@ -7,6 +7,238 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#学习路线总览">学习路线总览</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#先给结论研究-gicv3-应该抓住什么">先给结论：研究 GICv3 应该抓住什么</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#第0课gicv3-架构总图">第0课：GICv3 架构总图</a></summary>
+
+- [0.1 硬件组件图](#01-硬件组件图)
+- [0.1.1 Distributor、Redistributor、CPU Interface 三者从架构上分别代表什么](#011-distributorredistributorcpu-interface-三者从架构上分别代表什么)
+- [0.1.2 Distributor 的架构意义](#012-distributor-的架构意义)
+- [0.1.3 Redistributor 的架构意义](#013-redistributor-的架构意义)
+- [0.1.4 CPU Interface 的架构意义](#014-cpu-interface-的架构意义)
+- [0.1.5 为什么架构上必须拆成这三层](#015-为什么架构上必须拆成这三层)
+- [0.1.6 三者在一条中断路径里怎么协作](#016-三者在一条中断路径里怎么协作)
+- [0.1.7 站在普通世界 Linux 视角，三者各自最常对应什么问题](#017-站在普通世界-linux-视角三者各自最常对应什么问题)
+- [0.2 中断类型一定要先分清](#02-中断类型一定要先分清)
+- [0.3 GICv3 的四状态模型](#03-gicv3-的四状态模型)
+- [0.4 架构文档与源码对照阅读法](#04-架构文档与源码对照阅读法)
+
+</details>
+
+<details>
+<summary><a href="#第1课先掌握-linux-通用-irq-四件套">第1课：先掌握 Linux 通用 IRQ 四件套</a></summary>
+
+- [1.1 `irq_desc`](#11-irq_desc)
+- [1.2 `irq_data`](#12-irq_data)
+- [1.3 `irq_chip`](#13-irq_chip)
+- [1.4 `irq_domain`](#14-irq_domain)
+- [1.4.1 把“设备树里的中断描述”变成 `irq_desc`：最短静态建链图](#141-把设备树里的中断描述变成-irq_desc最短静态建链图)
+
+</details>
+
+<details>
+<summary><a href="#第2课arm64-从异常入口走到-gic-驱动">第2课：ARM64 从异常入口走到 GIC 驱动</a></summary>
+
+- [2.1 异常向量表内容](#21-异常向量表内容)
+- [2.2 `kernel_ventry` 和 `entry_handler` 宏展开后的真实含义](#22-kernel_ventry-和-entry_handler-宏展开后的真实含义)
+- [2.3 入口总链路](#23-入口总链路)
+- [2.4 关键源码点](#24-关键源码点)
+- [2.5 NMI/Pseudo-NMI 特殊路径](#25-nmipseudo-nmi-特殊路径)
+- [2.6 Pseudo-NMI 专题](#26-pseudo-nmi-专题)
+- [2.6.16 FIQ 和 IRQ：区别、联系，以及在内核代码里的具体实现](#2616-fiq-和-irq区别联系以及在内核代码里的具体实现)
+- [2.7 Linux 中断处理全景：Hardirq / Softirq / Tasklet / Threaded IRQ](#27-linux-中断处理全景hardirq--softirq--tasklet--threaded-irq)
+- [2.8 中断与同步：真正容易出错的部分](#28-中断与同步真正容易出错的部分)
+
+</details>
+
+<details>
+<summary><a href="#第3课gicv3-初始化总流程">第3课：GICv3 初始化总流程</a></summary>
+
+- [3.1 Device Tree/ACPI 初始化入口](#31-device-treeacpi-初始化入口)
+- [3.1.1 如果从设备树 bring-up 角度看，最容易记住的入口链](#311-如果从设备树-bring-up-角度看最容易记住的入口链)
+- [3.2 Distributor 初始化：`gic_dist_init()`](#32-distributor-初始化gic_dist_init)
+- [3.3 Redistributor 初始化：`gic_populate_rdist()` + `gic_cpu_init()`](#33-redistributor-初始化gic_populate_rdist--gic_cpu_init)
+- [3.4 CPU Interface 初始化：`gic_cpu_sys_reg_init()`](#34-cpu-interface-初始化gic_cpu_sys_reg_init)
+- [3.5 把三层寄存器配置串起来看：到底要配哪些寄存器](#35-把三层寄存器配置串起来看到底要配哪些寄存器)
+
+</details>
+
+<details>
+<summary><a href="#第4课核心数据结构必须建立对象图">第4课：核心数据结构必须建立对象图</a></summary>
+
+- [4.1 GICv3 核心对象图](#41-gicv3-核心对象图)
+- [4.2 `struct gic_chip_data`](#42-struct-gic_chip_data)
+- [4.3 `struct rdists`](#43-struct-rdists)
+- [4.4 ITS 核心结构](#44-its-核心结构)
+- [4.5 关系要这样记](#45-关系要这样记)
+
+</details>
+
+<details>
+<summary><a href="#第5课运行时中断路径的关键算法">第5课：运行时中断路径的关键算法</a></summary>
+
+- [5.1 INTID 分类算法：`__get_intid_range()`](#51-intid-分类算法__get_intid_range)
+- [5.2 寄存器地址换算：`convert_offset_index()`](#52-寄存器地址换算convert_offset_index)
+- [5.3 ACK/EOI/Deactivate 路径](#53-ackeoideactivate-路径)
+- [5.4 中断路由算法：`gic_set_affinity()`](#54-中断路由算法gic_set_affinity)
+- [5.5 SGI 目标列表算法：`gic_compute_target_list()`](#55-sgi-目标列表算法gic_compute_target_list)
+- [5.6 ITS LPI 分配算法](#56-its-lpi-分配算法)
+- [5.7 ITS 命令队列算法](#57-its-命令队列算法)
+- [5.8 ITS 负载均衡算法：`its_select_cpu()`](#58-its-负载均衡算法its_select_cpu)
+
+</details>
+
+<details>
+<summary><a href="#第6课gicv3-的-irq-domain-实现">第6课：GICv3 的 IRQ domain 实现</a></summary>
+
+- [6.1 顶层 GIC domain](#61-顶层-gic-domain)
+- [6.2 `gic_irq_domain_translate()` 很重要](#62-gic_irq_domain_translate-很重要)
+- [6.3 `gic_irq_domain_map()` 把 hwirq 绑定到 flow handler](#63-gic_irq_domain_map-把-hwirq-绑定到-flow-handler)
+
+</details>
+
+<details>
+<summary><a href="#第7课itslpimsi-是第二战场">第7课：ITS/LPI/MSI 是第二战场</a></summary>
+
+- [7.1 必须先建立翻译模型](#71-必须先建立翻译模型)
+- [7.2 ITS 初始化主线](#72-its-初始化主线)
+- [7.3 LPI 两张表](#73-lpi-两张表)
+- [7.4 MSI domain 层次](#74-msi-domain-层次)
+- [7.5 最关键的 ITS 命令](#75-最关键的-its-命令)
+
+</details>
+
+<details>
+<summary><a href="#第8课gicv4-是高级专题但必须知道边界">第8课：GICv4 是高级专题，但必须知道边界</a></summary>
+
+- [8.1 GICv4 解决的核心问题](#81-gicv4-解决的核心问题)
+- [8.2 三个核心对象](#82-三个核心对象)
+- [8.3 当前源码中的体现](#83-当前源码中的体现)
+
+</details>
+
+<details>
+<summary><a href="#第9课按源码文件建立研究地图">第9课：按源码文件建立研究地图</a></summary>
+
+- [9.1 必读源码优先级](#91-必读源码优先级)
+- [9.2 推荐阅读顺序](#92-推荐阅读顺序)
+
+</details>
+
+<details>
+<summary><a href="#第10课源码结合实践的四阶段研究规划">第10课：源码结合实践的四阶段研究规划</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#阶段a打基础建立对象模型第1周">阶段A：打基础，建立对象模型（第1周）</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#阶段b跑通中断入口与本地中断第2周">阶段B：跑通中断入口与本地中断（第2周）</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#阶段c跑通-affinity-与-ipi第3周">阶段C：跑通 affinity 与 IPI（第3周）</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#阶段d跑通-itslpimsi最后看-gicv4第4-5周">阶段D：跑通 ITS/LPI/MSI，最后看 GICv4（第4-5周）</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#第11课结合你当前仓库的实操建议">第11课：结合你当前仓库的实操建议</a></summary>
+
+- [11.1 启动环境建议](#111-启动环境建议)
+- [11.2 最实用的实验命令](#112-最实用的实验命令)
+- [11.3 研究 ITS 的实验切入点](#113-研究-its-的实验切入点)
+- [11.4 结合 QEMU 的分组实验设计](#114-结合-qemu-的分组实验设计)
+- [实验组A：最小化 GICv3 启动确认实验](#实验组a最小化-gicv3-启动确认实验)
+- [实验组A-1：Pseudo-NMI 启用验证实验](#实验组a-1pseudo-nmi-启用验证实验)
+- [实验组B：PPI 路径实验，盯住本地 timer 中断](#实验组bppi-路径实验盯住本地-timer-中断)
+- [实验组C：SPI 路径实验，观察共享设备中断和 affinity 迁移](#实验组cspi-路径实验观察共享设备中断和-affinity-迁移)
+- [实验组D：IPI/SGI 路径实验，观察核间中断](#实验组dipisgi-路径实验观察核间中断)
+- [实验组E：ITS/LPI/MSI 进阶实验](#实验组eitslpimsi-进阶实验)
+- [实验组F：GDB 单步实验，从异常入口走到 flow handler](#实验组fgdb-单步实验从异常入口走到-flow-handler)
+- [11.5 一个建议的实验顺序](#115-一个建议的实验顺序)
+
+</details>
+
+<details>
+<summary><a href="#第12课学完这部分内容能解决哪些问题">第12课：学完这部分内容能解决哪些问题</a></summary>
+
+- [12.1 能判断问题到底在架构层、IRQ core 层，还是驱动层](#121-能判断问题到底在架构层irq-core-层还是驱动层)
+- [12.2 能解释“为什么中断只在某个 CPU 上跑”](#122-能解释为什么中断只在某个-cpu-上跑)
+- [12.3 能解释“为什么改了 affinity 但流量/中断没有按预期迁移”](#123-能解释为什么改了-affinity-但流量中断没有按预期迁移)
+- [12.4 能区分 hardirq 高、softirq 高、ksoftirqd 高、threaded irq 卡住这几类不同现场](#124-能区分-hardirq-高softirq-高ksoftirqd-高threaded-irq-卡住这几类不同现场)
+- [12.5 能解释“为什么某类中断根本不能像预期那样绑核”](#125-能解释为什么某类中断根本不能像预期那样绑核)
+- [12.6 能处理 ITS/MSI/LPI 相关的“看起来像普通 SPI，其实不是”的问题](#126-能处理-itsmsilpi-相关的看起来像普通-spi其实不是的问题)
+- [12.7 能把性能问题和同步问题联系起来看](#127-能把性能问题和同步问题联系起来看)
+
+</details>
+
+<details>
+<summary><a href="#第13课经典问题处理手册">第13课：经典问题处理手册</a></summary>
+
+- [13.0 一套真正能落地的 IRQ Debug 方案](#130-一套真正能落地的-irq-debug-方案)
+- [13.1 经典问题一：中断绑定 CPU](#131-经典问题一中断绑定-cpu)
+- [13.2 经典问题二：softirq 过高](#132-经典问题二softirq-过高)
+- [13.3 中断绑核和 softirq 过高，正确的整体处置思路](#133-中断绑核和-softirq-过高正确的整体处置思路)
+- [13.4 一条最实用的现场排查清单](#134-一条最实用的现场排查清单)
+- [13.5 用 QEMU 复现“中断绑定 CPU”问题](#135-用-qemu-复现中断绑定-cpu问题)
+- [13.6 用 QEMU 复现“softirq 过高”问题](#136-用-qemu-复现softirq-过高问题)
+- [13.7 经典问题的源码定位清单](#137-经典问题的源码定位清单)
+- [13.8 处理这类问题的一条总原则](#138-处理这类问题的一条总原则)
+- [13.9 经典问题三：关中断时间过长](#139-经典问题三关中断时间过长)
+- [13.10 经典问题四：中断上下文里出现 loop、风暴或反复 pending](#1310-经典问题四中断上下文里出现-loop风暴或反复-pending)
+- [13.11 这几类问题的实战判断口诀](#1311-这几类问题的实战判断口诀)
+- [13.12 把源码读成闭环的一份函数级阅读地图](#1312-把源码读成闭环的一份函数级阅读地图)
+- [13.13 常用 IRQ 经典问题总表](#1313-常用-irq-经典问题总表)
+
+</details>
+
+<details>
+<summary><a href="#第14课最值得你亲手画的三张图">第14课：最值得你亲手画的三张图</a></summary>
+
+- [图1：从异常向量到设备 ISR 的调用链](#图1从异常向量到设备-isr-的调用链)
+- [图2：GICv3 初始化对象图](#图2gicv3-初始化对象图)
+- [图3：ITS 翻译图](#图3its-翻译图)
+
+</details>
+
+<details>
+<summary><a href="#总总结顶级内核工程师视角下的-gicv3-研究结论">总总结：顶级内核工程师视角下的 GICv3 研究结论</a></summary>
+
+- [结论1：GICv3 的本质不是寄存器集合，而是“分层中断路由系统”](#结论1gicv3-的本质不是寄存器集合而是分层中断路由系统)
+- [结论2：研究 GICv3 最容易走偏的地方，是只盯寄存器，不盯 IRQ core](#结论2研究-gicv3-最容易走偏的地方是只盯寄存器不盯-irq-core)
+- [结论3：GICv3 真正复杂的部分，不是普通 SPI/PPI，而是 ITS/LPI/GICv4](#结论3gicv3-真正复杂的部分不是普通-spippi而是-itslpigicv4)
+- [结论4：算法层面最值得反复咀嚼的是四个点](#结论4算法层面最值得反复咀嚼的是四个点)
+- [结论5：最有效的学习方式不是“看完所有源码”，而是“按路径验证源码”](#结论5最有效的学习方式不是看完所有源码而是按路径验证源码)
+
+</details>
+
+<details>
+<summary><a href="#最后给你的研究建议">最后给你的研究建议</a></summary>
+
+</details>
+
+---
+
 ## 学习路线总览
 
 ```mermaid

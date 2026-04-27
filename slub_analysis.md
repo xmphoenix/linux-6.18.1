@@ -7,18 +7,115 @@
 
 ## 目录
 
-1. [核心数据结构](#1-核心数据结构)
-2. [数据结构关系图](#2-数据结构关系图)
-3. [SLUB 自举流程 (kmem_cache_init)](#3-slub-自举流程)
-4. [calculate_sizes() — 对象布局决策](#4-calculate_sizes--对象布局决策)
-5. [Object Layout 详解](#5-object-layout-详解)
-6. [SLUB Debug 机制](#6-slub-debug-机制)
-7. [kmalloc 缓存体系创建](#7-kmalloc-缓存体系创建)
-8. [分配与释放路径](#8-分配与释放路径)
-9. [自定义 slab cache（fork.c）](#9-自定义-slab-cache)
-10. [关键常量速查表](#10-关键常量速查表)
-11. [用户态内存分配全链路](#11-用户态内存分配全链路)
-12. [brk / mmap 系统调用](#12-brk--mmap-系统调用)
+<details>
+<summary><a href="#1-核心数据结构">1. 核心数据结构</a></summary>
+
+- [1.1 struct kmem_cache（328 字节）](#11-struct-kmem_cache328-字节)
+- [1.2 struct kmem_cache_cpu（48 字节，per-CPU）](#12-struct-kmem_cache_cpu48-字节per-cpu)
+- [1.3 struct kmem_cache_node（72 字节，per-NUMA-node）](#13-struct-kmem_cache_node72-字节per-numa-node)
+
+</details>
+
+<details>
+<summary><a href="#2-数据结构关系图">2. 数据结构关系图</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#3-slub-自举流程">3. SLUB 自举流程</a></summary>
+
+- [3.1 鸡生蛋问题](#31-鸡生蛋问题)
+- [3.2 三阶段自举](#32-三阶段自举)
+
+</details>
+
+<details>
+<summary><a href="#4-calculate_sizes--对象布局决策">4. calculate_sizes() — 对象布局决策</a></summary>
+
+- [阶段一：word 对齐](#阶段一word-对齐)
+- [阶段二：`__OBJECT_POISON` + 右 redzone（DEBUG）](#阶段二__object_poison--右-redzonedebug)
+- [阶段三：free pointer 位置决策](#阶段三free-pointer-位置决策)
+- [阶段四：追加 track 信息（DEBUG）](#阶段四追加-track-信息debug)
+- [阶段五：追加左 redzone（DEBUG）](#阶段五追加左-redzonedebug)
+- [阶段六：最终对齐 + order 计算](#阶段六最终对齐--order-计算)
+
+</details>
+
+<details>
+<summary><a href="#5-object-layout-详解">5. Object Layout 详解</a></summary>
+
+- [5.1 无 Debug 时（生产内核）](#51-无-debug-时生产内核)
+- [5.2 全 Debug 时（RED_ZONE + POISON + STORE_USER）](#52-全-debug-时red_zone--poison--store_user)
+- [5.3 魔法字节表](#53-魔法字节表)
+
+</details>
+
+<details>
+<summary><a href="#6-slub-debug-机制">6. SLUB Debug 机制</a></summary>
+
+- [6.1 Debug 标志](#61-debug-标志)
+- [6.2 初始化](#62-初始化)
+- [6.3 检测能力](#63-检测能力)
+- [6.4 对象生命周期字节变化](#64-对象生命周期字节变化)
+- [6.5 使用示例](#65-使用示例)
+
+</details>
+
+<details>
+<summary><a href="#7-kmalloc-缓存体系创建">7. kmalloc 缓存体系创建</a></summary>
+
+- [7.1 setup_kmalloc_cache_index_table()](#71-setup_kmalloc_cache_index_table)
+- [7.2 kmalloc_size_index[] 查表](#72-kmalloc_size_index-查表)
+- [7.3 create_kmalloc_caches()](#73-create_kmalloc_caches)
+- [7.4 new_kmalloc_cache() 在 ARM64 上的简化行为](#74-new_kmalloc_cache-在-arm64-上的简化行为)
+- [7.5 最终创建的 kmalloc cache（NORMAL 系列）](#75-最终创建的-kmalloc-cachenormal-系列)
+
+</details>
+
+<details>
+<summary><a href="#8-分配与释放路径">8. 分配与释放路径</a></summary>
+
+- [8.1 分配路径](#81-分配路径)
+- [8.2 释放路径](#82-释放路径)
+
+</details>
+
+<details>
+<summary><a href="#9-自定义-slab-cache">9. 自定义 slab cache</a></summary>
+
+- [为什么不直接用 kmalloc？](#为什么不直接用-kmalloc)
+- [调用时序](#调用时序)
+
+</details>
+
+<details>
+<summary><a href="#10-关键常量速查表">10. 关键常量速查表</a></summary>
+
+- [kmem_cache_init() 后两个核心 cache 的具体值](#kmem_cache_init-后两个核心-cache-的具体值)
+- [slab_state 状态机](#slab_state-状态机)
+
+</details>
+
+<details>
+<summary><a href="#11-用户态内存分配全链路">11. 用户态内存分配全链路</a></summary>
+
+- [11.1 malloc → 物理内存 6 层路径](#111-malloc-→-物理内存-6-层路径)
+- [11.2 关键原则](#112-关键原则)
+- [11.3 glibc ptmalloc2 内存池机制](#113-glibc-ptmalloc2-内存池机制)
+- [11.4 glibc 碎片化处理策略](#114-glibc-碎片化处理策略)
+- [11.5 ARM64 虚拟地址空间布局](#115-arm64-虚拟地址空间布局)
+
+</details>
+
+<details>
+<summary><a href="#12-brk--mmap-系统调用">12. brk / mmap 系统调用</a></summary>
+
+- [12.1 brk 系统调用（`mm/mmap.c` line 115）](#121-brk-系统调用mmmmapc-line-115)
+- [12.2 mmap 系统调用（`mm/mmap.c` line 611）](#122-mmap-系统调用mmmmapc-line-611)
+- [12.3 应用场景对比](#123-应用场景对比)
+- [12.4 mmap 典型使用场景](#124-mmap-典型使用场景)
+
+</details>
 
 ---
 

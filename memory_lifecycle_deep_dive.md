@@ -7,10 +7,53 @@
 
 ## 目录
 
-1. [memblock → Buddy 过渡全流程](#1-memblock--buddy-过渡全流程)
-2. [ARM64 虚拟内存 VMA 知识体系](#2-arm64-虚拟内存-vma-知识体系)
-3. [SLUB 与 Buddy 的双向交互](#3-slub-与-buddy-的双向交互)
-4. [三大主题的统一视角](#4-三大主题的统一视角)
+<details>
+<summary><a href="#1-memblock-→-buddy-过渡全流程">1. memblock → Buddy 过渡全流程</a></summary>
+
+- [1.1 整体时序](#11-整体时序)
+- [1.2 Phase 1：建立 memblock（`setup_arch`）](#12-phase-1建立-memblocksetup_arch)
+- [1.3 Phase 2：过渡核心 `memblock_free_all()`（mm/memblock.c:2339）](#13-phase-2过渡核心-memblock_free_allmmmemblockc2339)
+- [1.4 两种区域的不同命运](#14-两种区域的不同命运)
+- [1.5 嵌入式 UMA（`!CONFIG_NUMA`）下的简化](#15-嵌入式-umaconfig_numa下的简化)
+- [1.6 过渡前后状态对比](#16-过渡前后状态对比)
+
+</details>
+
+<details>
+<summary><a href="#2-arm64-虚拟内存-vma-知识体系">2. ARM64 虚拟内存 VMA 知识体系</a></summary>
+
+- [2.1 ARM64 虚拟地址空间布局](#21-arm64-虚拟地址空间布局)
+- [2.2 核心数据结构](#22-核心数据结构)
+- [2.3 VMA 组织：Maple Tree（Linux 6.1+ 关键变化）](#23-vma-组织maple-treelinux-61-关键变化)
+- [2.4 重要 `vm_flags` 标志](#24-重要-vm_flags-标志)
+- [2.5 缺页异常处理决策树（最核心）](#25-缺页异常处理决策树最核心)
+- [2.6 COW（写时复制）机制](#26-cow写时复制机制)
+- [2.7 反向映射（RMAP）](#27-反向映射rmap)
+- [2.8 Per-VMA Lock（Linux 6.4+，此内核已启用）](#28-per-vma-locklinux-64此内核已启用)
+- [2.9 `vm_operations_struct`：VMA 多态](#29-vm_operations_structvma-多态)
+
+</details>
+
+<details>
+<summary><a href="#3-slub-与-buddy-的双向交互">3. SLUB 与 Buddy 的双向交互</a></summary>
+
+- [3.1 向 Buddy 申请内存（分配路径）](#31-向-buddy-申请内存分配路径)
+- [3.2 向 Buddy 归还内存（释放路径）](#32-向-buddy-归还内存释放路径)
+- [3.3 `min_partial` 水位：保留多少不还](#33-min_partial-水位保留多少不还)
+- [3.4 主动回收：触发 `discard_slab` 的三种时机](#34-主动回收触发-discard_slab-的三种时机)
+- [3.5 最终归还调用链](#35-最终归还调用链)
+- [3.6 不会归还的例外](#36-不会归还的例外)
+
+</details>
+
+<details>
+<summary><a href="#4-三大主题的统一视角">4. 三大主题的统一视角</a></summary>
+
+- [4.1 内存管理完整层次图](#41-内存管理完整层次图)
+- [4.2 关键问题汇总](#42-关键问题汇总)
+- [4.3 嵌入式系统关注点](#43-嵌入式系统关注点)
+
+</details>
 
 ---
 

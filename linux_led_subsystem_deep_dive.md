@@ -4,14 +4,102 @@
 
 ## 目录
 
-1. [LED 框架历史变迁](#1-led-框架历史变迁)
-2. [LED 子系统软件架构](#2-led-子系统软件架构)
-3. [核心数据结构](#3-核心数据结构)
-4. [核心 API 接口函数](#4-核心-api-接口函数)
-5. [LED Trigger 机制](#5-led-trigger-机制)
-6. [LED 命名规范](#6-led-命名规范)
-7. [关键知识点汇总](#7-关键知识点汇总)
-8. [QEMU 实验设计](#8-qemu-实验设计)
+<details>
+<summary><a href="#1-led-框架历史变迁">1. LED 框架历史变迁</a></summary>
+
+- [1.1 早期阶段 (2005-2006, Linux 2.6.x)](#11-早期阶段-2005-2006-linux-26x)
+- [1.2 硬件闪烁支持 (2007-2010, Linux 2.6.x)](#12-硬件闪烁支持-2007-2010-linux-26x)
+- [1.3 LED Flash 子类 (2015, Linux 4.x)](#13-led-flash-子类-2015-linux-4x)
+- [1.4 Userspace LED 驱动 (2016, Linux 4.x)](#14-userspace-led-驱动-2016-linux-4x)
+- [1.5 多色 LED 支持 (2019-2020, Linux 5.x)](#15-多色-led-支持-2019-2020-linux-5x)
+- [1.6 现代化改进 (2020-2025, Linux 5.x - 6.x)](#16-现代化改进-2020-2025-linux-5x---6x)
+- [1.7 Linux 6.18.1 当前状态](#17-linux-6181-当前状态)
+
+</details>
+
+<details>
+<summary><a href="#2-led-子系统软件架构">2. LED 子系统软件架构</a></summary>
+
+- [2.1 分层架构](#21-分层架构)
+- [2.2 核心源文件组织](#22-核心源文件组织)
+- [2.3 亮度设置路径](#23-亮度设置路径)
+- [2.4 软件闪烁机制](#24-软件闪烁机制)
+
+</details>
+
+<details>
+<summary><a href="#3-核心数据结构">3. 核心数据结构</a></summary>
+
+- [3.1 `struct led_classdev` — LED 核心设备结构](#31-struct-led_classdev--led-核心设备结构)
+- [3.2 `struct led_trigger` — LED 触发器](#32-struct-led_trigger--led-触发器)
+- [3.3 `struct led_init_data` — LED 初始化数据](#33-struct-led_init_data--led-初始化数据)
+- [3.4 `struct led_classdev_mc` — 多色 LED](#34-struct-led_classdev_mc--多色-led)
+- [3.5 `struct led_lookup_data` — LED 查找表](#35-struct-led_lookup_data--led-查找表)
+- [3.6 颜色 ID 常量](#36-颜色-id-常量)
+
+</details>
+
+<details>
+<summary><a href="#4-核心-api-接口函数">4. 核心 API 接口函数</a></summary>
+
+- [4.1 LED 设备注册/注销](#41-led-设备注册注销)
+- [4.2 亮度控制](#42-亮度控制)
+- [4.3 闪烁控制](#43-闪烁控制)
+- [4.4 Trigger API](#44-trigger-api)
+- [4.5 LED Consumer API](#45-led-consumer-api)
+- [4.6 PM 和辅助函数](#46-pm-和辅助函数)
+
+</details>
+
+<details>
+<summary><a href="#5-led-trigger-机制">5. LED Trigger 机制</a></summary>
+
+- [5.1 内置 Trigger 列表](#51-内置-trigger-列表)
+- [5.2 Trigger 工作流](#52-trigger-工作流)
+- [5.3 自定义 Trigger 示例](#53-自定义-trigger-示例)
+
+</details>
+
+<details>
+<summary><a href="#6-led-命名规范">6. LED 命名规范</a></summary>
+
+- [6.1 标准格式](#61-标准格式)
+- [6.2 DT 属性](#62-dt-属性)
+- [6.3 sysfs 接口](#63-sysfs-接口)
+
+</details>
+
+<details>
+<summary><a href="#7-关键知识点汇总">7. 关键知识点汇总</a></summary>
+
+- [7.1 并发与锁机制](#71-并发与锁机制)
+- [7.2 workqueue 设计](#72-workqueue-设计)
+- [7.3 RCU 在 trigger 中的应用](#73-rcu-在-trigger-中的应用)
+- [7.4 devm 资源管理](#74-devm-资源管理)
+- [7.5 hw_control 机制 (硬件自主控制)](#75-hw_control-机制-硬件自主控制)
+
+</details>
+
+<details>
+<summary><a href="#8-qemu-实验设计">8. QEMU 实验设计</a></summary>
+
+- [实验 1: GPIO LED 基础控制](#实验-1-gpio-led-基础控制)
+- [实验 2: 自定义 LED Trigger](#实验-2-自定义-led-trigger)
+- [实验 3: 使用 uleds 用户空间 LED 驱动](#实验-3-使用-uleds-用户空间-led-驱动)
+- [实验 4: LED 与内核子系统联动 (blocking vs non-blocking)](#实验-4-led-与内核子系统联动-blocking-vs-non-blocking)
+- [实验 5: LED Trigger 事件机制——模拟内核事件驱动 LED](#实验-5-led-trigger-事件机制模拟内核事件驱动-led)
+- [实验 6: PL061 GPIO + 自定义 DTB 真实硬件链路实验](#实验-6-pl061-gpio--自定义-dtb-真实硬件链路实验)
+- [实验 7: Kconfig 和 Makefile 模板](#实验-7-kconfig-和-makefile-模板)
+
+</details>
+
+<details>
+<summary><a href="#附录-快速参考">附录: 快速参考</a></summary>
+
+- [sysfs 操作速查](#sysfs-操作速查)
+- [驱动开发 Checklist](#驱动开发-checklist)
+
+</details>
 
 ---
 

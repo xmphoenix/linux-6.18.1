@@ -6,18 +6,101 @@
 
 ## 目录
 
-1. [总体架构层次](#1-总体架构层次)
-2. [ARM64 内存拓扑类型](#2-arm64-内存拓扑类型)
-3. [NUMA 详解](#3-numa-详解)
-4. [物理内存模型](#4-物理内存模型)
-5. [SPARSEMEM_VMEMMAP 详解](#5-sparsemem_vmemmap-详解)
-6. [ARM64 虚拟地址空间与页大小](#6-arm64-虚拟地址空间与页大小)
-7. [Zone 管理](#7-zone-管理)
-8. [三层协作关系](#8-三层协作关系)
-9. [THP 与 HugePage](#9-thp-与-hugepage)
-10. [启动初始化流程](#10-启动初始化流程)
-11. [关键 Kconfig 配置项](#11-关键-kconfig-配置项)
-12. [参考文件索引](#12-参考文件索引)
+<details>
+<summary><a href="#1-总体架构层次">1. 总体架构层次</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#2-arm64-内存拓扑类型">2. ARM64 内存拓扑类型</a></summary>
+
+- [2.1 UMA（Uniform Memory Access）](#21-umauniform-memory-access)
+- [2.2 NUMA（Non-Uniform Memory Access）](#22-numanon-uniform-memory-access)
+- [2.3 NUMA 距离矩阵](#23-numa-距离矩阵)
+
+</details>
+
+<details>
+<summary><a href="#3-numa-详解">3. NUMA 详解</a></summary>
+
+- [3.1 设计思想](#31-设计思想)
+- [3.2 关键数据结构](#32-关键数据结构)
+- [3.3 关键函数](#33-关键函数)
+- [3.4 ARM64 初始化路径选择](#34-arm64-初始化路径选择)
+- [3.5 NUMA 内存分配策略](#35-numa-内存分配策略)
+
+</details>
+
+<details>
+<summary><a href="#4-物理内存模型">4. 物理内存模型</a></summary>
+
+- [4.1 三种模型对比](#41-三种模型对比)
+- [4.2 模型演进关系](#42-模型演进关系)
+- [4.3 SPARSEMEM_VMEMMAP 的性能优势](#43-sparsemem_vmemmap-的性能优势)
+
+</details>
+
+<details>
+<summary><a href="#5-sparsemem_vmemmap-详解">5. SPARSEMEM_VMEMMAP 详解</a></summary>
+
+- [5.1 设计思想](#51-设计思想)
+- [5.2 关键数据结构](#52-关键数据结构)
+- [5.3 关键函数与宏](#53-关键函数与宏)
+- [5.4 vmemmap 建立算法（ARM64）](#54-vmemmap-建立算法arm64)
+
+</details>
+
+<details>
+<summary><a href="#6-arm64-虚拟地址空间与页大小">6. ARM64 虚拟地址空间与页大小</a></summary>
+
+- [6.1 虚拟地址空间布局（48-bit，4K 页）](#61-虚拟地址空间布局48-bit4k-页)
+- [6.2 支持的页大小](#62-支持的页大小)
+
+</details>
+
+<details>
+<summary><a href="#7-zone-管理">7. Zone 管理</a></summary>
+
+- [7.1 设计思想](#71-设计思想)
+- [7.2 ARM64 Zone 布局](#72-arm64-zone-布局)
+- [7.3 关键数据结构](#73-关键数据结构)
+- [7.4 Buddy System 算法](#74-buddy-system-算法)
+- [7.5 关键函数](#75-关键函数)
+- [7.6 内存分配器完整层次](#76-内存分配器完整层次)
+
+</details>
+
+<details>
+<summary><a href="#8-三层协作关系">8. 三层协作关系</a></summary>
+
+- [8.1 数据结构关联图](#81-数据结构关联图)
+- [8.2 分配一个页的完整路径](#82-分配一个页的完整路径)
+
+</details>
+
+<details>
+<summary><a href="#9-thp-与-hugepage">9. THP 与 HugePage</a></summary>
+
+- [9.1 静态大页（HugePage）](#91-静态大页hugepage)
+- [9.2 透明大页（THP，Transparent HugePage）](#92-透明大页thptransparent-hugepage)
+- [9.3 ARM64 Contiguous PTE（连续 PTE 优化）](#93-arm64-contiguous-pte连续-pte-优化)
+
+</details>
+
+<details>
+<summary><a href="#10-启动初始化流程">10. 启动初始化流程</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#11-关键-kconfig-配置项">11. 关键 Kconfig 配置项</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#12-参考文件索引">12. 参考文件索引</a></summary>
+
+</details>
 
 ---
 

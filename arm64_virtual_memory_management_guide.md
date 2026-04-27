@@ -6,6 +6,273 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#一句话先说清">一句话先说清</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#学习范围与边界">学习范围与边界</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#学习总图">学习总图</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#核心心智模型">核心心智模型</a></summary>
+
+- [1. 硬件翻译层](#1-硬件翻译层)
+- [2. 地址空间描述层](#2-地址空间描述层)
+- [3. 页表维护层](#3-页表维护层)
+- [4. 缺页与生命周期层](#4-缺页与生命周期层)
+
+</details>
+
+<details>
+<summary><a href="#arm64-虚拟内存必须先懂的硬件知识">ARM64 虚拟内存必须先懂的硬件知识</a></summary>
+
+- [1. TTBR0_EL1 和 TTBR1_EL1](#1-ttbr0_el1-和-ttbr1_el1)
+- [2. TCR_EL1](#2-tcr_el1)
+- [3. MAIR_EL1](#3-mair_el1)
+- [4. 页表级数](#4-页表级数)
+- [5. Data Abort / Instruction Abort](#5-data-abort--instruction-abort)
+
+</details>
+
+<details>
+<summary><a href="#linux-里的地址空间对象模型">Linux 里的地址空间对象模型</a></summary>
+
+- [1. mm_struct：一个进程的地址空间总控对象](#1-mm_struct一个进程的地址空间总控对象)
+- [2. vm_area_struct：一段属性一致的虚拟地址区间](#2-vm_area_struct一段属性一致的虚拟地址区间)
+- [3. Maple Tree：当前 VMA 主索引](#3-maple-tree当前-vma-主索引)
+- [4. `shared.rb` 不是 VMA 主树](#4-sharedrb-不是-vma-主树)
+
+</details>
+
+<details>
+<summary><a href="#arm64-用户虚拟地址空间怎么看">ARM64 用户虚拟地址空间怎么看</a></summary>
+
+- [1. 用户地址空间](#1-用户地址空间)
+- [2. 内核地址空间](#2-内核地址空间)
+- [3. vmalloc：虚拟连续，但物理不一定连续](#3-vmalloc虚拟连续但物理不一定连续)
+
+</details>
+
+<details>
+<summary><a href="#页表vm-的硬件落点">页表：VM 的硬件落点</a></summary>
+
+- [1. 页表不是策略本身](#1-页表不是策略本身)
+- [2. 用户页表最重要的几个对象](#2-用户页表最重要的几个对象)
+- [3. 页表项里你最该关心什么](#3-页表项里你最该关心什么)
+- [4. ARM64 常见 PTE 关键位速查](#4-arm64-常见-pte-关键位速查)
+- [5. 把这些位翻译成直观语义](#5-把这些位翻译成直观语义)
+
+</details>
+
+<details>
+<summary><a href="#malloc--kmalloc--mmap先分清谁在做决策">`malloc` / `kmalloc` / `mmap`：先分清谁在做决策</a></summary>
+
+- [1. `kmalloc()`：内核小对象分配器](#1-kmalloc内核小对象分配器)
+- [2. 用户态 `malloc()`：真正的策略层在 libc](#2-用户态-malloc真正的策略层在-libc)
+- [3. `brk()`：扩展 heap VMA，而不是新建一个独立 mmap 区](#3-brk扩展-heap-vma而不是新建一个独立-mmap-区)
+- [4. `mmap()`：真正的“建立用户映射”主路径](#4-mmap真正的建立用户映射主路径)
+- [5. 一张总图：`malloc`、`brk`、`mmap`、`kmalloc`、`vmalloc`](#5-一张总图mallocbrkmmapkmallocvmalloc)
+
+</details>
+
+<details>
+<summary><a href="#虚拟内存抽象出来的重要数据结构">虚拟内存抽象出来的重要数据结构</a></summary>
+
+- [1. 一张总图：这些结构到底怎么连](#1-一张总图这些结构到底怎么连)
+- [2. 重要数据结构总表](#2-重要数据结构总表)
+- [3. `mm_struct`：进程用户地址空间的总控对象](#3-mm_struct进程用户地址空间的总控对象)
+- [4. `maple_tree mm_mt`：当前 VMA 的主索引](#4-maple_tree-mm_mt当前-vma-的主索引)
+- [5. `vm_area_struct`：一段属性一致的虚拟地址区间](#5-vm_area_struct一段属性一致的虚拟地址区间)
+- [6. `anon_vma` 和 `anon_vma_chain`：匿名页世界里的“关系网络”](#6-anon_vma-和-anon_vma_chain匿名页世界里的关系网络)
+- [7. `address_space`：文件页缓存和 file-backed 映射的总后端](#7-address_space文件页缓存和-file-backed-映射的总后端)
+- [8. `vm_operations_struct`：VMA 的行为多态接口](#8-vm_operations_structvma-的行为多态接口)
+- [9. `vm_fault`：一次缺页处理的现场包](#9-vm_fault一次缺页处理的现场包)
+- [10. `folio / struct page`：最终承载内容的物理页抽象](#10-folio--struct-page最终承载内容的物理页抽象)
+- [11. ARM64 视角还要多记一个：`mm_context_t`](#11-arm64-视角还要多记一个mm_context_t)
+- [12. 内核 vmalloc 世界的对应结构：`vm_struct` 和 `vmap_area`](#12-内核-vmalloc-世界的对应结构vm_struct-和-vmap_area)
+- [13. 一张关系总表：谁描述策略，谁描述后端，谁描述现场](#13-一张关系总表谁描述策略谁描述后端谁描述现场)
+- [14. 最后的总记忆法](#14-最后的总记忆法)
+
+</details>
+
+<details>
+<summary><a href="#这些关键结构在真实运行路径里如何协作">这些关键结构在真实运行路径里如何协作</a></summary>
+
+- [1. 匿名缺页：`mm_struct -> VMA -> anon_vma -> folio/page -> PTE`](#1-匿名缺页mm_struct---vma---anon_vma---foliopage---pte)
+- [2. 文件缺页：`VMA -> vm_file -> address_space -> i_pages -> folio/page`](#2-文件缺页vma---vm_file---address_space---i_pages---foliopage)
+- [3. `munmap()`：先改地址空间形状，再拆 PTE 和页表，再销毁 VMA](#3-munmap先改地址空间形状再拆-pte-和页表再销毁-vma)
+- [4. `fork()` 与 COW：先共享页并写保护，真正写入时再分裂](#4-fork-与-cow先共享页并写保护真正写入时再分裂)
+- [5. 把四条路径并排对比](#5-把四条路径并排对比)
+
+</details>
+
+<details>
+<summary><a href="#vma-管理mmap-这一层到底在干什么">VMA 管理：`mmap()` 这一层到底在干什么</a></summary>
+
+- [1. `mmap()` 不是直接分配物理页](#1-mmap-不是直接分配物理页)
+- [2. 你读 VMA 管理代码要看什么](#2-你读-vma-管理代码要看什么)
+- [3. VMA 相关系统调用的学习顺序](#3-vma-相关系统调用的学习顺序)
+
+</details>
+
+<details>
+<summary><a href="#arm64-缺页处理整条主线必须亲手走一遍">ARM64 缺页处理：整条主线必须亲手走一遍</a></summary>
+
+- [1. 先给结论](#1-先给结论)
+- [2. ARM64 入口](#2-arm64-入口)
+- [3. 查找 VMA](#3-查找-vma)
+- [4. `handle_mm_fault()` 的意义](#4-handle_mm_fault-的意义)
+- [5. 一次用户态匿名页缺页的真实调用链](#5-一次用户态匿名页缺页的真实调用链)
+- [6. 第一步：ARM64 捕获异常并进入 fault 路径](#6-第一步arm64-捕获异常并进入-fault-路径)
+- [7. `do_mem_abort()` 不是最终处理者，而是总分发器](#7-do_mem_abort-不是最终处理者而是总分发器)
+- [8. `do_page_fault()` 做的第一件大事不是分配页](#8-do_page_fault-做的第一件大事不是分配页)
+- [9. 第二步：先找 VMA，再谈修 fault](#9-第二步先找-vma再谈修-fault)
+- [10. 第三步：进入通用 MM 层](#10-第三步进入通用-mm-层)
+- [11. 第四步：逐级走页表，直到 PTE 层](#11-第四步逐级走页表直到-pte-层)
+- [12. 第五步：为什么会走到 `do_anonymous_page()`](#12-第五步为什么会走到-do_anonymous_page)
+- [13. 第六步：`do_anonymous_page()` 到底干了什么](#13-第六步do_anonymous_page-到底干了什么)
+- [12. 第七步：真正落地到页表的动作是什么](#12-第七步真正落地到页表的动作是什么)
+- [13. 第八步：为什么这条路径能帮助你理解整个 VM](#13-第八步为什么这条路径能帮助你理解整个-vm)
+
+</details>
+
+<details>
+<summary><a href="#匿名页和文件页为什么一定要分开学">匿名页和文件页：为什么一定要分开学</a></summary>
+
+- [1. 匿名页](#1-匿名页)
+- [2. 文件页](#2-文件页)
+- [3. 你该看哪条文件缺页路径](#3-你该看哪条文件缺页路径)
+
+</details>
+
+<details>
+<summary><a href="#fork-和-cow虚拟内存为什么比复制页表复杂得多">fork 和 COW：虚拟内存为什么比“复制页表”复杂得多</a></summary>
+
+- [1. fork 的关键不是立刻复制所有页](#1-fork-的关键不是立刻复制所有页)
+- [2. 你学习 COW 必须同时看三层](#2-你学习-cow-必须同时看三层)
+
+</details>
+
+<details>
+<summary><a href="#mprotect--munmap--mremap映射关系怎么被改掉">`mprotect()` / `munmap()` / `mremap()`：映射关系怎么被改掉</a></summary>
+
+- [1. `mprotect()`](#1-mprotect)
+- [2. `munmap()`](#2-munmap)
+- [3. `mremap()`](#3-mremap)
+
+</details>
+
+<details>
+<summary><a href="#asidtlbtlb-shootdown不懂这个就不算真的懂-arm64-vm">ASID、TLB、TLB shootdown：不懂这个就不算真的懂 ARM64 VM</a></summary>
+
+- [1. 为什么页表改了还不够](#1-为什么页表改了还不够)
+- [2. ASID 到底是什么，为什么它能减少 flush](#2-asid-到底是什么为什么它能减少-flush)
+- [3. TLB invalidation 在 ARM64 上到底怎么分层](#3-tlb-invalidation-在-arm64-上到底怎么分层)
+- [4. TLB shootdown 为什么麻烦](#4-tlb-shootdown-为什么麻烦)
+- [5. 把 ASID 和 TLB 放在一起理解](#5-把-asid-和-tlb-放在一起理解)
+
+</details>
+
+<details>
+<summary><a href="#与-arm64-vm-强相关的内核地址空间主题">与 ARM64 VM 强相关的内核地址空间主题</a></summary>
+
+- [1. linear map](#1-linear-map)
+- [2. kernel image mapping](#2-kernel-image-mapping)
+- [3. vmalloc](#3-vmalloc)
+- [4. fixmap](#4-fixmap)
+- [5. vmemmap](#5-vmemmap)
+
+</details>
+
+<details>
+<summary><a href="#学-linux-arm64-vm-时必须会读的源码文件">学 Linux ARM64 VM 时必须会读的源码文件</a></summary>
+
+- [第一批：对象定义](#第一批对象定义)
+- [第二批：ARM64 fault 入口](#第二批arm64-fault-入口)
+- [第三批：VMA 管理](#第三批vma-管理)
+- [第四批：通用缺页与页表修改](#第四批通用缺页与页表修改)
+- [第五批：文件映射与反向映射](#第五批文件映射与反向映射)
+
+</details>
+
+<details>
+<summary><a href="#推荐学习顺序">推荐学习顺序</a></summary>
+
+- [第 1 阶段：建立骨架](#第-1-阶段建立骨架)
+- [第 2 阶段：跑通一次真实 fault](#第-2-阶段跑通一次真实-fault)
+- [第 3 阶段：学地址空间修改](#第-3-阶段学地址空间修改)
+- [第 4 阶段：补匿名页、文件页、COW](#第-4-阶段补匿名页文件页cow)
+
+</details>
+
+<details>
+<summary><a href="#最容易踩的坑">最容易踩的坑</a></summary>
+
+- [1. 把 VMA、页表、物理页混成一层](#1-把-vma页表物理页混成一层)
+- [2. 只读 x86 资料，不补 ARM64 fault 入口](#2-只读-x86-资料不补-arm64-fault-入口)
+- [3. 只学 `handle_mm_fault()`，不学 `mmap()`/`munmap()`](#3-只学-handle_mm_fault不学-mmapmunmap)
+- [4. 看到 `rb_node` 就以为 VMA 还没换 Maple Tree](#4-看到-rb_node-就以为-vma-还没换-maple-tree)
+- [5. 只背宏，不结合具体 fault 路径](#5-只背宏不结合具体-fault-路径)
+
+</details>
+
+<details>
+<summary><a href="#面向当前工作区的练习建议">面向当前工作区的练习建议</a></summary>
+
+- [练习 1：画一次匿名页读 fault 调用链](#练习-1画一次匿名页读-fault-调用链)
+- [练习 2：对比匿名写 fault 和 COW fault](#练习-2对比匿名写-fault-和-cow-fault)
+- [练习 3：对比 `mmap` 后未访问 与 已访问 的区别](#练习-3对比-mmap-后未访问-与-已访问-的区别)
+- [练习 4：追踪 `munmap` 的页表拆除与 TLB flush](#练习-4追踪-munmap-的页表拆除与-tlb-flush)
+
+</details>
+
+<details>
+<summary><a href="#你学会-arm64-vm-之后应该能回答的问题">你学会 ARM64 VM 之后，应该能回答的问题</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#最后的学习建议">最后的学习建议</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#进阶专题缺页之外的-vm-子系统全景">进阶专题：缺页之外的 VM 子系统全景</a></summary>
+
+- [1. 匿名页面](#1-匿名页面)
+- [2. Page Cache 和文件页](#2-page-cache-和文件页)
+- [3. 页面回收](#3-页面回收)
+- [4. SLAB / SLUB 与 VM 的关系](#4-slab--slub-与-vm-的关系)
+- [5. 反向映射 rmap](#5-反向映射-rmap)
+- [6. KSM](#6-ksm)
+- [7. Huge Page / THP / HugeTLB](#7-huge-page--thp--hugetlb)
+- [8. 页迁移](#8-页迁移)
+- [9. 内存规整 compaction](#9-内存规整-compaction)
+- [10. OOM](#10-oom)
+
+</details>
+
+<details>
+<summary><a href="#vmbuddy-页面分配器页表管理之间的联系">VM、buddy 页面分配器、页表管理之间的联系</a></summary>
+
+- [1. VM 和 buddy 页面分配器的联系](#1-vm-和-buddy-页面分配器的联系)
+- [2. VM 和内核页表管理的联系](#2-vm-和内核页表管理的联系)
+- [3. 把三者连成一条完整主线](#3-把三者连成一条完整主线)
+
+</details>
+
+---
+
 ## 一句话先说清
 
 **Linux ARM64 虚拟内存管理的主线，就是把“CPU 的地址翻译硬件”与“内核维护的地址空间对象”接起来：硬件负责从 VA 走到页表，内核负责决定这段 VA 是否存在、权限是什么、缺页时该补什么页、何时拆映射与刷新 TLB。**

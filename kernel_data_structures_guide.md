@@ -4,18 +4,127 @@
 
 ---
 
-## Table of Contents
+## 目录
 
-1. [Linked Lists (`list_head`, `hlist_head`)](#1-linked-lists)
-2. [Red-Black Trees (`rb_node`, `rb_root`)](#2-red-black-trees)
-3. [XArray / Radix Tree](#3-xarray--radix-tree)
-4. [Hash Tables (`hashtable.h`)](#4-hash-tables)
-5. [Bitmap](#5-bitmap)
-6. [IDR / IDA](#6-idr--ida)
-7. [Maple Tree](#7-maple-tree)
-8. [Priority Lists (`plist`)](#8-priority-lists)
-9. [FIFO (`kfifo`)](#9-kfifo)
-10. [LRU List (`list_lru`)](#10-lru-list)
+<details>
+<summary><a href="#1-linked-lists">1. Linked Lists</a></summary>
+
+- [Struct Definitions](#struct-definitions)
+- [Key API Functions](#key-api-functions)
+- [Iteration Macros](#iteration-macros)
+- [Kernel Usage Examples](#kernel-usage-examples)
+- [核心实现源码逐行注释](#核心实现源码逐行注释)
+- [hlist 的设计精妙之处](#hlist-的设计精妙之处)
+- [Time Complexity](#time-complexity)
+
+</details>
+
+<details>
+<summary><a href="#2-red-black-trees">2. Red-Black Trees</a></summary>
+
+- [Struct Definitions](#struct-definitions-1)
+- [Key API Functions](#key-api-functions-1)
+- [Insert Pattern (Caller-implemented)](#insert-pattern-caller-implemented)
+- [核心实现源码逐行注释 — 红黑树插入修复 ([rbtree.c](lib/rbtree.c#L89))](#核心实现源码逐行注释--红黑树插入修复-rbtreeclibrbtreecl89)
+- [Kernel Usage Examples (Red-Black Tree)](#kernel-usage-examples-red-black-tree)
+- [Time Complexity](#time-complexity-1)
+
+</details>
+
+<details>
+<summary><a href="#3-xarray--radix-tree">3. XArray / Radix Tree</a></summary>
+
+- [Struct Definitions](#struct-definitions-2)
+- [Key API Functions](#key-api-functions-2)
+- [内部节点结构 — `xa_node` ([xarray.h](include/linux/xarray.h#L1168))](#内部节点结构--xa_node-xarrayhincludelinuxxarrayhl1168)
+- [Legacy Radix Tree API (Wrappers)](#legacy-radix-tree-api-wrappers)
+- [Kernel Usage Examples](#kernel-usage-examples-1)
+- [Time Complexity](#time-complexity-2)
+
+</details>
+
+<details>
+<summary><a href="#4-hash-tables">4. Hash Tables</a></summary>
+
+- ["Struct" Definition (Macro-based)](#struct-definition-macro-based)
+- [Key API Functions](#key-api-functions-3)
+- [Hash Functions](#hash-functions)
+- [Kernel Usage Examples](#kernel-usage-examples-2)
+- [Time Complexity](#time-complexity-3)
+
+</details>
+
+<details>
+<summary><a href="#5-bitmap">5. Bitmap</a></summary>
+
+- ["Struct" Definition](#struct-definition)
+- [Key API Functions](#key-api-functions-4)
+- [Kernel Usage Examples](#kernel-usage-examples-3)
+- [Time Complexity](#time-complexity-4)
+
+</details>
+
+<details>
+<summary><a href="#6-idr--ida">6. IDR / IDA</a></summary>
+
+- [Struct Definitions](#struct-definitions-3)
+- [Key API Functions — IDR](#key-api-functions--idr)
+- [Key API Functions — IDA](#key-api-functions--ida)
+- [Kernel Usage Examples](#kernel-usage-examples-4)
+- [Time Complexity](#time-complexity-5)
+
+</details>
+
+<details>
+<summary><a href="#7-maple-tree">7. Maple Tree</a></summary>
+
+- [Struct Definitions](#struct-definitions-4)
+- [Key API Functions](#key-api-functions-5)
+- [Kernel Usage Examples](#kernel-usage-examples-5)
+- [Time Complexity](#time-complexity-6)
+
+</details>
+
+<details>
+<summary><a href="#8-priority-lists-plist">8. Priority Lists (plist)</a></summary>
+
+- [Struct Definitions](#struct-definitions-5)
+- [Key API Functions](#key-api-functions-6)
+- [Kernel Usage Examples](#kernel-usage-examples-6)
+- [Time Complexity](#time-complexity-7)
+
+</details>
+
+<details>
+<summary><a href="#9-fifo-kfifo">9. FIFO (kfifo)</a></summary>
+
+- [Struct Definitions](#struct-definitions-6)
+- [核心实现源码逐行注释 — 无锁环形缓冲区](#核心实现源码逐行注释--无锁环形缓冲区)
+- [Key API Functions](#key-api-functions-7)
+- [Kernel Usage Examples](#kernel-usage-examples-7)
+- [Time Complexity](#time-complexity-8)
+
+</details>
+
+<details>
+<summary><a href="#10-lru-list">10. LRU List</a></summary>
+
+- [Struct Definitions](#struct-definitions-7)
+- [Key API Functions](#key-api-functions-8)
+- [Kernel Usage Examples](#kernel-usage-examples-8)
+- [Time Complexity](#time-complexity-9)
+
+</details>
+
+<details>
+<summary><a href="#summary-comparison-table">Summary Comparison Table</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#architecture-of-relationships">Architecture of Relationships</a></summary>
+
+</details>
 
 ---
 

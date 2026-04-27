@@ -1,24 +1,168 @@
 # Linux 内核 GPIO 子系统深度分析 (Linux 6.18.1)
 
+---
+
 ## 目录
 
-- [1. 软件架构总览](#1-软件架构总览)
-- [2. 分层架构详解](#2-分层架构详解)
-- [3. 核心数据结构](#3-核心数据结构)
-- [4. 内核空间 Consumer API（描述符接口）](#4-内核空间-consumer-api描述符接口)
-- [5. GPIO 驱动注册 API（Provider 接口）](#5-gpio-驱动注册-apiprovider-接口)
-- [6. 用户空间接口](#6-用户空间接口)
-- [7. 中断子系统集成（gpio_irq_chip）](#7-中断子系统集成gpio_irq_chip)
-- [8. 设备树（Device Tree）集成](#8-设备树device-tree集成)
-- [9. Pinctrl 子系统集成](#9-pinctrl-子系统集成)
-- [10. 设备资源管理（devm）接口](#10-设备资源管理devm接口)
-- [11. 同步与并发机制](#11-同步与并发机制)
-- [12. 典型驱动实例：PL061](#12-典型驱动实例pl061)
-- [13. GPIO 请求与查找流程](#13-gpio-请求与查找流程)
-- [14. 源码文件组织](#14-源码文件组织)
-- [15. 架构总结](#15-架构总结)
-- [16. 实战：如何申请 GPIO 和 Button](#16-实战如何申请-gpio-和-button)
-- [17. QEMU GPIO/Button 实践](#17-qemu-gpiobutton-实践)
+<details>
+<summary><a href="#1-软件架构总览">1. 软件架构总览</a></summary>
+
+- [架构全景图](#架构全景图)
+- [文本架构图](#文本架构图)
+- [1.1 设计原则](#11-设计原则)
+
+</details>
+
+<details>
+<summary><a href="#2-分层架构详解">2. 分层架构详解</a></summary>
+
+- [2.1 硬件驱动层（Provider）](#21-硬件驱动层provider)
+- [2.2 核心框架层（gpiolib）](#22-核心框架层gpiolib)
+- [2.3 消费者接口层（Consumer API）](#23-消费者接口层consumer-api)
+- [2.4 用户空间接口层](#24-用户空间接口层)
+
+</details>
+
+<details>
+<summary><a href="#3-核心数据结构">3. 核心数据结构</a></summary>
+
+- [3.1 struct gpio_device — GPIO 设备容器](#31-struct-gpio_device--gpio-设备容器)
+- [3.2 struct gpio_desc — GPIO 行描述符](#32-struct-gpio_desc--gpio-行描述符)
+- [3.3 struct gpio_chip — GPIO 控制器硬件接口](#33-struct-gpio_chip--gpio-控制器硬件接口)
+- [3.4 struct gpio_irq_chip — GPIO 中断控制器](#34-struct-gpio_irq_chip--gpio-中断控制器)
+- [3.5 struct gpio_array — 批量操作描述符](#35-struct-gpio_array--批量操作描述符)
+- [3.6 struct gpio_descs — GPIO 描述符集合](#36-struct-gpio_descs--gpio-描述符集合)
+- [3.7 平台查找表结构](#37-平台查找表结构)
+- [3.8 数据结构关系图](#38-数据结构关系图)
+
+</details>
+
+<details>
+<summary><a href="#4-内核空间-consumer-api描述符接口">4. 内核空间 Consumer API（描述符接口）</a></summary>
+
+- [4.1 获取/释放 GPIO](#41-获取释放-gpio)
+- [4.2 方向控制](#42-方向控制)
+- [4.3 值读写（非睡眠上下文）](#43-值读写非睡眠上下文)
+- [4.4 值读写（可睡眠上下文）](#44-值读写可睡眠上下文)
+- [4.5 配置与属性](#45-配置与属性)
+- [4.6 逻辑值 vs 原始值](#46-逻辑值-vs-原始值)
+
+</details>
+
+<details>
+<summary><a href="#5-gpio-驱动注册-apiprovider-接口">5. GPIO 驱动注册 API（Provider 接口）</a></summary>
+
+- [5.1 芯片注册与注销](#51-芯片注册与注销)
+- [5.2 注册流程 (`gpiochip_add_data_with_key`)](#52-注册流程-gpiochip_add_data_with_key)
+- [5.3 通用辅助回调](#53-通用辅助回调)
+- [5.4 IRQ 芯片集成辅助](#54-irq-芯片集成辅助)
+
+</details>
+
+<details>
+<summary><a href="#6-用户空间接口">6. 用户空间接口</a></summary>
+
+- [6.1 字符设备接口（V2 API，推荐）](#61-字符设备接口v2-api推荐)
+- [6.2 sysfs 接口（已废弃）](#62-sysfs-接口已废弃)
+
+</details>
+
+<details>
+<summary><a href="#7-中断子系统集成gpio_irq_chip">7. 中断子系统集成（gpio_irq_chip）</a></summary>
+
+- [7.1 GPIO 中断架构](#71-gpio-中断架构)
+- [7.2 驱动中配置 IRQ 芯片](#72-驱动中配置-irq-芯片)
+- [7.3 软件去抖流程（cdev 边沿事件）](#73-软件去抖流程cdev-边沿事件)
+
+</details>
+
+<details>
+<summary><a href="#8-设备树device-tree集成">8. 设备树（Device Tree）集成</a></summary>
+
+- [8.1 设备树 GPIO 描述格式](#81-设备树-gpio-描述格式)
+- [8.2 DT 标志位](#82-dt-标志位)
+- [8.3 关键 DT 解析函数](#83-关键-dt-解析函数)
+
+</details>
+
+<details>
+<summary><a href="#9-pinctrl-子系统集成">9. Pinctrl 子系统集成</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#10-设备资源管理devm接口">10. 设备资源管理（devm）接口</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#11-同步与并发机制">11. 同步与并发机制</a></summary>
+
+- [11.1 全局锁](#111-全局锁)
+- [11.2 设备级锁](#112-设备级锁)
+- [11.3 字符设备级锁](#113-字符设备级锁)
+- [11.4 SRCU 保护的 chip 访问模式](#114-srcu-保护的-chip-访问模式)
+
+</details>
+
+<details>
+<summary><a href="#12-典型驱动实例pl061">12. 典型驱动实例：PL061</a></summary>
+
+- [12.1 驱动结构体](#121-驱动结构体)
+- [12.2 probe 函数关键流程](#122-probe-函数关键流程)
+- [12.3 中断处理链](#123-中断处理链)
+
+</details>
+
+<details>
+<summary><a href="#13-gpio-请求与查找流程">13. GPIO 请求与查找流程</a></summary>
+
+- [13.1 内核消费者的查找优先级](#131-内核消费者的查找优先级)
+- [13.2 完整请求流程](#132-完整请求流程)
+
+</details>
+
+<details>
+<summary><a href="#14-源码文件组织">14. 源码文件组织</a></summary>
+
+- [14.1 头文件](#141-头文件)
+- [14.2 核心实现](#142-核心实现)
+- [14.3 硬件驱动（100+ 个）](#143-硬件驱动100-个)
+
+</details>
+
+<details>
+<summary><a href="#15-架构总结">15. 架构总结</a></summary>
+
+- [15.1 核心设计模式](#151-核心设计模式)
+- [15.2 API 选择指南](#152-api-选择指南)
+- [15.3 关键 API 速查表](#153-关键-api-速查表)
+
+</details>
+
+<details>
+<summary><a href="#16-实战如何申请-gpio-和-button">16. 实战：如何申请 GPIO 和 Button</a></summary>
+
+- [16.1 内核驱动中申请 GPIO 的三种方式](#161-内核驱动中申请-gpio-的三种方式)
+- [16.2 GPIO flags 参数详解](#162-gpio-flags-参数详解)
+- [16.3 gpio-keys 驱动深度解析](#163-gpio-keys-驱动深度解析)
+- [16.4 gpio-keys DT 绑定规范](#164-gpio-keys-dt-绑定规范)
+- [16.5 常用 KEY 码速查](#165-常用-key-码速查)
+
+</details>
+
+<details>
+<summary><a href="#17-qemu-gpiobutton-实践">17. QEMU GPIO/Button 实践</a></summary>
+
+- [17.1 QEMU virt 平台 GPIO 硬件](#171-qemu-virt-平台-gpio-硬件)
+- [17.2 实践一：编写 GPIO 测试内核模块](#172-实践一编写-gpio-测试内核模块)
+- [17.3 实践二：用户空间 GPIO 操作 (chardev 方式)](#173-实践二用户空间-gpio-操作-chardev-方式)
+- [17.4 实践三：sysfs GPIO 操作 (Legacy，已废弃)](#174-实践三sysfs-gpio-操作-legacy已废弃)
+- [17.5 QEMU 调试 GPIO 状态](#175-qemu-调试-gpio-状态)
+- [17.6 完整 QEMU GPIO 实践步骤](#176-完整-qemu-gpio-实践步骤)
+- [17.7 GPIO 用户空间接口对比](#177-gpio-用户空间接口对比)
+
+</details>
 
 ---
 

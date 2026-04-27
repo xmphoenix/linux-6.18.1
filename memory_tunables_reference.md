@@ -2,6 +2,92 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#1-procsysvm-sysctl-tunables-page_allocc">1. `/proc/sys/vm/` Sysctl Tunables (page_alloc.c)</a></summary>
+
+- [Helper variables](#helper-variables)
+
+</details>
+
+<details>
+<summary><a href="#2-procsysvm-sysctl-tunables-vmscanc">2. `/proc/sys/vm/` Sysctl Tunables (vmscan.c)</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#3-compaction-tunables-procsysvm">3. Compaction Tunables (`/proc/sys/vm/`)</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#4-slub-allocator-debugtuning-boot-command-line">4. SLUB Allocator Debug/Tuning (Boot Command Line)</a></summary>
+
+- [SLUB sysfs](#slub-sysfs)
+
+</details>
+
+<details>
+<summary><a href="#5-thp-transparent-huge-pages-tunables">5. THP (Transparent Huge Pages) Tunables</a></summary>
+
+- [Global THP attributes (mm/huge_memory.c)](#global-thp-attributes-mmhuge_memoryc)
+- [Per-THP-size attributes (`/sys/kernel/mm/transparent_hugepage/hugepages-*kB/`)](#per-thp-size-attributes-syskernelmmtransparent_hugepagehugepages-kb)
+- [khugepaged tunables (`/sys/kernel/mm/transparent_hugepage/khugepaged/`)](#khugepaged-tunables-syskernelmmtransparent_hugepagekhugepaged)
+
+</details>
+
+<details>
+<summary><a href="#6-cma-contiguous-memory-allocator-params">6. CMA (Contiguous Memory Allocator) Params</a></summary>
+
+- [Boot command line (kernel/dma/contiguous.c)](#boot-command-line-kerneldmacontiguousc)
+- [Kconfig defaults](#kconfig-defaults)
+- [CMA sysfs](#cma-sysfs)
+
+</details>
+
+<details>
+<summary><a href="#7-memory-cgroup-controls">7. Memory Cgroup Controls</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#8-watermark-tuning-summary">8. Watermark Tuning (Summary)</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#9-ksm-tunables">9. KSM Tunables</a></summary>
+
+- [KSM read-only stats (also in `/sys/kernel/mm/ksm/`)](#ksm-read-only-stats-also-in-syskernelmmksm)
+
+</details>
+
+<details>
+<summary><a href="#10-zswap-module-parameters">10. zswap Module Parameters</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#11-per-vma-lock-configuration">11. Per-VMA Lock Configuration</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#quick-reference-all-tunable-interfaces-by-type">Quick Reference: All Tunable Interfaces by Type</a></summary>
+
+- [Boot Command Line Parameters](#boot-command-line-parameters)
+- [`/proc/sys/vm/` Sysctls](#procsysvm-sysctls)
+- [`/sys/kernel/mm/transparent_hugepage/`](#syskernelmmtransparent_hugepage)
+- [`/sys/kernel/mm/ksm/`](#syskernelmmksm)
+- [`/sys/module/zswap/parameters/`](#sysmodulezswapparameters)
+- [Memory Cgroup (cgroupv2 `memory.*`)](#memory-cgroup-cgroupv2-memory)
+- [Compile-Time Only](#compile-time-only)
+
+</details>
+
+---
+
 ## 1. `/proc/sys/vm/` Sysctl Tunables (page_alloc.c)
 
 Registered via `register_sysctl_init("vm", page_alloc_sysctl_table)` at **mm/page_alloc.c:6730**.

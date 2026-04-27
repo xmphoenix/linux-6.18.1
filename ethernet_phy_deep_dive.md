@@ -7,14 +7,114 @@
 
 ## 目录
 
-1. [Ethernet PHY 接口类型总结](#1-ethernet-phy-接口类型总结)
-2. [Ethernet 软件框架分析](#2-ethernet-软件框架分析)
-3. [1G/2.5G/5G/10G PHY 协议规范](#3-1g25g5g10g-phy-协议规范)
-4. [PHY 驱动案例分析](#4-phy-驱动案例分析)
-5. [1G Ethernet 通用寄存器详解](#5-1g-ethernet-通用寄存器详解)
-6. [PHY 硬件内部物理设计](#6-phy-硬件内部物理设计)
-7. [面试常见问题与答案](#7-面试常见问题与答案)
-8. [QEMU 实践实验](#8-qemu-实践实验)
+<details>
+<summary><a href="#1-ethernet-phy-接口类型总结">1. Ethernet PHY 接口类型总结</a></summary>
+
+- [1.1 内核定义的 PHY 接口类型枚举](#11-内核定义的-phy-接口类型枚举)
+- [1.2 接口类型分类对比表](#12-接口类型分类对比表)
+- [1.3 RGMII 延迟变体说明](#13-rgmii-延迟变体说明)
+- [1.4 MAC-PHY 接口速率适应模式分析](#14-mac-phy-接口速率适应模式分析)
+
+</details>
+
+<details>
+<summary><a href="#2-ethernet-软件框架分析">2. Ethernet 软件框架分析</a></summary>
+
+- [2.1 Linux Ethernet 整体分层架构](#21-linux-ethernet-整体分层架构)
+- [2.2 关键数据结构](#22-关键数据结构)
+- [2.3 PHY 状态机](#23-phy-状态机)
+- [2.4 数据收发流程（简化）](#24-数据收发流程简化)
+- [2.5 MDIO 总线通信](#25-mdio-总线通信)
+- [2.6 EEE（Energy Efficient Ethernet）详解](#26-eeeenergy-efficient-ethernet详解)
+- [2.7 PHY 速率协商结果解析](#27-phy-速率协商结果解析)
+- [2.8 PHY Address 与 PHY ID 详解](#28-phy-address-与-phy-id-详解)
+
+</details>
+
+<details>
+<summary><a href="#3-1g25g5g10g-phy-协议规范">3. 1G/2.5G/5G/10G PHY 协议规范</a></summary>
+
+- [3.1 IEEE 802.3 标准总览](#31-ieee-8023-标准总览)
+- [3.2 关键规范说明](#32-关键规范说明)
+- [3.3 Clause 22 vs Clause 45 MDIO](#33-clause-22-vs-clause-45-mdio)
+
+</details>
+
+<details>
+<summary><a href="#4-phy-驱动案例分析">4. PHY 驱动案例分析</a></summary>
+
+- [4.1 Realtek RTL8211F — 1G PHY 驱动分析](#41-realtek-rtl8211f--1g-phy-驱动分析)
+- [4.2 Aquantia AQR107 — 10G PHY 驱动分析](#42-aquantia-aqr107--10g-phy-驱动分析)
+- [4.3 Realtek RTL822x 系列 — 2.5G PHY](#43-realtek-rtl822x-系列--25g-phy)
+- [4.4 Marvell 88X3310 — 10G 多速率 PHY](#44-marvell-88x3310--10g-多速率-phy)
+
+</details>
+
+<details>
+<summary><a href="#5-1g-ethernet-通用寄存器详解">5. 1G Ethernet 通用寄存器详解</a></summary>
+
+- [5.1 IEEE 802.3 Clause 22 标准寄存器（适用于所有兼容 PHY）](#51-ieee-8023-clause-22-标准寄存器适用于所有兼容-phy)
+- [5.2 BMCR — 基本模式控制寄存器 (Reg 0x00)](#52-bmcr--基本模式控制寄存器-reg-0x00)
+- [5.3 BMSR — 基本模式状态寄存器 (Reg 0x01)](#53-bmsr--基本模式状态寄存器-reg-0x01)
+- [5.4 PHYSID1/PHYSID2 — PHY 标识寄存器 (Reg 0x02/0x03)](#54-physid1physid2--phy-标识寄存器-reg-0x020x03)
+- [5.5 ADVERTISE — 自协商通告寄存器 (Reg 0x04)](#55-advertise--自协商通告寄存器-reg-0x04)
+- [5.6 LPA — 链路伙伴能力寄存器 (Reg 0x05)](#56-lpa--链路伙伴能力寄存器-reg-0x05)
+- [5.7 CTRL1000 — 1000BASE-T 控制寄存器 (Reg 0x09)](#57-ctrl1000--1000base-t-控制寄存器-reg-0x09)
+- [5.8 STAT1000 — 1000BASE-T 状态寄存器 (Reg 0x0a)](#58-stat1000--1000base-t-状态寄存器-reg-0x0a)
+- [5.9 MMD 间接访问寄存器 (Reg 0x0d/0x0e)](#59-mmd-间接访问寄存器-reg-0x0d0x0e)
+- [5.10 SGMII 带内自协商寄存器](#510-sgmii-带内自协商寄存器)
+
+</details>
+
+<details>
+<summary><a href="#6-phy-硬件内部物理设计">6. PHY 硬件内部物理设计</a></summary>
+
+- [6.1 1G PHY 内部架构（以 RTL8211F 为例）](#61-1g-phy-内部架构以-rtl8211f-为例)
+- [6.2 各功能模块说明](#62-各功能模块说明)
+- [6.3 10G PHY 内部架构差异](#63-10g-phy-内部架构差异)
+- [6.4 PHY 供电设计](#64-phy-供电设计)
+
+</details>
+
+<details>
+<summary><a href="#7-面试常见问题与答案">7. 面试常见问题与答案</a></summary>
+
+- [Q1: MII、RMII、GMII、RGMII、SGMII 各有什么区别？](#q1-miirmiigmiirgmiisgmii-各有什么区别)
+- [Q2: RGMII 为什么需要延迟？如何配置？](#q2-rgmii-为什么需要延迟如何配置)
+- [Q3: PHY 的自协商过程是怎样的？协商结果如何确定？](#q3-phy-的自协商过程是怎样的协商结果如何确定)
+- [Q4: 如何判断链路已经 UP？](#q4-如何判断链路已经-up)
+- [Q5: Clause 22 和 Clause 45 MDIO 有什么区别？](#q5-clause-22-和-clause-45-mdio-有什么区别)
+- [Q6: 什么是 MDIO 总线？一条总线能挂多少个 PHY？](#q6-什么是-mdio-总线一条总线能挂多少个-phy)
+- [Q7: PHY 驱动的 probe 流程是怎样的？](#q7-phy-驱动的-probe-流程是怎样的)
+- [Q8: 什么是 EEE（Energy Efficient Ethernet）？](#q8-什么是-eeeenergy-efficient-ethernet)
+- [Q9: PHY 中断模式和轮询模式的区别？](#q9-phy-中断模式和轮询模式的区别)
+- [Q10: MAC 和 PHY 之间如何实现速率协商同步？](#q10-mac-和-phy-之间如何实现速率协商同步)
+
+</details>
+
+<details>
+<summary><a href="#8-qemu-实践实验">8. QEMU 实践实验</a></summary>
+
+- [实验环境准备](#实验环境准备)
+- [实验 1：探索虚拟网卡的 MII/PHY 寄存器](#实验-1探索虚拟网卡的-miiphy-寄存器)
+- [实验 2：使用 ethtool 观察自协商过程](#实验-2使用-ethtool-观察自协商过程)
+- [实验 3：MDIO 总线和 PHY 设备树探索](#实验-3mdio-总线和-phy-设备树探索)
+- [实验 4：编写简单的 PHY 寄存器读取内核模块](#实验-4编写简单的-phy-寄存器读取内核模块)
+- [实验 5：使用 QEMU TAP 网络实现双机通信](#实验-5使用-qemu-tap-网络实现双机通信)
+- [实验 6：PHY 状态机观察](#实验-6phy-状态机观察)
+- [实验 7：使用 devmem 直接访问 MAC/PHY 寄存器（QEMU virt 平台）](#实验-7使用-devmem-直接访问-macphy-寄存器qemu-virt-平台)
+- [实验 8：编写简单的 MDIO 用户空间访问程序](#实验-8编写简单的-mdio-用户空间访问程序)
+
+</details>
+
+<details>
+<summary><a href="#附录">附录</a></summary>
+
+- [A. 常用内核源码路径](#a-常用内核源码路径)
+- [B. 设备树 PHY 配置示例](#b-设备树-phy-配置示例)
+- [C. 参考文档](#c-参考文档)
+
+</details>
 
 ---
 

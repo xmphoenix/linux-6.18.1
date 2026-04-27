@@ -31,6 +31,131 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#1-先建立整体模型">1. 先建立整体模型</a></summary>
+
+- [1.1 物理地址](#11-物理地址)
+- [1.2 线性映射地址](#12-线性映射地址)
+- [1.3 内核镜像地址](#13-内核镜像地址)
+
+</details>
+
+<details>
+<summary><a href="#2-编译期固定宏的规范定义">2. 编译期固定宏的规范定义</a></summary>
+
+- [2.1 `VA_BITS`](#21-va_bits)
+- [2.2 `VA_BITS_MIN`](#22-va_bits_min)
+- [2.3 `PAGE_OFFSET`](#23-page_offset)
+- [2.4 `PAGE_END`](#24-page_end)
+- [2.5 `MODULES_VADDR`、`MODULES_END` 和 `MODULES_VSIZE`](#25-modules_vaddrmodules_end-和-modules_vsize)
+- [2.6 `KIMAGE_VADDR`](#26-kimage_vaddr)
+- [2.7 `KERNEL_START` 和 `KERNEL_END`](#27-kernel_start-和-kernel_end)
+- [2.8 `VMALLOC_START` 和 `VMALLOC_END`](#28-vmalloc_start-和-vmalloc_end)
+- [2.9 `VMEMMAP_RANGE`、`VMEMMAP_SIZE`、`VMEMMAP_START`、`VMEMMAP_END`](#29-vmemmap_rangevmemmap_sizevmemmap_startvmemmap_end)
+- [2.10 `PCI_IO_START` 和 `PCI_IO_END`](#210-pci_io_start-和-pci_io_end)
+- [2.11 `FIXADDR_TOP`、`FIXADDR_START`、`FIXADDR_TOT_START`](#211-fixaddr_topfixaddr_startfixaddr_tot_start)
+
+</details>
+
+<details>
+<summary><a href="#3-运行时变量的规范定义">3. 运行时变量的规范定义</a></summary>
+
+- [3.1 `memstart_addr` 与 `PHYS_OFFSET`](#31-memstart_addr-与-phys_offset)
+- [3.2 `vabits_actual`](#32-vabits_actual)
+- [3.3 `MIN_MEMBLOCK_ADDR` 和 `MAX_MEMBLOCK_ADDR`](#33-min_memblock_addr-和-max_memblock_addr)
+- [3.4 `kaslr_offset()` 和 `kaslr_enabled()`](#34-kaslr_offset-和-kaslr_enabled)
+- [3.5 `kimage_voffset`](#35-kimage_voffset)
+
+</details>
+
+<details>
+<summary><a href="#4-arm64-的两套地址换算规则">4. ARM64 的两套地址换算规则</a></summary>
+
+- [4.1 线性映射换算](#41-线性映射换算)
+- [4.2 内核镜像换算](#42-内核镜像换算)
+- [4.3 ARM64 如何区分一个 VA 属于哪一类](#43-arm64-如何区分一个-va-属于哪一类)
+- [4.4 `__virt_to_phys()` 的真实逻辑](#44-__virt_to_phys-的真实逻辑)
+- [4.5 `__phys_to_kimg()` 的意义](#45-__phys_to_kimg-的意义)
+- [4.6 为什么 `__pa_symbol()` 和 `__pa()` 不能混用](#46-为什么-__pa_symbol-和-__pa-不能混用)
+
+</details>
+
+<details>
+<summary><a href="#5-linear-mapkernel-imagevmalloc-三类-va-的判别方法">5. linear map、kernel image、vmalloc 三类 VA 的判别方法</a></summary>
+
+- [5.1 第一优先级：先判断它是不是 linear map](#51-第一优先级先判断它是不是-linear-map)
+- [5.2 第二优先级：判断它是不是 built-in kernel image 地址](#52-第二优先级判断它是不是-built-in-kernel-image-地址)
+- [5.3 第三优先级：判断它是不是 vmalloc 地址](#53-第三优先级判断它是不是-vmalloc-地址)
+- [5.4 模块地址为什么容易和 vmalloc 混淆](#54-模块地址为什么容易和-vmalloc-混淆)
+- [5.5 最实用的判断顺序](#55-最实用的判断顺序)
+- [5.6 为什么不能把 `vmalloc` 地址直接传给 `__virt_to_phys()`](#56-为什么不能把-vmalloc-地址直接传给-__virt_to_phys)
+- [5.7 一句话决策法](#57-一句话决策法)
+
+</details>
+
+<details>
+<summary><a href="#6-pfnstruct-pagevmemmap-三者关系">6. PFN、`struct page`、`vmemmap` 三者关系</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#7-几个实际推导例子">7. 几个实际推导例子</a></summary>
+
+- [7.1 由 `MODULES_VADDR` 推到 `MODULES_END`](#71-由-modules_vaddr-推到-modules_end)
+- [7.2 由 `PAGE_END` 推到 `DIRECT_MAP_PHYSMEM_END`](#72-由-page_end-推到-direct_map_physmem_end)
+- [7.3 为什么 `vmemmap + PHYS_PFN_OFFSET` 对应 direct map 的第一个 `struct page`](#73-为什么-vmemmap--phys_pfn_offset-对应-direct-map-的第一个-struct-page)
+- [7.4 一个 kernel symbol 如何转成物理地址](#74-一个-kernel-symbol-如何转成物理地址)
+- [7.5 同一个物理页可能有两种不同语义的虚拟地址](#75-同一个物理页可能有两种不同语义的虚拟地址)
+
+</details>
+
+<details>
+<summary><a href="#8-启动阶段这些地址和-offset-是怎么建立起来的">8. 启动阶段这些地址和 offset 是怎么建立起来的</a></summary>
+
+- [8.1 `early_map_kernel()` 先建立早期 kernel image 映射](#81-early_map_kernel-先建立早期-kernel-image-映射)
+- [8.2 `__primary_switched` 保存 `kimage_voffset`](#82-__primary_switched-保存-kimage_voffset)
+- [8.3 `arm64_memblock_init()` 建立 `memstart_addr`，从而建立 `PHYS_OFFSET`](#83-arm64_memblock_init-建立-memstart_addr从而建立-phys_offset)
+- [8.4 `paging_init()` 建立完整内存映射](#84-paging_init-建立完整内存映射)
+- [8.5 `setup_arch()` 里的大致顺序](#85-setup_arch-里的大致顺序)
+- [8.6 这条时序的实际意义](#86-这条时序的实际意义)
+
+</details>
+
+<details>
+<summary><a href="#9-当前内核配置下的关键数值">9. 当前内核配置下的关键数值</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#10-地址布局关系图">10. 地址布局关系图</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#11-最容易犯错的几个点">11. 最容易犯错的几个点</a></summary>
+
+- [11.1 `KIMAGE_VADDR` 不是 `_text`](#111-kimage_vaddr-不是-_text)
+- [11.2 `PHYS_OFFSET` 不是简单的 DRAM 起始地址别名](#112-phys_offset-不是简单的-dram-起始地址别名)
+- [11.3 `__pa_symbol()` 不是普通 `virt_to_phys()`](#113-__pa_symbol-不是普通-virt_to_phys)
+- [11.4 一个内核虚拟地址不一定属于 linear map](#114-一个内核虚拟地址不一定属于-linear-map)
+- [11.5 52-bit 内核不代表运行时一定真在 52-bit VA 下运行](#115-52-bit-内核不代表运行时一定真在-52-bit-va-下运行)
+
+</details>
+
+<details>
+<summary><a href="#12-建议的源码阅读路径">12. 建议的源码阅读路径</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#13-一句话总结">13. 一句话总结</a></summary>
+
+</details>
+
+---
+
 ## 1. 先建立整体模型
 
 ARM64 内核里至少要区分三类地址空间，否则几乎一定会把这些宏看乱：

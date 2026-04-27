@@ -4,6 +4,102 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#一设计定位与生命周期">一、设计定位与生命周期</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#二数据结构">二、数据结构</a></summary>
+
+- [2.1 三层嵌套结构](#21-三层嵌套结构)
+- [2.2 静态初始化](#22-静态初始化)
+- [2.3 Flag 标志位](#23-flag-标志位)
+
+</details>
+
+<details>
+<summary><a href="#三核心-api-一览">三、核心 API 一览</a></summary>
+
+- [3.1 内存注册](#31-内存注册)
+- [3.2 内存分配](#32-内存分配)
+- [3.3 属性操作](#33-属性操作)
+- [3.4 查询](#34-查询)
+- [3.5 迭代器](#35-迭代器)
+
+</details>
+
+<details>
+<summary><a href="#四核心算法详解">四、核心算法详解</a></summary>
+
+- [4.1 有序区间插入 —— `memblock_add_range()`](#41-有序区间插入--memblock_add_range)
+- [4.2 区间隔离/分裂 —— `memblock_isolate_range()`](#42-区间隔离分裂--memblock_isolate_range)
+- [4.3 区间合并 —— `memblock_merge_regions()`](#43-区间合并--memblock_merge_regions)
+- [4.4 双有序区间集合差遍历 —— `__next_mem_range()`](#44-双有序区间集合差遍历--__next_mem_range)
+- [4.5 二分查找 —— `memblock_search()`](#45-二分查找--memblock_search)
+- [4.6 动态数组倍增扩容 —— `memblock_double_array()`](#46-动态数组倍增扩容--memblock_double_array)
+- [4.7 贪心累减定位 —— `__find_max_addr()`](#47-贪心累减定位--__find_max_addr)
+- [4.8 数组元素删除 —— `memblock_remove_region()`](#48-数组元素删除--memblock_remove_region)
+- [4.9 对齐裁剪 —— `memblock_trim_memory()`](#49-对齐裁剪--memblock_trim_memory)
+- [4.10 逆序首次适配 —— `__memblock_find_range_top_down()`](#410-逆序首次适配--__memblock_find_range_top_down)
+- [4.11 正序首次适配 —— `__memblock_find_range_bottom_up()`](#411-正序首次适配--__memblock_find_range_bottom_up)
+- [4.12 多维条件谓词过滤 —— `should_skip_region()`](#412-多维条件谓词过滤--should_skip_region)
+- [4.13 级联降级回退策略 —— `memblock_alloc_range_nid()` + `memblock_alloc_internal()`](#413-级联降级回退策略--memblock_alloc_range_nid--memblock_alloc_internal)
+- [4.14 地址范围规范化 —— `memblock_find_in_range_node()`](#414-地址范围规范化--memblock_find_in_range_node)
+- [4.15 区间批量删除 —— `memblock_remove_range()`](#415-区间批量删除--memblock_remove_range)
+- [4.16 选择性区间保留 —— `memblock_cap_memory_range()`](#416-选择性区间保留--memblock_cap_memory_range)
+- [4.17 区间属性批量设置 —— `memblock_set_node()`](#417-区间属性批量设置--memblock_set_node)
+
+</details>
+
+<details>
+<summary><a href="#五算法汇总表">五、算法汇总表</a></summary>
+
+- [5.1 基础数据结构算法](#51-基础数据结构算法)
+- [5.2 内存分配算法](#52-内存分配算法)
+- [5.3 区间操作算法](#53-区间操作算法)
+
+</details>
+
+<details>
+<summary><a href="#六内存分配完整调用链带算法标注">六、内存分配完整调用链（带算法标注）</a></summary>
+
+- [分配路径中算法的协作关系](#分配路径中算法的协作关系)
+
+</details>
+
+<details>
+<summary><a href="#七关键设计模式">七、关键设计模式</a></summary>
+
+- [7.1 isolate → 操作 → merge 三步模式](#71-isolate-→-操作-→-merge-三步模式)
+- [7.2 memory − reserved = free](#72-memory-−-reserved--free)
+- [7.3 NOMAP trick（ARM64）](#73-nomap-trickarm64)
+
+</details>
+
+<details>
+<summary><a href="#八调试方法">八、调试方法</a></summary>
+
+- [8.1 启动参数](#81-启动参数)
+- [8.2 运行时查看（需要 CONFIG_ARCH_KEEP_MEMBLOCK）](#82-运行时查看需要-config_arch_keep_memblock)
+- [8.3 dmesg 输出示例](#83-dmesg-输出示例)
+
+</details>
+
+<details>
+<summary><a href="#九与后续子系统的衔接">九、与后续子系统的衔接</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#十总结">十、总结</a></summary>
+
+</details>
+
+---
+
 ## 一、设计定位与生命周期
 
 Memblock 是内核**早期启动阶段**的物理内存管理器，在 buddy 页分配器就绪之前工作。

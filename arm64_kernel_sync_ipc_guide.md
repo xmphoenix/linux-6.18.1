@@ -6,50 +6,70 @@
 
 ## 目录
 
-- [一、ARM64 架构下内核同步关键接口](#一arm64-架构下内核同步关键接口)
-  - [1.1 原子操作 (Atomic Operations)](#11-原子操作-atomic-operations)
-  - [1.2 内存屏障 (Memory Barriers)](#12-内存屏障-memory-barriers)
-  - [1.3 自旋锁 (Spinlock / qspinlock)](#13-自旋锁-spinlock--qspinlock)
-  - [1.4 读写自旋锁 (Read-Write Spinlock)](#14-读写自旋锁-read-write-spinlock)
-  - [1.5 互斥锁 (Mutex)](#15-互斥锁-mutex)
-  - [1.6 读写信号量 (Read-Write Semaphore)](#16-读写信号量-read-write-semaphore)
-  - [1.7 计数信号量 (Semaphore)](#17-计数信号量-semaphore)
-  - [1.8 完成量 (Completion)](#18-完成量-completion)
-  - [1.9 RCU (Read-Copy-Update)](#19-rcu-read-copy-update)
-  - [1.10 Per-CPU 变量与操作](#110-per-cpu-变量与操作)
-  - [1.11 同步机制选型对比](#111-同步机制选型对比)
-- [二、内核软中断的实现与原理](#二内核软中断的实现与原理)
-  - [2.1 软中断概述](#21-软中断概述)
-  - [2.2 软中断向量表](#22-软中断向量表)
-  - [2.3 核心数据结构](#23-核心数据结构)
-  - [2.4 软中断触发机制](#24-软中断触发机制)
-  - [2.5 软中断执行流程](#25-软中断执行流程)
-  - [2.6 ksoftirqd 内核线程](#26-ksoftirqd-内核线程)
-  - [2.7 Tasklet 机制](#27-tasklet-机制)
-  - [2.8 硬中断与软中断的关系](#28-硬中断与软中断的关系)
-- [三、Workqueue、Tasklet 与内核线程的区别](#三workqueuetasklet-与内核线程的区别)
-  - [3.1 Workqueue (工作队列)](#31-workqueue-工作队列)
-  - [3.2 Tasklet (小任务)](#32-tasklet-小任务)
-  - [3.3 Kernel Thread (内核线程)](#33-kernel-thread-内核线程)
-  - [3.4 三者对比总结](#34-三者对比总结)
-  - [3.5 选型指南](#35-选型指南)
-- [四、内核通信机制](#四内核通信机制)
-  - [4.1 进程间通信 (IPC) 概览](#41-进程间通信-ipc-概览)
-  - [4.2 信号 (Signals)](#42-信号-signals)
-  - [4.3 管道与 FIFO (Pipes)](#43-管道与-fifo-pipes)
-  - [4.4 System V IPC](#44-system-v-ipc)
-  - [4.5 POSIX 消息队列](#45-posix-消息队列)
-  - [4.6 Socket 套接字](#46-socket-套接字)
-  - [4.7 Netlink](#47-netlink)
-  - [4.8 Futex (快速用户态互斥)](#48-futex-快速用户态互斥)
-  - [4.9 Eventfd / Signalfd / Timerfd](#49-eventfd--signalfd--timerfd)
-  - [4.10 Procfs / Sysfs](#410-procfs--sysfs)
-  - [4.11 通知链 (Notifier Chains)](#411-通知链-notifier-chains)
-  - [4.12 通信机制总结对比](#412-通信机制总结对比)
+<details>
+<summary><a href="#一arm64-架构下内核同步关键接口">一、ARM64 架构下内核同步关键接口</a></summary>
 
-> **注**: 内核核心数据结构和算法详解已独立为专门文档：
-> - 数据结构 → [kernel_data_structures_guide.md](kernel_data_structures_guide.md)
-> - 算法详解 → [linux_kernel_algorithms_deep_dive.md](linux_kernel_algorithms_deep_dive.md)
+- [1.1 原子操作 (Atomic Operations)](#11-原子操作-atomic-operations)
+- [1.2 内存屏障 (Memory Barriers)](#12-内存屏障-memory-barriers)
+- [1.3 自旋锁 (Spinlock / qspinlock)](#13-自旋锁-spinlock--qspinlock)
+- [1.4 读写自旋锁 (Read-Write Spinlock)](#14-读写自旋锁-read-write-spinlock)
+- [1.5 互斥锁 (Mutex)](#15-互斥锁-mutex)
+- [1.6 读写信号量 (Read-Write Semaphore)](#16-读写信号量-read-write-semaphore)
+- [1.7 计数信号量 (Semaphore)](#17-计数信号量-semaphore)
+- [1.8 完成量 (Completion)](#18-完成量-completion)
+- [1.9 RCU (Read-Copy-Update)](#19-rcu-read-copy-update)
+- [1.10 Per-CPU 变量与操作](#110-per-cpu-变量与操作)
+- [1.11 同步机制选型对比](#111-同步机制选型对比)
+
+</details>
+
+<details>
+<summary><a href="#二内核软中断的实现与原理">二、内核软中断的实现与原理</a></summary>
+
+- [2.1 软中断概述](#21-软中断概述)
+- [2.2 软中断向量表](#22-软中断向量表)
+- [2.3 核心数据结构](#23-核心数据结构)
+- [2.4 软中断触发机制](#24-软中断触发机制)
+- [2.5 软中断执行流程](#25-软中断执行流程)
+- [2.6 ksoftirqd 内核线程](#26-ksoftirqd-内核线程)
+- [2.7 Tasklet 机制](#27-tasklet-机制)
+- [2.8 硬中断与软中断的关系](#28-硬中断与软中断的关系)
+
+</details>
+
+<details>
+<summary><a href="#三workqueuetasklet-与内核线程的区别">三、Workqueue、Tasklet 与内核线程的区别</a></summary>
+
+- [3.1 Workqueue (工作队列)](#31-workqueue-工作队列)
+- [3.2 Tasklet (小任务)](#32-tasklet-小任务)
+- [3.3 Kernel Thread (内核线程)](#33-kernel-thread-内核线程)
+- [3.4 三者对比总结](#34-三者对比总结)
+- [3.5 选型指南](#35-选型指南)
+
+</details>
+
+<details>
+<summary><a href="#四内核通信机制">四、内核通信机制</a></summary>
+
+- [4.1 进程间通信 (IPC) 概览](#41-进程间通信-ipc-概览)
+- [4.2 信号 (Signals)](#42-信号-signals)
+- [4.3 管道与 FIFO (Pipes)](#43-管道与-fifo-pipes)
+- [4.4 System V IPC](#44-system-v-ipc)
+- [4.5 POSIX 消息队列](#45-posix-消息队列)
+- [4.6 Socket 套接字](#46-socket-套接字)
+- [4.7 Netlink](#47-netlink)
+- [4.8 Futex (快速用户态互斥)](#48-futex-快速用户态互斥)
+- [4.9 Eventfd / Signalfd / Timerfd](#49-eventfd--signalfd--timerfd)
+- [4.10 Procfs / Sysfs](#410-procfs--sysfs)
+- [4.11 通知链 (Notifier Chains)](#411-通知链-notifier-chains)
+- [4.12 通信机制总结对比](#412-通信机制总结对比)
+
+</details>
+
+<details>
+<summary><a href="#附录-arm64-硬件同步指令速查">附录: ARM64 硬件同步指令速查</a></summary>
+
+</details>
 
 ---
 

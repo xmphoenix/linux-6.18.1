@@ -7,6 +7,169 @@
 
 ---
 
+## 目录
+
+<details>
+<summary><a href="#学习路线总览">学习路线总览</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#第0课heads-→-start_kernel-早期内存映射3天">第0课：head.S → start_kernel 早期内存映射（3天）</a></summary>
+
+- [0.1 学习目标](#01-学习目标)
+- [0.2 核心问题](#02-核心问题)
+- [0.3 原理图：三阶段页表演进](#03-原理图三阶段页表演进)
+- [0.4 五个页表目录及其生命周期](#04-五个页表目录及其生命周期)
+- [0.5 代码逐行解析：primary_entry（arch/arm64/kernel/head.S:85）](#05-代码逐行解析primary_entryarcharm64kernelheads85)
+- [0.6 代码逐行解析：__cpu_setup（arch/arm64/mm/proc.S:465）](#06-代码逐行解析__cpu_setuparcharm64mmprocs465)
+- [0.7 代码逐行解析：__primary_switch + __enable_mmu](#07-代码逐行解析__primary_switch--__enable_mmu)
+- [0.8 代码解析：early_map_kernel（arch/arm64/kernel/pi/map_kernel.c:241）](#08-代码解析early_map_kernelarcharm64kernelpimap_kernelc241)
+- [0.9 代码解析：map_kernel — 按段精细映射](#09-代码解析map_kernel--按段精细映射)
+- [0.10 代码解析：__primary_switched → start_kernel 的过渡](#010-代码解析__primary_switched-→-start_kernel-的过渡)
+- [0.11 代码解析：paging_init — 最终页表](#011-代码解析paging_init--最终页表)
+- [0.12 关键时刻图：TTBR0 / TTBR1 切换时间线](#012-关键时刻图ttbr0--ttbr1-切换时间线)
+- [0.13 create_init_idmap 的递归建表算法（pi/map_range.c）](#013-create_init_idmap-的递归建表算法pimap_rangec)
+- [0.14 QEMU 实验 0.1：GDB 观察 MMU 开启瞬间](#014-qemu-实验-01gdb-观察-mmu-开启瞬间)
+- [0.15 QEMU 实验 0.2：GDB 跟踪页表切换](#015-qemu-实验-02gdb-跟踪页表切换)
+- [0.16 QEMU 实验 0.3：验证 kimage_voffset](#016-qemu-实验-03验证-kimage_voffset)
+- [0.17 检查清单](#017-检查清单)
+
+</details>
+
+<details>
+<summary><a href="#第1课arm64-硬件基础3天">第1课：ARM64 硬件基础（3天）</a></summary>
+
+- [1.1 学习目标](#11-学习目标)
+- [1.2 原理图：CPU 访问内存的硬件路径](#12-原理图cpu-访问内存的硬件路径)
+- [1.3 ARM64 关键系统寄存器](#13-arm64-关键系统寄存器)
+- [1.4 QEMU 实验 1.1：观察 MMU 开启时刻](#14-qemu-实验-11观察-mmu-开启时刻)
+- [1.5 QEMU 实验 1.2：查看 cache 参数](#15-qemu-实验-12查看-cache-参数)
+- [1.6 关键概念检查清单](#16-关键概念检查清单)
+
+</details>
+
+<details>
+<summary><a href="#第2课物理内存发现2天">第2课：物理内存发现（2天）</a></summary>
+
+- [2.1 学习目标](#21-学习目标)
+- [2.2 原理图：内存发现流程](#22-原理图内存发现流程)
+- [2.3 核心数据结构图](#23-核心数据结构图)
+- [2.4 代码阅读顺序](#24-代码阅读顺序)
+- [2.5 QEMU 实验 2.1：GDB 观察 memblock](#25-qemu-实验-21gdb-观察-memblock)
+- [2.6 QEMU 实验 2.2：查看 memblock 调试输出](#26-qemu-实验-22查看-memblock-调试输出)
+
+</details>
+
+<details>
+<summary><a href="#第3课arm64-四级页表5天核心">第3课：ARM64 四级页表（5天，核心！）</a></summary>
+
+- [3.1 学习目标](#31-学习目标)
+- [3.2 原理图：虚拟地址拆分（VA_BITS=48，4KB页）](#32-原理图虚拟地址拆分va_bits484kb页)
+- [3.3 原理图：四级翻译流程](#33-原理图四级翻译流程)
+- [3.4 PTE 格式（ARM64 Stage 1，4KB 页，关键）](#34-pte-格式arm64-stage-14kb-页关键)
+- [3.5 代码阅读顺序](#35-代码阅读顺序)
+- [3.6 QEMU 实验 3.1：GDB 手动遍历四级页表](#36-qemu-实验-31gdb-手动遍历四级页表)
+- [3.7 QEMU 实验 3.2：观察 AP 权限位](#37-qemu-实验-32观察-ap-权限位)
+- [3.8 检查清单](#38-检查清单)
+
+</details>
+
+<details>
+<summary><a href="#第4课虚拟地址空间布局3天">第4课：虚拟地址空间布局（3天）</a></summary>
+
+- [4.1 原理图：ARM64 完整虚拟地址空间](#41-原理图arm64-完整虚拟地址空间)
+- [4.2 QEMU 实验 4.1：在 GDB 中验证地址空间布局](#42-qemu-实验-41在-gdb-中验证地址空间布局)
+- [4.3 QEMU 实验 4.2：用 /proc/PID/maps 验证](#43-qemu-实验-42用-procpidmaps-验证)
+
+</details>
+
+<details>
+<summary><a href="#第5课struct-page--folio3天">第5课：struct page / folio（3天）</a></summary>
+
+- [5.1 原理图：struct page 的多态设计](#51-原理图struct-page-的多态设计)
+- [5.2 QEMU 实验 5.1：GDB 观察不同状态的 page](#52-qemu-实验-51gdb-观察不同状态的-page)
+
+</details>
+
+<details>
+<summary><a href="#第6课buddy-伙伴系统5天">第6课：Buddy 伙伴系统（5天）</a></summary>
+
+- [6.1 原理图：Buddy 分配与合并](#61-原理图buddy-分配与合并)
+- [6.2 Migrate Type 分区](#62-migrate-type-分区)
+- [6.3 代码阅读顺序](#63-代码阅读顺序)
+- [6.4 QEMU 实验 6.1：观察 buddyinfo](#64-qemu-实验-61观察-buddyinfo)
+- [6.5 QEMU 实验 6.2：GDB 观察分配拆分过程](#65-qemu-实验-62gdb-观察分配拆分过程)
+
+</details>
+
+<details>
+<summary><a href="#第7课slub-分配器5天">第7课：SLUB 分配器（5天）</a></summary>
+
+- [7.1 原理图：SLUB 三级缓存架构](#71-原理图slub-三级缓存架构)
+- [7.2 QEMU 实验 7.1：追踪对象分配全路径](#72-qemu-实验-71追踪对象分配全路径)
+
+</details>
+
+<details>
+<summary><a href="#第8课vma-与-mmap5天">第8课：VMA 与 mmap（5天）</a></summary>
+
+- [8.1 原理图：进程 VMA 管理](#81-原理图进程-vma-管理)
+- [8.2 VMA 创建流程](#82-vma-创建流程)
+- [8.3 QEMU 实验 8.1：strace 追踪 mmap](#83-qemu-实验-81strace-追踪-mmap)
+
+</details>
+
+<details>
+<summary><a href="#第9课缺页异常5天核心">第9课：缺页异常（5天，核心！）</a></summary>
+
+- [9.1 原理图：缺页异常全路径](#91-原理图缺页异常全路径)
+- [9.2 QEMU 实验 9.1：追踪一次完整的缺页流程](#92-qemu-实验-91追踪一次完整的缺页流程)
+- [9.3 QEMU 实验 9.2：验证 COW](#93-qemu-实验-92验证-cow)
+
+</details>
+
+<details>
+<summary><a href="#第10课页面回收7天最难">第10课：页面回收（7天，最难）</a></summary>
+
+- [10.1 原理图：水位线触发机制](#101-原理图水位线触发机制)
+- [10.2 原理图：LRU 链表状态机](#102-原理图lru-链表状态机)
+- [10.3 回收优先级](#103-回收优先级)
+- [10.4 代码阅读顺序](#104-代码阅读顺序)
+- [10.5 QEMU 实验 10.1：触发并观察 kswapd 回收](#105-qemu-实验-101触发并观察-kswapd-回收)
+- [10.6 QEMU 实验 10.2：GDB 在回收路径打断点](#106-qemu-实验-102gdb-在回收路径打断点)
+
+</details>
+
+<details>
+<summary><a href="#第11课高级主题7天">第11课：高级主题（7天）</a></summary>
+
+- [11.1 THP 透明大页](#111-thp-透明大页)
+- [11.2 CMA 连续内存分配器](#112-cma-连续内存分配器)
+- [11.3 OOM Killer](#113-oom-killer)
+- [11.4 QEMU 实验 11.1：触发 OOM](#114-qemu-实验-111触发-oom)
+
+</details>
+
+<details>
+<summary><a href="#第12课综合实战5天">第12课：综合实战（5天）</a></summary>
+
+- [12.1 内核模块实验框架](#121-内核模块实验框架)
+- [12.2 Makefile](#122-makefile)
+- [12.3 完整监控脚本](#123-完整监控脚本)
+
+</details>
+
+<details>
+<summary><a href="#学习节奏建议">学习节奏建议</a></summary>
+
+- [每日学习模式](#每日学习模式)
+- [核心原则](#核心原则)
+
+</details>
+
+---
+
 ## 学习路线总览
 
 ```mermaid

@@ -1,5 +1,338 @@
 # I2C / I3C 协议、硬件、Linux 软件架构与 QEMU 实验指南
 
+---
+
+## 目录
+
+<details>
+<summary><a href="#1-文档目标与结论先行">1. 文档目标与结论先行</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#2-i2c-与-i3c-协议规范总结">2. I2C 与 I3C 协议规范总结</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#21-i2c-的协议模型">2.1 I2C 的协议模型</a></summary>
+
+- [I2C 协议规范波形图](#i2c-协议规范波形图)
+- [I2C 进阶波形图](#i2c-进阶波形图)
+
+</details>
+
+<details>
+<summary><a href="#22-smbus-与-i2c-的关系">2.2 SMBus 与 I2C 的关系</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#23-i3c-的协议模型">2.3 I3C 的协议模型</a></summary>
+
+- [I3C 协议规范波形图](#i3c-协议规范波形图)
+- [I3C 进阶波形图](#i3c-进阶波形图)
+- [波形到驱动实现的关注点](#波形到驱动实现的关注点)
+
+</details>
+
+<details>
+<summary><a href="#24-i2c-与-i3c-的核心差异">2.4 I2C 与 I3C 的核心差异</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#25-对软件设计的直接影响">2.5 对软件设计的直接影响</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#3-i2c-与-i3c-的硬件规范和知识点">3. I2C 与 I3C 的硬件规范和知识点</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#31-i2c-硬件知识点">3.1 I2C 硬件知识点</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#32-i3c-硬件知识点">3.2 I3C 硬件知识点</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#33-i2ci3c-混合总线知识点">3.3 I2C/I3C 混合总线知识点</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#4-当前内核树中的-i2c-软件架构分析">4. 当前内核树中的 I2C 软件架构分析</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#41-i2c-总体软件分层">4.1 I2C 总体软件分层</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#42-i2c-关键数据结构">4.2 I2C 关键数据结构</a></summary>
+
+- [`struct i2c_adapter`](#struct-i2c_adapter)
+- [`struct i2c_client`](#struct-i2c_client)
+- [`struct i2c_driver`](#struct-i2c_driver)
+- [`struct i2c_algorithm`](#struct-i2c_algorithm)
+- [`struct i2c_msg`](#struct-i2c_msg)
+- [`struct i2c_bus_recovery_info`](#struct-i2c_bus_recovery_info)
+
+</details>
+
+<details>
+<summary><a href="#43-i2c-core-basec-的软件架构">4.3 `i2c-core-base.c` 的软件架构</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#44-i2c-core-slavec-的架构意义">4.4 `i2c-core-slave.c` 的架构意义</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#45-i2c-cadencec-的架构分析">4.5 `i2c-cadence.c` 的架构分析</a></summary>
+
+- [核心私有结构 `struct cdns_i2c`](#核心私有结构-struct-cdns_i2c)
+- [功能入口](#功能入口)
+- [master 传输主路径](#master-传输主路径)
+- [slave 模式路径](#slave-模式路径)
+- [该驱动体现出的工程要点](#该驱动体现出的工程要点)
+
+</details>
+
+<details>
+<summary><a href="#46-i2c-gpioc-与-i2c-algo-bitc-的意义">4.6 `i2c-gpio.c` 与 `i2c-algo-bit.c` 的意义</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#47-i2c-软件模拟设施总结">4.7 I2C 软件模拟设施总结</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#5-当前内核树中的-i3c-软件架构分析">5. 当前内核树中的 I3C 软件架构分析</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#51-i3c-总体软件分层">5.1 I3C 总体软件分层</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#52-i3c-关键数据结构">5.2 I3C 关键数据结构</a></summary>
+
+- [`struct i3c_master_controller`](#struct-i3c_master_controller)
+- [`struct i3c_master_controller_ops`](#struct-i3c_master_controller_ops)
+- [`struct i3c_bus`](#struct-i3c_bus)
+- [`struct i3c_dev_desc` 与 `struct i2c_dev_desc`](#struct-i3c_dev_desc-与-struct-i2c_dev_desc)
+- [`struct i3c_device_info`](#struct-i3c_device_info)
+- [`struct i3c_priv_xfer`](#struct-i3c_priv_xfer)
+- [`struct i3c_driver`](#struct-i3c_driver)
+
+</details>
+
+<details>
+<summary><a href="#53-driversi3cmasterc-的软件架构">5.3 `drivers/i3c/master.c` 的软件架构</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#54-i3c-master-cdnsc-的架构分析">5.4 `i3c-master-cdns.c` 的架构分析</a></summary>
+
+- [它承担的职责](#它承担的职责)
+- [`cdns_i3c_master_ops`](#cdns_i3c_master_ops)
+- [bus init 逻辑](#bus-init-逻辑)
+- [IBI 处理路径](#ibi-处理路径)
+- [probe 路径](#probe-路径)
+
+</details>
+
+<details>
+<summary><a href="#55-当前树里的-i3c-边界">5.5 当前树里的 I3C 边界</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#6-i2c--i3c-gpio-模拟软件总结">6. I2C / I3C GPIO 模拟软件总结</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#61-i2c-gpio-模拟">6.1 I2C GPIO 模拟</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#62-i3c-gpio-模拟">6.2 I3C GPIO 模拟</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#7-如果不是-slave而是-client应如何软件模拟">7. 如果不是 slave，而是 client，应如何软件模拟</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#71-i2c-client-的软件模拟方法">7.1 I2C client 的软件模拟方法</a></summary>
+
+- [方法 A：`i2c-stub` 模拟外设](#方法-ai2c-stub-模拟外设)
+- [方法 B：QEMU I2C 设备模型模拟外设](#方法-bqemu-i2c-设备模型模拟外设)
+- [方法 C：`i2c-gpio` + 对端 MCU/FPGA/逻辑分析器](#方法-ci2c-gpio--对端-mcufpga逻辑分析器)
+
+</details>
+
+<details>
+<summary><a href="#72-i3c-client-的软件模拟方法">7.2 I3C client 的软件模拟方法</a></summary>
+
+- [方法 A：基于新版本 QEMU 的 I3C target 模型](#方法-a基于新版本-qemu-的-i3c-target-模型)
+- [方法 B：写一个“测试用 I3C target 模型”在 QEMU 中作为外设](#方法-b写一个测试用-i3c-target-模型在-qemu-中作为外设)
+- [方法 C：内核中写“假 master controller”做协议单元测试](#方法-c内核中写假-master-controller做协议单元测试)
+- [方法 D：双模器件用 `i3c_i2c_driver_register()` 先走 I2C 验证](#方法-d双模器件用-i3c_i2c_driver_register-先走-i2c-验证)
+
+</details>
+
+<details>
+<summary><a href="#73-最小-i2c-client-驱动示例">7.3 最小 I2C client 驱动示例</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#74-最小-i3c-device-driver-示例">7.4 最小 I3C device driver 示例</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#8-qemu-可做的-i2c--i3c-实验">8. QEMU 可做的 I2C / I3C 实验</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#81-i2c当前最容易落地">8.1 I2C：当前最容易落地</a></summary>
+
+- [实验 1：QEMU + 现成 I2C 设备 + guest 用户态验证](#实验-1qemu--现成-i2c-设备--guest-用户态验证)
+- [实验 2：QEMU + 你的 I2C client 驱动](#实验-2qemu--你的-i2c-client-驱动)
+- [实验 3：QEMU 板级代码中添加一个 I2C 设备](#实验-3qemu-板级代码中添加一个-i2c-设备)
+
+</details>
+
+<details>
+<summary><a href="#82-i3c可做但前提更多">8.2 I3C：可做，但前提更多</a></summary>
+
+- [实验 4：新版 QEMU + AST2600 + mock-i3c-target](#实验-4新版-qemu--ast2600--mock-i3c-target)
+- [实验 5：Linux guest 中的 I3C 设备驱动验证](#实验-5linux-guest-中的-i3c-设备驱动验证)
+- [实验 6：若你的 QEMU 版本没有 I3C](#实验-6若你的-qemu-版本没有-i3c)
+
+</details>
+
+<details>
+<summary><a href="#9-现成软件实验清单">9. 现成软件实验清单</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#91-i2c-最小实验清单">9.1 I2C 最小实验清单</a></summary>
+
+- [实验 A：`i2c-stub` 纯软件仿真](#实验-ai2c-stub-纯软件仿真)
+- [实验 B：slave EEPROM backend](#实验-bslave-eeprom-backend)
+- [实验 C：i2c-gpio](#实验-ci2c-gpio)
+
+</details>
+
+<details>
+<summary><a href="#92-i3c-最小实验清单">9.2 I3C 最小实验清单</a></summary>
+
+- [实验 D：I3C guest 驱动](#实验-di3c-guest-驱动)
+- [实验 E：新版 QEMU `mock-i3c-target`](#实验-e新版-qemu-mock-i3c-target)
+
+</details>
+
+<details>
+<summary><a href="#93-抓波形与排障方法">9.3 抓波形与排障方法</a></summary>
+
+- [9.3.1 I2C 抓波形排障方法](#931-i2c-抓波形排障方法)
+- [9.3.2 I3C 抓波形排障方法](#932-i3c-抓波形排障方法)
+- [9.3.3 抓波形时最容易犯的错误](#933-抓波形时最容易犯的错误)
+
+</details>
+
+<details>
+<summary><a href="#10-面试经典问题与参考答案">10. 面试经典问题与参考答案</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#101-i2c-为什么要上拉电阻">10.1 I2C 为什么要上拉电阻</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#102-i2c-的-repeated-start-有什么用">10.2 I2C 的 repeated start 有什么用</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#103-i2c-clock-stretching-是什么">10.3 I2C clock stretching 是什么</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#104-i2c-总线卡死怎么恢复">10.4 I2C 总线卡死怎么恢复</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#105-i2c-i2c_client-和-slave-backend-的区别">10.5 I2C `i2c_client` 和 slave backend 的区别</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#106-i3c-相比-i2c-最大的改进是什么">10.6 I3C 相比 I2C 最大的改进是什么</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#107-i3c-为什么不适合简单-gpio-bit-bang">10.7 I3C 为什么不适合简单 GPIO bit-bang</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#108-i3c-里的-ccc-是什么">10.8 I3C 里的 CCC 是什么</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#109-i3c-的-ibi-和-i2c-中断-gpio-有什么区别">10.9 I3C 的 IBI 和 I2C 中断 GPIO 有什么区别</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#1010-i3c-驱动开发最容易忽略什么">10.10 I3C 驱动开发最容易忽略什么</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#11-代码阅读建议">11. 代码阅读建议</a></summary>
+
+</details>
+
+<details>
+<summary><a href="#12-总结">12. 总结</a></summary>
+
+</details>
+
+---
+
 ## 1. 文档目标与结论先行
 
 本文围绕 7 个目标展开：
