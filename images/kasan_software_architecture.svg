@@ -1,0 +1,203 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+<defs>
+  <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+  <linearGradient id="hC" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4527A0"/><stop offset="100%" stop-color="#7E57C2"/></linearGradient>
+  <linearGradient id="hG" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1565C0"/><stop offset="100%" stop-color="#42A5F5"/></linearGradient>
+  <linearGradient id="hS" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#66BB6A"/></linearGradient>
+  <linearGradient id="hR" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C62828"/><stop offset="100%" stop-color="#EF5350"/></linearGradient>
+  <linearGradient id="hO" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#E65100"/><stop offset="100%" stop-color="#FF9800"/></linearGradient>
+  <linearGradient id="hT" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00695C"/><stop offset="100%" stop-color="#26A69A"/></linearGradient>
+  <marker id="aD" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#555" stroke-width="1.5" stroke-linejoin="round"/></marker>
+</defs>
+
+<text x="600" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#212121">KASAN 软件架构 — 源码文件组织与分层设计</text>
+<text x="600" y="48" text-anchor="middle" font-size="11" fill="#757575">源码目录：mm/kasan/ (18 files) · arch/arm64/mm/kasan_init.c · arch/arm64/lib/kasan_sw_tags.S</text>
+
+<!-- Layer 1: 公共核心层 -->
+<g transform="translate(30,65)" filter="url(#sh)">
+  <rect width="1140" height="100" rx="8" fill="#fff" stroke="#4527A0" stroke-width="2"/>
+  <rect width="1140" height="28" rx="8" fill="url(#hC)"/>
+  <rect y="20" width="1140" height="8" fill="#4527A0"/>
+  <text x="570" y="18" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">Layer 1: 公共核心层 — 所有模式共享</text>
+
+  <rect x="15" y="36" width="220" height="52" rx="6" fill="#EDE7F6" stroke="#9575CD" stroke-width="1.5"/>
+  <text x="125" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#4527A0">common.c</text>
+  <text x="125" y="70" text-anchor="middle" font-size="9" fill="#555">SLUB 集成 · poison/unpoison</text>
+  <text x="125" y="82" text-anchor="middle" font-size="9" fill="#555">对象生命周期 · kasan_track</text>
+
+  <rect x="250" y="36" width="220" height="52" rx="6" fill="#EDE7F6" stroke="#9575CD" stroke-width="1.5"/>
+  <text x="360" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#4527A0">kasan.h</text>
+  <text x="360" y="70" text-anchor="middle" font-size="9" fill="#555">内部 API · 数据结构</text>
+  <text x="360" y="82" text-anchor="middle" font-size="9" fill="#555">Shadow 常量 · 模式判断</text>
+
+  <rect x="485" y="36" width="220" height="52" rx="6" fill="#EDE7F6" stroke="#9575CD" stroke-width="1.5"/>
+  <text x="595" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#4527A0">shadow.c</text>
+  <text x="595" y="70" text-anchor="middle" font-size="9" fill="#555">Shadow Memory 运行时管理</text>
+  <text x="595" y="82" text-anchor="middle" font-size="9" fill="#555">__kasan_check_read/write</text>
+
+  <rect x="720" y="36" width="200" height="52" rx="6" fill="#EDE7F6" stroke="#9575CD" stroke-width="1.5"/>
+  <text x="820" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#4527A0">init.c</text>
+  <text x="820" y="70" text-anchor="middle" font-size="9" fill="#555">Shadow 页表初始化</text>
+  <text x="820" y="82" text-anchor="middle" font-size="9" fill="#555">early_shadow_page</text>
+
+  <rect x="935" y="36" width="190" height="52" rx="6" fill="#EDE7F6" stroke="#9575CD" stroke-width="1.5"/>
+  <text x="1030" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#4527A0">Makefile</text>
+  <text x="1030" y="70" text-anchor="middle" font-size="9" fill="#555">条件编译控制</text>
+  <text x="1030" y="82" text-anchor="middle" font-size="9" fill="#555">模式文件选择</text>
+</g>
+
+<!-- Layer 2: 模式检查层 -->
+<g transform="translate(30,190)" filter="url(#sh)">
+  <rect width="1140" height="100" rx="8" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <rect width="1140" height="28" rx="8" fill="url(#hG)"/>
+  <rect y="20" width="1140" height="8" fill="#1565C0"/>
+  <text x="570" y="18" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">Layer 2: 模式检查层 — 三选一编译</text>
+
+  <rect x="15" y="36" width="360" height="52" rx="6" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1.5"/>
+  <text x="195" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565C0">generic.c (CONFIG_KASAN_GENERIC)</text>
+  <text x="195" y="70" text-anchor="middle" font-size="9" fill="#555">Shadow Byte 检查 · memory_is_poisoned()</text>
+  <text x="195" y="82" text-anchor="middle" font-size="9" fill="#555">__asan_load/store · kasan_init_generic()</text>
+
+  <rect x="390" y="36" width="360" height="52" rx="6" fill="#E8F5E9" stroke="#81C784" stroke-width="1.5"/>
+  <text x="570" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#2E7D32">sw_tags.c (CONFIG_KASAN_SW_TAGS)</text>
+  <text x="570" y="70" text-anchor="middle" font-size="9" fill="#555">Tag 比较检查 · kasan_random_tag()</text>
+  <text x="570" y="82" text-anchor="middle" font-size="9" fill="#555">__hwasan_load/store · kasan_init_sw_tags()</text>
+
+  <rect x="765" y="36" width="360" height="52" rx="6" fill="#FFEBEE" stroke="#EF9A9A" stroke-width="1.5"/>
+  <text x="945" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#C62828">hw_tags.c (CONFIG_KASAN_HW_TAGS)</text>
+  <text x="945" y="70" text-anchor="middle" font-size="9" fill="#555">MTE 硬件控制 · kasan_mode 管理</text>
+  <text x="945" y="82" text-anchor="middle" font-size="9" fill="#555">Boot 参数 · kasan_init_hw_tags()</text>
+</g>
+
+<!-- Layer 3: 报告层 -->
+<g transform="translate(30,315)" filter="url(#sh)">
+  <rect width="1140" height="100" rx="8" fill="#fff" stroke="#E65100" stroke-width="2"/>
+  <rect width="1140" height="28" rx="8" fill="url(#hO)"/>
+  <rect y="20" width="1140" height="8" fill="#E65100"/>
+  <text x="570" y="18" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">Layer 3: 错误报告层</text>
+
+  <rect x="15" y="36" width="220" height="52" rx="6" fill="#FFF3E0" stroke="#FFB74D" stroke-width="1.5"/>
+  <text x="125" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">report.c</text>
+  <text x="125" y="70" text-anchor="middle" font-size="9" fill="#555">公共报告框架</text>
+  <text x="125" y="82" text-anchor="middle" font-size="9" fill="#555">kasan_report() · 抑制逻辑</text>
+
+  <rect x="250" y="36" width="210" height="52" rx="6" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1"/>
+  <text x="355" y="54" text-anchor="middle" font-size="10" font-weight="bold" fill="#1565C0">report_generic.c</text>
+  <text x="355" y="70" text-anchor="middle" font-size="9" fill="#555">Generic Bug 类型分类</text>
+  <text x="355" y="82" text-anchor="middle" font-size="9" fill="#555">Shadow Byte 值解读</text>
+
+  <rect x="475" y="36" width="210" height="52" rx="6" fill="#E8F5E9" stroke="#81C784" stroke-width="1"/>
+  <text x="580" y="54" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">report_sw_tags.c</text>
+  <text x="580" y="70" text-anchor="middle" font-size="9" fill="#555">SW_TAGS Tag 比较报告</text>
+  <text x="580" y="82" text-anchor="middle" font-size="9" fill="#555">Stack Ring 搜索</text>
+
+  <rect x="700" y="36" width="210" height="52" rx="6" fill="#FFEBEE" stroke="#EF9A9A" stroke-width="1"/>
+  <text x="805" y="54" text-anchor="middle" font-size="10" font-weight="bold" fill="#C62828">report_hw_tags.c</text>
+  <text x="805" y="70" text-anchor="middle" font-size="9" fill="#555">HW_TAGS MTE 报告</text>
+  <text x="805" y="82" text-anchor="middle" font-size="9" fill="#555">hw_get_mem_tag()</text>
+
+  <rect x="925" y="36" width="200" height="52" rx="6" fill="#F3E5F5" stroke="#CE93D8" stroke-width="1"/>
+  <text x="1025" y="54" text-anchor="middle" font-size="10" font-weight="bold" fill="#6A1B9A">report_tags.c</text>
+  <text x="1025" y="70" text-anchor="middle" font-size="9" fill="#555">Tag 模式公共报告</text>
+  <text x="1025" y="82" text-anchor="middle" font-size="9" fill="#555">Stack Ring 遍历</text>
+</g>
+
+<!-- Layer 4: 辅助模块 -->
+<g transform="translate(30,440)" filter="url(#sh)">
+  <rect width="1140" height="100" rx="8" fill="#fff" stroke="#00695C" stroke-width="2"/>
+  <rect width="1140" height="28" rx="8" fill="url(#hT)"/>
+  <rect y="20" width="1140" height="8" fill="#00695C"/>
+  <text x="570" y="18" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">Layer 4: 辅助模块</text>
+
+  <rect x="15" y="36" width="270" height="52" rx="6" fill="#E0F2F1" stroke="#80CBC4" stroke-width="1.5"/>
+  <text x="150" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#00695C">quarantine.c (Generic 专属)</text>
+  <text x="150" y="70" text-anchor="middle" font-size="9" fill="#555">Per-CPU + Global 隔离区</text>
+  <text x="150" y="82" text-anchor="middle" font-size="9" fill="#555">批量回收 · 1/32 物理内存上限</text>
+
+  <rect x="300" y="36" width="270" height="52" rx="6" fill="#E0F2F1" stroke="#80CBC4" stroke-width="1.5"/>
+  <text x="435" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#00695C">tags.c (SW/HW_TAGS 共享)</text>
+  <text x="435" y="70" text-anchor="middle" font-size="9" fill="#555">Stack Ring 管理</text>
+  <text x="435" y="82" text-anchor="middle" font-size="9" fill="#555">kasan_init_tags() · save_stack_info()</text>
+
+  <rect x="585" y="36" width="270" height="52" rx="6" fill="#E0F2F1" stroke="#80CBC4" stroke-width="1.5"/>
+  <text x="720" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#00695C">kasan_test_c.c / _rust.rs</text>
+  <text x="720" y="70" text-anchor="middle" font-size="9" fill="#555">KUnit 测试套件</text>
+  <text x="720" y="82" text-anchor="middle" font-size="9" fill="#555">OOB · UAF · Double-Free 验证</text>
+
+  <rect x="870" y="36" width="255" height="52" rx="6" fill="#E0F2F1" stroke="#80CBC4" stroke-width="1.5"/>
+  <text x="997" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#00695C">include/linux/kasan.h</text>
+  <text x="997" y="70" text-anchor="middle" font-size="9" fill="#555">外部 API · kasan_mem_to_shadow()</text>
+  <text x="997" y="82" text-anchor="middle" font-size="9" fill="#555">kasan-tags.h · kasan-enabled.h</text>
+</g>
+
+<!-- Layer 5: 平台层 -->
+<g transform="translate(30,565)" filter="url(#sh)">
+  <rect width="1140" height="100" rx="8" fill="#fff" stroke="#C62828" stroke-width="2"/>
+  <rect width="1140" height="28" rx="8" fill="url(#hR)"/>
+  <rect y="20" width="1140" height="8" fill="#C62828"/>
+  <text x="570" y="18" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">Layer 5: ARM64 平台层</text>
+
+  <rect x="15" y="36" width="350" height="52" rx="6" fill="#FFEBEE" stroke="#EF9A9A" stroke-width="1.5"/>
+  <text x="190" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#C62828">arch/arm64/mm/kasan_init.c</text>
+  <text x="190" y="70" text-anchor="middle" font-size="9" fill="#555">kasan_early_init() · kasan_init_shadow()</text>
+  <text x="190" y="82" text-anchor="middle" font-size="9" fill="#555">Shadow 页表填充 · memblock 分配</text>
+
+  <rect x="380" y="36" width="350" height="52" rx="6" fill="#FFEBEE" stroke="#EF9A9A" stroke-width="1.5"/>
+  <text x="555" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#C62828">arch/arm64/include/asm/mte-kasan.h</text>
+  <text x="555" y="70" text-anchor="middle" font-size="9" fill="#555">MTE 硬件操作宏</text>
+  <text x="555" y="82" text-anchor="middle" font-size="9" fill="#555">mte_set_mem_tag_range() · hw_get_mem_tag()</text>
+
+  <rect x="745" y="36" width="380" height="52" rx="6" fill="#FFEBEE" stroke="#EF9A9A" stroke-width="1.5"/>
+  <text x="935" y="54" text-anchor="middle" font-size="11" font-weight="bold" fill="#C62828">arch/arm64/lib/kasan_sw_tags.S</text>
+  <text x="935" y="70" text-anchor="middle" font-size="9" fill="#555">SW_TAGS 汇编优化</text>
+  <text x="935" y="82" text-anchor="middle" font-size="9" fill="#555">__hwasan_check_* 快速路径</text>
+</g>
+
+<!-- 调用关系箭头 -->
+<path d="M600,165 L600,190" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#aD)"/>
+<path d="M600,290 L600,315" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#aD)"/>
+<path d="M600,415 L600,440" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#aD)"/>
+<path d="M600,540 L600,565" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#aD)"/>
+
+<!-- 右侧标注 -->
+<text x="1180" y="115" text-anchor="end" font-size="10" fill="#4527A0" font-weight="bold" transform="rotate(-90,1180,115)">核心</text>
+<text x="1180" y="240" text-anchor="end" font-size="10" fill="#1565C0" font-weight="bold" transform="rotate(-90,1180,240)">检查</text>
+<text x="1180" y="365" text-anchor="end" font-size="10" fill="#E65100" font-weight="bold" transform="rotate(-90,1180,365)">报告</text>
+<text x="1180" y="490" text-anchor="end" font-size="10" fill="#00695C" font-weight="bold" transform="rotate(-90,1180,490)">辅助</text>
+<text x="1180" y="615" text-anchor="end" font-size="10" fill="#C62828" font-weight="bold" transform="rotate(-90,1180,615)">平台</text>
+
+<!-- 编译条件说明 -->
+<g transform="translate(30,690)" filter="url(#sh)">
+  <rect width="1140" height="190" rx="8" fill="#fff" stroke="#757575" stroke-width="1.5"/>
+  <text x="570" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">条件编译矩阵 — 各模式编译哪些文件</text>
+
+  <rect x="0" y="32" width="1140" height="22" fill="#F5F5F5"/>
+  <text x="150" y="47" text-anchor="middle" font-size="10" font-weight="bold" fill="#333">源文件</text>
+  <text x="440" y="47" text-anchor="middle" font-size="10" font-weight="bold" fill="#1565C0">Generic</text>
+  <text x="700" y="47" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">SW_TAGS</text>
+  <text x="960" y="47" text-anchor="middle" font-size="10" font-weight="bold" fill="#C62828">HW_TAGS</text>
+
+  <text x="150" y="70" text-anchor="middle" font-size="10" fill="#555">common.c, shadow.c, init.c, report.c</text>
+  <text x="440" y="70" text-anchor="middle" font-size="10" fill="#333">✓</text><text x="700" y="70" text-anchor="middle" font-size="10" fill="#333">✓</text><text x="960" y="70" text-anchor="middle" font-size="10" fill="#333">✓ (common.c only)</text>
+  <line x1="10" y1="77" x2="1130" y2="77" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="150" y="93" text-anchor="middle" font-size="10" fill="#555">generic.c, report_generic.c</text>
+  <text x="440" y="93" text-anchor="middle" font-size="10" fill="#1565C0" font-weight="bold">✓</text><text x="700" y="93" text-anchor="middle" font-size="10" fill="#999">✗</text><text x="960" y="93" text-anchor="middle" font-size="10" fill="#999">✗</text>
+  <line x1="10" y1="100" x2="1130" y2="100" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="150" y="116" text-anchor="middle" font-size="10" fill="#555">sw_tags.c, report_sw_tags.c</text>
+  <text x="440" y="116" text-anchor="middle" font-size="10" fill="#999">✗</text><text x="700" y="116" text-anchor="middle" font-size="10" fill="#2E7D32" font-weight="bold">✓</text><text x="960" y="116" text-anchor="middle" font-size="10" fill="#999">✗</text>
+  <line x1="10" y1="123" x2="1130" y2="123" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="150" y="139" text-anchor="middle" font-size="10" fill="#555">hw_tags.c, report_hw_tags.c</text>
+  <text x="440" y="139" text-anchor="middle" font-size="10" fill="#999">✗</text><text x="700" y="139" text-anchor="middle" font-size="10" fill="#999">✗</text><text x="960" y="139" text-anchor="middle" font-size="10" fill="#C62828" font-weight="bold">✓</text>
+  <line x1="10" y1="146" x2="1130" y2="146" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="150" y="162" text-anchor="middle" font-size="10" fill="#555">quarantine.c</text>
+  <text x="440" y="162" text-anchor="middle" font-size="10" fill="#1565C0" font-weight="bold">✓</text><text x="700" y="162" text-anchor="middle" font-size="10" fill="#999">✗</text><text x="960" y="162" text-anchor="middle" font-size="10" fill="#999">✗</text>
+  <line x1="10" y1="169" x2="1130" y2="169" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="150" y="185" text-anchor="middle" font-size="10" fill="#555">tags.c, report_tags.c</text>
+  <text x="440" y="185" text-anchor="middle" font-size="10" fill="#999">✗</text><text x="700" y="185" text-anchor="middle" font-size="10" fill="#2E7D32" font-weight="bold">✓</text><text x="960" y="185" text-anchor="middle" font-size="10" fill="#C62828" font-weight="bold">✓</text>
+</g>
+</svg>

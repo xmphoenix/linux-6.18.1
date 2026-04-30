@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 550" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="h1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+    <linearGradient id="h2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#10b981"/></linearGradient>
+    <linearGradient id="h3" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#ef4444"/></linearGradient>
+    <linearGradient id="h4" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient>
+    <linearGradient id="h5" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#d97706"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+    <marker id="a1" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="a2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#059669" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="a3" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="a4" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="a5" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#d97706" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="540" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e293b">内核态页保护机制 — set_memory_ro/rw 与 STRICT_KERNEL_RWX</text>
+  <text x="540" y="46" text-anchor="middle" font-size="11" fill="#64748b">arch/arm64/mm/pageattr.c · arch/arm64/mm/mmu.c · init/main.c</text>
+
+  <!-- ========== set_memory_ro/rw implementation ========== -->
+  <g transform="translate(30, 65)">
+    <rect width="330" height="210" rx="8" fill="#fff" stroke="#2563eb" stroke-width="2" filter="url(#sh)"/>
+    <rect width="330" height="30" rx="8" fill="url(#h1)"/>
+    <rect x="0" y="22" width="330" height="8" fill="#3b82f6"/>
+    <text x="165" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">set_memory_ro() 实现路径</text>
+    <text x="15" y="48" font-size="10" fill="#2563eb" font-weight="bold">arch/arm64/mm/pageattr.c:202</text>
+    <line x1="10" y1="54" x2="320" y2="54" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <text x="15" y="72" font-size="10" font-family="monospace">set_memory_ro(addr, numpages)</text>
+    <text x="15" y="86" font-size="9" fill="#6b7280">→ change_memory_common(addr, n,</text>
+    <text x="28" y="100" font-size="9" fill="#6b7280">set=PTE_RDONLY, clear=PTE_WRITE)</text>
+    <line x1="10" y1="106" x2="320" y2="106" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <text x="15" y="122" font-size="10" font-family="monospace">change_memory_common():</text>
+    <text x="25" y="137" font-size="9" fill="#374151">① find_vm_area() — 必须是 vmalloc 区域</text>
+    <text x="25" y="152" font-size="9" fill="#374151">② rodata_full → 同步修改 linear map</text>
+    <text x="25" y="167" font-size="9" fill="#374151">③ vm_unmap_aliases() — 清除别名映射</text>
+    <text x="25" y="182" font-size="9" fill="#374151">④ update_range_prot() — 遍历页表</text>
+    <text x="25" y="197" font-size="9" fill="#374151">⑤ walk_kernel_page_table_range_lockless()</text>
+    <text x="15" y="212" font-size="9" fill="#2563eb">⑥ flush_tlb_kernel_range() — TLB 失效</text>
+  </g>
+
+  <!-- ========== mark_rodata_ro ========== -->
+  <g transform="translate(410, 65)">
+    <rect width="310" height="210" rx="8" fill="#fff" stroke="#059669" stroke-width="2" filter="url(#sh)"/>
+    <rect width="310" height="30" rx="8" fill="url(#h2)"/>
+    <rect x="0" y="22" width="310" height="8" fill="#10b981"/>
+    <text x="155" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">STRICT_KERNEL_RWX 初始化</text>
+    <text x="15" y="48" font-size="10" fill="#059669" font-weight="bold">init/main.c → arch/arm64/mm/mmu.c</text>
+    <line x1="10" y1="54" x2="300" y2="54" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <text x="15" y="72" font-size="10" font-family="monospace" fill="#059669">mark_readonly()  init/main.c:1448</text>
+    <text x="25" y="89" font-size="10" font-family="monospace">├─ flush_module_init_free_work()</text>
+    <text x="25" y="106" font-size="10" font-family="monospace" fill="#059669">├─ mark_rodata_ro()</text>
+    <text x="25" y="123" font-size="10" font-family="monospace">├─ debug_checkwx()</text>
+    <text x="25" y="140" font-size="10" font-family="monospace">└─ rodata_test()</text>
+
+    <line x1="10" y1="148" x2="300" y2="148" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="166" font-size="10" font-weight="bold" fill="#059669">mark_rodata_ro() mmu.c:1138:</text>
+    <text x="25" y="183" font-size="9" fill="#374151">.rodata → PAGE_KERNEL_RO (只读)</text>
+    <text x="25" y="198" font-size="9" fill="#374151">_text → _stext → PAGE_KERNEL_RO</text>
+    <text x="25" y="213" font-size="9" fill="#374151">WRITE_ONCE(rodata_is_rw, false)</text>
+  </g>
+
+  <!-- ========== __ro_after_init ========== -->
+  <g transform="translate(770, 65)">
+    <rect width="280" height="210" rx="8" fill="#fff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+    <rect width="280" height="30" rx="8" fill="url(#h4)"/>
+    <rect x="0" y="22" width="280" height="8" fill="#8b5cf6"/>
+    <text x="140" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">__ro_after_init 机制</text>
+    <text x="15" y="48" font-size="10" fill="#7c3aed" font-weight="bold">编译器属性 + 链接器 section</text>
+    <line x1="10" y1="54" x2="270" y2="54" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <text x="15" y="72" font-size="10" font-family="monospace" fill="#7c3aed">__section(".data..ro_after_init")</text>
+    <line x1="10" y1="80" x2="270" y2="80" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <text x="15" y="98" font-size="10" fill="#374151">使用示例:</text>
+    <text x="15" y="114" font-size="10" font-family="monospace">bool rodata_full __ro_after_init;</text>
+    <text x="15" y="130" font-size="10" font-family="monospace">u64 kimage_voffset __ro_after_init;</text>
+    <line x1="10" y1="138" x2="270" y2="138" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <text x="15" y="156" font-size="10" fill="#374151">生命周期:</text>
+    <text x="25" y="172" font-size="9" fill="#374151">boot 阶段: 可读写 (正常初始化)</text>
+    <text x="25" y="188" font-size="9" fill="#dc2626" font-weight="bold">init 完成后: 只读 (mark_rodata_ro)</text>
+    <text x="25" y="204" font-size="9" fill="#374151">运行时任何写入 → Permission Fault</text>
+    <text x="25" y="218" font-size="9" fill="#059669">防止内核漏洞修改关键全局变量</text>
+  </g>
+
+  <!-- ========== Bottom: Kernel address space layout ========== -->
+  <g transform="translate(30, 320)">
+    <rect width="1020" height="210" rx="8" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1020" height="30" rx="8" fill="url(#h5)"/>
+    <rect x="0" y="22" width="1020" height="8" fill="#f59e0b"/>
+    <text x="510" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">ARM64 内核地址空间页保护布局</text>
+
+    <!-- Memory layout bar -->
+    <text x="15" y="50" font-size="10" font-weight="bold" fill="#374151">内核虚拟地址空间（高地址→低地址）:</text>
+
+    <!-- _text to _stext: RO -->
+    <rect x="30" y="62" width="100" height="30" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="80" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#dc2626">_text→_stext</text>
+    <text x="80" y="100" text-anchor="middle" font-size="8" fill="#dc2626">RO (entry code)</text>
+
+    <!-- _stext to _etext: RX -->
+    <rect x="135" y="62" width="130" height="30" rx="4" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="200" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#2563eb">_stext→_etext</text>
+    <text x="200" y="100" text-anchor="middle" font-size="8" fill="#2563eb">RX (kernel text)</text>
+
+    <!-- __start_rodata to __init_begin: RO -->
+    <rect x="270" y="62" width="160" height="30" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="350" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#dc2626">__start_rodata→__init_begin</text>
+    <text x="350" y="100" text-anchor="middle" font-size="8" fill="#dc2626">RO (rodata + ro_after_init)</text>
+
+    <!-- __init_begin to __init_end: RWX→freed -->
+    <rect x="435" y="62" width="100" height="30" rx="4" fill="#fef9c3" stroke="#d97706" stroke-width="1.5"/>
+    <text x="485" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#d97706">__init</text>
+    <text x="485" y="100" text-anchor="middle" font-size="8" fill="#d97706">freed after init</text>
+
+    <!-- .data: RW -->
+    <rect x="540" y="62" width="80" height="30" rx="4" fill="#f0fdf4" stroke="#059669" stroke-width="1.5"/>
+    <text x="580" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#059669">.data</text>
+    <text x="580" y="100" text-anchor="middle" font-size="8" fill="#059669">RW</text>
+
+    <!-- .bss: RW -->
+    <rect x="625" y="62" width="60" height="30" rx="4" fill="#f0fdf4" stroke="#059669" stroke-width="1.5"/>
+    <text x="655" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#059669">.bss</text>
+    <text x="655" y="100" text-anchor="middle" font-size="8" fill="#059669">RW</text>
+
+    <!-- vmalloc: RW (can be set_memory_ro) -->
+    <rect x="690" y="62" width="150" height="30" rx="4" fill="#faf5ff" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="765" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#7c3aed">vmalloc 区域</text>
+    <text x="765" y="100" text-anchor="middle" font-size="8" fill="#7c3aed">RW (set_memory_ro 可改)</text>
+
+    <!-- modules: RO text + RW data -->
+    <rect x="845" y="62" width="160" height="30" rx="4" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="925" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#2563eb">modules 区域</text>
+    <text x="925" y="100" text-anchor="middle" font-size="8" fill="#2563eb">text:RX data:RW (MODULE_RWX)</text>
+
+    <!-- Protection rules -->
+    <line x1="10" y1="112" x2="1010" y2="112" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <text x="15" y="132" font-size="11" font-weight="bold" fill="#374151">W^X 原则 (Write XOR Execute):</text>
+    <text x="15" y="150" font-size="10" fill="#374151">• CONFIG_STRICT_KERNEL_RWX: 内核代码段 RX(不可写), 数据段 RW(不可执行), rodata RO(不可写不可执行)</text>
+    <text x="15" y="167" font-size="10" fill="#374151">• CONFIG_STRICT_MODULE_RWX: 模块代码 RX, 模块数据 RW, 独立 section 独立权限</text>
+    <text x="15" y="184" font-size="10" fill="#374151">• debug_checkwx(): 启动后扫描所有 W+X 页面, 有则 WARN — 确保不存在既可写又可执行的页面</text>
+    <text x="15" y="201" font-size="10" fill="#dc2626" font-weight="bold">• 内核中任何对 .rodata / .text 的写操作 → Permission Fault → BUG/Oops → 精确定位 MemoryOverwritten</text>
+  </g>
+</svg>

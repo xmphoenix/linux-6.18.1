@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hK" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#e74c3c"/><stop offset="100%" stop-color="#c0392b"/></linearGradient>
+    <linearGradient id="hB" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2980b9"/><stop offset="100%" stop-color="#1a5276"/></linearGradient>
+    <linearGradient id="hP" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#27ae60"/><stop offset="100%" stop-color="#1e8449"/></linearGradient>
+    <linearGradient id="hC" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8e44ad"/><stop offset="100%" stop-color="#6c3483"/></linearGradient>
+    <linearGradient id="hT" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#d35400"/><stop offset="100%" stop-color="#a04000"/></linearGradient>
+    <marker id="ar" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#555" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#c0392b" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2980b9" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#27ae60" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <text x="600" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#2c3e50">Linux 内核 Ramdump 三大机制对比：kdump / Bootloader Ramdump / pstore</text>
+  <text x="600" y="50" text-anchor="middle" font-size="11" fill="#7f8c8d">源码: kernel/crash_core.c, kernel/kexec_core.c, fs/pstore/ram.c, fs/pstore/platform.c</text>
+
+  <!-- ========== Column 1: kdump ========== -->
+  <g transform="translate(20,70)" filter="url(#sh)">
+    <rect width="370" height="340" rx="8" fill="#fff" stroke="#e74c3c" stroke-width="2"/>
+    <rect width="370" height="30" rx="8" fill="url(#hK)"/>
+    <rect x="0" y="22" width="370" height="8" fill="#c0392b"/>
+    <text x="185" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="14">① kdump (kexec-based)</text>
+    <text x="15" y="48" font-size="10" fill="#e74c3c" font-weight="bold">原理: kexec 加载第二内核，panic 时切换执行</text>
+    <line x1="10" y1="55" x2="360" y2="55" stroke="#fde8e8" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#555" font-weight="bold">触发流程:</text>
+    <text x="20" y="88" font-size="9.5" fill="#555">1. panic() → __crash_kexec(regs)</text>
+    <text x="20" y="104" font-size="9.5" fill="#555">2. crash_setup_regs() — 保存寄存器</text>
+    <text x="20" y="120" font-size="9.5" fill="#555">3. crash_save_vmcoreinfo() — 保存内核元信息</text>
+    <text x="20" y="136" font-size="9.5" fill="#555">4. machine_crash_shutdown() — 停止其他CPU</text>
+    <text x="20" y="152" font-size="9.5" fill="#555">5. machine_kexec(kexec_crash_image)</text>
+    <text x="20" y="168" font-size="9.5" fill="#555">6. 捕获内核启动 → /proc/vmcore</text>
+    <text x="20" y="184" font-size="9.5" fill="#555">7. makedumpfile 保存到磁盘</text>
+    <line x1="10" y1="195" x2="360" y2="195" stroke="#fde8e8" stroke-width="0.8"/>
+    <text x="15" y="212" font-size="10" fill="#555" font-weight="bold">数据内容: 完整物理内存 + ELF NOTE</text>
+    <text x="20" y="228" font-size="9.5" fill="#555">• vmcore = ELF Core format</text>
+    <text x="20" y="244" font-size="9.5" fill="#555">• 每个 CPU 的 pt_regs (NT_PRSTATUS)</text>
+    <text x="20" y="260" font-size="9.5" fill="#555">• vmcoreinfo (符号偏移/布局信息)</text>
+    <line x1="10" y1="270" x2="360" y2="270" stroke="#fde8e8" stroke-width="0.8"/>
+    <text x="15" y="288" font-size="10" fill="#e74c3c" font-weight="bold">优点:</text>
+    <text x="20" y="304" font-size="9.5" fill="#555">✓ 完整内存转储，crash 工具离线分析</text>
+    <text x="20" y="320" font-size="9.5" fill="#555">✓ 不依赖 Bootloader，纯内核方案</text>
+    <text x="15" y="336" font-size="10" fill="#e74c3c" font-weight="bold">缺点: 需预留内存(256M+)，启动时加载</text>
+  </g>
+
+  <!-- ========== Column 2: Bootloader Ramdump ========== -->
+  <g transform="translate(415,70)" filter="url(#sh)">
+    <rect width="370" height="340" rx="8" fill="#fff" stroke="#2980b9" stroke-width="2"/>
+    <rect width="370" height="30" rx="8" fill="url(#hB)"/>
+    <rect x="0" y="22" width="370" height="8" fill="#1a5276"/>
+    <text x="185" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="14">② Bootloader Ramdump</text>
+    <text x="15" y="48" font-size="10" fill="#2980b9" font-weight="bold">原理: 崩溃后进入 Bootloader，通过串口/USB 导出</text>
+    <line x1="10" y1="55" x2="360" y2="55" stroke="#d6eaf8" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#555" font-weight="bold">触发流程:</text>
+    <text x="20" y="88" font-size="9.5" fill="#555">1. panic() → 配置重启到 ramdump 模式</text>
+    <text x="20" y="104" font-size="9.5" fill="#555">2. 写入特殊标志到 IMEM/共享内存</text>
+    <text x="20" y="120" font-size="9.5" fill="#555">3. emergency_restart() → 热重启</text>
+    <text x="20" y="136" font-size="9.5" fill="#555">4. Bootloader 检测标志，不清除内存</text>
+    <text x="20" y="152" font-size="9.5" fill="#555">5. 通过 USB/串口/网络 导出 RAM 数据</text>
+    <text x="20" y="168" font-size="9.5" fill="#555">6. 主机工具(T32/crash)离线分析</text>
+    <line x1="10" y1="195" x2="360" y2="195" stroke="#d6eaf8" stroke-width="0.8"/>
+    <text x="15" y="212" font-size="10" fill="#555" font-weight="bold">数据内容: 原始物理内存镜像</text>
+    <text x="20" y="228" font-size="9.5" fill="#555">• 完整 DRAM 内容（未经 ELF 封装）</text>
+    <text x="20" y="244" font-size="9.5" fill="#555">• 需要额外元数据（内存布局/符号表）</text>
+    <text x="20" y="260" font-size="9.5" fill="#555">• SoC 厂商定制格式居多</text>
+    <line x1="10" y1="270" x2="360" y2="270" stroke="#d6eaf8" stroke-width="0.8"/>
+    <text x="15" y="288" font-size="10" fill="#2980b9" font-weight="bold">优点:</text>
+    <text x="20" y="304" font-size="9.5" fill="#555">✓ 不需预留内存，Bootloader 负责导出</text>
+    <text x="20" y="320" font-size="9.5" fill="#555">✓ 可配合 T32/DS-5 高级调试器</text>
+    <text x="15" y="336" font-size="10" fill="#2980b9" font-weight="bold">缺点: 依赖厂商 BL 支持，需 USB/串口连接</text>
+  </g>
+
+  <!-- ========== Column 3: pstore ========== -->
+  <g transform="translate(810,70)" filter="url(#sh)">
+    <rect width="370" height="340" rx="8" fill="#fff" stroke="#27ae60" stroke-width="2"/>
+    <rect width="370" height="30" rx="8" fill="url(#hP)"/>
+    <rect x="0" y="22" width="370" height="8" fill="#1e8449"/>
+    <text x="185" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="14">③ pstore (ramoops)</text>
+    <text x="15" y="48" font-size="10" fill="#27ae60" font-weight="bold">原理: 保留 RAM 区域，重启后读取日志</text>
+    <line x1="10" y1="55" x2="360" y2="55" stroke="#d5f5e3" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#555" font-weight="bold">触发流程:</text>
+    <text x="20" y="88" font-size="9.5" fill="#555">1. panic()/oops → kmsg_dump()</text>
+    <text x="20" y="104" font-size="9.5" fill="#555">2. pstore_dump() 回调被触发</text>
+    <text x="20" y="120" font-size="9.5" fill="#555">3. ramoops 写入保留 RAM 区域</text>
+    <text x="20" y="136" font-size="9.5" fill="#555">4. 可选 zlib 压缩 + ECC 校验</text>
+    <text x="20" y="152" font-size="9.5" fill="#555">5. 重启后内核挂载 /sys/fs/pstore</text>
+    <text x="20" y="168" font-size="9.5" fill="#555">6. 读取 dmesg-ramoops-0 等文件</text>
+    <line x1="10" y1="195" x2="360" y2="195" stroke="#d5f5e3" stroke-width="0.8"/>
+    <text x="15" y="212" font-size="10" fill="#555" font-weight="bold">数据内容: 文本日志（非内存镜像）</text>
+    <text x="20" y="228" font-size="9.5" fill="#555">• dmesg — panic/oops 时的内核日志</text>
+    <text x="20" y="244" font-size="9.5" fill="#555">• console — 持续的 console 输出</text>
+    <text x="20" y="260" font-size="9.5" fill="#555">• ftrace / pmsg — 追踪和用户日志</text>
+    <line x1="10" y1="270" x2="360" y2="270" stroke="#d5f5e3" stroke-width="0.8"/>
+    <text x="15" y="288" font-size="10" fill="#27ae60" font-weight="bold">优点:</text>
+    <text x="20" y="304" font-size="9.5" fill="#555">✓ 轻量级，预留 1-4MB 即可</text>
+    <text x="20" y="320" font-size="9.5" fill="#555">✓ 无需额外工具，cat 即可查看</text>
+    <text x="15" y="336" font-size="10" fill="#27ae60" font-weight="bold">缺点: 仅日志，无法还原完整内存状态</text>
+  </g>
+
+  <!-- ========== Bottom: Comparison Table ========== -->
+  <g transform="translate(20,440)" filter="url(#sh)">
+    <rect width="1160" height="185" rx="8" fill="#fff" stroke="#34495e" stroke-width="2"/>
+    <rect width="1160" height="30" rx="8" fill="#34495e"/>
+    <rect x="0" y="22" width="1160" height="8" fill="#2c3e50"/>
+    <text x="580" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="14">三种机制对比与选型策略</text>
+    <!-- Table header -->
+    <text x="80" y="50" text-anchor="middle" font-size="10" fill="#555" font-weight="bold">对比维度</text>
+    <text x="310" y="50" text-anchor="middle" font-size="10" fill="#e74c3c" font-weight="bold">kdump</text>
+    <text x="580" y="50" text-anchor="middle" font-size="10" fill="#2980b9" font-weight="bold">Bootloader Ramdump</text>
+    <text x="890" y="50" text-anchor="middle" font-size="10" fill="#27ae60" font-weight="bold">pstore (ramoops)</text>
+    <line x1="10" y1="57" x2="1150" y2="57" stroke="#eee" stroke-width="1"/>
+    <!-- Rows -->
+    <text x="15" y="73" font-size="10" fill="#555">数据完整性</text>
+    <text x="310" y="73" text-anchor="middle" font-size="9.5">完整内存 + ELF Core</text>
+    <text x="580" y="73" text-anchor="middle" font-size="9.5">完整内存(原始)</text>
+    <text x="890" y="73" text-anchor="middle" font-size="9.5">仅日志文本</text>
+    <line x1="10" y1="80" x2="1150" y2="80" stroke="#f5f5f5" stroke-width="0.5"/>
+    <text x="15" y="96" font-size="10" fill="#555">内存开销</text>
+    <text x="310" y="96" text-anchor="middle" font-size="9.5">256MB+ 预留给捕获内核</text>
+    <text x="580" y="96" text-anchor="middle" font-size="9.5">无需预留</text>
+    <text x="890" y="96" text-anchor="middle" font-size="9.5">1-4MB 预留给 ramoops</text>
+    <line x1="10" y1="103" x2="1150" y2="103" stroke="#f5f5f5" stroke-width="0.5"/>
+    <text x="15" y="119" font-size="10" fill="#555">分析工具</text>
+    <text x="310" y="119" text-anchor="middle" font-size="9.5">crash / gdb</text>
+    <text x="580" y="119" text-anchor="middle" font-size="9.5">T32 / DS-5 / crash</text>
+    <text x="890" y="119" text-anchor="middle" font-size="9.5">cat / 文本分析</text>
+    <line x1="10" y1="126" x2="1150" y2="126" stroke="#f5f5f5" stroke-width="0.5"/>
+    <text x="15" y="142" font-size="10" fill="#555">依赖条件</text>
+    <text x="310" y="142" text-anchor="middle" font-size="9.5">内核 CONFIG_CRASH_DUMP + kexec</text>
+    <text x="580" y="142" text-anchor="middle" font-size="9.5">SoC 厂商 Bootloader 支持</text>
+    <text x="890" y="142" text-anchor="middle" font-size="9.5">内核 CONFIG_PSTORE + DT/参数</text>
+    <line x1="10" y1="149" x2="1150" y2="149" stroke="#f5f5f5" stroke-width="0.5"/>
+    <text x="15" y="165" font-size="10" fill="#555">适用场景</text>
+    <text x="310" y="165" text-anchor="middle" font-size="9.5">服务器 / 开发环境</text>
+    <text x="580" y="165" text-anchor="middle" font-size="9.5">嵌入式 SoC 调试</text>
+    <text x="890" y="165" text-anchor="middle" font-size="9.5">所有场景（基础保障）</text>
+    <text x="15" y="181" font-size="10" fill="#555" font-weight="bold">推荐策略</text>
+    <text x="580" y="181" text-anchor="middle" font-size="10" fill="#d35400" font-weight="bold">生产环境: pstore(必选) + kdump(可选) | 开发环境: pstore + kdump + BL Ramdump 全开</text>
+  </g>
+
+  <!-- ========== Bottom: ramoops_context struct ========== -->
+  <g transform="translate(20,650)" filter="url(#sh)">
+    <rect width="560" height="150" rx="8" fill="#fff" stroke="#27ae60" stroke-width="2"/>
+    <rect width="560" height="30" rx="8" fill="url(#hP)"/>
+    <rect x="0" y="22" width="560" height="8" fill="#1e8449"/>
+    <text x="280" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">ramoops_context 关键结构 (fs/pstore/ram.c)</text>
+    <text x="15" y="50" font-size="10.5" font-family="monospace" fill="#27ae60">struct ramoops_context {</text>
+    <text x="25" y="67" font-size="10" font-family="monospace">persistent_ram_zone **dprzs;</text>
+    <text x="310" y="67" font-size="9" fill="#888">Oops dump zones (N个循环)</text>
+    <text x="25" y="84" font-size="10" font-family="monospace">persistent_ram_zone *cprz;</text>
+    <text x="310" y="84" font-size="9" fill="#888">Console 日志区</text>
+    <text x="25" y="101" font-size="10" font-family="monospace">persistent_ram_zone **fprzs;</text>
+    <text x="310" y="101" font-size="9" fill="#888">Ftrace 数据区</text>
+    <text x="25" y="118" font-size="10" font-family="monospace">persistent_ram_zone *mprz;</text>
+    <text x="310" y="118" font-size="9" fill="#888">PMSG 用户日志区</text>
+    <text x="25" y="135" font-size="10" font-family="monospace">phys_addr_t phys_addr; size_t record_size;</text>
+    <text x="310" y="135" font-size="9" fill="#888">物理基址 / 每条记录大小</text>
+    <text x="15" y="148" font-size="10.5" font-family="monospace" fill="#27ae60">};</text>
+  </g>
+
+  <!-- __crash_kexec struct -->
+  <g transform="translate(620,650)" filter="url(#sh)">
+    <rect width="560" height="150" rx="8" fill="#fff" stroke="#e74c3c" stroke-width="2"/>
+    <rect width="560" height="30" rx="8" fill="url(#hK)"/>
+    <rect x="0" y="22" width="560" height="8" fill="#c0392b"/>
+    <text x="280" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">__crash_kexec() 核心流程 (kernel/crash_core.c)</text>
+    <text x="15" y="50" font-size="10.5" font-family="monospace" fill="#e74c3c">void __crash_kexec(struct pt_regs *regs) {</text>
+    <text x="25" y="67" font-size="10" font-family="monospace">if (kexec_trylock()) {</text>
+    <text x="35" y="84" font-size="10" font-family="monospace">crash_setup_regs(&amp;fixed_regs, regs);</text>
+    <text x="380" y="84" font-size="9" fill="#888">保存寄存器快照</text>
+    <text x="35" y="101" font-size="10" font-family="monospace">crash_save_vmcoreinfo();</text>
+    <text x="380" y="101" font-size="9" fill="#888">保存内核元数据</text>
+    <text x="35" y="118" font-size="10" font-family="monospace">machine_crash_shutdown(&amp;fixed_regs);</text>
+    <text x="380" y="118" font-size="9" fill="#888">停止其他CPU+保存状态</text>
+    <text x="35" y="135" font-size="10" font-family="monospace">machine_kexec(kexec_crash_image);</text>
+    <text x="380" y="135" font-size="9" fill="#888">跳转到捕获内核</text>
+    <text x="15" y="148" font-size="10.5" font-family="monospace" fill="#e74c3c">}}</text>
+  </g>
+
+  <text x="600" y="815" text-anchor="middle" font-size="10" fill="#888">© Linux 6.18.1 | kdump(红) — 完整内存转储 | Bootloader Ramdump(蓝) — SoC定制 | pstore(绿) — 轻量级日志</text>
+</svg>

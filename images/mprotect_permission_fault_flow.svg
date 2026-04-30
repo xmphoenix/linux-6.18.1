@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 680" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hdrB" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+    <linearGradient id="hdrG" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#10b981"/></linearGradient>
+    <linearGradient id="hdrR" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#ef4444"/></linearGradient>
+    <linearGradient id="hdrP" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient>
+    <linearGradient id="hdrO" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#d97706"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+    <marker id="aB2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aR2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#059669" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aP2" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e293b">ARM64 Permission Fault 检测流程</text>
+  <text x="550" y="46" text-anchor="middle" font-size="11" fill="#64748b">写入 mprotect(PROT_READ) 保护区域 → Data Abort → SIGSEGV/Oops</text>
+
+  <!-- Step 1: CPU Store -->
+  <g transform="translate(30, 65)">
+    <rect width="220" height="100" rx="8" fill="#fff" stroke="#2563eb" stroke-width="2" filter="url(#sh)"/>
+    <rect width="220" height="28" rx="8" fill="url(#hdrB)"/>
+    <rect x="0" y="20" width="220" height="8" fill="#3b82f6"/>
+    <text x="110" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">① CPU 执行 Store 指令</text>
+    <text x="15" y="46" font-size="10" font-family="monospace">STR x0, [x1]  ; 写入数据</text>
+    <text x="15" y="63" font-size="10" fill="#374151">虚拟地址 → MMU 查 TLB/页表</text>
+    <text x="15" y="80" font-size="10" fill="#374151">TLB miss → Page Table Walk</text>
+    <text x="15" y="95" font-size="10" fill="#dc2626" font-weight="bold">PTE.AP[2]=1 → 只读!</text>
+  </g>
+
+  <!-- Step 2: MMU Data Abort -->
+  <g transform="translate(300, 65)">
+    <rect width="220" height="100" rx="8" fill="#fff" stroke="#dc2626" stroke-width="2" filter="url(#sh)"/>
+    <rect width="220" height="28" rx="8" fill="url(#hdrR)"/>
+    <rect x="0" y="20" width="220" height="8" fill="#ef4444"/>
+    <text x="110" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">② MMU 触发 Data Abort</text>
+    <text x="15" y="46" font-size="10" font-family="monospace">ESR_ELx.EC = 0x24/0x25</text>
+    <text x="15" y="63" font-size="10" fill="#374151">Data Abort from EL0/EL1</text>
+    <text x="15" y="80" font-size="10" font-family="monospace">FAR_ELx = 故障虚拟地址</text>
+    <text x="15" y="95" font-size="10" fill="#dc2626">ISS.DFSC = Permission Fault</text>
+  </g>
+
+  <!-- Arrow 1→2 -->
+  <path d="M250,115 L300,115" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6,3" marker-end="url(#aR2)"/>
+
+  <!-- Step 3: Exception Vector -->
+  <g transform="translate(570, 65)">
+    <rect width="220" height="100" rx="8" fill="#fff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+    <rect width="220" height="28" rx="8" fill="url(#hdrP)"/>
+    <rect x="0" y="20" width="220" height="8" fill="#8b5cf6"/>
+    <text x="110" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">③ 异常向量入口</text>
+    <text x="15" y="46" font-size="10" font-family="monospace">el0_sync / el1_sync</text>
+    <text x="15" y="63" font-size="10" fill="#374151">保存寄存器到 pt_regs</text>
+    <text x="15" y="80" font-size="10" font-family="monospace">el0_da() / el1_da()</text>
+    <text x="15" y="95" font-size="10" fill="#7c3aed">→ do_mem_abort()</text>
+  </g>
+
+  <!-- Arrow 2→3 -->
+  <path d="M520,115 L570,115" fill="none" stroke="#7c3aed" stroke-width="2" marker-end="url(#aP2)"/>
+
+  <!-- Step 4: Fault dispatch -->
+  <g transform="translate(840, 65)">
+    <rect width="230" height="100" rx="8" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+    <rect width="230" height="28" rx="8" fill="url(#hdrO)"/>
+    <rect x="0" y="20" width="230" height="8" fill="#f59e0b"/>
+    <text x="115" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">④ fault_info 分发表</text>
+    <text x="15" y="46" font-size="9" fill="#6b7280">arch/arm64/mm/fault.c:870-873</text>
+    <text x="15" y="63" font-size="10" font-family="monospace">level 0-3 permission fault</text>
+    <text x="15" y="80" font-size="10" fill="#374151">→ handler = do_page_fault</text>
+    <text x="15" y="95" font-size="10" fill="#d97706">si_code = SEGV_ACCERR</text>
+  </g>
+
+  <!-- Arrow 3→4 -->
+  <path d="M790,115 L840,115" fill="none" stroke="#d97706" stroke-width="2" marker-end="url(#aP2)"/>
+
+  <!-- Row 2: do_page_fault detail -->
+  <g transform="translate(30, 220)">
+    <rect width="500" height="200" rx="8" fill="#fff" stroke="#059669" stroke-width="2" filter="url(#sh)"/>
+    <rect width="500" height="28" rx="8" fill="url(#hdrG)"/>
+    <rect x="0" y="20" width="500" height="8" fill="#10b981"/>
+    <text x="250" y="19" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">⑤ do_page_fault() — 核心决策逻辑</text>
+    <text x="15" y="46" font-size="9" fill="#6b7280">arch/arm64/mm/fault.c:552</text>
+    <line x1="10" y1="52" x2="490" y2="52" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <text x="15" y="70" font-size="10" font-family="monospace">is_write_abort(esr) → vm_flags = VM_WRITE</text>
+    <line x1="10" y1="78" x2="490" y2="78" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <text x="15" y="96" font-size="10" font-weight="bold" fill="#059669">用户态路径 (user_mode):</text>
+    <text x="15" y="112" font-size="10" font-family="monospace">lock_vma_under_rcu(mm, addr)</text>
+    <text x="15" y="128" font-size="10" font-family="monospace" fill="#dc2626">!(vma-&gt;vm_flags &amp; VM_WRITE) → bad_area</text>
+    <text x="15" y="144" font-size="10" font-family="monospace">→ __do_kernel_fault / arm64_force_sig_fault</text>
+    <text x="15" y="160" font-size="10" fill="#dc2626" font-weight="bold">→ SIGSEGV (si_code=SEGV_ACCERR, si_addr=FAR)</text>
+
+    <line x1="10" y1="168" x2="490" y2="168" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="186" font-size="10" font-weight="bold" fill="#7c3aed">内核态路径 (EL1):</text>
+    <text x="15" y="200" font-size="10" font-family="monospace">→ no_context → __do_kernel_fault → die_kernel_fault()</text>
+    <text x="15" y="214" font-size="10" fill="#dc2626" font-weight="bold">→ BUG / Oops + 完整调用栈</text>
+  </g>
+
+  <!-- Arrow from Step4 down to Step5 -->
+  <path d="M955,165 L955,200 L530,200 L530,220" fill="none" stroke="#059669" stroke-width="2" marker-end="url(#aG2)"/>
+
+  <!-- Right side: Signal delivery and coredump -->
+  <g transform="translate(580, 220)">
+    <rect width="490" height="200" rx="8" fill="#fff" stroke="#dc2626" stroke-width="2" filter="url(#sh)"/>
+    <rect width="490" height="28" rx="8" fill="url(#hdrR)"/>
+    <rect x="0" y="20" width="490" height="8" fill="#ef4444"/>
+    <text x="245" y="19" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">⑥ 故障处理结果</text>
+
+    <!-- User-space result -->
+    <rect x="15" y="40" width="220" height="150" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1"/>
+    <text x="125" y="57" text-anchor="middle" font-size="11" font-weight="bold" fill="#dc2626">用户态进程收到 SIGSEGV</text>
+    <line x1="25" y1="63" x2="225" y2="63" stroke="#fecaca"/>
+    <text x="25" y="80" font-size="10" font-family="monospace">siginfo_t:</text>
+    <text x="35" y="95" font-size="10" font-family="monospace">si_signo = SIGSEGV (11)</text>
+    <text x="35" y="110" font-size="10" font-family="monospace">si_code  = SEGV_ACCERR (2)</text>
+    <text x="35" y="125" font-size="10" font-family="monospace" fill="#dc2626">si_addr  = 故障地址</text>
+    <text x="25" y="145" font-size="10" fill="#374151">注册 SIGSEGV handler:</text>
+    <text x="25" y="160" font-size="10" fill="#059669">→ 记录日志 + 故障地址</text>
+    <text x="25" y="175" font-size="10" fill="#059669">→ 精确定位哪一页被写</text>
+    <text x="25" y="188" font-size="10" fill="#6b7280">默认: core dump + 进程终止</text>
+
+    <!-- Kernel result -->
+    <rect x="255" y="40" width="220" height="150" rx="6" fill="#faf5ff" stroke="#7c3aed" stroke-width="1"/>
+    <text x="365" y="57" text-anchor="middle" font-size="11" font-weight="bold" fill="#7c3aed">内核态触发 Oops/BUG</text>
+    <line x1="265" y1="63" x2="465" y2="63" stroke="#e9d5ff"/>
+    <text x="265" y="80" font-size="10" font-family="monospace">die_kernel_fault():</text>
+    <text x="275" y="95" font-size="10" font-family="monospace">"Unable to handle</text>
+    <text x="275" y="110" font-size="10" font-family="monospace"> kernel write to</text>
+    <text x="275" y="125" font-size="10" font-family="monospace"> read-only memory"</text>
+    <text x="265" y="145" font-size="10" fill="#374151">输出信息:</text>
+    <text x="275" y="160" font-size="10" fill="#7c3aed">pc / lr / sp / pstate</text>
+    <text x="275" y="175" font-size="10" fill="#7c3aed">完整 call trace</text>
+    <text x="275" y="188" font-size="10" fill="#dc2626">精确到写入指令地址</text>
+  </g>
+
+  <!-- Arrow from Step5 to Step6 -->
+  <path d="M530,320 L580,320" fill="none" stroke="#dc2626" stroke-width="2" marker-end="url(#aR2)"/>
+
+  <!-- Bottom: Summary comparison -->
+  <g transform="translate(30, 460)">
+    <rect width="1040" height="200" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>
+    <text x="520" y="24" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">mprotect 与其他 MemoryOverwritten 检测机制对比</text>
+    <line x1="10" y1="32" x2="1030" y2="32" stroke="#e2e8f0"/>
+
+    <!-- Table header -->
+    <text x="30" y="52" font-size="10" font-weight="bold" fill="#374151">特性</text>
+    <text x="220" y="52" font-size="10" font-weight="bold" fill="#2563eb">mprotect (页保护)</text>
+    <text x="430" y="52" font-size="10" font-weight="bold" fill="#dc2626">KASAN</text>
+    <text x="600" y="52" font-size="10" font-weight="bold" fill="#059669">KFENCE</text>
+    <text x="780" y="52" font-size="10" font-weight="bold" fill="#d97706">SLUB Debug</text>
+    <line x1="10" y1="58" x2="1030" y2="58" stroke="#e2e8f0"/>
+
+    <text x="30" y="76" font-size="10" fill="#374151">检测粒度</text>
+    <text x="220" y="76" font-size="10" fill="#2563eb">页 (4KB)</text>
+    <text x="430" y="76" font-size="10" fill="#dc2626">字节 (8B 粒度)</text>
+    <text x="600" y="76" font-size="10" fill="#059669">页 (Guard Page)</text>
+    <text x="780" y="76" font-size="10" fill="#d97706">对象边界 (Red Zone)</text>
+
+    <text x="30" y="96" font-size="10" fill="#374151">运行时开销</text>
+    <text x="220" y="96" font-size="10" fill="#059669" font-weight="bold">零 (硬件 MMU 检查)</text>
+    <text x="430" y="96" font-size="10" fill="#dc2626">高 (每次 load/store)</text>
+    <text x="600" y="96" font-size="10" fill="#059669">极低 (采样)</text>
+    <text x="780" y="96" font-size="10" fill="#d97706">中 (alloc/free 时检查)</text>
+
+    <text x="30" y="116" font-size="10" fill="#374151">检测时机</text>
+    <text x="220" y="116" font-size="10" fill="#2563eb" font-weight="bold">即时 (违规写入瞬间)</text>
+    <text x="430" y="116" font-size="10" fill="#dc2626">即时</text>
+    <text x="600" y="116" font-size="10" fill="#059669">即时 (触发 Page Fault)</text>
+    <text x="780" y="116" font-size="10" fill="#d97706">延迟 (下次 alloc/free)</text>
+
+    <text x="30" y="136" font-size="10" fill="#374151">适用场景</text>
+    <text x="220" y="136" font-size="10" fill="#2563eb">关键数据区写保护</text>
+    <text x="430" y="136" font-size="10" fill="#dc2626">开发/测试全覆盖</text>
+    <text x="600" y="136" font-size="10" fill="#059669">生产环境采样</text>
+    <text x="780" y="136" font-size="10" fill="#d97706">Slab 对象调试</text>
+
+    <text x="30" y="156" font-size="10" fill="#374151">需要重编内核</text>
+    <text x="220" y="156" font-size="10" fill="#059669">否 (用户态 mprotect)</text>
+    <text x="430" y="156" font-size="10" fill="#dc2626">是</text>
+    <text x="600" y="156" font-size="10" fill="#dc2626">是</text>
+    <text x="780" y="156" font-size="10" fill="#059669">否 (boot 参数)</text>
+
+    <text x="30" y="176" font-size="10" fill="#374151">检测 UAF Read</text>
+    <text x="220" y="176" font-size="10" fill="#059669">可 (PROT_NONE)</text>
+    <text x="430" y="176" font-size="10" fill="#059669">是</text>
+    <text x="600" y="176" font-size="10" fill="#059669">是</text>
+    <text x="780" y="176" font-size="10" fill="#dc2626">否</text>
+
+    <text x="30" y="194" font-size="10" fill="#374151">内存开销</text>
+    <text x="220" y="194" font-size="10" fill="#059669" font-weight="bold">零</text>
+    <text x="430" y="194" font-size="10" fill="#dc2626">1/8 内存 (Shadow)</text>
+    <text x="600" y="194" font-size="10" fill="#059669">固定 2MB 池</text>
+    <text x="780" y="194" font-size="10" fill="#d97706">每对象 +N 字节</text>
+  </g>
+</svg>

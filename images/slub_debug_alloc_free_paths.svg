@@ -1,0 +1,283 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 860" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hAlloc" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/><stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="hFree" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ef4444"/><stop offset="100%" style="stop-color:#dc2626"/>
+    </linearGradient>
+    <linearGradient id="hCheck" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/><stop offset="100%" style="stop-color:#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="hInit" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/><stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6d28d9" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#d97706" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aGr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aGn" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#047857" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#1e293b">【图 5.4-3】SLUB Debug 分配 / 释放路径对比</text>
+  <text x="550" y="48" text-anchor="middle" font-size="11" fill="#64748b">源码: mm/slub.c — alloc_debug_processing() / free_debug_processing()</text>
+
+  <!-- ==================== LEFT: 分配路径 ==================== -->
+  <g transform="translate(30,65)">
+    <!-- Column header -->
+    <rect width="490" height="770" rx="10" fill="#f0f7ff" stroke="#93c5fd" stroke-width="1.5"/>
+    <rect width="490" height="34" rx="10" fill="url(#hAlloc)"/>
+    <rect x="0" y="26" width="490" height="8" fill="#1d4ed8"/>
+    <text x="245" y="23" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">分配路径 — alloc_debug_processing()</text>
+
+    <!-- Step 1: kmalloc entry -->
+    <g transform="translate(115,50)">
+      <rect width="260" height="34" rx="17" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="130" y="22" text-anchor="middle" font-size="11" font-weight="bold" fill="#1d4ed8">kmalloc(size, GFP_KERNEL)</text>
+    </g>
+    <path d="M245,84 L245,100" fill="none" stroke="#1d4ed8" stroke-width="1.5" marker-end="url(#aB)"/>
+
+    <!-- Step 2: slab_alloc_node -->
+    <g transform="translate(135,102)">
+      <rect width="220" height="30" rx="4" fill="#fff" stroke="#93c5fd" stroke-width="1"/>
+      <text x="110" y="20" text-anchor="middle" font-size="10" fill="#1d4ed8">→ slab_alloc_node()</text>
+    </g>
+    <path d="M245,132 L245,148" fill="none" stroke="#1d4ed8" stroke-width="1.5" marker-end="url(#aB)"/>
+
+    <!-- Step 3: CONSISTENCY_CHECKS decision -->
+    <g transform="translate(135,150)">
+      <polygon points="110,0 220,22 110,44 0,22" fill="#fff8e1" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="110" y="20" text-anchor="middle" font-size="9" font-weight="bold" fill="#92400e">CONSISTENCY_CHECKS?</text>
+      <text x="110" y="34" text-anchor="middle" font-size="8" fill="#92400e">s-&gt;flags</text>
+    </g>
+    <path d="M245,194 L245,210" fill="none" stroke="#047857" stroke-width="1.5" marker-end="url(#aGn)"/>
+    <text x="252" y="206" font-size="8" font-weight="bold" fill="#047857">Yes</text>
+
+    <!-- Step 4: check_slab -->
+    <g transform="translate(30,212)">
+      <rect width="200" height="40" rx="4" fill="#fff" stroke="#8b5cf6" stroke-width="1.5" filter="url(#sh)"/>
+      <text x="100" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">check_slab()</text>
+      <text x="100" y="32" text-anchor="middle" font-size="8" fill="#555">slab 元数据 + slab_pad_check()</text>
+    </g>
+    <!-- Step 4b: check_valid_pointer -->
+    <g transform="translate(260,212)">
+      <rect width="200" height="40" rx="4" fill="#fff" stroke="#8b5cf6" stroke-width="1.5" filter="url(#sh)"/>
+      <text x="100" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">check_valid_pointer()</text>
+      <text x="100" y="32" text-anchor="middle" font-size="8" fill="#555">对象地址范围 + 对齐校验</text>
+    </g>
+    <path d="M245,252 L245,268" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#aGr)"/>
+
+    <!-- Step 5: check_object (INACTIVE) -->
+    <g transform="translate(55,270)">
+      <rect width="380" height="82" rx="6" fill="#fff" stroke="#6d28d9" stroke-width="2" filter="url(#sh)"/>
+      <rect width="380" height="24" rx="6" fill="url(#hCheck)"/>
+      <rect x="0" y="18" width="380" height="6" fill="#6d28d9"/>
+      <text x="190" y="17" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">check_object(s, slab, obj, SLUB_RED_INACTIVE=0xbb)</text>
+      <text x="20" y="40" font-size="9" fill="#333">✓ Left Redzone == 0xbb?     ✓ Right Redzone == 0xbb?</text>
+      <text x="20" y="54" font-size="9" fill="#333">✓ Poison body == 0x6b?       ✓ End Poison == 0xa5?</text>
+      <text x="20" y="68" font-size="9" fill="#333">✓ Pad bytes == 0x5a?          ✓ Freepointer valid?</text>
+    </g>
+    <path d="M245,352 L245,368" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#aGr)"/>
+
+    <!-- Fail branch -->
+    <g transform="translate(30,356)">
+      <path d="M0,14 L15,14" fill="none" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="18" y="18" font-size="9" font-weight="bold" fill="#dc2626">FAIL →</text>
+      <text x="55" y="18" font-size="8" fill="#dc2626">slab_fix: Marking all objects used</text>
+    </g>
+
+    <!-- Step 6: set_orig_size -->
+    <g transform="translate(100,370)">
+      <rect width="290" height="32" rx="4" fill="#fff" stroke="#d97706" stroke-width="1.5" filter="url(#sh)"/>
+      <text x="145" y="14" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">set_orig_size(s, obj, orig_size)</text>
+      <text x="145" y="27" text-anchor="middle" font-size="8" fill="#555">记录 kmalloc 原始请求大小</text>
+    </g>
+    <path d="M245,402 L245,418" fill="none" stroke="#d97706" stroke-width="1.5" marker-end="url(#aO)"/>
+
+    <!-- Step 7: init_object ACTIVE -->
+    <g transform="translate(65,420)">
+      <rect width="360" height="72" rx="6" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+      <rect width="360" height="24" rx="6" fill="url(#hInit)"/>
+      <rect x="0" y="18" width="360" height="6" fill="#d97706"/>
+      <text x="180" y="17" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">init_object(s, obj, SLUB_RED_ACTIVE=0xcc)</text>
+      <text x="20" y="40" font-size="9" fill="#333">Left Redzone → 0xcc    Right Redzone → 0xcc</text>
+      <text x="20" y="54" font-size="9" fill="#333">kmalloc Redzone [orig_size, object_size) → 0xcc</text>
+      <text x="20" y="67" font-size="9" fill="#555" font-style="italic">Poison 被用户数据覆盖 (正常行为)</text>
+    </g>
+    <path d="M245,492 L245,510" fill="none" stroke="#047857" stroke-width="1.5" marker-end="url(#aGn)"/>
+
+    <!-- Result -->
+    <g transform="translate(115,512)">
+      <rect width="260" height="34" rx="17" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
+      <text x="130" y="22" text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">return object → 用户使用</text>
+    </g>
+
+    <!-- Object state illustration -->
+    <g transform="translate(30,570)">
+      <rect width="430" height="100" rx="6" fill="#fff" stroke="#93c5fd" stroke-width="1" filter="url(#sh)"/>
+      <text x="215" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#1d4ed8">分配后对象内存视图</text>
+      <!-- Mini layout -->
+      <rect x="15" y="30" width="60" height="30" rx="3" fill="#fce4ec" stroke="#e57373" stroke-width="1"/>
+      <text x="45" y="50" text-anchor="middle" font-size="9" font-weight="bold" fill="#c62828" font-family="monospace">0xcc</text>
+
+      <rect x="85" y="30" width="150" height="30" rx="3" fill="#e8eaf6" stroke="#7986cb" stroke-width="1"/>
+      <text x="160" y="50" text-anchor="middle" font-size="9" font-weight="bold" fill="#283593">用户数据</text>
+
+      <rect x="245" y="30" width="70" height="30" rx="3" fill="#fff3e0" stroke="#ff9800" stroke-width="1"/>
+      <text x="280" y="50" text-anchor="middle" font-size="8" font-weight="bold" fill="#e65100" font-family="monospace">0xcc</text>
+      <text x="280" y="42" text-anchor="middle" font-size="7" fill="#e65100">kmalloc RZ</text>
+
+      <rect x="325" y="30" width="60" height="30" rx="3" fill="#fce4ec" stroke="#e57373" stroke-width="1"/>
+      <text x="355" y="50" text-anchor="middle" font-size="9" font-weight="bold" fill="#c62828" font-family="monospace">0xcc</text>
+
+      <text x="15" y="80" font-size="8" fill="#666">Left RZ</text>
+      <text x="135" y="80" font-size="8" fill="#666">Object Body</text>
+      <text x="255" y="80" font-size="8" fill="#666">kmalloc RZ</text>
+      <text x="325" y="80" font-size="8" fill="#666">Right RZ</text>
+
+      <rect x="395" y="30" width="25" height="30" rx="3" fill="#f3e5f5" stroke="#ce93d8" stroke-width="1"/>
+      <text x="407" y="50" text-anchor="middle" font-size="7" font-weight="bold" fill="#7b1fa2" font-family="monospace">5a</text>
+      <text x="395" y="80" font-size="8" fill="#666">Pad</text>
+    </g>
+  </g>
+
+  <!-- ==================== RIGHT: 释放路径 ==================== -->
+  <g transform="translate(570,65)">
+    <!-- Column header -->
+    <rect width="490" height="770" rx="10" fill="#fff5f5" stroke="#fca5a5" stroke-width="1.5"/>
+    <rect width="490" height="34" rx="10" fill="url(#hFree)"/>
+    <rect x="0" y="26" width="490" height="8" fill="#dc2626"/>
+    <text x="245" y="23" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">释放路径 — free_debug_processing()</text>
+
+    <!-- Step 1: kfree entry -->
+    <g transform="translate(145,50)">
+      <rect width="200" height="34" rx="17" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5"/>
+      <text x="100" y="22" text-anchor="middle" font-size="11" font-weight="bold" fill="#dc2626">kfree(ptr)</text>
+    </g>
+    <path d="M245,84 L245,100" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#aR)"/>
+
+    <!-- Step 2: slab_free -->
+    <g transform="translate(135,102)">
+      <rect width="220" height="30" rx="4" fill="#fff" stroke="#fca5a5" stroke-width="1"/>
+      <text x="110" y="20" text-anchor="middle" font-size="10" fill="#dc2626">→ slab_free()</text>
+    </g>
+    <path d="M245,132 L245,148" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#aR)"/>
+
+    <!-- Step 3: CONSISTENCY_CHECKS decision -->
+    <g transform="translate(135,150)">
+      <polygon points="110,0 220,22 110,44 0,22" fill="#fff8e1" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="110" y="20" text-anchor="middle" font-size="9" font-weight="bold" fill="#92400e">CONSISTENCY_CHECKS?</text>
+      <text x="110" y="34" text-anchor="middle" font-size="8" fill="#92400e">s-&gt;flags</text>
+    </g>
+    <path d="M245,194 L245,210" fill="none" stroke="#047857" stroke-width="1.5" marker-end="url(#aGn)"/>
+    <text x="252" y="206" font-size="8" font-weight="bold" fill="#047857">Yes</text>
+
+    <!-- Step 4: check_valid_pointer -->
+    <g transform="translate(30,212)">
+      <rect width="200" height="40" rx="4" fill="#fff" stroke="#8b5cf6" stroke-width="1.5" filter="url(#sh)"/>
+      <text x="100" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">check_valid_pointer()</text>
+      <text x="100" y="32" text-anchor="middle" font-size="8" fill="#555">指针地址合法性</text>
+    </g>
+    <!-- Step 4b: on_freelist (Double-Free!) -->
+    <g transform="translate(260,212)">
+      <rect width="200" height="40" rx="4" fill="#fef2f2" stroke="#ef4444" stroke-width="2" filter="url(#sh)"/>
+      <text x="100" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#dc2626">on_freelist() ★</text>
+      <text x="100" y="32" text-anchor="middle" font-size="8" fill="#dc2626">Double-Free 遍历检测</text>
+    </g>
+    <path d="M245,252 L245,268" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#aGr)"/>
+
+    <!-- Step 5: check_object (ACTIVE) -->
+    <g transform="translate(55,270)">
+      <rect width="380" height="82" rx="6" fill="#fff" stroke="#6d28d9" stroke-width="2" filter="url(#sh)"/>
+      <rect width="380" height="24" rx="6" fill="url(#hCheck)"/>
+      <rect x="0" y="18" width="380" height="6" fill="#6d28d9"/>
+      <text x="190" y="17" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">check_object(s, slab, obj, SLUB_RED_ACTIVE=0xcc)</text>
+      <text x="20" y="40" font-size="9" fill="#333">✓ Left Redzone == 0xcc?      ✓ Right Redzone == 0xcc?</text>
+      <text x="20" y="54" font-size="9" fill="#333">✓ kmalloc Redzone == 0xcc?   (检测使用期间的越界写)</text>
+      <text x="20" y="68" font-size="9" fill="#dc2626" font-weight="bold">注意: 不检查 Poison (对象正在使用中，body 是用户数据)</text>
+    </g>
+    <path d="M245,352 L245,368" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#aGr)"/>
+
+    <!-- Step 5b: cache match -->
+    <g transform="translate(100,366)">
+      <rect width="290" height="28" rx="4" fill="#fff" stroke="#8b5cf6" stroke-width="1"/>
+      <text x="145" y="18" text-anchor="middle" font-size="9" fill="#6d28d9">slab-&gt;slab_cache == s? (cache 匹配校验)</text>
+    </g>
+    <path d="M245,394 L245,410" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#aGr)"/>
+
+    <!-- Step 6: set_track (FREE) -->
+    <g transform="translate(100,412)">
+      <rect width="290" height="32" rx="4" fill="#fff" stroke="#d97706" stroke-width="1.5" filter="url(#sh)"/>
+      <text x="145" y="14" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">set_track_update(TRACK_FREE)</text>
+      <text x="145" y="27" text-anchor="middle" font-size="8" fill="#555">记录释放调用栈 [SLAB_STORE_USER]</text>
+    </g>
+    <path d="M245,444 L245,460" fill="none" stroke="#d97706" stroke-width="1.5" marker-end="url(#aO)"/>
+
+    <!-- Step 7: init_object INACTIVE -->
+    <g transform="translate(65,462)">
+      <rect width="360" height="82" rx="6" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+      <rect width="360" height="24" rx="6" fill="url(#hInit)"/>
+      <rect x="0" y="18" width="360" height="6" fill="#d97706"/>
+      <text x="180" y="17" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">init_object(s, obj, SLUB_RED_INACTIVE=0xbb)</text>
+      <text x="20" y="40" font-size="9" fill="#333">Left Redzone → 0xbb      Right Redzone → 0xbb</text>
+      <text x="20" y="54" font-size="9" fill="#333">Object Body → 0x6b...0x6b 0xa5 (POISON)</text>
+      <text x="20" y="67" font-size="9" fill="#047857" font-weight="bold">对象进入空闲态，等待下次分配时被校验</text>
+    </g>
+    <path d="M245,544 L245,560" fill="none" stroke="#047857" stroke-width="1.5" marker-end="url(#aGn)"/>
+
+    <!-- Result -->
+    <g transform="translate(105,562)">
+      <rect width="280" height="34" rx="17" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
+      <text x="140" y="22" text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">对象归还 freelist → 可被再次分配</text>
+    </g>
+
+    <!-- Object state illustration -->
+    <g transform="translate(30,620)">
+      <rect width="430" height="100" rx="6" fill="#fff" stroke="#fca5a5" stroke-width="1" filter="url(#sh)"/>
+      <text x="215" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#dc2626">释放后对象内存视图</text>
+      <!-- Mini layout -->
+      <rect x="15" y="30" width="60" height="30" rx="3" fill="#e8f5e9" stroke="#81c784" stroke-width="1"/>
+      <text x="45" y="50" text-anchor="middle" font-size="9" font-weight="bold" fill="#2e7d32" font-family="monospace">0xbb</text>
+
+      <rect x="85" y="30" width="170" height="30" rx="3" fill="#fff8e1" stroke="#ffd54f" stroke-width="1"/>
+      <text x="170" y="50" text-anchor="middle" font-size="9" font-weight="bold" fill="#f57f17" font-family="monospace">0x6b..0x6b</text>
+
+      <rect x="265" y="30" width="30" height="30" rx="3" fill="#fbe9e7" stroke="#ff8a65" stroke-width="1"/>
+      <text x="280" y="50" text-anchor="middle" font-size="9" font-weight="bold" fill="#d84315" font-family="monospace">a5</text>
+
+      <rect x="305" y="30" width="70" height="30" rx="3" fill="#e8f5e9" stroke="#81c784" stroke-width="1"/>
+      <text x="340" y="50" text-anchor="middle" font-size="9" font-weight="bold" fill="#2e7d32" font-family="monospace">0xbb</text>
+
+      <text x="15" y="80" font-size="8" fill="#666">Left RZ</text>
+      <text x="115" y="80" font-size="8" fill="#666">Poison(0x6b)</text>
+      <text x="260" y="80" font-size="8" fill="#666">End</text>
+      <text x="305" y="80" font-size="8" fill="#666">Right RZ</text>
+
+      <rect x="385" y="30" width="25" height="30" rx="3" fill="#f3e5f5" stroke="#ce93d8" stroke-width="1"/>
+      <text x="397" y="50" text-anchor="middle" font-size="7" font-weight="bold" fill="#7b1fa2" font-family="monospace">5a</text>
+      <text x="385" y="80" font-size="8" fill="#666">Pad</text>
+    </g>
+  </g>
+
+  <!-- Central connecting annotation -->
+  <g transform="translate(420,815)">
+    <rect width="260" height="35" rx="6" fill="#fff" stroke="#6b7280" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="130" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#374151">关键差异</text>
+    <text x="130" y="29" text-anchor="middle" font-size="9" fill="#555">分配时检查 INACTIVE 模式 | 释放时检查 ACTIVE 红区</text>
+  </g>
+</svg>

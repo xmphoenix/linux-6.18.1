@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 920" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+<defs>
+  <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+  <linearGradient id="hL1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e74c3c"/><stop offset="100%" stop-color="#c0392b"/></linearGradient>
+  <linearGradient id="hL2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e67e22"/><stop offset="100%" stop-color="#d35400"/></linearGradient>
+  <linearGradient id="hL3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2980b9"/><stop offset="100%" stop-color="#1a5276"/></linearGradient>
+  <linearGradient id="hL4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#27ae60"/><stop offset="100%" stop-color="#1e8449"/></linearGradient>
+  <linearGradient id="hTitle" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2c3e50"/><stop offset="100%" stop-color="#1a252f"/></linearGradient>
+  <marker id="aDown" markerWidth="10" markerHeight="7" refX="5" refY="7" orient="auto"><path d="M1,1 L5,6 L9,1" fill="none" stroke="#7f8c8d" stroke-width="1.5"/></marker>
+  <marker id="aRight" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#7f8c8d" stroke-width="1.5"/></marker>
+</defs>
+
+<!-- 标题 -->
+<text x="600" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#2c3e50">Linux MemoryOverwritten 多层防御体系架构</text>
+<text x="600" y="55" text-anchor="middle" font-size="11" fill="#7f8c8d">源码: security/Kconfig.hardening · include/linux/fortify-string.h · mm/slub.c · mm/kasan/ · mm/kfence/ · mm/mprotect.c · arch/arm64/</text>
+
+<!-- 第 1 层: 编译期防御层 -->
+<g transform="translate(30,75)">
+  <rect x="0" y="0" width="1140" height="165" rx="10" fill="#fff" stroke="#e74c3c" stroke-width="2" filter="url(#sh)"/>
+  <rect x="0" y="0" width="1140" height="32" rx="10" fill="url(#hL1)"/>
+  <rect x="0" y="22" width="1140" height="10" fill="#c0392b"/>
+  <text x="570" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Layer 1: 编译期防御层 (Compile-Time Defenses)</text>
+  <text x="20" y="52" font-size="10" fill="#e74c3c" font-weight="bold">✦ 在编译阶段静态消除已知越界、未初始化变量、栈溢出等问题</text>
+
+  <!-- FORTIFY_SOURCE -->
+  <rect x="20" y="62" width="260" height="90" rx="6" fill="#fef5f5" stroke="#e74c3c" stroke-width="1"/>
+  <text x="150" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#c0392b">FORTIFY_SOURCE</text>
+  <text x="30" y="96" font-size="10" fill="#555">CONFIG_FORTIFY_SOURCE</text>
+  <text x="30" y="112" font-size="10" fill="#555">str*/mem* 编译期边界检查</text>
+  <text x="30" y="128" font-size="10" fill="#555">__write_overflow() 编译报错</text>
+  <text x="30" y="144" font-size="10" fill="#555">__fortify_panic() 运行时拦截</text>
+
+  <!-- STACK_PROTECTOR -->
+  <rect x="300" y="62" width="260" height="90" rx="6" fill="#fef5f5" stroke="#e74c3c" stroke-width="1"/>
+  <text x="430" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#c0392b">STACKPROTECTOR</text>
+  <text x="310" y="96" font-size="10" fill="#555">CONFIG_STACKPROTECTOR_STRONG</text>
+  <text x="310" y="112" font-size="10" fill="#555">函数入口放置 canary 值</text>
+  <text x="310" y="128" font-size="10" fill="#555">返回前校验 canary 完整性</text>
+  <text x="310" y="144" font-size="10" fill="#555">__stack_chk_fail() 触发 panic</text>
+
+  <!-- INIT_STACK_ALL_ZERO -->
+  <rect x="580" y="62" width="260" height="90" rx="6" fill="#fef5f5" stroke="#e74c3c" stroke-width="1"/>
+  <text x="710" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#c0392b">INIT_STACK_ALL_ZERO</text>
+  <text x="590" y="96" font-size="10" fill="#555">-ftrivial-auto-var-init=zero</text>
+  <text x="590" y="112" font-size="10" fill="#555">局部变量自动零初始化</text>
+  <text x="590" y="128" font-size="10" fill="#555">消除未初始化栈变量利用</text>
+  <text x="590" y="144" font-size="10" fill="#555">性能影响 &lt;1%</text>
+
+  <!-- HARDENED_USERCOPY -->
+  <rect x="860" y="62" width="260" height="90" rx="6" fill="#fef5f5" stroke="#e74c3c" stroke-width="1"/>
+  <text x="990" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#c0392b">HARDENED_USERCOPY</text>
+  <text x="870" y="96" font-size="10" fill="#555">CONFIG_HARDENED_USERCOPY</text>
+  <text x="870" y="112" font-size="10" fill="#555">copy_to/from_user 边界检查</text>
+  <text x="870" y="128" font-size="10" fill="#555">__check_object_size() 验证</text>
+  <text x="870" y="144" font-size="10" fill="#555">拒绝跨越 slab/stack 的拷贝</text>
+</g>
+
+<!-- 连接箭头 Layer1 → Layer2 -->
+<path d="M600,242 L600,265" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#aDown)"/>
+<rect x="520" y="245" width="160" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+<text x="600" y="258" text-anchor="middle" font-size="10" fill="#7f8c8d">编译通过后进入运行时</text>
+
+<!-- 第 2 层: 运行时分配器防御层 -->
+<g transform="translate(30,270)">
+  <rect x="0" y="0" width="1140" height="165" rx="10" fill="#fff" stroke="#e67e22" stroke-width="2" filter="url(#sh)"/>
+  <rect x="0" y="0" width="1140" height="32" rx="10" fill="url(#hL2)"/>
+  <rect x="0" y="22" width="1140" height="10" fill="#d35400"/>
+  <text x="570" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Layer 2: 运行时分配器防御层 (Allocator-Level Defenses)</text>
+  <text x="20" y="52" font-size="10" fill="#e67e22" font-weight="bold">✦ 在内存分配/释放路径中注入检测逻辑，发现对象级越界和 UAF</text>
+
+  <!-- SLUB Debug -->
+  <rect x="20" y="62" width="350" height="90" rx="6" fill="#fdf5ef" stroke="#e67e22" stroke-width="1"/>
+  <text x="195" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#d35400">SLUB Debug (Redzone + Poison)</text>
+  <text x="30" y="96" font-size="10" fill="#555">CONFIG_SLUB_DEBUG + slub_debug=FPUZ</text>
+  <text x="30" y="112" font-size="10" fill="#555">alloc_debug_processing() → 红区填充 0xbb</text>
+  <text x="30" y="128" font-size="10" fill="#555">free_debug_processing() → 毒化填充 0x6b</text>
+  <text x="30" y="144" font-size="10" fill="#555">check_object() 在分配/释放时校验完整性</text>
+
+  <!-- INIT_ON_ALLOC/FREE -->
+  <rect x="400" y="62" width="350" height="90" rx="6" fill="#fdf5ef" stroke="#e67e22" stroke-width="1"/>
+  <text x="575" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#d35400">INIT_ON_ALLOC / INIT_ON_FREE</text>
+  <text x="410" y="96" font-size="10" fill="#555">CONFIG_INIT_ON_ALLOC_DEFAULT_ON</text>
+  <text x="410" y="112" font-size="10" fill="#555">slab_want_init_on_alloc() → 分配时零初始化</text>
+  <text x="410" y="128" font-size="10" fill="#555">slab_want_init_on_free() → 释放时零填充</text>
+  <text x="410" y="144" font-size="10" fill="#555">消除 UAF 信息泄漏 + 未初始化堆使用</text>
+
+  <!-- PAGE_POISON -->
+  <rect x="780" y="62" width="340" height="90" rx="6" fill="#fdf5ef" stroke="#e67e22" stroke-width="1"/>
+  <text x="950" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#d35400">PAGE_POISONING</text>
+  <text x="790" y="96" font-size="10" fill="#555">CONFIG_PAGE_POISONING</text>
+  <text x="790" y="112" font-size="10" fill="#555">__kernel_poison_pages() 释放时毒化</text>
+  <text x="790" y="128" font-size="10" fill="#555">kernel_poison_pages() 分配时校验</text>
+  <text x="790" y="144" font-size="10" fill="#555">检测 buddy 页粒度的 UAF 写入</text>
+</g>
+
+<!-- 连接箭头 Layer2 → Layer3 -->
+<path d="M600,437 L600,460" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#aDown)"/>
+<rect x="505" y="440" width="190" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+<text x="600" y="453" text-anchor="middle" font-size="10" fill="#7f8c8d">分配器防线之后进入访问检查</text>
+
+<!-- 第 3 层: 运行时访问检查层 -->
+<g transform="translate(30,465)">
+  <rect x="0" y="0" width="1140" height="165" rx="10" fill="#fff" stroke="#2980b9" stroke-width="2" filter="url(#sh)"/>
+  <rect x="0" y="0" width="1140" height="32" rx="10" fill="url(#hL3)"/>
+  <rect x="0" y="22" width="1140" height="10" fill="#1a5276"/>
+  <text x="570" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Layer 3: 运行时访问检查层 (Runtime Access Checking)</text>
+  <text x="20" y="52" font-size="10" fill="#2980b9" font-weight="bold">✦ 在每次内存访问时进行实时检查，精确捕获越界/UAF 瞬间</text>
+
+  <!-- KASAN -->
+  <rect x="20" y="62" width="260" height="90" rx="6" fill="#eaf2f8" stroke="#2980b9" stroke-width="1"/>
+  <text x="150" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a5276">KASAN</text>
+  <text x="30" y="96" font-size="10" fill="#555">CONFIG_KASAN_GENERIC</text>
+  <text x="30" y="112" font-size="10" fill="#555">编译器插桩 __asan_loadN/storeN</text>
+  <text x="30" y="128" font-size="10" fill="#555">shadow memory 1:8 字节粒度</text>
+  <text x="30" y="144" font-size="10" fill="#555">kasan_check_range() 实时检测</text>
+
+  <!-- KFENCE -->
+  <rect x="300" y="62" width="260" height="90" rx="6" fill="#eaf2f8" stroke="#2980b9" stroke-width="1"/>
+  <text x="430" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a5276">KFENCE</text>
+  <text x="310" y="96" font-size="10" fill="#555">CONFIG_KFENCE</text>
+  <text x="310" y="112" font-size="10" fill="#555">guard page 页保护检测</text>
+  <text x="310" y="128" font-size="10" fill="#555">kfence_handle_page_fault()</text>
+  <text x="310" y="144" font-size="10" fill="#555">采样模式，适合生产环境</text>
+
+  <!-- mprotect -->
+  <rect x="580" y="62" width="260" height="90" rx="6" fill="#eaf2f8" stroke="#2980b9" stroke-width="1"/>
+  <text x="710" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a5276">mprotect / 页保护</text>
+  <text x="590" y="96" font-size="10" fill="#555">mprotect() + set_memory_ro()</text>
+  <text x="590" y="112" font-size="10" fill="#555">PTE 权限位硬件检查</text>
+  <text x="590" y="128" font-size="10" fill="#555">Permission Fault → SIGSEGV/oops</text>
+  <text x="590" y="144" font-size="10" fill="#555">零运行时开销（读路径）</text>
+
+  <!-- DEBUG_PAGEALLOC -->
+  <rect x="860" y="62" width="260" height="90" rx="6" fill="#eaf2f8" stroke="#2980b9" stroke-width="1"/>
+  <text x="990" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a5276">DEBUG_PAGEALLOC</text>
+  <text x="870" y="96" font-size="10" fill="#555">CONFIG_DEBUG_PAGEALLOC</text>
+  <text x="870" y="112" font-size="10" fill="#555">释放时 unmap 物理页</text>
+  <text x="870" y="128" font-size="10" fill="#555">访问 → Translation Fault</text>
+  <text x="870" y="144" font-size="10" fill="#555">页粒度 UAF 即时检测</text>
+</g>
+
+<!-- 连接箭头 Layer3 → Layer4 -->
+<path d="M600,632 L600,655" fill="none" stroke="#7f8c8d" stroke-width="1.5" marker-end="url(#aDown)"/>
+<rect x="510" y="635" width="180" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+<text x="600" y="648" text-anchor="middle" font-size="10" fill="#7f8c8d">软件检查之下依赖硬件支撑</text>
+
+<!-- 第 4 层: 硬件辅助层 -->
+<g transform="translate(30,660)">
+  <rect x="0" y="0" width="1140" height="165" rx="10" fill="#fff" stroke="#27ae60" stroke-width="2" filter="url(#sh)"/>
+  <rect x="0" y="0" width="1140" height="32" rx="10" fill="url(#hL4)"/>
+  <rect x="0" y="22" width="1140" height="10" fill="#1e8449"/>
+  <text x="570" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Layer 4: 硬件辅助层 (Hardware-Assisted Defenses)</text>
+  <text x="20" y="52" font-size="10" fill="#27ae60" font-weight="bold">✦ ARM64 硬件扩展提供接近零开销的内存安全保护</text>
+
+  <!-- MTE -->
+  <rect x="20" y="62" width="260" height="90" rx="6" fill="#eafaf1" stroke="#27ae60" stroke-width="1"/>
+  <text x="150" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#1e8449">MTE (Memory Tagging)</text>
+  <text x="30" y="96" font-size="10" fill="#555">CONFIG_ARM64_MTE (ARMv8.5+)</text>
+  <text x="30" y="112" font-size="10" fill="#555">4-bit tag per 16B granule</text>
+  <text x="30" y="128" font-size="10" fill="#555">指针 tag ≠ 内存 tag → 异常</text>
+  <text x="30" y="144" font-size="10" fill="#555">KASAN_HW_TAGS 硬件加速模式</text>
+
+  <!-- PAN -->
+  <rect x="300" y="62" width="260" height="90" rx="6" fill="#eafaf1" stroke="#27ae60" stroke-width="1"/>
+  <text x="430" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#1e8449">PAN (Priv. Access Never)</text>
+  <text x="310" y="96" font-size="10" fill="#555">CONFIG_ARM64_PAN (ARMv8.1+)</text>
+  <text x="310" y="112" font-size="10" fill="#555">内核态禁止直接访问用户态内存</text>
+  <text x="310" y="128" font-size="10" fill="#555">必须通过 copy_to/from_user</text>
+  <text x="310" y="144" font-size="10" fill="#555">阻止内核级数据泄漏/篡改</text>
+
+  <!-- STRICT_KERNEL_RWX -->
+  <rect x="580" y="62" width="260" height="90" rx="6" fill="#eafaf1" stroke="#27ae60" stroke-width="1"/>
+  <text x="710" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#1e8449">STRICT_KERNEL_RWX</text>
+  <text x="590" y="96" font-size="10" fill="#555">W^X: 页面不可同时写+执行</text>
+  <text x="590" y="112" font-size="10" fill="#555">mark_rodata_ro() 启动后锁定</text>
+  <text x="590" y="128" font-size="10" fill="#555">__ro_after_init 只读数据保护</text>
+  <text x="590" y="144" font-size="10" fill="#555">set_memory_ro/nx 页属性控制</text>
+
+  <!-- BTI + PAC -->
+  <rect x="860" y="62" width="260" height="90" rx="6" fill="#eafaf1" stroke="#27ae60" stroke-width="1"/>
+  <text x="990" y="80" text-anchor="middle" font-size="12" font-weight="bold" fill="#1e8449">BTI + PAC</text>
+  <text x="870" y="96" font-size="10" fill="#555">CONFIG_ARM64_BTI (ARMv8.5+)</text>
+  <text x="870" y="112" font-size="10" fill="#555">分支目标识别 → 阻止 JOP/ROP</text>
+  <text x="870" y="128" font-size="10" fill="#555">指针认证 → 返回地址签名</text>
+  <text x="870" y="144" font-size="10" fill="#555">防止控制流被 overwrite 劫持</text>
+</g>
+
+<!-- 底部: 检测时机标注 -->
+<g transform="translate(30,845)">
+  <rect x="0" y="0" width="270" height="28" rx="6" fill="#fef5f5" stroke="#e74c3c" stroke-width="1"/>
+  <text x="135" y="18" text-anchor="middle" font-size="11" fill="#c0392b" font-weight="bold">编译期 — 零运行时开销</text>
+  <rect x="290" y="0" width="270" height="28" rx="6" fill="#fdf5ef" stroke="#e67e22" stroke-width="1"/>
+  <text x="425" y="18" text-anchor="middle" font-size="11" fill="#d35400" font-weight="bold">分配/释放时 — 延迟检测</text>
+  <rect x="580" y="0" width="270" height="28" rx="6" fill="#eaf2f8" stroke="#2980b9" stroke-width="1"/>
+  <text x="715" y="18" text-anchor="middle" font-size="11" fill="#1a5276" font-weight="bold">每次访问 — 即时检测</text>
+  <rect x="870" y="0" width="270" height="28" rx="6" fill="#eafaf1" stroke="#27ae60" stroke-width="1"/>
+  <text x="1005" y="18" text-anchor="middle" font-size="11" fill="#1e8449" font-weight="bold">硬件级 — 接近零开销</text>
+</g>
+
+<!-- 左侧防御时序标注 -->
+<text x="15" y="155" font-size="10" fill="#e74c3c" font-weight="bold" transform="rotate(-90,15,155)">编译时</text>
+<text x="15" y="355" font-size="10" fill="#e67e22" font-weight="bold" transform="rotate(-90,15,355)">分配时</text>
+<text x="15" y="550" font-size="10" fill="#2980b9" font-weight="bold" transform="rotate(-90,15,550)">访问时</text>
+<text x="15" y="745" font-size="10" fill="#27ae60" font-weight="bold" transform="rotate(-90,15,745)">硬件级</text>
+</svg>

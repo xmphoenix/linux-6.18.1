@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 720" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hdrBlue" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+    <linearGradient id="hdrGreen" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#10b981"/></linearGradient>
+    <linearGradient id="hdrRed" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#ef4444"/></linearGradient>
+    <linearGradient id="hdrPurple" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient>
+    <linearGradient id="hdrOrange" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#d97706"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+    <marker id="arrowB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arrowR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arrowG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#059669" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arrowP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arrowO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#d97706" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">mprotect 页保护机制全景 — 从用户态到硬件</text>
+  <text x="550" y="50" text-anchor="middle" font-size="11" fill="#64748b">mm/mprotect.c · arch/arm64/mm/fault.c · arch/arm64/mm/pageattr.c · arch/arm64/include/asm/pgtable-hwdef.h</text>
+
+  <!-- ========== Layer 1: User Space ========== -->
+  <g transform="translate(30, 75)">
+    <rect width="300" height="130" rx="8" fill="#fff" stroke="#2563eb" stroke-width="2" filter="url(#sh)"/>
+    <rect width="300" height="30" rx="8" fill="url(#hdrBlue)"/>
+    <rect x="0" y="22" width="300" height="8" fill="#3b82f6"/>
+    <text x="150" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">用户态 mprotect()</text>
+    <text x="15" y="50" font-size="10" fill="#2563eb" font-weight="bold">系统调用入口</text>
+    <line x1="10" y1="55" x2="290" y2="55" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="11" font-family="monospace">mprotect(addr, len, prot)</text>
+    <text x="200" y="72" font-size="9" fill="#6b7280">PROT_READ</text>
+    <text x="15" y="89" font-size="11" font-family="monospace">pkey_mprotect(addr,len,prot,pkey)</text>
+    <text x="15" y="106" font-size="10" fill="#6b7280">prot: PROT_NONE | PROT_READ | PROT_WRITE | PROT_EXEC</text>
+    <text x="15" y="120" font-size="10" fill="#6b7280">必须 PAGE_ALIGNED(addr), len 按页对齐</text>
+  </g>
+
+  <!-- ========== Layer 2: Syscall Handler ========== -->
+  <g transform="translate(400, 75)">
+    <rect width="320" height="130" rx="8" fill="#fff" stroke="#059669" stroke-width="2" filter="url(#sh)"/>
+    <rect width="320" height="30" rx="8" fill="url(#hdrGreen)"/>
+    <rect x="0" y="22" width="320" height="8" fill="#10b981"/>
+    <text x="160" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">do_mprotect_pkey()</text>
+    <text x="15" y="50" font-size="10" fill="#059669" font-weight="bold">mm/mprotect.c:861 — 核心处理逻辑</text>
+    <line x1="10" y1="55" x2="310" y2="55" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" font-family="monospace">1. mmap_write_lock(mm)</text>
+    <text x="15" y="87" font-size="10" font-family="monospace">2. for_each_vma_range → calc_vm_prot_bits()</text>
+    <text x="15" y="102" font-size="10" font-family="monospace">3. vma_modify_flags() → 拆分/合并 VMA</text>
+    <text x="15" y="117" font-size="10" font-family="monospace">4. mprotect_fixup() → change_protection()</text>
+  </g>
+
+  <!-- ========== Layer 3: Page Table Walk ========== -->
+  <g transform="translate(780, 75)">
+    <rect width="290" height="130" rx="8" fill="#fff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+    <rect width="290" height="30" rx="8" fill="url(#hdrPurple)"/>
+    <rect x="0" y="22" width="290" height="8" fill="#8b5cf6"/>
+    <text x="145" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">change_protection_range()</text>
+    <text x="15" y="50" font-size="10" fill="#7c3aed" font-weight="bold">逐级遍历页表修改 PTE</text>
+    <line x1="10" y1="55" x2="280" y2="55" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" font-family="monospace">PGD → P4D → PUD → PMD → PTE</text>
+    <text x="15" y="89" font-size="10" font-family="monospace">pte_modify(oldpte, newprot)</text>
+    <text x="15" y="106" font-size="10" font-family="monospace">flush_tlb_range() — TLB 失效</text>
+    <text x="15" y="120" font-size="10" fill="#6b7280">批量处理: folio_pte_batch</text>
+  </g>
+
+  <!-- Arrow: User → Syscall -->
+  <path d="M330,140 L400,140" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#arrowB)"/>
+  <rect x="340" y="129" width="52" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="366" y="140" text-anchor="middle" font-size="9" fill="#2563eb">syscall</text>
+
+  <!-- Arrow: Syscall → Page Table -->
+  <path d="M720,140 L780,140" fill="none" stroke="#059669" stroke-width="2" marker-end="url(#arrowG)"/>
+
+  <!-- ========== Layer 4: ARM64 PTE Bits ========== -->
+  <g transform="translate(30, 250)">
+    <rect width="500" height="170" rx="8" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+    <rect width="500" height="30" rx="8" fill="url(#hdrOrange)"/>
+    <rect x="0" y="22" width="500" height="8" fill="#f59e0b"/>
+    <text x="250" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">ARM64 PTE 权限位 (Stage 1)</text>
+    <text x="15" y="50" font-size="10" fill="#d97706" font-weight="bold">arch/arm64/include/asm/pgtable-hwdef.h — 硬件页表描述符</text>
+    <line x1="10" y1="55" x2="490" y2="55" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <!-- PTE bit fields visualization -->
+    <text x="15" y="75" font-size="10" font-weight="bold" fill="#374151">Bit</text>
+    <text x="60" y="75" font-size="10" font-weight="bold" fill="#374151">名称</text>
+    <text x="170" y="75" font-size="10" font-weight="bold" fill="#374151">定义</text>
+    <text x="350" y="75" font-size="10" font-weight="bold" fill="#374151">mprotect 作用</text>
+
+    <text x="15" y="93" font-size="10" font-family="monospace" fill="#374151">[ 0]</text>
+    <text x="60" y="93" font-size="10" font-family="monospace" fill="#2563eb">PTE_VALID</text>
+    <text x="170" y="93" font-size="10" fill="#6b7280">1 &lt;&lt; 0 = 0x01</text>
+    <text x="350" y="93" font-size="10" fill="#374151">页有效位, 0=不可访问</text>
+
+    <text x="15" y="111" font-size="10" font-family="monospace" fill="#374151">[ 6]</text>
+    <text x="60" y="111" font-size="10" font-family="monospace" fill="#059669">PTE_USER</text>
+    <text x="170" y="111" font-size="10" fill="#6b7280">AP[1] = 1 &lt;&lt; 6</text>
+    <text x="350" y="111" font-size="10" fill="#374151">用户态可访问</text>
+
+    <text x="15" y="129" font-size="10" font-family="monospace" fill="#374151">[ 7]</text>
+    <text x="60" y="129" font-size="10" font-family="monospace" fill="#dc2626">PTE_RDONLY</text>
+    <text x="170" y="129" font-size="10" fill="#6b7280">AP[2] = 1 &lt;&lt; 7</text>
+    <text x="350" y="129" font-size="10" fill="#dc2626" font-weight="bold">1=只读, 写触发 Permission Fault</text>
+
+    <text x="15" y="147" font-size="10" font-family="monospace" fill="#374151">[51]</text>
+    <text x="60" y="147" font-size="10" font-family="monospace" fill="#7c3aed">PTE_WRITE</text>
+    <text x="170" y="147" font-size="10" fill="#6b7280">DBM = 1 &lt;&lt; 51</text>
+    <text x="350" y="147" font-size="10" fill="#374151">Dirty Bit Management, 硬件脏位</text>
+
+    <text x="15" y="165" font-size="10" font-family="monospace" fill="#374151">[53]</text>
+    <text x="60" y="165" font-size="10" font-family="monospace" fill="#d97706">PTE_PXN</text>
+    <text x="170" y="165" font-size="10" fill="#6b7280">1 &lt;&lt; 53</text>
+    <text x="350" y="165" font-size="10" fill="#374151">Privileged Execute Never</text>
+  </g>
+
+  <!-- ========== Layer 5: Permission Fault ========== -->
+  <g transform="translate(580, 250)">
+    <rect width="490" height="170" rx="8" fill="#fff" stroke="#dc2626" stroke-width="2" filter="url(#sh)"/>
+    <rect width="490" height="30" rx="8" fill="url(#hdrRed)"/>
+    <rect x="0" y="22" width="490" height="8" fill="#ef4444"/>
+    <text x="245" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">Permission Fault 检测链</text>
+    <text x="15" y="50" font-size="10" fill="#dc2626" font-weight="bold">arch/arm64/mm/fault.c — 写入只读页触发</text>
+    <line x1="10" y1="55" x2="480" y2="55" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" font-family="monospace">① CPU 发出 Store → MMU 检查 PTE AP[2]=1</text>
+    <text x="15" y="89" font-size="10" font-family="monospace">② 触发 Data Abort → ESR_ELx = Permission Fault</text>
+    <text x="15" y="106" font-size="10" font-family="monospace">③ el0_da / el1_da → do_page_fault(far, esr, regs)</text>
+    <text x="15" y="123" font-size="10" font-family="monospace">④ !(vma-&gt;vm_flags &amp; VM_WRITE) → SEGV_ACCERR</text>
+    <text x="15" y="140" font-size="10" font-family="monospace">⑤ 用户态: SIGSEGV 信号 + si_addr</text>
+    <text x="15" y="157" font-size="10" font-family="monospace">   内核态: die_kernel_fault() → BUG/Oops</text>
+  </g>
+
+  <!-- Arrow down from PTE to Fault -->
+  <path d="M530,340 L530,380 L580,380" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrowR)"/>
+  <rect x="533" y="348" width="66" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="566" y="358" text-anchor="middle" font-size="9" fill="#dc2626">写入只读页</text>
+
+  <!-- ========== Layer 6: Kernel set_memory_ro/rw ========== -->
+  <g transform="translate(30, 470)">
+    <rect width="340" height="220" rx="8" fill="#fff" stroke="#059669" stroke-width="2" filter="url(#sh)"/>
+    <rect width="340" height="30" rx="8" fill="url(#hdrGreen)"/>
+    <rect x="0" y="22" width="340" height="8" fill="#10b981"/>
+    <text x="170" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">内核态页保护 API</text>
+    <text x="15" y="50" font-size="10" fill="#059669" font-weight="bold">arch/arm64/mm/pageattr.c — vmalloc 区域专用</text>
+    <line x1="10" y1="55" x2="330" y2="55" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="75" font-size="11" font-family="monospace" fill="#059669" font-weight="bold">set_memory_ro(addr, numpages)</text>
+    <text x="15" y="90" font-size="10" fill="#6b7280">set: PTE_RDONLY, clear: PTE_WRITE</text>
+    <line x1="10" y1="96" x2="330" y2="96" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="113" font-size="11" font-family="monospace" fill="#059669" font-weight="bold">set_memory_rw(addr, numpages)</text>
+    <text x="15" y="128" font-size="10" fill="#6b7280">set: PTE_WRITE, clear: PTE_RDONLY</text>
+    <line x1="10" y1="134" x2="330" y2="134" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="151" font-size="11" font-family="monospace" fill="#059669" font-weight="bold">set_memory_valid(addr, n, enable)</text>
+    <text x="15" y="166" font-size="10" fill="#6b7280">set/clear PTE_VALID — 整页可见性切换</text>
+    <line x1="10" y1="172" x2="330" y2="172" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="189" font-size="11" font-family="monospace" fill="#7c3aed" font-weight="bold">__ro_after_init</text>
+    <text x="15" y="204" font-size="10" fill="#6b7280">init 完成后 mark_rodata_ro() 将 .rodata 设为只读</text>
+  </g>
+
+  <!-- ========== Layer 7: Kernel Consumers ========== -->
+  <g transform="translate(420, 470)">
+    <rect width="320" height="220" rx="8" fill="#fff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+    <rect width="320" height="30" rx="8" fill="url(#hdrPurple)"/>
+    <rect x="0" y="22" width="320" height="8" fill="#8b5cf6"/>
+    <text x="160" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">内核中的页保护使用者</text>
+    <text x="15" y="50" font-size="10" fill="#7c3aed" font-weight="bold">利用 PTE 权限检测 MemoryOverwritten</text>
+    <line x1="10" y1="55" x2="310" y2="55" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <rect x="15" y="62" width="120" height="24" rx="4" fill="#f0fdf4" stroke="#059669"/>
+    <text x="75" y="78" text-anchor="middle" font-size="10" font-weight="bold" fill="#059669">KFENCE</text>
+
+    <rect x="150" y="62" width="155" height="24" rx="4" fill="#fef2f2" stroke="#dc2626"/>
+    <text x="227" y="78" text-anchor="middle" font-size="10" font-weight="bold" fill="#dc2626">DEBUG_PAGEALLOC</text>
+
+    <text x="15" y="104" font-size="10" fill="#059669">kfence_protect_page(addr, true)</text>
+    <text x="15" y="118" font-size="10" fill="#6b7280">→ set_memory_valid(addr,1,false)</text>
+    <text x="15" y="132" font-size="10" fill="#6b7280">→ Guard Page 不可访问</text>
+    <line x1="10" y1="138" x2="310" y2="138" stroke="#e2e8f0" stroke-width="0.8"/>
+
+    <rect x="15" y="145" width="155" height="24" rx="4" fill="#eff6ff" stroke="#2563eb"/>
+    <text x="92" y="161" text-anchor="middle" font-size="10" font-weight="bold" fill="#2563eb">STRICT_KERNEL_RWX</text>
+
+    <rect x="185" y="145" width="120" height="24" rx="4" fill="#faf5ff" stroke="#7c3aed"/>
+    <text x="245" y="161" text-anchor="middle" font-size="10" font-weight="bold" fill="#7c3aed">MODULE_RWX</text>
+
+    <text x="15" y="186" font-size="10" fill="#2563eb">mark_rodata_ro()</text>
+    <text x="15" y="200" font-size="10" fill="#6b7280">→ .text/.rodata 只读, W^X 强制</text>
+  </g>
+
+  <!-- ========== Layer 8: User-space mprotect Guard ========== -->
+  <g transform="translate(790, 470)">
+    <rect width="280" height="220" rx="8" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+    <rect width="280" height="30" rx="8" fill="url(#hdrOrange)"/>
+    <rect x="0" y="22" width="280" height="8" fill="#f59e0b"/>
+    <text x="140" y="20" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">用户态 mprotect 守卫模式</text>
+    <text x="15" y="50" font-size="10" fill="#d97706" font-weight="bold">应用层 MemoryOverwritten 检测</text>
+    <line x1="10" y1="55" x2="270" y2="55" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="75" font-size="10" font-family="monospace">1. mmap(PROT_READ|PROT_WRITE)</text>
+    <text x="15" y="92" font-size="10" font-family="monospace">2. 写入关键数据</text>
+    <text x="15" y="109" font-size="10" font-family="monospace" fill="#dc2626" font-weight="bold">3. mprotect(addr, sz, PROT_READ)</text>
+    <text x="15" y="126" font-size="10" font-family="monospace">4. ... 正常读取 ...</text>
+    <text x="15" y="143" font-size="10" font-family="monospace" fill="#dc2626">5. 误写入 → SIGSEGV!</text>
+    <text x="15" y="160" font-size="10" font-family="monospace" fill="#059669">6. 合法写入前先解锁:</text>
+    <text x="15" y="177" font-size="10" font-family="monospace" fill="#059669">   mprotect(PROT_READ|PROT_WRITE)</text>
+    <text x="15" y="194" font-size="10" font-family="monospace">7. 写入完成后重新上锁</text>
+    <text x="15" y="208" font-size="10" fill="#6b7280">精度: 页粒度(4KB), 零 CPU 开销</text>
+  </g>
+
+  <!-- Arrow: Kernel API → Consumers -->
+  <path d="M370,580 L420,580" fill="none" stroke="#059669" stroke-width="2" marker-end="url(#arrowG)"/>
+
+  <!-- Legend -->
+  <g transform="translate(30, 700)">
+    <text x="0" y="0" font-size="10" fill="#6b7280">● 蓝: 用户态入口  ● 绿: 内核保护 API  ● 紫: 页表遍历  ● 红: 故障检测  ● 橙: PTE 位/应用</text>
+  </g>
+</svg>

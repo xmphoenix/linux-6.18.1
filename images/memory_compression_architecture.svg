@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hZram" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2196F3"/><stop offset="100%" stop-color="#1976D2"/></linearGradient>
+    <linearGradient id="hZswap" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4CAF50"/><stop offset="100%" stop-color="#388E3C"/></linearGradient>
+    <linearGradient id="hZsmalloc" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#FF9800"/><stop offset="100%" stop-color="#F57C00"/></linearGradient>
+    <linearGradient id="hSwap" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#9C27B0"/><stop offset="100%" stop-color="#7B1FA2"/></linearGradient>
+    <linearGradient id="hReclaim" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#F44336"/><stop offset="100%" stop-color="#D32F2F"/></linearGradient>
+    <linearGradient id="hComp" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#607D8B"/><stop offset="100%" stop-color="#455A64"/></linearGradient>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1976D2" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#388E3C" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#F57C00" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#7B1FA2" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#D32F2F" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aK" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#455A64" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="600" y="35" text-anchor="middle" font-size="20" font-weight="bold" fill="#333">Linux 6.18.1 内存压缩子系统架构总览</text>
+  <text x="600" y="55" text-anchor="middle" font-size="11" fill="#666">drivers/block/zram/ · mm/zswap.c · mm/zsmalloc.c · include/linux/zsmalloc.h</text>
+
+  <!-- Legend -->
+  <g transform="translate(20,70)">
+    <rect width="200" height="95" rx="6" fill="white" fill-opacity="0.9" stroke="#ccc"/>
+    <text x="10" y="18" font-size="11" font-weight="bold" fill="#333">图例</text>
+    <line x1="10" y1="35" x2="40" y2="35" stroke="#1976D2" stroke-width="2.5" marker-end="url(#aB)"/>
+    <text x="50" y="39" font-size="10" fill="#555">块 I/O 路径</text>
+    <line x1="10" y1="53" x2="40" y2="53" stroke="#388E3C" stroke-width="2.5" marker-end="url(#aG)"/>
+    <text x="50" y="57" font-size="10" fill="#555">函数调用拦截</text>
+    <line x1="10" y1="71" x2="40" y2="71" stroke="#F57C00" stroke-width="2" marker-end="url(#aO)"/>
+    <text x="50" y="75" font-size="10" fill="#555">zsmalloc 分配</text>
+    <line x1="10" y1="89" x2="40" y2="89" stroke="#7B1FA2" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aP)"/>
+    <text x="50" y="93" font-size="10" fill="#555">LRU writeback</text>
+  </g>
+
+  <!-- Memory Reclaim Box -->
+  <g transform="translate(380,80)" filter="url(#sh)">
+    <rect width="440" height="85" rx="8" fill="#fff" stroke="#D32F2F" stroke-width="2"/>
+    <rect width="440" height="30" rx="8" fill="url(#hReclaim)"/>
+    <rect y="22" width="440" height="8" fill="#D32F2F"/>
+    <text x="220" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="white">内存回收框架 (Page Reclaim)</text>
+    <text x="15" y="50" font-size="10" fill="#D32F2F" font-weight="bold">kswapd / direct reclaim → shrink_lruvec()</text>
+    <text x="15" y="66" font-size="10" fill="#666">文件页: 丢弃 clean page cache / 回写脏页</text>
+    <text x="15" y="78" font-size="10" fill="#666">匿名页: pageout() → add_to_swap() → __swap_writepage()</text>
+  </g>
+
+  <!-- zram Box -->
+  <g transform="translate(30,240)" filter="url(#sh)">
+    <rect width="340" height="280" rx="8" fill="#fff" stroke="#1976D2" stroke-width="2"/>
+    <rect width="340" height="30" rx="8" fill="url(#hZram)"/>
+    <rect y="22" width="340" height="8" fill="#1976D2"/>
+    <text x="170" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="white">zram 压缩块设备</text>
+    <text x="15" y="48" font-size="10" fill="#1976D2" font-weight="bold">drivers/block/zram/zram_drv.c</text>
+    <line x1="10" y1="55" x2="330" y2="55" stroke="#E3F2FD" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#333" font-family="monospace">struct zram</text>
+    <text x="180" y="72" font-size="9" fill="#888">顶层设备结构</text>
+    <text x="15" y="88" font-size="10" fill="#333" font-family="monospace">  table[]</text>
+    <text x="180" y="88" font-size="9" fill="#888">per-page 元数据</text>
+    <text x="15" y="104" font-size="10" fill="#F57C00" font-family="monospace">  mem_pool</text>
+    <text x="180" y="104" font-size="9" fill="#888">→ zs_pool</text>
+    <text x="15" y="120" font-size="10" fill="#333" font-family="monospace">  comps[4]</text>
+    <text x="180" y="120" font-size="9" fill="#888">压缩器(最多4种)</text>
+    <text x="15" y="136" font-size="10" fill="#333" font-family="monospace">  stats</text>
+    <text x="180" y="136" font-size="9" fill="#888">运行时统计</text>
+    <line x1="10" y1="145" x2="330" y2="145" stroke="#E3F2FD" stroke-width="0.8"/>
+    <text x="15" y="162" font-size="10" fill="#333" font-family="monospace">zram_table_entry</text>
+    <text x="180" y="162" font-size="9" fill="#888">per-page 元数据</text>
+    <text x="15" y="178" font-size="10" fill="#333" font-family="monospace">  handle</text>
+    <text x="180" y="178" font-size="9" fill="#888">zsmalloc handle / 填充值 / bdev blk</text>
+    <text x="15" y="194" font-size="10" fill="#333" font-family="monospace">  flags</text>
+    <text x="180" y="194" font-size="9" fill="#888">SAME|WB|HUGE|IDLE|压缩大小</text>
+    <line x1="10" y1="203" x2="330" y2="203" stroke="#E3F2FD" stroke-width="0.8"/>
+    <text x="15" y="220" font-size="10" fill="#555" font-weight="bold">I/O 路径:</text>
+    <text x="15" y="236" font-size="9" fill="#555">Write: zram_submit_bio → zram_write_page</text>
+    <text x="15" y="250" font-size="9" fill="#555">  → zcomp_compress → zs_malloc → zs_obj_write</text>
+    <text x="15" y="264" font-size="9" fill="#555">Read: zram_read_page → zs_obj_read_begin</text>
+    <text x="15" y="278" font-size="9" fill="#555">  → zcomp_decompress → zs_obj_read_end</text>
+  </g>
+
+  <!-- zswap Box -->
+  <g transform="translate(430,240)" filter="url(#sh)">
+    <rect width="340" height="280" rx="8" fill="#fff" stroke="#388E3C" stroke-width="2"/>
+    <rect width="340" height="30" rx="8" fill="url(#hZswap)"/>
+    <rect y="22" width="340" height="8" fill="#388E3C"/>
+    <text x="170" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="white">zswap 压缩缓存层</text>
+    <text x="15" y="48" font-size="10" fill="#388E3C" font-weight="bold">mm/zswap.c</text>
+    <line x1="10" y1="55" x2="330" y2="55" stroke="#E8F5E9" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#333" font-family="monospace">struct zswap_pool</text>
+    <text x="200" y="72" font-size="9" fill="#888">压缩池</text>
+    <text x="15" y="88" font-size="10" fill="#F57C00" font-family="monospace">  zs_pool</text>
+    <text x="200" y="88" font-size="9" fill="#888">→ zsmalloc 池</text>
+    <text x="15" y="104" font-size="10" fill="#333" font-family="monospace">  acomp_ctx</text>
+    <text x="200" y="104" font-size="9" fill="#888">Per-CPU crypto 上下文</text>
+    <text x="15" y="120" font-size="10" fill="#333" font-family="monospace">  ref</text>
+    <text x="200" y="120" font-size="9" fill="#888">percpu_ref 引用计数</text>
+    <line x1="10" y1="130" x2="330" y2="130" stroke="#E8F5E9" stroke-width="0.8"/>
+    <text x="15" y="147" font-size="10" fill="#333" font-family="monospace">struct zswap_entry</text>
+    <text x="200" y="147" font-size="9" fill="#888">per-page 条目</text>
+    <text x="15" y="163" font-size="10" fill="#333" font-family="monospace">  swpentry</text>
+    <text x="200" y="163" font-size="9" fill="#888">swap entry (xarray key)</text>
+    <text x="15" y="179" font-size="10" fill="#333" font-family="monospace">  handle</text>
+    <text x="200" y="179" font-size="9" fill="#888">zsmalloc handle</text>
+    <text x="15" y="195" font-size="10" fill="#333" font-family="monospace">  referenced</text>
+    <text x="200" y="195" font-size="9" fill="#888">second-chance 位</text>
+    <text x="15" y="211" font-size="10" fill="#333" font-family="monospace">  lru</text>
+    <text x="200" y="211" font-size="9" fill="#888">LRU 链表节点</text>
+    <line x1="10" y1="220" x2="330" y2="220" stroke="#E8F5E9" stroke-width="0.8"/>
+    <text x="15" y="237" font-size="10" fill="#555" font-weight="bold">拦截点:</text>
+    <text x="15" y="253" font-size="9" fill="#555">Store: __swap_writepage → zswap_store(folio)</text>
+    <text x="15" y="267" font-size="9" fill="#555">Load: swap_readpage → zswap_load(folio)</text>
+    <text x="15" y="281" font-size="9" fill="#555">索引: xarray (per-swap-type, per-64MB)</text>
+  </g>
+
+  <!-- zsmalloc Box -->
+  <g transform="translate(230,590)" filter="url(#sh)">
+    <rect width="380" height="260" rx="8" fill="#fff" stroke="#F57C00" stroke-width="2"/>
+    <rect width="380" height="30" rx="8" fill="url(#hZsmalloc)"/>
+    <rect y="22" width="380" height="8" fill="#F57C00"/>
+    <text x="190" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="white">zsmalloc 内存分配器</text>
+    <text x="15" y="48" font-size="10" fill="#F57C00" font-weight="bold">mm/zsmalloc.c</text>
+    <line x1="10" y1="55" x2="370" y2="55" stroke="#FFF3E0" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#333" font-family="monospace">struct zs_pool</text>
+    <text x="200" y="72" font-size="9" fill="#888">内存池顶层结构</text>
+    <text x="15" y="88" font-size="10" fill="#333" font-family="monospace">  size_class[~255]</text>
+    <text x="200" y="88" font-size="9" fill="#888">大小类数组(8B 粒度)</text>
+    <text x="15" y="104" font-size="10" fill="#333" font-family="monospace">  pages_allocated</text>
+    <text x="200" y="104" font-size="9" fill="#888">总分配页数</text>
+    <line x1="10" y1="113" x2="370" y2="113" stroke="#FFF3E0" stroke-width="0.8"/>
+    <text x="15" y="130" font-size="10" fill="#333" font-family="monospace">struct size_class</text>
+    <text x="200" y="130" font-size="9" fill="#888">大小类</text>
+    <text x="15" y="146" font-size="10" fill="#333" font-family="monospace">  fullness_list[12]</text>
+    <text x="200" y="146" font-size="9" fill="#888">0%~100% 满度分组</text>
+    <text x="15" y="162" font-size="10" fill="#333" font-family="monospace">  size / objs_per_zspage</text>
+    <text x="200" y="162" font-size="9" fill="#888">对象大小/每zspage对象数</text>
+    <line x1="10" y1="171" x2="370" y2="171" stroke="#FFF3E0" stroke-width="0.8"/>
+    <text x="15" y="188" font-size="10" fill="#333" font-family="monospace">struct zspage</text>
+    <text x="200" y="188" font-size="9" fill="#888">物理页组(1~N页链)</text>
+    <text x="15" y="204" font-size="10" fill="#333" font-family="monospace">  first_zpdesc → chain</text>
+    <text x="200" y="204" font-size="9" fill="#888">物理页描述符链</text>
+    <text x="15" y="220" font-size="10" fill="#333" font-family="monospace">  inuse / freeobj</text>
+    <text x="200" y="220" font-size="9" fill="#888">已用数/空闲链表头</text>
+    <line x1="10" y1="229" x2="370" y2="229" stroke="#FFF3E0" stroke-width="0.8"/>
+    <text x="15" y="246" font-size="10" fill="#555" font-weight="bold">handle = (PFN &lt;&lt; OBJ_INDEX_BITS) | obj_idx</text>
+    <text x="15" y="258" font-size="9" fill="#555">对象可跨页 · compaction 合并半空 zspage · page migration</text>
+  </g>
+
+  <!-- Compression Algorithms Box -->
+  <g transform="translate(830,240)" filter="url(#sh)">
+    <rect width="330" height="200" rx="8" fill="#fff" stroke="#607D8B" stroke-width="2"/>
+    <rect width="330" height="30" rx="8" fill="url(#hComp)"/>
+    <rect y="22" width="330" height="8" fill="#607D8B"/>
+    <text x="165" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="white">压缩算法后端</text>
+    <text x="15" y="48" font-size="10" fill="#607D8B" font-weight="bold">zram: zcomp 抽象层 · zswap: crypto acomp</text>
+    <line x1="10" y1="55" x2="320" y2="55" stroke="#ECEFF1" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#333" font-family="monospace">lzo-rle</text>
+    <text x="120" y="72" font-size="9" fill="#888">快速 · zram 默认 · 16KB ctx</text>
+    <text x="15" y="90" font-size="10" fill="#333" font-family="monospace">lz4 / lz4hc</text>
+    <text x="120" y="90" font-size="9" fill="#888">最快解压 · 支持字典</text>
+    <text x="15" y="108" font-size="10" fill="#333" font-family="monospace">zstd</text>
+    <text x="120" y="108" font-size="9" fill="#888">最佳压缩率 · 支持字典 · 数百KB ctx</text>
+    <text x="15" y="126" font-size="10" fill="#333" font-family="monospace">deflate</text>
+    <text x="120" y="126" font-size="9" fill="#888">zlib 兼容 · 可调级别</text>
+    <text x="15" y="144" font-size="10" fill="#333" font-family="monospace">842</text>
+    <text x="120" y="144" font-size="9" fill="#888">IBM 算法 · 快速</text>
+    <line x1="10" y1="155" x2="320" y2="155" stroke="#ECEFF1" stroke-width="0.8"/>
+    <text x="15" y="172" font-size="10" fill="#555" font-weight="bold">Per-CPU 流:</text>
+    <text x="15" y="188" font-size="9" fill="#555">zcomp_strm: buffer(2×4K) + local_copy(4K)</text>
+    <text x="15" y="202" font-size="9" fill="#555">crypto_acomp_ctx: acomp + req + buffer(4K)</text>
+  </g>
+
+  <!-- Swap Device Box -->
+  <g transform="translate(830,500)" filter="url(#sh)">
+    <rect width="330" height="120" rx="8" fill="#fff" stroke="#9C27B0" stroke-width="2"/>
+    <rect width="330" height="30" rx="8" fill="url(#hSwap)"/>
+    <rect y="22" width="330" height="8" fill="#9C27B0"/>
+    <text x="165" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="white">真实 Swap 设备 / Backing Dev</text>
+    <text x="15" y="48" font-size="10" fill="#9C27B0" font-weight="bold">mm/page_io.c · mm/swapfile.c</text>
+    <line x1="10" y1="55" x2="320" y2="55" stroke="#F3E5F5" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#333">zswap writeback: LRU 淘汰 → __swap_writepage()</text>
+    <text x="15" y="88" font-size="10" fill="#333">zram writeback: 冷页 → backing_dev bio write</text>
+    <text x="15" y="104" font-size="10" fill="#333">Swap 设备: SSD / HDD / eMMC / NVMe</text>
+    <text x="15" y="118" font-size="10" fill="#333">zram backing: 独立块设备分区</text>
+  </g>
+
+  <!-- Connection: Reclaim → zram (block I/O) -->
+  <path d="M480,165 L480,195 L200,195 L200,240" fill="none" stroke="#1976D2" stroke-width="2.5" marker-end="url(#aB)"/>
+  <rect x="260" y="186" width="160" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="340" y="200" text-anchor="middle" font-size="9" fill="#1976D2" font-weight="bold">bio REQ_OP_WRITE (块 I/O)</text>
+
+  <!-- Connection: Reclaim → zswap (function call) -->
+  <path d="M700,165 L700,195 L600,195 L600,240" fill="none" stroke="#388E3C" stroke-width="2.5" marker-end="url(#aG)"/>
+  <rect x="620" y="186" width="140" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="690" y="200" text-anchor="middle" font-size="9" fill="#388E3C" font-weight="bold">zswap_store() 函数拦截</text>
+
+  <!-- Connection: zram → zsmalloc -->
+  <path d="M200,520 L200,560 L350,560 L350,590" fill="none" stroke="#F57C00" stroke-width="2" marker-end="url(#aO)"/>
+  <rect x="205" y="548" width="130" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="270" y="561" text-anchor="middle" font-size="9" fill="#F57C00" font-weight="bold">zs_malloc/zs_free</text>
+
+  <!-- Connection: zswap → zsmalloc -->
+  <path d="M600,520 L600,560 L490,560 L490,590" fill="none" stroke="#F57C00" stroke-width="2" marker-end="url(#aO)"/>
+  <rect x="505" y="548" width="130" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="570" y="561" text-anchor="middle" font-size="9" fill="#F57C00" font-weight="bold">zs_malloc/zs_free</text>
+
+  <!-- Connection: zram → compression -->
+  <path d="M370,380 L400,380 L400,340 L830,340" fill="none" stroke="#455A64" stroke-width="1.5" marker-end="url(#aK)"/>
+  <rect x="520" y="325" width="120" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="580" y="338" text-anchor="middle" font-size="9" fill="#455A64">zcomp_compress()</text>
+
+  <!-- Connection: zswap → compression -->
+  <path d="M770,380 L830,380" fill="none" stroke="#455A64" stroke-width="1.5" marker-end="url(#aK)"/>
+  <rect x="775" y="368" width="50" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="800" y="381" text-anchor="middle" font-size="9" fill="#455A64">acomp</text>
+
+  <!-- Connection: zswap → swap device (LRU writeback) -->
+  <path d="M770,480 L810,480 L810,560 L830,560" fill="none" stroke="#7B1FA2" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aP)"/>
+  <rect x="738" y="505" width="110" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="793" y="518" text-anchor="middle" font-size="9" fill="#7B1FA2" font-weight="bold">LRU writeback</text>
+
+  <!-- Connection: zram → backing device -->
+  <path d="M200,520 L200,545 L680,545 L680,610 L830,610" fill="none" stroke="#7B1FA2" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aP)"/>
+  <rect x="500" y="534" width="160" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="580" y="546" text-anchor="middle" font-size="8" fill="#7B1FA2">zram writeback (可选)</text>
+
+  <!-- Key metrics note -->
+  <g transform="translate(30,600)">
+    <rect width="180" height="80" rx="6" fill="#FFF8E1" stroke="#FFC107" stroke-width="1"/>
+    <text x="10" y="18" font-size="10" font-weight="bold" fill="#F57F17">关键监控接口</text>
+    <text x="10" y="36" font-size="9" fill="#555">/sys/block/zramN/mm_stat</text>
+    <text x="10" y="50" font-size="9" fill="#555">/sys/kernel/debug/zswap/*</text>
+    <text x="10" y="64" font-size="9" fill="#555">/proc/meminfo (Zswap/Zswapped)</text>
+    <text x="10" y="78" font-size="9" fill="#555">vmstat pswpin/pswpout</text>
+  </g>
+</svg>

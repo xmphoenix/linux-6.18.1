@@ -1,0 +1,457 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 1440"
+     font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/></filter>
+    <!-- Header gradients -->
+    <linearGradient id="hdrGlobal" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1565C0"/><stop offset="100%" stop-color="#42A5F5"/>
+    </linearGradient>
+    <linearGradient id="hdrSoftCpu" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E65100"/><stop offset="100%" stop-color="#FFA726"/>
+    </linearGradient>
+    <linearGradient id="hdrHardCpu" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#B71C1C"/><stop offset="100%" stop-color="#EF5350"/>
+    </linearGradient>
+    <linearGradient id="hdrPerfCpu" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6A1B9A"/><stop offset="100%" stop-color="#AB47BC"/>
+    </linearGradient>
+    <linearGradient id="hdrHung" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#66BB6A"/>
+    </linearGradient>
+    <linearGradient id="hdrTask" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00695C"/><stop offset="100%" stop-color="#26A69A"/>
+    </linearGradient>
+    <linearGradient id="hdrStorm" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#AD1457"/><stop offset="100%" stop-color="#EC407A"/>
+    </linearGradient>
+    <linearGradient id="hdrBuddy" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4527A0"/><stop offset="100%" stop-color="#7E57C2"/>
+    </linearGradient>
+    <!-- Arrow markers (outline only) -->
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#E65100" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#B71C1C" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6A1B9A" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2E7D32" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aT" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#00695C" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aK" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#475569" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aM" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#AD1457" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aV" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#4527A0" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <!-- Diamond markers (composition) -->
+    <marker id="dB" markerWidth="12" markerHeight="8" refX="1" refY="4" orient="auto">
+      <path d="M1,4 L6,1 L11,4 L6,7 Z" fill="#fff" stroke="#1565C0" stroke-width="1.5"/>
+    </marker>
+    <marker id="dO" markerWidth="12" markerHeight="8" refX="1" refY="4" orient="auto">
+      <path d="M1,4 L6,1 L11,4 L6,7 Z" fill="#fff" stroke="#E65100" stroke-width="1.5"/>
+    </marker>
+  </defs>
+
+  <!-- ===== Title ===== -->
+  <text x="780" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#1e293b">Watchdog 子系统关键数据结构关系图</text>
+  <text x="780" y="52" text-anchor="middle" font-size="12" fill="#64748b">kernel/watchdog.c · kernel/watchdog_perf.c · kernel/watchdog_buddy.c · kernel/hung_task.c · Linux 6.18.1</text>
+
+  <!-- ===== Legend ===== -->
+  <g transform="translate(20,70)">
+    <rect width="260" height="148" rx="6" fill="white" fill-opacity="0.92" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="10" y="18" font-size="11" font-weight="bold" fill="#334155">图例</text>
+    <line x1="10" y1="28" x2="55" y2="28" stroke="#1565C0" stroke-width="2.5"/>
+    <text x="60" y="32" font-size="10" fill="#64748b">控制/配置关系（全局 → per-CPU）</text>
+    <line x1="10" y1="46" x2="55" y2="46" stroke="#E65100" stroke-width="2"/>
+    <text x="60" y="50" font-size="10" fill="#64748b">Softlockup 读写路径</text>
+    <line x1="10" y1="64" x2="55" y2="64" stroke="#B71C1C" stroke-width="2"/>
+    <text x="60" y="68" font-size="10" fill="#64748b">Hardlockup 检测路径</text>
+    <line x1="10" y1="82" x2="55" y2="82" stroke="#6A1B9A" stroke-width="2"/>
+    <text x="60" y="86" font-size="10" fill="#64748b">Perf NMI 回调路径</text>
+    <line x1="10" y1="100" x2="55" y2="100" stroke="#4527A0" stroke-width="2" stroke-dasharray="6,3"/>
+    <text x="60" y="104" font-size="10" fill="#64748b">Buddy 跨 CPU 互检</text>
+    <line x1="10" y1="118" x2="55" y2="118" stroke="#2E7D32" stroke-width="2"/>
+    <text x="60" y="122" font-size="10" fill="#64748b">Hung Task 检测路径</text>
+    <line x1="10" y1="136" x2="55" y2="136" stroke="#AD1457" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="60" y="140" font-size="10" fill="#64748b">中断风暴统计路径</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- ROW 1: Global Control Variables (top center)                     -->
+  <!-- ================================================================ -->
+  <g transform="translate(420,75)">
+    <rect width="440" height="260" rx="8" fill="#fff" stroke="#1565C0" stroke-width="2" filter="url(#sh)"/>
+    <rect width="440" height="30" rx="8" fill="url(#hdrGlobal)"/>
+    <rect x="0" y="22" width="440" height="8" fill="#1565C0"/>
+    <text x="220" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">全局控制变量</text>
+    <text x="15" y="46" font-size="10" fill="#1565C0" font-weight="bold">kernel/watchdog.c · sysctl/boot 参数</text>
+    <line x1="10" y1="54" x2="430" y2="54" stroke="#90CAF9" stroke-width="0.8"/>
+    <!-- Fields -->
+    <text x="15" y="72" font-size="11" font-family="monospace" fill="#1565C0">watchdog_enabled</text>
+    <text x="240" y="72" font-size="10" fill="#64748b">unsigned long  使能位掩码</text>
+    <text x="15" y="90" font-size="11" font-family="monospace" fill="#1565C0">watchdog_thresh</text>
+    <text x="240" y="90" font-size="10" fill="#64748b">int  基础阈值 = 10s</text>
+    <text x="15" y="108" font-size="11" font-family="monospace" fill="#1e293b">sample_period</text>
+    <text x="240" y="108" font-size="10" fill="#64748b">u64  hrtimer 周期 ≈ 4s</text>
+    <text x="15" y="126" font-size="11" font-family="monospace" fill="#E65100">softlockup_panic</text>
+    <text x="240" y="126" font-size="10" fill="#64748b">uint  软锁 panic 开关</text>
+    <text x="15" y="144" font-size="11" font-family="monospace" fill="#B71C1C">hardlockup_panic</text>
+    <text x="240" y="144" font-size="10" fill="#64748b">uint  硬锁 panic 开关</text>
+    <text x="15" y="162" font-size="11" font-family="monospace" fill="#1e293b">watchdog_cpumask</text>
+    <text x="240" y="162" font-size="10" fill="#64748b">cpumask_t  监控 CPU 集合</text>
+    <text x="15" y="180" font-size="11" font-family="monospace" fill="#1e293b">watchdog_hardlockup_available</text>
+    <text x="240" y="180" font-size="10" fill="#64748b">bool  硬锁检测器可用</text>
+    <line x1="10" y1="190" x2="430" y2="190" stroke="#90CAF9" stroke-width="0.8"/>
+    <text x="15" y="206" font-size="10" fill="#1565C0" font-weight="bold">使能位定义 (include/linux/nmi.h):</text>
+    <text x="15" y="222" font-size="10" font-family="monospace" fill="#B71C1C">bit 0  WATCHDOG_HARDLOCKUP_ENABLED</text>
+    <text x="240" y="222" font-size="10" fill="#64748b">0x1</text>
+    <text x="15" y="238" font-size="10" font-family="monospace" fill="#E65100">bit 1  WATCHDOG_SOFTOCKUP_ENABLED</text>
+    <text x="240" y="238" font-size="10" fill="#64748b">0x2</text>
+    <text x="15" y="254" font-size="10" font-family="monospace" fill="#1e293b">SOFTLOCKUP_DELAY_REPORT = ULONG_MAX</text>
+    <text x="240" y="254" font-size="10" fill="#64748b">touch 延迟标记</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- ROW 2: Per-CPU Softlockup State (left)                          -->
+  <!-- ================================================================ -->
+  <g transform="translate(30,420)">
+    <rect width="400" height="250" rx="8" fill="#fff" stroke="#E65100" stroke-width="2" filter="url(#sh)"/>
+    <rect width="400" height="30" rx="8" fill="url(#hdrSoftCpu)"/>
+    <rect x="0" y="22" width="400" height="8" fill="#E65100"/>
+    <text x="200" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Per-CPU Softlockup 状态</text>
+    <text x="15" y="46" font-size="10" fill="#E65100" font-weight="bold">DEFINE_PER_CPU · kernel/watchdog.c</text>
+    <line x1="10" y1="54" x2="390" y2="54" stroke="#FFCC80" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="11" font-family="monospace" fill="#E65100">watchdog_touch_ts</text>
+    <text x="240" y="72" font-size="10" fill="#64748b">unsigned long  调度时间戳</text>
+    <text x="15" y="90" font-size="11" font-family="monospace" fill="#E65100">watchdog_report_ts</text>
+    <text x="240" y="90" font-size="10" fill="#64748b">unsigned long  报告时间戳</text>
+    <text x="15" y="108" font-size="11" font-family="monospace" fill="#1e293b">watchdog_hrtimer</text>
+    <text x="240" y="108" font-size="10" fill="#64748b">struct hrtimer  高精度定时器</text>
+    <text x="15" y="126" font-size="11" font-family="monospace" fill="#1e293b">softlockup_touch_sync</text>
+    <text x="240" y="126" font-size="10" fill="#64748b">bool  NMI 安全 touch</text>
+    <text x="15" y="144" font-size="11" font-family="monospace" fill="#1e293b">softlockup_completion</text>
+    <text x="240" y="144" font-size="10" fill="#64748b">struct completion  同步</text>
+    <text x="15" y="162" font-size="11" font-family="monospace" fill="#1e293b">softlockup_stop_work</text>
+    <text x="240" y="162" font-size="10" fill="#64748b">struct cpu_stop_work</text>
+    <line x1="10" y1="172" x2="390" y2="172" stroke="#FFCC80" stroke-width="0.8"/>
+    <text x="15" y="190" font-size="10" fill="#E65100" font-weight="bold">关键函数写入:</text>
+    <text x="15" y="206" font-size="10" font-family="monospace" fill="#1e293b">softlockup_fn() → 更新 touch_ts</text>
+    <text x="15" y="222" font-size="10" font-family="monospace" fill="#1e293b">watchdog_timer_fn() → 读 touch_ts，写 report_ts</text>
+    <text x="15" y="238" font-size="10" font-family="monospace" fill="#1e293b">touch_softlockup_*() → 重置 report_ts</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- ROW 2: Per-CPU Hardlockup State (center)                        -->
+  <!-- ================================================================ -->
+  <g transform="translate(580,420)">
+    <rect width="400" height="250" rx="8" fill="#fff" stroke="#B71C1C" stroke-width="2" filter="url(#sh)"/>
+    <rect width="400" height="30" rx="8" fill="url(#hdrHardCpu)"/>
+    <rect x="0" y="22" width="400" height="8" fill="#B71C1C"/>
+    <text x="200" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Per-CPU Hardlockup 状态</text>
+    <text x="15" y="46" font-size="10" fill="#B71C1C" font-weight="bold">DEFINE_PER_CPU · kernel/watchdog.c</text>
+    <line x1="10" y1="54" x2="390" y2="54" stroke="#EF9A9A" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="11" font-family="monospace" fill="#B71C1C">hrtimer_interrupts</text>
+    <text x="240" y="72" font-size="10" fill="#64748b">atomic_t  hrtimer 计数器</text>
+    <text x="15" y="90" font-size="11" font-family="monospace" fill="#B71C1C">hrtimer_interrupts_saved</text>
+    <text x="240" y="90" font-size="10" fill="#64748b">int  上次观测值</text>
+    <text x="15" y="108" font-size="11" font-family="monospace" fill="#1e293b">watchdog_hardlockup_warned</text>
+    <text x="240" y="108" font-size="10" fill="#64748b">bool  已告警标志</text>
+    <text x="15" y="126" font-size="11" font-family="monospace" fill="#1e293b">watchdog_hardlockup_touched</text>
+    <text x="240" y="126" font-size="10" fill="#64748b">bool  touch 抑制标志</text>
+    <line x1="10" y1="136" x2="390" y2="136" stroke="#EF9A9A" stroke-width="0.8"/>
+    <text x="15" y="154" font-size="10" fill="#B71C1C" font-weight="bold">检测逻辑 is_hardlockup():</text>
+    <text x="15" y="172" font-size="10" font-family="monospace" fill="#1e293b">if (hrtimer_interrupts ==</text>
+    <text x="15" y="188" font-size="10" font-family="monospace" fill="#1e293b">    hrtimer_interrupts_saved)</text>
+    <text x="15" y="204" font-size="10" font-family="monospace" fill="#B71C1C">  → Hard Lockup! (hrtimer 未触发)</text>
+    <text x="15" y="222" font-size="10" font-family="monospace" fill="#1e293b">else: saved = interrupts (正常)</text>
+    <text x="15" y="240" font-size="10" fill="#64748b">watchdog_hardlockup_kick() 每次 hrtimer +1</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- ROW 2: Perf Event Per-CPU State (right)                         -->
+  <!-- ================================================================ -->
+  <g transform="translate(1130,420)">
+    <rect width="380" height="250" rx="8" fill="#fff" stroke="#6A1B9A" stroke-width="2" filter="url(#sh)"/>
+    <rect width="380" height="30" rx="8" fill="url(#hdrPerfCpu)"/>
+    <rect x="0" y="22" width="380" height="8" fill="#6A1B9A"/>
+    <text x="190" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Per-CPU Perf Event 状态</text>
+    <text x="15" y="46" font-size="10" fill="#6A1B9A" font-weight="bold">DEFINE_PER_CPU · kernel/watchdog_perf.c</text>
+    <line x1="10" y1="54" x2="370" y2="54" stroke="#CE93D8" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="11" font-family="monospace" fill="#6A1B9A">watchdog_ev</text>
+    <text x="210" y="72" font-size="10" fill="#64748b">struct perf_event *</text>
+    <text x="15" y="90" font-size="11" font-family="monospace" fill="#6A1B9A">last_timestamp</text>
+    <text x="210" y="90" font-size="10" fill="#64748b">ktime_t  NMI 时间戳</text>
+    <text x="15" y="108" font-size="11" font-family="monospace" fill="#1e293b">nmi_rearmed</text>
+    <text x="210" y="108" font-size="10" fill="#64748b">unsigned int  重试计数</text>
+    <line x1="10" y1="118" x2="370" y2="118" stroke="#CE93D8" stroke-width="0.8"/>
+    <text x="15" y="136" font-size="10" fill="#6A1B9A" font-weight="bold">perf_event 配置:</text>
+    <text x="15" y="154" font-size="10" font-family="monospace" fill="#1e293b">type = PERF_TYPE_HARDWARE</text>
+    <text x="15" y="170" font-size="10" font-family="monospace" fill="#1e293b">config = PERF_COUNT_HW_CPU_CYCLES</text>
+    <text x="15" y="186" font-size="10" font-family="monospace" fill="#1e293b">sample_period = hw_nmi_get_sample_period()</text>
+    <text x="15" y="202" font-size="10" font-family="monospace" fill="#1e293b">  = max_cpu_freq × watchdog_thresh</text>
+    <line x1="10" y1="212" x2="370" y2="212" stroke="#CE93D8" stroke-width="0.8"/>
+    <text x="15" y="230" font-size="10" fill="#6A1B9A" font-weight="bold">NMI 回调:</text>
+    <text x="15" y="246" font-size="10" font-family="monospace" fill="#1e293b">watchdog_overflow_callback()</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- Connection: Global → Softlockup Per-CPU                         -->
+  <!-- ================================================================ -->
+  <path d="M530,335 L530,370 L230,370 L230,420" fill="none" stroke="#1565C0" stroke-width="2.5" marker-end="url(#aB)"/>
+  <rect x="300" y="359" width="180" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="390" y="370" text-anchor="middle" font-size="9" fill="#1565C0">watchdog_thresh → sample_period → hrtimer</text>
+
+  <!-- Connection: Global → Hardlockup Per-CPU -->
+  <path d="M640,335 L640,370 L780,370 L780,420" fill="none" stroke="#1565C0" stroke-width="2.5" marker-end="url(#aB)"/>
+  <rect x="644" y="359" width="132" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="710" y="370" text-anchor="middle" font-size="9" fill="#1565C0">watchdog_enabled bit0</text>
+
+  <!-- Connection: Global → Perf Per-CPU -->
+  <path d="M860,200 L1060,200 L1060,380 L1320,380 L1320,420" fill="none" stroke="#1565C0" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aB)"/>
+  <rect x="1060" y="368" width="158" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="1139" y="379" text-anchor="middle" font-size="9" fill="#1565C0">watchdog_thresh → perf period</text>
+
+  <!-- ================================================================ -->
+  <!-- Connection: Softlockup → Hardlockup (kick)                      -->
+  <!-- ================================================================ -->
+  <path d="M430,530 L580,530" fill="none" stroke="#E65100" stroke-width="2" marker-end="url(#aR)"/>
+  <rect x="440" y="518" width="132" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="506" y="529" text-anchor="middle" font-size="9" fill="#E65100">hardlockup_kick() +1</text>
+
+  <!-- Connection: Perf → Hardlockup (check) -->
+  <path d="M1130,560 L1060,560 L1060,530 L980,530" fill="none" stroke="#6A1B9A" stroke-width="2" marker-end="url(#aR)"/>
+  <rect x="1000" y="518" width="128" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="1064" y="529" text-anchor="middle" font-size="9" fill="#6A1B9A">hardlockup_check() 比较</text>
+
+  <!-- ================================================================ -->
+  <!-- ROW 3: Buddy Detector (left)                                    -->
+  <!-- ================================================================ -->
+  <g transform="translate(30,750)">
+    <rect width="400" height="200" rx="8" fill="#fff" stroke="#4527A0" stroke-width="2" filter="url(#sh)"/>
+    <rect width="400" height="30" rx="8" fill="url(#hdrBuddy)"/>
+    <rect x="0" y="22" width="400" height="8" fill="#4527A0"/>
+    <text x="200" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Buddy 检测器状态</text>
+    <text x="15" y="46" font-size="10" fill="#4527A0" font-weight="bold">kernel/watchdog_buddy.c · 环形互检</text>
+    <line x1="10" y1="54" x2="390" y2="54" stroke="#B39DDB" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="11" font-family="monospace" fill="#4527A0">watchdog_cpus</text>
+    <text x="240" y="72" font-size="10" fill="#64748b">cpumask_t  活跃 CPU 集合</text>
+    <text x="15" y="90" font-size="11" font-family="monospace" fill="#1e293b">watchdog_next_cpu()</text>
+    <text x="240" y="90" font-size="10" fill="#64748b">cpumask_next_wrap()</text>
+    <line x1="10" y1="100" x2="390" y2="100" stroke="#B39DDB" stroke-width="0.8"/>
+    <text x="15" y="118" font-size="10" fill="#4527A0" font-weight="bold">环形互检模型:</text>
+    <!-- CPU ring diagram -->
+    <circle cx="120" cy="162" r="36" fill="none" stroke="#B39DDB" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <circle cx="120" cy="126" r="12" fill="#EDE7F6" stroke="#4527A0" stroke-width="1.5"/>
+    <text x="120" y="130" text-anchor="middle" font-size="8" font-weight="bold" fill="#4527A0">C0</text>
+    <circle cx="156" cy="162" r="12" fill="#EDE7F6" stroke="#4527A0" stroke-width="1.5"/>
+    <text x="156" y="166" text-anchor="middle" font-size="8" font-weight="bold" fill="#4527A0">C1</text>
+    <circle cx="120" cy="198" r="12" fill="#EDE7F6" stroke="#4527A0" stroke-width="1.5"/>
+    <text x="120" y="202" text-anchor="middle" font-size="8" font-weight="bold" fill="#4527A0">C2</text>
+    <circle cx="84" cy="162" r="12" fill="#EDE7F6" stroke="#4527A0" stroke-width="1.5"/>
+    <text x="84" y="166" text-anchor="middle" font-size="8" font-weight="bold" fill="#4527A0">Cn</text>
+    <!-- Arrows in ring -->
+    <path d="M132,128 L144,148" fill="none" stroke="#4527A0" stroke-width="1.2" marker-end="url(#aV)"/>
+    <path d="M152,174 L136,192" fill="none" stroke="#4527A0" stroke-width="1.2" marker-end="url(#aV)"/>
+    <path d="M108,196 L96,176" fill="none" stroke="#4527A0" stroke-width="1.2" marker-end="url(#aV)"/>
+    <path d="M88,150 L104,132" fill="none" stroke="#4527A0" stroke-width="1.2" marker-end="url(#aV)"/>
+    <text x="200" y="140" font-size="10" fill="#64748b">每 3 次 hrtimer 触发</text>
+    <text x="200" y="158" font-size="10" fill="#64748b">CPU_A 检查 CPU_B 的</text>
+    <text x="200" y="176" font-size="10" font-family="monospace" fill="#B71C1C">hrtimer_interrupts</text>
+    <text x="200" y="194" font-size="10" fill="#64748b">间隔 ≈ 12s &gt; hard 阈值 10s</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- ROW 3: Interrupt Storm Per-CPU State (center)                   -->
+  <!-- ================================================================ -->
+  <g transform="translate(580,750)">
+    <rect width="400" height="200" rx="8" fill="#fff" stroke="#AD1457" stroke-width="2" filter="url(#sh)"/>
+    <rect width="400" height="30" rx="8" fill="url(#hdrStorm)"/>
+    <rect x="0" y="22" width="400" height="8" fill="#AD1457"/>
+    <text x="200" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Per-CPU 中断风暴统计</text>
+    <text x="15" y="46" font-size="10" fill="#AD1457" font-weight="bold">CONFIG_SOFTLOCKUP_DETECTOR_INTR_STORM</text>
+    <line x1="10" y1="54" x2="390" y2="54" stroke="#F48FB1" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="11" font-family="monospace" fill="#AD1457">cpustat_old[NUM_STATS]</text>
+    <text x="260" y="72" font-size="10" fill="#64748b">u16  上次快照</text>
+    <text x="15" y="90" font-size="11" font-family="monospace" fill="#AD1457">cpustat_util[5][4]</text>
+    <text x="260" y="90" font-size="10" fill="#64748b">u8  环形缓冲区</text>
+    <text x="15" y="108" font-size="11" font-family="monospace" fill="#1e293b">cpustat_tail</text>
+    <text x="260" y="108" font-size="10" fill="#64748b">u8  环形指针</text>
+    <text x="15" y="126" font-size="11" font-family="monospace" fill="#1e293b">snapshot_taken</text>
+    <text x="260" y="126" font-size="10" fill="#64748b">bool  快照标记</text>
+    <line x1="10" y1="136" x2="390" y2="136" stroke="#F48FB1" stroke-width="0.8"/>
+    <text x="15" y="154" font-size="10" fill="#AD1457" font-weight="bold">统计维度 (tracked_stats[]):</text>
+    <text x="15" y="172" font-size="10" font-family="monospace" fill="#1e293b">CPUTIME_SYSTEM | CPUTIME_SOFTIRQ</text>
+    <text x="15" y="188" font-size="10" font-family="monospace" fill="#1e293b">CPUTIME_IRQ    | CPUTIME_IDLE</text>
+    <text x="260" y="172" font-size="10" fill="#64748b">4 个维度</text>
+    <text x="260" y="188" font-size="10" fill="#64748b">5 个采样窗口</text>
+  </g>
+
+  <!-- Connection: Softlockup → Buddy (kick triggers buddy check) -->
+  <path d="M230,670 L230,750" fill="none" stroke="#4527A0" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aV)"/>
+  <rect x="148" y="700" width="165" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="230" y="711" text-anchor="middle" font-size="9" fill="#4527A0">buddy_check_hardlockup()</text>
+
+  <!-- Connection: Buddy → Hardlockup Per-CPU (cross-CPU read) -->
+  <path d="M430,850 L510,850 L510,670 L580,670" fill="none" stroke="#4527A0" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aR)"/>
+  <rect x="435" y="754" width="152" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="511" y="765" text-anchor="middle" font-size="9" fill="#4527A0">跨 CPU 读 hrtimer_interrupts</text>
+
+  <!-- Connection: Softlockup → Storm Stats -->
+  <path d="M340,670 L340,710 L780,710 L780,750" fill="none" stroke="#AD1457" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aM)"/>
+  <rect x="464" y="698" width="175" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="551" y="709" text-anchor="middle" font-size="9" fill="#AD1457">update_cpustat() 记录利用率</text>
+
+  <!-- ================================================================ -->
+  <!-- ROW 4: Hung Task + task_struct (bottom)                         -->
+  <!-- ================================================================ -->
+  <g transform="translate(30,1030)">
+    <rect width="400" height="260" rx="8" fill="#fff" stroke="#2E7D32" stroke-width="2" filter="url(#sh)"/>
+    <rect width="400" height="30" rx="8" fill="url(#hdrHung)"/>
+    <rect x="0" y="22" width="400" height="8" fill="#2E7D32"/>
+    <text x="200" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Hung Task 检测器全局状态</text>
+    <text x="15" y="46" font-size="10" fill="#2E7D32" font-weight="bold">kernel/hung_task.c · khungtaskd 内核线程</text>
+    <line x1="10" y1="54" x2="390" y2="54" stroke="#A5D6A7" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="11" font-family="monospace" fill="#2E7D32">sysctl_hung_task_timeout_secs</text>
+    <text x="280" y="72" font-size="10" fill="#64748b">120s 默认</text>
+    <text x="15" y="90" font-size="11" font-family="monospace" fill="#1e293b">sysctl_hung_task_check_interval_secs</text>
+    <text x="280" y="90" font-size="10" fill="#64748b">0 = timeout</text>
+    <text x="15" y="108" font-size="11" font-family="monospace" fill="#1e293b">sysctl_hung_task_warnings</text>
+    <text x="280" y="108" font-size="10" fill="#64748b">int  最大告警 10</text>
+    <text x="15" y="126" font-size="11" font-family="monospace" fill="#1e293b">sysctl_hung_task_check_count</text>
+    <text x="280" y="126" font-size="10" fill="#64748b">每批检查数</text>
+    <text x="15" y="144" font-size="11" font-family="monospace" fill="#1e293b">sysctl_hung_task_detect_count</text>
+    <text x="280" y="144" font-size="10" fill="#64748b">累计检测数</text>
+    <text x="15" y="162" font-size="11" font-family="monospace" fill="#2E7D32">sysctl_hung_task_panic</text>
+    <text x="280" y="162" font-size="10" fill="#64748b">panic 开关</text>
+    <text x="15" y="180" font-size="11" font-family="monospace" fill="#00695C">watchdog_task</text>
+    <text x="280" y="180" font-size="10" fill="#64748b">task_struct * 线程</text>
+    <line x1="10" y1="190" x2="390" y2="190" stroke="#A5D6A7" stroke-width="0.8"/>
+    <text x="15" y="208" font-size="10" fill="#2E7D32" font-weight="bold">主循环:</text>
+    <text x="15" y="224" font-size="10" font-family="monospace" fill="#1e293b">watchdog() → kthread 周期运行</text>
+    <text x="15" y="240" font-size="10" font-family="monospace" fill="#1e293b">  check_hung_uninterruptible_tasks()</text>
+    <text x="15" y="256" font-size="10" font-family="monospace" fill="#1e293b">    for_each_process_thread(g, t)</text>
+  </g>
+
+  <!-- task_struct relevant fields -->
+  <g transform="translate(580,1030)">
+    <rect width="400" height="260" rx="8" fill="#fff" stroke="#00695C" stroke-width="2" filter="url(#sh)"/>
+    <rect width="400" height="30" rx="8" fill="url(#hdrTask)"/>
+    <rect x="0" y="22" width="400" height="8" fill="#00695C"/>
+    <text x="200" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">struct task_struct (相关字段)</text>
+    <text x="15" y="46" font-size="10" fill="#00695C" font-weight="bold">include/linux/sched.h · Hung Task 检测依赖</text>
+    <line x1="10" y1="54" x2="390" y2="54" stroke="#80CBC4" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="11" font-family="monospace" fill="#00695C">unsigned int __state</text>
+    <text x="260" y="72" font-size="10" fill="#64748b">任务状态</text>
+    <text x="15" y="90" font-size="11" font-family="monospace" fill="#1e293b">unsigned long nvcsw</text>
+    <text x="260" y="90" font-size="10" fill="#64748b">主动上下文切换</text>
+    <text x="15" y="108" font-size="11" font-family="monospace" fill="#1e293b">unsigned long nivcsw</text>
+    <text x="260" y="108" font-size="10" fill="#64748b">被动上下文切换</text>
+    <text x="15" y="126" font-size="11" font-family="monospace" fill="#00695C">unsigned long last_switch_count</text>
+    <text x="260" y="126" font-size="10" fill="#64748b">缓存 nvcsw+nivcsw</text>
+    <text x="15" y="144" font-size="11" font-family="monospace" fill="#00695C">unsigned long last_switch_time</text>
+    <text x="260" y="144" font-size="10" fill="#64748b">上次切换 jiffies</text>
+    <line x1="10" y1="154" x2="390" y2="154" stroke="#80CBC4" stroke-width="0.8"/>
+    <text x="15" y="172" font-size="10" fill="#00695C" font-weight="bold">task_is_hung() 检测逻辑:</text>
+    <text x="15" y="190" font-size="10" font-family="monospace" fill="#1e293b">switch_count = nvcsw + nivcsw</text>
+    <text x="15" y="208" font-size="10" font-family="monospace" fill="#1e293b">if (switch_count == last_switch_count</text>
+    <text x="15" y="224" font-size="10" font-family="monospace" fill="#1e293b">    &amp;&amp; time_is_before(last_switch_time</text>
+    <text x="15" y="240" font-size="10" font-family="monospace" fill="#1e293b">       + timeout, jiffies)</text>
+    <text x="15" y="256" font-size="10" font-family="monospace" fill="#B71C1C">    &amp;&amp; __state &amp; TASK_UNINTERRUPTIBLE)</text>
+  </g>
+
+  <!-- Connection: Hung Task → task_struct -->
+  <path d="M430,1160 L580,1160" fill="none" stroke="#2E7D32" stroke-width="2.5" marker-end="url(#aT)"/>
+  <rect x="444" y="1148" width="130" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="509" y="1159" text-anchor="middle" font-size="9" fill="#2E7D32">task_is_hung() 读/写字段</text>
+
+  <!-- ================================================================ -->
+  <!-- ROW 4: Threshold Coordination (right)                           -->
+  <!-- ================================================================ -->
+  <g transform="translate(1130,1030)">
+    <rect width="380" height="260" rx="8" fill="#fff" stroke="#475569" stroke-width="1.5" filter="url(#sh)"/>
+    <rect width="380" height="30" rx="8" fill="#f1f5f9" stroke="#475569" stroke-width="1"/>
+    <text x="190" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#475569">阈值推导关系</text>
+    <line x1="10" y1="38" x2="370" y2="38" stroke="#e2e8f0" stroke-width="0.8"/>
+    <!-- Derivation tree -->
+    <text x="15" y="58" font-size="11" font-family="monospace" font-weight="bold" fill="#1565C0">watchdog_thresh = 10s</text>
+    <text x="200" y="58" font-size="10" fill="#64748b">用户配置基准</text>
+    <line x1="30" y1="64" x2="30" y2="76" stroke="#94a3b8" stroke-width="1"/>
+    <text x="40" y="84" font-size="10" font-family="monospace" fill="#B71C1C">├─ hard_thresh = 10s</text>
+    <text x="240" y="84" font-size="10" fill="#64748b">= watchdog_thresh</text>
+    <line x1="30" y1="90" x2="30" y2="102" stroke="#94a3b8" stroke-width="1"/>
+    <text x="40" y="110" font-size="10" font-family="monospace" fill="#E65100">├─ soft_thresh = 20s</text>
+    <text x="240" y="110" font-size="10" fill="#64748b">= watchdog_thresh × 2</text>
+    <line x1="55" y1="116" x2="55" y2="128" stroke="#94a3b8" stroke-width="1"/>
+    <text x="65" y="136" font-size="10" font-family="monospace" fill="#E65100">├─ sample_period = 4s</text>
+    <text x="240" y="136" font-size="10" fill="#64748b">= soft_thresh / 5</text>
+    <line x1="80" y1="142" x2="80" y2="154" stroke="#94a3b8" stroke-width="1"/>
+    <text x="90" y="162" font-size="10" font-family="monospace" fill="#4527A0">└─ buddy_interval = 12s</text>
+    <text x="240" y="162" font-size="10" fill="#64748b">= sample_period × 3</text>
+    <line x1="30" y1="168" x2="30" y2="180" stroke="#94a3b8" stroke-width="1"/>
+    <text x="40" y="188" font-size="10" font-family="monospace" fill="#6A1B9A">├─ perf_period (cycles)</text>
+    <text x="240" y="188" font-size="10" fill="#64748b">= max_freq × thresh</text>
+    <line x1="55" y1="194" x2="55" y2="206" stroke="#94a3b8" stroke-width="1"/>
+    <text x="65" y="214" font-size="10" font-family="monospace" fill="#6A1B9A">└─ ts_threshold = 8s</text>
+    <text x="240" y="214" font-size="10" fill="#64748b">= sample_period × 2</text>
+    <line x1="10" y1="224" x2="370" y2="224" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="40" y="242" font-size="10" font-family="monospace" fill="#2E7D32">hung_task_timeout = 120s</text>
+    <text x="240" y="242" font-size="10" fill="#64748b">独立配置 (非推导)</text>
+    <text x="15" y="258" font-size="10" fill="#64748b">灵敏度: Hard(10s) &gt; Buddy(12s) &gt; Soft(20s) &gt; Hung(120s)</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- Global → Hung Task connection                                    -->
+  <!-- ================================================================ -->
+  <path d="M640,335 L640,395 L1500,395 L1500,980 L230,980 L230,1030" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#aG)"/>
+  <rect x="1408" y="680" width="80" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="1448" y="691" text-anchor="middle" font-size="9" fill="#1565C0">独立子系统</text>
+
+  <!-- ================================================================ -->
+  <!-- Dashed grouping: Lockup Detection per-CPU island                -->
+  <!-- ================================================================ -->
+  <rect x="18" y="405" width="1500" height="570" rx="12" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="8,4"/>
+  <text x="780" y="968" text-anchor="middle" font-size="11" fill="#94a3b8" font-weight="bold">per-CPU 检测状态 + 配套检测器（每个 CPU 独立维护，由 hrtimer 驱动）</text>
+
+  <rect x="18" y="1015" width="1500" height="290" rx="12" fill="none" stroke="#2E7D32" stroke-width="1" stroke-dasharray="8,4"/>
+  <text x="780" y="1300" text-anchor="middle" font-size="11" fill="#2E7D32" font-weight="bold">Hung Task 检测（独立内核线程 khungtaskd，遍历系统 task_struct 链表）</text>
+
+  <!-- ================================================================ -->
+  <!-- Data flow summary annotations                                    -->
+  <!-- ================================================================ -->
+  <g transform="translate(1130,750)">
+    <rect width="380" height="200" rx="8" fill="#FAFAFA" stroke="#e2e8f0" stroke-width="1.5"/>
+    <text x="190" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#334155">数据流向总结</text>
+    <line x1="10" y1="28" x2="370" y2="28" stroke="#e2e8f0" stroke-width="0.8"/>
+    <text x="15" y="48" font-size="10" fill="#E65100">■</text>
+    <text x="28" y="48" font-size="10" fill="#334155">hrtimer → softlockup_fn → 写 touch_ts</text>
+    <text x="15" y="66" font-size="10" fill="#E65100">■</text>
+    <text x="28" y="66" font-size="10" fill="#334155">hrtimer → watchdog_timer_fn → 读 touch_ts → 判超时</text>
+    <text x="15" y="84" font-size="10" fill="#B71C1C">■</text>
+    <text x="28" y="84" font-size="10" fill="#334155">hrtimer → kick → hrtimer_interrupts++</text>
+    <text x="15" y="102" font-size="10" fill="#4527A0">■</text>
+    <text x="28" y="102" font-size="10" fill="#334155">buddy: CPU_A 读 CPU_B 的 hrtimer_interrupts</text>
+    <text x="15" y="120" font-size="10" fill="#6A1B9A">■</text>
+    <text x="28" y="120" font-size="10" fill="#334155">PMU NMI → overflow_callback → 读 hrtimer_interrupts</text>
+    <text x="15" y="138" font-size="10" fill="#AD1457">■</text>
+    <text x="28" y="138" font-size="10" fill="#334155">hrtimer → update_cpustat → 写 cpustat_util[]</text>
+    <text x="15" y="156" font-size="10" fill="#2E7D32">■</text>
+    <text x="28" y="156" font-size="10" fill="#334155">khungtaskd → 读 task_struct.{nvcsw,__state,...}</text>
+    <text x="15" y="174" font-size="10" fill="#1565C0">■</text>
+    <text x="28" y="174" font-size="10" fill="#334155">sysctl → watchdog_thresh → 级联更新所有阈值</text>
+    <text x="15" y="192" font-size="10" fill="#1565C0">■</text>
+    <text x="28" y="192" font-size="10" fill="#334155">touch_*() API → 重置各 per-CPU 时间戳</text>
+  </g>
+
+</svg>

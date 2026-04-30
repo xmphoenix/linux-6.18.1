@@ -1,0 +1,245 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 900" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <linearGradient id="hdr1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+    <linearGradient id="hdr2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#10b981"/></linearGradient>
+    <linearGradient id="hdr3" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#d97706"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+    <linearGradient id="hdr4" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#ef4444"/></linearGradient>
+    <linearGradient id="hdr5" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#059669" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aK" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">图 5.10-2  Shadow Byte 毒化与检查算法流程</text>
+  <text x="550" y="52" text-anchor="middle" font-size="11" fill="#64748b">源码：mm/kasan/shadow.c → kasan_poison() ｜ mm/kasan/generic.c → check_region_inline()</text>
+
+  <!-- ============ LEFT: Poison Flow ============ -->
+  <g transform="translate(30,75)">
+    <rect width="500" height="420" rx="8" fill="#fff" stroke="#2563eb" stroke-width="2" filter="url(#sh)"/>
+    <rect width="500" height="30" rx="8" fill="url(#hdr1)"/>
+    <rect x="0" y="22" width="500" height="8" fill="#2563eb"/>
+    <text x="250" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">毒化流程 (Poison Path)</text>
+
+    <!-- kasan_poison -->
+    <text x="20" y="50" font-size="12" font-weight="bold" fill="#2563eb">kasan_poison(addr, size, value)</text>
+    <text x="20" y="65" font-size="10" fill="#475569">将指定内存区域的 Shadow 标记为不可访问</text>
+
+    <!-- Flow steps -->
+    <rect x="20" y="75" width="460" height="28" rx="5" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="30" y="93" font-size="10" fill="#1e40af">❶ 检查 addr 是否 KASAN_GRANULE_SIZE (8字节) 对齐 — 不对齐则 WARN 返回</text>
+
+    <path d="M250,103 L250,112" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#aB)"/>
+
+    <rect x="20" y="112" width="460" height="28" rx="5" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="30" y="130" font-size="10" fill="#1e40af">❷ shadow_start = kasan_mem_to_shadow(addr)    // (addr &gt;&gt; 3) + OFFSET</text>
+
+    <path d="M250,140 L250,149" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#aB)"/>
+
+    <rect x="20" y="149" width="460" height="28" rx="5" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="30" y="167" font-size="10" fill="#1e40af">❸ shadow_end = kasan_mem_to_shadow(addr + size)</text>
+
+    <path d="M250,177 L250,186" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#aB)"/>
+
+    <rect x="20" y="186" width="460" height="28" rx="5" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+    <text x="30" y="204" font-size="10" font-weight="bold" fill="#1e40af">❹ __memset(shadow_start, value, shadow_end - shadow_start)</text>
+
+    <!-- kasan_unpoison -->
+    <line x1="20" y1="230" x2="480" y2="230" stroke="#93c5fd" stroke-width="0.5" stroke-dasharray="4,2"/>
+    <text x="20" y="250" font-size="12" font-weight="bold" fill="#059669">kasan_unpoison(addr, size)</text>
+    <text x="20" y="265" font-size="10" fill="#475569">将指定内存区域的 Shadow 标记为可访问</text>
+
+    <rect x="20" y="275" width="460" height="28" rx="5" fill="#ecfdf5" stroke="#6ee7b7"/>
+    <text x="30" y="293" font-size="10" fill="#065f46">❶ tag = get_tag(addr)     // SW_TAGS: 取地址高位标签; Generic: tag=0</text>
+
+    <path d="M250,303 L250,312" fill="none" stroke="#059669" stroke-width="1.5" marker-end="url(#aG)"/>
+
+    <rect x="20" y="312" width="460" height="28" rx="5" fill="#ecfdf5" stroke="#6ee7b7"/>
+    <text x="30" y="330" font-size="10" fill="#065f46">❷ kasan_poison(addr, round_up(size, 8), tag)  // 全部标记为 tag 值</text>
+
+    <path d="M250,340 L250,349" fill="none" stroke="#059669" stroke-width="1.5" marker-end="url(#aG)"/>
+
+    <rect x="20" y="349" width="460" height="28" rx="5" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+    <text x="30" y="367" font-size="10" font-weight="bold" fill="#065f46">❸ kasan_poison_last_granule(addr, size)  // 部分可访问处理 ★</text>
+
+    <rect x="30" y="385" width="440" height="28" rx="4" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="40" y="403" font-size="10" fill="#92400e">若 size % 8 != 0 → shadow[last] = size &amp; 7  // 例: size=36 → shadow[4]=4</text>
+  </g>
+
+  <!-- ============ RIGHT: Check Flow ============ -->
+  <g transform="translate(570,75)">
+    <rect width="500" height="420" rx="8" fill="#fff" stroke="#dc2626" stroke-width="2" filter="url(#sh)"/>
+    <rect width="500" height="30" rx="8" fill="url(#hdr4)"/>
+    <rect x="0" y="22" width="500" height="8" fill="#dc2626"/>
+    <text x="250" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">检查流程 (Check Path)</text>
+
+    <!-- check_region_inline -->
+    <text x="20" y="50" font-size="12" font-weight="bold" fill="#dc2626">check_region_inline(addr, size, write)</text>
+    <text x="20" y="65" font-size="10" fill="#475569">编译器在每次内存访问前自动插入的检查</text>
+
+    <!-- Decision: size == 0? -->
+    <rect x="150" y="75" width="200" height="28" rx="14" fill="#fef3c7" stroke="#d97706"/>
+    <text x="250" y="93" text-anchor="middle" font-size="10" fill="#92400e">size == 0 ?</text>
+    <text x="360" y="93" font-size="9" fill="#059669">Yes → return</text>
+
+    <path d="M250,103 L250,114" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#aR)"/>
+    <text x="260" y="112" font-size="9" fill="#dc2626">No</text>
+
+    <!-- Decision: addr_has_metadata? -->
+    <rect x="120" y="114" width="260" height="28" rx="14" fill="#fef3c7" stroke="#d97706"/>
+    <text x="250" y="132" text-anchor="middle" font-size="10" fill="#92400e">addr_has_metadata(addr) ?</text>
+    <text x="390" y="132" font-size="9" fill="#dc2626">No → report</text>
+
+    <path d="M250,142 L250,155" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#aR)"/>
+    <text x="260" y="152" font-size="9" fill="#059669">Yes</text>
+
+    <!-- Dispatch by size -->
+    <rect x="80" y="155" width="340" height="28" rx="5" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="250" y="173" text-anchor="middle" font-size="10" fill="#991b1b">memory_is_poisoned(addr, size) — 按大小分派</text>
+
+    <path d="M250,183 L250,198" fill="none" stroke="#dc2626" stroke-width="1.5"/>
+
+    <!-- Size dispatch table -->
+    <rect x="20" y="198" width="105" height="50" rx="4" fill="#fef3c7" stroke="#d97706"/>
+    <text x="72" y="215" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">size = 1</text>
+    <text x="72" y="232" text-anchor="middle" font-size="9" fill="#92400e">poisoned_1()</text>
+    <text x="72" y="243" text-anchor="middle" font-size="8" fill="#6b7280">单字节检查</text>
+
+    <rect x="135" y="198" width="105" height="50" rx="4" fill="#fef3c7" stroke="#d97706"/>
+    <text x="187" y="215" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">size = 2,4,8</text>
+    <text x="187" y="232" text-anchor="middle" font-size="9" fill="#92400e">poisoned_2_4_8()</text>
+    <text x="187" y="243" text-anchor="middle" font-size="8" fill="#6b7280">跨边界检查</text>
+
+    <rect x="250" y="198" width="105" height="50" rx="4" fill="#fef3c7" stroke="#d97706"/>
+    <text x="302" y="215" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">size = 16</text>
+    <text x="302" y="232" text-anchor="middle" font-size="9" fill="#92400e">poisoned_16()</text>
+    <text x="302" y="243" text-anchor="middle" font-size="8" fill="#6b7280">双 shadow 检查</text>
+
+    <rect x="365" y="198" width="115" height="50" rx="4" fill="#fef3c7" stroke="#d97706"/>
+    <text x="422" y="215" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">size &gt; 16</text>
+    <text x="422" y="232" text-anchor="middle" font-size="9" fill="#92400e">poisoned_n()</text>
+    <text x="422" y="243" text-anchor="middle" font-size="8" fill="#6b7280">批量扫描</text>
+
+    <!-- Core check logic -->
+    <line x1="20" y1="262" x2="480" y2="262" stroke="#fca5a5" stroke-width="0.5" stroke-dasharray="4,2"/>
+    <text x="20" y="280" font-size="12" font-weight="bold" fill="#7c3aed">核心检查逻辑 — memory_is_poisoned_1(addr)</text>
+
+    <rect x="20" y="290" width="460" height="28" rx="5" fill="#f5f3ff" stroke="#c4b5fd"/>
+    <text x="30" y="308" font-size="10" fill="#6b21a8">❶ shadow_val = *(s8 *)kasan_mem_to_shadow(addr)</text>
+
+    <path d="M250,318 L250,328" fill="none" stroke="#7c3aed" stroke-width="1.5"/>
+
+    <rect x="100" y="328" width="280" height="28" rx="14" fill="#f5f3ff" stroke="#7c3aed"/>
+    <text x="240" y="346" text-anchor="middle" font-size="10" fill="#6b21a8">shadow_val != 0 ?</text>
+
+    <text x="390" y="346" font-size="9" fill="#059669">== 0 → 可访问 ✓</text>
+
+    <path d="M240,356 L240,368" fill="none" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="250" y="365" font-size="9" fill="#dc2626">!= 0</text>
+
+    <rect x="20" y="368" width="460" height="28" rx="5" fill="#fae8ff" stroke="#d946ef"/>
+    <text x="30" y="386" font-size="10" fill="#86198f">❷ last_byte = addr &amp; KASAN_GRANULE_MASK  // 字节在颗粒内的偏移</text>
+
+    <rect x="20" y="400" width="460" height="24" rx="5" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="30" y="416" font-size="10" font-weight="bold" fill="#991b1b">❸ return last_byte &gt;= shadow_val  // true = 越界! → kasan_report()</text>
+  </g>
+
+  <!-- ============ Bottom: Partial Granule Example ============ -->
+  <g transform="translate(30,520)">
+    <rect width="1040" height="350" rx="8" fill="#fff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1040" height="30" rx="8" fill="url(#hdr5)"/>
+    <rect x="0" y="22" width="1040" height="8" fill="#7c3aed"/>
+    <text x="520" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">部分可访问 Granule 的检查示例</text>
+
+    <!-- Example: 36-byte object -->
+    <text x="20" y="50" font-size="12" font-weight="bold" fill="#7c3aed">场景: kmalloc(36) — 对象大小非 8 字节对齐</text>
+    <text x="20" y="68" font-size="10" fill="#475569">实际分配 36 字节，对齐到 5 个 Granule (40字节)，最后一个 Granule 只有 4 字节可用</text>
+
+    <!-- Granule boxes -->
+    <text x="20" y="92" font-size="11" font-weight="bold" fill="#475569">内核对象 (36字节):</text>
+    <g transform="translate(20,98)">
+      <rect width="170" height="40" rx="4" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="85" y="17" text-anchor="middle" font-size="10" font-weight="bold" fill="#065f46">Granule 0 (8B)</text>
+      <text x="85" y="33" text-anchor="middle" font-size="9" fill="#059669">全部可访问</text>
+
+      <rect x="180" width="170" height="40" rx="4" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="265" y="17" text-anchor="middle" font-size="10" font-weight="bold" fill="#065f46">Granule 1 (8B)</text>
+      <text x="265" y="33" text-anchor="middle" font-size="9" fill="#059669">全部可访问</text>
+
+      <rect x="360" width="170" height="40" rx="4" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="445" y="17" text-anchor="middle" font-size="10" font-weight="bold" fill="#065f46">Granule 2 (8B)</text>
+      <text x="445" y="33" text-anchor="middle" font-size="9" fill="#059669">全部可访问</text>
+
+      <rect x="540" width="170" height="40" rx="4" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="625" y="17" text-anchor="middle" font-size="10" font-weight="bold" fill="#065f46">Granule 3 (8B)</text>
+      <text x="625" y="33" text-anchor="middle" font-size="9" fill="#059669">全部可访问</text>
+
+      <!-- Partial granule with split coloring -->
+      <rect x="720" width="85" height="40" rx="4 0 0 4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+      <text x="762" y="17" text-anchor="middle" font-size="9" font-weight="bold" fill="#92400e">4B 可访问</text>
+      <text x="762" y="33" text-anchor="middle" font-size="8" fill="#d97706">byte 0~3</text>
+
+      <rect x="805" width="85" height="40" rx="0 4 4 0" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="847" y="17" text-anchor="middle" font-size="9" font-weight="bold" fill="#991b1b">4B 不可访问</text>
+      <text x="847" y="33" text-anchor="middle" font-size="8" fill="#dc2626">byte 4~7</text>
+
+      <text x="920" y="25" font-size="10" fill="#6b7280">Granule 4</text>
+    </g>
+
+    <!-- Shadow bytes -->
+    <text x="20" y="160" font-size="11" font-weight="bold" fill="#475569">对应 Shadow Bytes:</text>
+    <g transform="translate(20,166)">
+      <rect width="170" height="36" rx="4" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="85" y="14" text-anchor="middle" font-size="13" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="85" y="29" text-anchor="middle" font-size="9" fill="#059669">8/8 可访问</text>
+
+      <rect x="180" width="170" height="36" rx="4" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="265" y="14" text-anchor="middle" font-size="13" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="265" y="29" text-anchor="middle" font-size="9" fill="#059669">8/8 可访问</text>
+
+      <rect x="360" width="170" height="36" rx="4" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="445" y="14" text-anchor="middle" font-size="13" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="445" y="29" text-anchor="middle" font-size="9" fill="#059669">8/8 可访问</text>
+
+      <rect x="540" width="170" height="36" rx="4" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="625" y="14" text-anchor="middle" font-size="13" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="625" y="29" text-anchor="middle" font-size="9" fill="#059669">8/8 可访问</text>
+
+      <rect x="720" width="170" height="36" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+      <text x="805" y="14" text-anchor="middle" font-size="13" font-family="monospace" font-weight="bold" fill="#92400e">0x04</text>
+      <text x="805" y="29" text-anchor="middle" font-size="9" fill="#d97706">4/8 可访问 ★</text>
+    </g>
+
+    <!-- Checking examples -->
+    <line x1="20" y1="218" x2="1020" y2="218" stroke="#c4b5fd" stroke-width="0.5" stroke-dasharray="4,2"/>
+    <text x="20" y="238" font-size="12" font-weight="bold" fill="#7c3aed">检查示例 — 访问 Granule 4 中的不同偏移</text>
+
+    <g transform="translate(20,248)">
+      <!-- Case A: access at offset 2, size 1 -->
+      <rect width="310" height="80" rx="6" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+      <text x="155" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#059669">✓ 合法访问: *(u8 *)(obj + 34)</text>
+      <text x="15" y="36" font-size="9" fill="#065f46">addr &amp; 7 = (base+34) &amp; 7 = 2</text>
+      <text x="15" y="50" font-size="9" fill="#065f46">shadow_val = 4</text>
+      <text x="15" y="64" font-size="9" fill="#065f46">last_byte(2) &lt; shadow_val(4) → false → 不报错</text>
+      <text x="15" y="75" font-size="9" font-weight="bold" fill="#059669">偏移 2 &lt; 允许的 4 字节 → 安全</text>
+
+      <!-- Case B: access at offset 4, size 1 -->
+      <rect x="330" width="310" height="80" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="485" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#dc2626">✗ 越界访问: *(u8 *)(obj + 36)</text>
+      <text x="345" y="36" font-size="9" fill="#991b1b">addr &amp; 7 = (base+36) &amp; 7 = 4</text>
+      <text x="345" y="50" font-size="9" fill="#991b1b">shadow_val = 4</text>
+      <text x="345" y="64" font-size="9" fill="#991b1b">last_byte(4) &gt;= shadow_val(4) → true → 报错!</text>
+      <text x="345" y="75" font-size="9" font-weight="bold" fill="#dc2626">偏移 4 &gt;= 允许的 4 字节 → KASAN 告警</text>
+
+      <!-- Case C: access at offset 5, size 4 -->
+      <rect x="660" width="350" height="80" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="835" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#dc2626">✗ 越界访问: *(u32 *)(obj + 33)</text>
+      <text x="675" y="36" font-size="9" fill="#991b1b">访问 byte 33~36, 跨入第 4 granule 的 byte 1~4</text>
+      <text x="675" y="50" font-size="9" fill="#991b1b">poisoned_2_4_8() 检查最后一个字节 (offset 36)</text>
+      <text x="675" y="64" font-size="9" fill="#991b1b">last_byte(4) &gt;= shadow_val(4) → true → 报错!</text>
+      <text x="675" y="75" font-size="9" font-weight="bold" fill="#dc2626">4 字节访问溢出 → KASAN 告警</text>
+    </g>
+  </g>
+</svg>

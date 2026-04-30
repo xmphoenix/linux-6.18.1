@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="gKern" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="gShad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ef4444"/>
+      <stop offset="100%" style="stop-color:#b91c1c"/>
+    </linearGradient>
+    <linearGradient id="gMap" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+    <marker id="arrB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#b91c1c" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="450" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#1e293b">KASAN Generic: Shadow Memory 地址映射 (ARM64, VA_BITS=48)</text>
+  <text x="450" y="50" text-anchor="middle" font-size="11" fill="#64748b">源码: arch/arm64/include/asm/memory.h, include/linux/kasan.h</text>
+
+  <!-- Kernel VA Space (left) -->
+  <g transform="translate(50,80)">
+    <rect width="300" height="380" rx="8" fill="#fff" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+    <rect width="300" height="32" rx="8" fill="url(#gKern)"/>
+    <rect x="0" y="24" width="300" height="8" fill="#1d4ed8"/>
+    <text x="150" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">内核虚拟地址空间 (256TB)</text>
+
+    <!-- Segments -->
+    <rect x="10" y="42" width="280" height="40" rx="4" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+    <text x="150" y="57" text-anchor="middle" font-size="10" fill="#1e40af">Linear Map (直接映射区)</text>
+    <text x="150" y="72" text-anchor="middle" font-size="9" fill="#64748b">0xFFFF_0000_0000_0000 ~ 物理内存对应区域</text>
+
+    <rect x="10" y="90" width="280" height="40" rx="4" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+    <text x="150" y="105" text-anchor="middle" font-size="10" fill="#1e40af">vmalloc 区域</text>
+    <text x="150" y="120" text-anchor="middle" font-size="9" fill="#64748b">动态内核虚拟映射</text>
+
+    <rect x="10" y="138" width="280" height="40" rx="4" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+    <text x="150" y="153" text-anchor="middle" font-size="10" fill="#1e40af">Module 区域</text>
+    <text x="150" y="168" text-anchor="middle" font-size="9" fill="#64748b">可加载内核模块</text>
+
+    <rect x="10" y="186" width="280" height="50" rx="4" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
+    <text x="150" y="205" text-anchor="middle" font-size="10" font-weight="bold" fill="#b91c1c">KASAN Shadow Memory (32TB)</text>
+    <text x="150" y="222" text-anchor="middle" font-size="9" fill="#64748b">KASAN_SHADOW_START ~ KASAN_SHADOW_END</text>
+
+    <rect x="10" y="244" width="280" height="40" rx="4" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+    <text x="150" y="259" text-anchor="middle" font-size="10" fill="#1e40af">固定映射 (fixmap)</text>
+    <text x="150" y="274" text-anchor="middle" font-size="9" fill="#64748b">早期设备、页表等</text>
+
+    <rect x="10" y="292" width="280" height="40" rx="4" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+    <text x="150" y="307" text-anchor="middle" font-size="10" fill="#1e40af">PCI I/O 区域</text>
+    <text x="150" y="322" text-anchor="middle" font-size="9" fill="#64748b">设备 MMIO 映射</text>
+
+    <rect x="10" y="340" width="280" height="30" rx="4" fill="#f0fdf4" stroke="#86efac" stroke-width="1"/>
+    <text x="150" y="360" text-anchor="middle" font-size="10" fill="#166534">内核镜像 (.text, .data, .bss)</text>
+  </g>
+
+  <!-- Mapping formula (center) -->
+  <g transform="translate(370,160)">
+    <rect width="180" height="80" rx="8" fill="#fffbeb" stroke="#f59e0b" stroke-width="2" filter="url(#sh)"/>
+    <text x="90" y="22" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">映射公式</text>
+    <text x="90" y="42" text-anchor="middle" font-size="9" font-family="monospace" fill="#1e293b">shadow = (addr &gt;&gt; 3)</text>
+    <text x="90" y="57" text-anchor="middle" font-size="9" font-family="monospace" fill="#1e293b">       + SHADOW_OFFSET</text>
+    <text x="90" y="75" text-anchor="middle" font-size="9" fill="#64748b">8 字节 → 1 字节 Shadow</text>
+  </g>
+
+  <!-- Shadow detail (right) -->
+  <g transform="translate(560,80)">
+    <rect width="300" height="380" rx="8" fill="#fff" stroke="#ef4444" stroke-width="2" filter="url(#sh)"/>
+    <rect width="300" height="32" rx="8" fill="url(#gShad)"/>
+    <rect x="0" y="24" width="300" height="8" fill="#b91c1c"/>
+    <text x="150" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Shadow Memory 编码详情</text>
+
+    <text x="15" y="55" font-size="10" font-weight="bold" fill="#1e293b">Shadow 值</text>
+    <text x="100" y="55" font-size="10" font-weight="bold" fill="#1e293b">含义</text>
+
+    <line x1="10" y1="62" x2="290" y2="62" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="80" font-size="10" font-family="monospace" fill="#059669">0x00</text>
+    <text x="100" y="80" font-size="10" fill="#1e293b">8 字节全部可访问</text>
+
+    <text x="15" y="100" font-size="10" font-family="monospace" fill="#059669">0x01~0x07</text>
+    <text x="100" y="100" font-size="10" fill="#1e293b">前 N 字节可访问（对象尾部）</text>
+
+    <line x1="10" y1="112" x2="290" y2="112" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="130" font-size="10" font-family="monospace" fill="#dc2626">0xFC</text>
+    <text x="100" y="130" font-size="10" fill="#1e293b">KASAN_SLAB_REDZONE（OOB 检测）</text>
+
+    <text x="15" y="150" font-size="10" font-family="monospace" fill="#dc2626">0xFB</text>
+    <text x="100" y="150" font-size="10" fill="#1e293b">KASAN_SLAB_FREE（UAF 检测）</text>
+
+    <text x="15" y="170" font-size="10" font-family="monospace" fill="#dc2626">0xFA</text>
+    <text x="100" y="170" font-size="10" fill="#1e293b">KASAN_SLAB_FREE_META</text>
+
+    <text x="15" y="190" font-size="10" font-family="monospace" fill="#dc2626">0xF9</text>
+    <text x="100" y="190" font-size="10" fill="#1e293b">KASAN_GLOBAL_REDZONE</text>
+
+    <text x="15" y="210" font-size="10" font-family="monospace" fill="#dc2626">0xF8</text>
+    <text x="100" y="210" font-size="10" fill="#1e293b">KASAN_VMALLOC_INVALID</text>
+
+    <text x="15" y="230" font-size="10" font-family="monospace" fill="#dc2626">0xF1</text>
+    <text x="100" y="230" font-size="10" fill="#1e293b">KASAN_STACK_LEFT（栈左红区）</text>
+
+    <text x="15" y="250" font-size="10" font-family="monospace" fill="#dc2626">0xF2</text>
+    <text x="100" y="250" font-size="10" fill="#1e293b">KASAN_STACK_MID（栈中红区）</text>
+
+    <text x="15" y="270" font-size="10" font-family="monospace" fill="#dc2626">0xF3</text>
+    <text x="100" y="270" font-size="10" fill="#1e293b">KASAN_STACK_RIGHT（栈右红区）</text>
+
+    <text x="15" y="290" font-size="10" font-family="monospace" fill="#dc2626">0xFF</text>
+    <text x="100" y="290" font-size="10" fill="#1e293b">KASAN_PAGE_FREE（页级 UAF）</text>
+
+    <line x1="10" y1="302" x2="290" y2="302" stroke="#e5e7eb" stroke-width="0.8"/>
+    <text x="15" y="320" font-size="9" fill="#64748b">负值 (bit7=1) 表示完全不可访问</text>
+    <text x="15" y="338" font-size="9" fill="#64748b">正值 1~7 表示 granule 内部分可访问</text>
+    <text x="15" y="356" font-size="9" fill="#64748b">0 表示整个 8B granule 完全可访问</text>
+  </g>
+
+  <!-- Arrows -->
+  <path d="M200,286 L200,310 L370,310 L370,200" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrR)"/>
+  <rect x="230" y="298" width="120" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="290" y="311" text-anchor="middle" font-size="9" fill="#92400e">1:8 固定映射</text>
+
+  <!-- Bottom note -->
+  <text x="450" y="500" text-anchor="middle" font-size="10" fill="#64748b">注: Generic 模式 Shadow 占内核 VA 的 1/8; SW_TAGS 模式用 1:16 映射 (每 16 字节 → 1 字节 tag)</text>
+</svg>

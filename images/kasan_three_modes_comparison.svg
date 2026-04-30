@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 560" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh4"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hGen" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="hSW" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+    <linearGradient id="hHW" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+  </defs>
+
+  <text x="460" y="28" text-anchor="middle" font-size="15" font-weight="bold" fill="#1e293b">KASAN 三种模式架构对比</text>
+  <text x="460" y="46" text-anchor="middle" font-size="10" fill="#64748b">Generic (全量) vs SW_TAGS (软件标签) vs HW_TAGS (MTE 硬件)</text>
+
+  <!-- Generic Mode -->
+  <g transform="translate(20,65)">
+    <rect width="280" height="470" rx="8" fill="#fff" stroke="#3b82f6" stroke-width="2" filter="url(#sh4)"/>
+    <rect width="280" height="32" rx="8" fill="url(#hGen)"/>
+    <rect x="0" y="24" width="280" height="8" fill="#1d4ed8"/>
+    <text x="140" y="21" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">Generic 模式</text>
+
+    <text x="15" y="52" font-size="10" font-weight="bold" fill="#1e40af">Shadow 比例: 1:8</text>
+    <text x="15" y="70" font-size="10" fill="#475569">Shadow 值 = 可用字节数 / 毒化类型</text>
+    <text x="15" y="88" font-size="10" fill="#475569">检查 = 编译器插桩 (软件)</text>
+    <text x="15" y="106" font-size="10" fill="#475569">架构 = x86_64, arm64, ...</text>
+
+    <line x1="10" y1="116" x2="270" y2="116" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="136" font-size="10" font-weight="bold" fill="#1e40af">检测流程:</text>
+
+    <rect x="20" y="145" width="240" height="28" rx="4" fill="#dbeafe" stroke="#93c5fd"/>
+    <text x="140" y="163" text-anchor="middle" font-size="9" fill="#1e40af">① load/store 前: 编译器插入检查</text>
+
+    <rect x="20" y="180" width="240" height="28" rx="4" fill="#dbeafe" stroke="#93c5fd"/>
+    <text x="140" y="198" text-anchor="middle" font-size="9" fill="#1e40af">② shadow = *(addr &gt;&gt; 3 + OFFSET)</text>
+
+    <rect x="20" y="215" width="240" height="28" rx="4" fill="#dbeafe" stroke="#93c5fd"/>
+    <text x="140" y="233" text-anchor="middle" font-size="9" fill="#1e40af">③ if (shadow != 0) 检查偏移边界</text>
+
+    <rect x="20" y="250" width="240" height="28" rx="4" fill="#dbeafe" stroke="#93c5fd"/>
+    <text x="140" y="268" text-anchor="middle" font-size="9" fill="#1e40af">④ 越界 → kasan_report()</text>
+
+    <line x1="10" y1="290" x2="270" y2="290" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="310" font-size="10" font-weight="bold" fill="#dc2626">开销:</text>
+    <text x="15" y="328" font-size="10" fill="#475569">• CPU: 2~3x 减速</text>
+    <text x="15" y="346" font-size="10" fill="#475569">• RAM: +12.5% (shadow)</text>
+    <text x="15" y="364" font-size="10" fill="#475569">• 代码膨胀: ~2x</text>
+
+    <line x1="10" y1="376" x2="270" y2="376" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="396" font-size="10" font-weight="bold" fill="#16a34a">优势:</text>
+    <text x="15" y="414" font-size="10" fill="#475569">• 100% 确定性检测</text>
+    <text x="15" y="432" font-size="10" fill="#475569">• 精确到字节的 OOB 检测</text>
+    <text x="15" y="450" font-size="10" fill="#475569">• 栈/全局/堆全覆盖</text>
+
+    <rect x="20" y="460" width="240" height="20" rx="4" fill="#dbeafe"/>
+    <text x="140" y="474" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">适用: 开发/CI 环境</text>
+  </g>
+
+  <!-- SW_TAGS Mode -->
+  <g transform="translate(320,65)">
+    <rect width="280" height="470" rx="8" fill="#fff" stroke="#f59e0b" stroke-width="2" filter="url(#sh4)"/>
+    <rect width="280" height="32" rx="8" fill="url(#hSW)"/>
+    <rect x="0" y="24" width="280" height="8" fill="#d97706"/>
+    <text x="140" y="21" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">SW_TAGS 模式 (ARM64)</text>
+
+    <text x="15" y="52" font-size="10" font-weight="bold" fill="#92400e">Shadow 比例: 1:16</text>
+    <text x="15" y="70" font-size="10" fill="#475569">Shadow 值 = 对象标签 (0~254)</text>
+    <text x="15" y="88" font-size="10" fill="#475569">检查 = TBI 指针标签 vs Shadow</text>
+    <text x="15" y="106" font-size="10" fill="#475569">架构 = ARM64 only (TBI)</text>
+
+    <line x1="10" y1="116" x2="270" y2="116" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="136" font-size="10" font-weight="bold" fill="#92400e">检测流程:</text>
+
+    <rect x="20" y="145" width="240" height="28" rx="4" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="140" y="163" text-anchor="middle" font-size="9" fill="#92400e">① kmalloc: 随机 tag → 指针[63:56]</text>
+
+    <rect x="20" y="180" width="240" height="28" rx="4" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="140" y="198" text-anchor="middle" font-size="9" fill="#92400e">② 同时: tag → shadow memory</text>
+
+    <rect x="20" y="215" width="240" height="28" rx="4" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="140" y="233" text-anchor="middle" font-size="9" fill="#92400e">③ 访问时: ptr_tag vs shadow_tag</text>
+
+    <rect x="20" y="250" width="240" height="28" rx="4" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="140" y="268" text-anchor="middle" font-size="9" fill="#92400e">④ 不匹配 → kasan_report()</text>
+
+    <line x1="10" y1="290" x2="270" y2="290" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="310" font-size="10" font-weight="bold" fill="#dc2626">开销:</text>
+    <text x="15" y="328" font-size="10" fill="#475569">• CPU: ~1.5x 减速</text>
+    <text x="15" y="346" font-size="10" fill="#475569">• RAM: +6.25% (shadow)</text>
+    <text x="15" y="364" font-size="10" fill="#475569">• 代码膨胀: ~1.5x</text>
+
+    <line x1="10" y1="376" x2="270" y2="376" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="396" font-size="10" font-weight="bold" fill="#16a34a">优势:</text>
+    <text x="15" y="414" font-size="10" fill="#475569">• 比 Generic 更低开销</text>
+    <text x="15" y="432" font-size="10" fill="#475569">• 概率检测 (99.6%)</text>
+    <text x="15" y="450" font-size="10" fill="#475569">• 重分配 UAF 可检测</text>
+
+    <rect x="20" y="460" width="240" height="20" rx="4" fill="#fef3c7"/>
+    <text x="140" y="474" text-anchor="middle" font-size="9" font-weight="bold" fill="#92400e">适用: 灰度/Dogfood</text>
+  </g>
+
+  <!-- HW_TAGS Mode -->
+  <g transform="translate(620,65)">
+    <rect width="280" height="470" rx="8" fill="#fff" stroke="#10b981" stroke-width="2" filter="url(#sh4)"/>
+    <rect width="280" height="32" rx="8" fill="url(#hHW)"/>
+    <rect x="0" y="24" width="280" height="8" fill="#059669"/>
+    <text x="140" y="21" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">HW_TAGS 模式 (MTE)</text>
+
+    <text x="15" y="52" font-size="10" font-weight="bold" fill="#065f46">Shadow: 硬件 Tag RAM</text>
+    <text x="15" y="70" font-size="10" fill="#475569">每 16B 物理内存 → 4-bit tag</text>
+    <text x="15" y="88" font-size="10" fill="#475569">检查 = CPU 硬件自动执行</text>
+    <text x="15" y="106" font-size="10" fill="#475569">架构 = ARMv8.5-A MTE</text>
+
+    <line x1="10" y1="116" x2="270" y2="116" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="136" font-size="10" font-weight="bold" fill="#065f46">检测流程:</text>
+
+    <rect x="20" y="145" width="240" height="28" rx="4" fill="#d1fae5" stroke="#6ee7b7"/>
+    <text x="140" y="163" text-anchor="middle" font-size="9" fill="#065f46">① STG/IRG: 硬件设置内存 tag</text>
+
+    <rect x="20" y="180" width="240" height="28" rx="4" fill="#d1fae5" stroke="#6ee7b7"/>
+    <text x="140" y="198" text-anchor="middle" font-size="9" fill="#065f46">② 指针高 4 位存储 tag (TBI)</text>
+
+    <rect x="20" y="215" width="240" height="28" rx="4" fill="#d1fae5" stroke="#6ee7b7"/>
+    <text x="140" y="233" text-anchor="middle" font-size="9" fill="#065f46">③ 每次内存访问: CPU 自动比较</text>
+
+    <rect x="20" y="250" width="240" height="28" rx="4" fill="#d1fae5" stroke="#6ee7b7"/>
+    <text x="140" y="268" text-anchor="middle" font-size="9" fill="#065f46">④ 不匹配 → 同步/异步异常</text>
+
+    <line x1="10" y1="290" x2="270" y2="290" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="310" font-size="10" font-weight="bold" fill="#dc2626">开销:</text>
+    <text x="15" y="328" font-size="10" fill="#475569">• CPU: 5~10% (async 模式)</text>
+    <text x="15" y="346" font-size="10" fill="#475569">• RAM: ~3% (Tag RAM)</text>
+    <text x="15" y="364" font-size="10" fill="#475569">• 无代码膨胀</text>
+
+    <line x1="10" y1="376" x2="270" y2="376" stroke="#e5e7eb" stroke-width="0.8"/>
+
+    <text x="15" y="396" font-size="10" font-weight="bold" fill="#16a34a">优势:</text>
+    <text x="15" y="414" font-size="10" fill="#475569">• 生产可用的极低开销</text>
+    <text x="15" y="432" font-size="10" fill="#475569">• 无需编译器插桩</text>
+    <text x="15" y="450" font-size="10" fill="#475569">• 硬件级检查无法绕过</text>
+
+    <rect x="20" y="460" width="240" height="20" rx="4" fill="#d1fae5"/>
+    <text x="140" y="474" text-anchor="middle" font-size="9" font-weight="bold" fill="#065f46">适用: 生产环境</text>
+  </g>
+</svg>

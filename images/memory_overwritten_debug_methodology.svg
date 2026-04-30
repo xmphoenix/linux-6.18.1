@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 800" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <marker id="aBlk" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#455a64" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aRed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#c62828" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aGrn" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2e7d32" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aBlu" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565c0" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="550" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#333">图 5.9-2  MemoryOverwritten 通用定位方法论流程</text>
+
+  <!-- Step 1: Identify Error Type -->
+  <g transform="translate(380,50)" filter="url(#sh)">
+    <rect width="340" height="52" rx="10" fill="#e53935" stroke="#c62828" stroke-width="2"/>
+    <text x="170" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Step 1 — 识别告警来源</text>
+    <text x="170" y="40" text-anchor="middle" font-size="11" fill="#ffcdd2">BUG: KASAN / KFENCE / BUG kmalloc-* / panic</text>
+  </g>
+
+  <!-- Arrow down -->
+  <path d="M550,102 L550,130" fill="none" stroke="#455a64" stroke-width="2" marker-end="url(#aBlk)"/>
+
+  <!-- Step 2: Parse key fields -->
+  <g transform="translate(330,132)" filter="url(#sh)">
+    <rect width="440" height="90" rx="10" fill="#fff" stroke="#1e88e5" stroke-width="2"/>
+    <rect width="440" height="28" rx="10" fill="#1e88e5"/>
+    <rect y="20" width="440" height="8" fill="#1e88e5"/>
+    <text x="220" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Step 2 — 提取关键字段</text>
+    <text x="20" y="48" font-size="11" fill="#333">① 错误类型：OOB / UAF / corruption / double-free</text>
+    <text x="20" y="64" font-size="11" fill="#333">② 访问方向：Read / Write，大小 (size)</text>
+    <text x="20" y="80" font-size="11" fill="#333">③ 故障地址 (addr)、对象偏移 (@offset / NB left/right)</text>
+  </g>
+
+  <!-- Arrow down -->
+  <path d="M550,222 L550,250" fill="none" stroke="#455a64" stroke-width="2" marker-end="url(#aBlk)"/>
+
+  <!-- Step 3: Identify allocation -->
+  <g transform="translate(330,252)" filter="url(#sh)">
+    <rect width="440" height="90" rx="10" fill="#fff" stroke="#43a047" stroke-width="2"/>
+    <rect width="440" height="28" rx="10" fill="#43a047"/>
+    <rect y="20" width="440" height="8" fill="#43a047"/>
+    <text x="220" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Step 3 — 定位对象归属</text>
+    <text x="20" y="48" font-size="11" fill="#333">① 从 "cache=xxx" 或 "belongs to cache xxx" 获取 slab 缓存名</text>
+    <text x="20" y="64" font-size="11" fill="#333">② 从 "Allocated by" 栈回溯确定分配路径</text>
+    <text x="20" y="80" font-size="11" fill="#333">③ 从 "Freed by" 栈回溯确定释放路径 (UAF 场景)</text>
+  </g>
+
+  <!-- Arrow down -->
+  <path d="M550,342 L550,370" fill="none" stroke="#455a64" stroke-width="2" marker-end="url(#aBlk)"/>
+
+  <!-- Step 4: Root cause analysis -->
+  <g transform="translate(330,372)" filter="url(#sh)">
+    <rect width="440" height="90" rx="10" fill="#fff" stroke="#f57c00" stroke-width="2"/>
+    <rect width="440" height="28" rx="10" fill="#f57c00"/>
+    <rect y="20" width="440" height="8" fill="#f57c00"/>
+    <text x="220" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Step 4 — 根因分析</text>
+    <text x="20" y="48" font-size="11" fill="#333">① 对比 object_size 与实际写入 size → 是否 sizeof 不匹配</text>
+    <text x="20" y="64" font-size="11" fill="#333">② 分析 @offset 位置 → 数组越界 / 结构体字段偏移错误</text>
+    <text x="20" y="80" font-size="11" fill="#333">③ UAF: 检查生命周期管理 → 引用计数 / RCU / 竞态</text>
+  </g>
+
+  <!-- Arrow down -->
+  <path d="M550,462 L550,490" fill="none" stroke="#455a64" stroke-width="2" marker-end="url(#aBlk)"/>
+
+  <!-- Step 5: Reproduce & verify -->
+  <g transform="translate(330,492)" filter="url(#sh)">
+    <rect width="440" height="90" rx="10" fill="#fff" stroke="#8e24aa" stroke-width="2"/>
+    <rect width="440" height="28" rx="10" fill="#8e24aa"/>
+    <rect y="20" width="440" height="8" fill="#8e24aa"/>
+    <text x="220" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Step 5 — 复现与验证</text>
+    <text x="20" y="48" font-size="11" fill="#333">① KASAN: 开启 kasan.fault=panic 精确复现</text>
+    <text x="20" y="64" font-size="11" fill="#333">② KFENCE: 降低 sample_interval 提高命中率</text>
+    <text x="20" y="80" font-size="11" fill="#333">③ SLUB: slub_debug=FZPU,target_cache 精确追踪</text>
+  </g>
+
+  <!-- Side branches: OOB / UAF / Corruption -->
+  <!-- OOB branch left -->
+  <g transform="translate(30,160)" filter="url(#sh)">
+    <rect width="260" height="115" rx="8" fill="#ffebee" stroke="#ef9a9a" stroke-width="1.5"/>
+    <text x="130" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#c62828">OOB 常见根因</text>
+    <line x1="10" y1="28" x2="250" y2="28" stroke="#ef9a9a" stroke-width="0.8"/>
+    <text x="15" y="46" font-size="10.5" fill="#333">• 数组下标未检查边界</text>
+    <text x="15" y="62" font-size="10.5" fill="#333">• memcpy/memset size 参数错误</text>
+    <text x="15" y="78" font-size="10.5" fill="#333">• kmalloc(sizeof(A)) 但当作 B 使用</text>
+    <text x="15" y="94" font-size="10.5" fill="#333">• 字符串操作未含 '\0' 终止符</text>
+    <text x="15" y="110" font-size="10.5" fill="#333">• container_of 用于错误的宿主结构体</text>
+  </g>
+  <path d="M290,218 L330,192" fill="none" stroke="#c62828" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aRed)"/>
+
+  <!-- UAF branch right -->
+  <g transform="translate(810,160)" filter="url(#sh)">
+    <rect width="260" height="115" rx="8" fill="#e8f5e9" stroke="#a5d6a7" stroke-width="1.5"/>
+    <text x="130" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#2e7d32">UAF 常见根因</text>
+    <line x1="10" y1="28" x2="250" y2="28" stroke="#a5d6a7" stroke-width="0.8"/>
+    <text x="15" y="46" font-size="10.5" fill="#333">• kfree 后仍持有指针并解引用</text>
+    <text x="15" y="62" font-size="10.5" fill="#333">• 引用计数管理错误 (put 多 / get 少)</text>
+    <text x="15" y="78" font-size="10.5" fill="#333">• RCU 回调中使用已释放对象</text>
+    <text x="15" y="94" font-size="10.5" fill="#333">• 工作队列/定时器回调竞态</text>
+    <text x="15" y="110" font-size="10.5" fill="#333">• 模块卸载与异步回调竞态</text>
+  </g>
+  <path d="M770,218 L810,192" fill="none" stroke="#2e7d32" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aGrn)"/>
+
+  <!-- Additional tools box at bottom -->
+  <g transform="translate(60,620)" filter="url(#sh)">
+    <rect width="980" height="160" rx="10" fill="#fff" stroke="#546e7a" stroke-width="2"/>
+    <rect width="980" height="30" rx="10" fill="#546e7a"/>
+    <rect y="22" width="980" height="8" fill="#546e7a"/>
+    <text x="490" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">辅助定位工具箱</text>
+
+    <!-- Column 1 -->
+    <text x="30" y="52" font-size="11" font-weight="bold" fill="#1565c0">addr2line / objdump</text>
+    <text x="30" y="68" font-size="10" fill="#555">将 PC/IP 地址转为源码行号</text>
+    <text x="30" y="84" font-size="10" fill="#888">$ addr2line -e vmlinux ffff...48</text>
+
+    <text x="30" y="108" font-size="11" font-weight="bold" fill="#1565c0">crash / gdb</text>
+    <text x="30" y="124" font-size="10" fill="#555">分析 vmcore/coredump</text>
+    <text x="30" y="140" font-size="10" fill="#888">crash&gt; struct kmem_cache -o</text>
+
+    <!-- Column 2 -->
+    <text x="280" y="52" font-size="11" font-weight="bold" fill="#2e7d32">ftrace / kprobe</text>
+    <text x="280" y="68" font-size="10" fill="#555">动态追踪分配/释放路径</text>
+    <text x="280" y="84" font-size="10" fill="#888">trace-cmd record -p function_graph</text>
+
+    <text x="280" y="108" font-size="11" font-weight="bold" fill="#2e7d32">slabinfo / slabtop</text>
+    <text x="280" y="124" font-size="10" fill="#555">Slab 缓存统计与监控</text>
+    <text x="280" y="140" font-size="10" fill="#888">$ cat /proc/slabinfo</text>
+
+    <!-- Column 3 -->
+    <text x="530" y="52" font-size="11" font-weight="bold" fill="#e65100">eBPF (bpftrace)</text>
+    <text x="530" y="68" font-size="10" fill="#555">在线追踪特定 slab 缓存操作</text>
+    <text x="530" y="84" font-size="10" fill="#888">bpftrace -e 'kprobe:kmem_cache_alloc{}'</text>
+
+    <text x="530" y="108" font-size="11" font-weight="bold" fill="#e65100">perf mem / perf probe</text>
+    <text x="530" y="124" font-size="10" fill="#555">内存访问采样分析</text>
+    <text x="530" y="140" font-size="10" fill="#888">perf mem record -a -- sleep 10</text>
+
+    <!-- Column 4 -->
+    <text x="780" y="52" font-size="11" font-weight="bold" fill="#8e24aa">debugfs (KFENCE)</text>
+    <text x="780" y="68" font-size="10" fill="#555">查看 KFENCE 池中所有对象</text>
+    <text x="780" y="84" font-size="10" fill="#888">$ cat /sys/kernel/debug/kfence/objects</text>
+
+    <text x="780" y="108" font-size="11" font-weight="bold" fill="#8e24aa">page_owner</text>
+    <text x="780" y="124" font-size="10" fill="#555">页级分配栈追踪</text>
+    <text x="780" y="140" font-size="10" fill="#888">$ cat /sys/kernel/debug/page_owner</text>
+  </g>
+</svg>

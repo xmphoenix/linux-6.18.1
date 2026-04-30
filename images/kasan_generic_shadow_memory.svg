@@ -1,0 +1,269 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 980" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+<defs>
+  <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+  <linearGradient id="hdrMem" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1565C0"/><stop offset="100%" stop-color="#42A5F5"/></linearGradient>
+  <linearGradient id="hdrShd" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6A1B9A"/><stop offset="100%" stop-color="#AB47BC"/></linearGradient>
+  <linearGradient id="hdrChk" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#E65100"/><stop offset="100%" stop-color="#FF9800"/></linearGradient>
+  <linearGradient id="hdrSlab" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#66BB6A"/></linearGradient>
+  <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6A1B9A" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#E65100" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#C62828" stroke-width="1.5" stroke-linejoin="round"/></marker>
+</defs>
+
+<text x="600" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#212121">Generic KASAN — Shadow Memory 8:1 映射与访问检查原理</text>
+<text x="600" y="48" text-anchor="middle" font-size="11" fill="#757575">源码：mm/kasan/generic.c · include/linux/kasan.h · arch/arm64/include/asm/memory.h</text>
+
+<!-- ===== 左侧：Kernel Virtual Memory 区域 ===== -->
+<g transform="translate(30,70)" filter="url(#sh)">
+  <rect width="340" height="380" rx="8" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <rect width="340" height="30" rx="8" fill="url(#hdrMem)"/>
+  <rect y="22" width="340" height="8" fill="#1565C0"/>
+  <text x="170" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Kernel Virtual Address Space (ARM64)</text>
+
+  <!-- Memory regions -->
+  <rect x="20" y="42" width="300" height="30" rx="4" fill="#E3F2FD" stroke="#90CAF9" stroke-width="1"/>
+  <text x="170" y="62" text-anchor="middle" font-size="10" fill="#1565C0" font-weight="bold">Linear Map (PAGE_OFFSET ~ PAGE_END)</text>
+
+  <rect x="20" y="80" width="300" height="30" rx="4" fill="#E8F5E9" stroke="#A5D6A7" stroke-width="1"/>
+  <text x="170" y="100" text-anchor="middle" font-size="10" fill="#2E7D32" font-weight="bold">vmalloc 区域 (VMALLOC_START ~ VMALLOC_END)</text>
+
+  <rect x="20" y="118" width="300" height="30" rx="4" fill="#FFF3E0" stroke="#FFCC80" stroke-width="1"/>
+  <text x="170" y="138" text-anchor="middle" font-size="10" fill="#E65100" font-weight="bold">Module 区域 (MODULES_VADDR ~ MODULES_END)</text>
+
+  <rect x="20" y="156" width="300" height="30" rx="4" fill="#F3E5F5" stroke="#CE93D8" stroke-width="1"/>
+  <text x="170" y="176" text-anchor="middle" font-size="10" fill="#6A1B9A" font-weight="bold">KASAN Shadow (KASAN_SHADOW_START ~ END)</text>
+
+  <!-- 地址映射公式 -->
+  <line x1="10" y1="200" x2="330" y2="200" stroke="#E0E0E0" stroke-width="1"/>
+  <text x="170" y="220" text-anchor="middle" font-size="11" font-weight="bold" fill="#333">地址映射公式</text>
+
+  <rect x="15" y="230" width="310" height="50" rx="6" fill="#F5F5F5" stroke="#BDBDBD" stroke-width="1"/>
+  <text x="170" y="250" text-anchor="middle" font-size="12" font-weight="bold" fill="#C62828" font-family="monospace">shadow = (addr &gt;&gt; 3) + OFFSET</text>
+  <text x="170" y="270" text-anchor="middle" font-size="9" fill="#666">KASAN_SHADOW_SCALE_SHIFT = 3 (Generic, ARM64)</text>
+
+  <text x="15" y="300" font-size="10" fill="#555">• Generic: SCALE_SHIFT = 3 → 8B:1B</text>
+  <text x="15" y="316" font-size="10" fill="#555">• SW_TAGS: SCALE_SHIFT = 4 → 16B:1B</text>
+  <text x="15" y="332" font-size="10" fill="#555">• KASAN_SHADOW_OFFSET = CONFIG 指定</text>
+  <text x="15" y="348" font-size="10" fill="#555">• 48-bit VA: 0xdfff800000000000 (Generic)</text>
+  <text x="15" y="364" font-size="10" fill="#555">• 48-bit VA: 0xefff800000000000 (SW_TAGS)</text>
+</g>
+
+<!-- 映射箭头 -->
+<path d="M370,210 L430,210" fill="none" stroke="#6A1B9A" stroke-width="2.5" stroke-dasharray="6,3" marker-end="url(#aP)"/>
+<rect x="380" y="196" width="56" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+<text x="408" y="208" text-anchor="middle" font-size="9" fill="#6A1B9A" font-weight="bold">&gt;&gt; 3</text>
+
+<!-- ===== 右侧：Shadow Memory 详解 ===== -->
+<g transform="translate(440,70)" filter="url(#sh)">
+  <rect width="730" height="380" rx="8" fill="#fff" stroke="#6A1B9A" stroke-width="2"/>
+  <rect width="730" height="30" rx="8" fill="url(#hdrShd)"/>
+  <rect y="22" width="730" height="8" fill="#6A1B9A"/>
+  <text x="365" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Shadow Memory — 每 8 字节实际内存 → 1 字节 Shadow Byte</text>
+
+  <!-- 8 bytes memory block -->
+  <text x="30" y="52" font-size="10" fill="#6A1B9A" font-weight="bold">8 字节内存块 → 1 个 Shadow Byte 编码规则：</text>
+
+  <text x="30" y="75" font-size="11" font-weight="bold" fill="#333">Shadow 值</text>
+  <text x="100" y="75" font-size="11" font-weight="bold" fill="#333">含义</text>
+  <text x="350" y="75" font-size="11" font-weight="bold" fill="#333">宏定义</text>
+  <text x="530" y="75" font-size="11" font-weight="bold" fill="#333">颜色标记</text>
+
+  <!-- 0x00 -->
+  <rect x="25" y="82" width="690" height="20" rx="3" fill="#E8F5E9"/>
+  <text x="30" y="96" font-size="10" font-family="monospace" fill="#2E7D32" font-weight="bold">0x00</text>
+  <text x="100" y="96" font-size="10" fill="#333">8 字节全部可访问</text>
+  <text x="350" y="96" font-size="10" fill="#888">—</text>
+  <rect x="530" y="84" width="80" height="16" rx="2" fill="#4CAF50"/>
+  <text x="570" y="96" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">全部可用</text>
+
+  <!-- 0x01~0x07 -->
+  <rect x="25" y="104" width="690" height="20" rx="3" fill="#FFFDE7"/>
+  <text x="30" y="118" font-size="10" font-family="monospace" fill="#F57F17" font-weight="bold">0x01-07</text>
+  <text x="100" y="118" font-size="10" fill="#333">前 N 字节可访问，后 (8-N) 字节不可访问</text>
+  <text x="350" y="118" font-size="10" fill="#888">—（对象尾部部分可用）</text>
+  <rect x="530" y="106" width="80" height="16" rx="2" fill="#FFC107"/>
+  <text x="570" y="118" text-anchor="middle" font-size="9" fill="#333" font-weight="bold">部分可用</text>
+
+  <!-- 0xFB -->
+  <rect x="25" y="126" width="690" height="20" rx="3" fill="#FFEBEE"/>
+  <text x="30" y="140" font-size="10" font-family="monospace" fill="#C62828" font-weight="bold">0xFB</text>
+  <text x="100" y="140" font-size="10" fill="#333">已释放的 Slab 对象</text>
+  <text x="350" y="140" font-size="10" font-family="monospace" fill="#C62828">KASAN_SLAB_FREE</text>
+  <rect x="530" y="128" width="80" height="16" rx="2" fill="#EF5350"/>
+  <text x="570" y="140" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">Freed Slab</text>
+
+  <!-- 0xFA -->
+  <rect x="25" y="148" width="690" height="20" rx="3" fill="#FFEBEE"/>
+  <text x="30" y="162" font-size="10" font-family="monospace" fill="#C62828" font-weight="bold">0xFA</text>
+  <text x="100" y="162" font-size="10" fill="#333">已释放对象（含 free meta 数据）</text>
+  <text x="350" y="162" font-size="10" font-family="monospace" fill="#C62828">KASAN_SLAB_FREE_META</text>
+  <rect x="530" y="150" width="80" height="16" rx="2" fill="#EF5350"/>
+  <text x="570" y="162" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">Free Meta</text>
+
+  <!-- 0xFC -->
+  <rect x="25" y="170" width="690" height="20" rx="3" fill="#FCE4EC"/>
+  <text x="30" y="184" font-size="10" font-family="monospace" fill="#AD1457" font-weight="bold">0xFC</text>
+  <text x="100" y="184" font-size="10" fill="#333">Slab 对象 Red Zone（越界保护区）</text>
+  <text x="350" y="184" font-size="10" font-family="monospace" fill="#AD1457">KASAN_SLAB_REDZONE</text>
+  <rect x="530" y="172" width="80" height="16" rx="2" fill="#EC407A"/>
+  <text x="570" y="184" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">Slab RZ</text>
+
+  <!-- 0xFE -->
+  <rect x="25" y="192" width="690" height="20" rx="3" fill="#EDE7F6"/>
+  <text x="30" y="206" font-size="10" font-family="monospace" fill="#4527A0" font-weight="bold">0xFE</text>
+  <text x="100" y="206" font-size="10" fill="#333">kmalloc_large 页级 Red Zone</text>
+  <text x="350" y="206" font-size="10" font-family="monospace" fill="#4527A0">KASAN_PAGE_REDZONE</text>
+  <rect x="530" y="194" width="80" height="16" rx="2" fill="#7E57C2"/>
+  <text x="570" y="206" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">Page RZ</text>
+
+  <!-- 0xFF -->
+  <rect x="25" y="214" width="690" height="20" rx="3" fill="#ECEFF1"/>
+  <text x="30" y="228" font-size="10" font-family="monospace" fill="#37474F" font-weight="bold">0xFF</text>
+  <text x="100" y="228" font-size="10" fill="#333">已释放的页面</text>
+  <text x="350" y="228" font-size="10" font-family="monospace" fill="#37474F">KASAN_PAGE_FREE</text>
+  <rect x="530" y="216" width="80" height="16" rx="2" fill="#546E7A"/>
+  <text x="570" y="228" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">Page Free</text>
+
+  <!-- 0xF8 -->
+  <rect x="25" y="236" width="690" height="20" rx="3" fill="#E0F2F1"/>
+  <text x="30" y="250" font-size="10" font-family="monospace" fill="#00695C" font-weight="bold">0xF8</text>
+  <text x="100" y="250" font-size="10" fill="#333">vmalloc 不可访问空间</text>
+  <text x="350" y="250" font-size="10" font-family="monospace" fill="#00695C">KASAN_VMALLOC_INVALID</text>
+  <rect x="530" y="238" width="80" height="16" rx="2" fill="#26A69A"/>
+  <text x="570" y="250" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">vmalloc</text>
+
+  <!-- Stack markers -->
+  <rect x="25" y="258" width="690" height="20" rx="3" fill="#FFF8E1"/>
+  <text x="30" y="272" font-size="10" font-family="monospace" fill="#FF6F00" font-weight="bold">0xF1-F4</text>
+  <text x="100" y="272" font-size="10" fill="#333">栈帧标记：Left/Mid/Right/Partial RedZone</text>
+  <text x="350" y="272" font-size="10" font-family="monospace" fill="#FF6F00">KASAN_STACK_*</text>
+  <rect x="530" y="260" width="80" height="16" rx="2" fill="#FF9800"/>
+  <text x="570" y="272" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">Stack RZ</text>
+
+  <!-- 0xF9 -->
+  <rect x="25" y="280" width="690" height="20" rx="3" fill="#E8EAF6"/>
+  <text x="30" y="294" font-size="10" font-family="monospace" fill="#283593" font-weight="bold">0xF9</text>
+  <text x="100" y="294" font-size="10" fill="#333">全局变量 Red Zone</text>
+  <text x="350" y="294" font-size="10" font-family="monospace" fill="#283593">KASAN_GLOBAL_REDZONE</text>
+  <rect x="530" y="282" width="80" height="16" rx="2" fill="#3F51B5"/>
+  <text x="570" y="294" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">Global RZ</text>
+
+  <!-- 1-byte check explanation -->
+  <line x1="15" y1="310" x2="715" y2="310" stroke="#E0E0E0" stroke-width="1"/>
+  <text x="30" y="330" font-size="11" font-weight="bold" fill="#6A1B9A">1 字节访问检查算法 (memory_is_poisoned_1)：</text>
+  <text x="30" y="350" font-size="10" font-family="monospace" fill="#333">shadow = *(s8*)kasan_mem_to_shadow(addr);</text>
+  <text x="30" y="366" font-size="10" font-family="monospace" fill="#333">if (shadow == 0) → 全部可用，通过 ✓</text>
+  <text x="30" y="378" font-size="10" font-family="monospace" fill="#C62828">if (addr &amp; 7) &gt;= shadow → 越界！报告 ✗</text>
+</g>
+
+<!-- ===== 下方：8字节内存到Shadow Byte映射示意 ===== -->
+<g transform="translate(30,480)" filter="url(#sh)">
+  <rect width="1140" height="240" rx="8" fill="#fff" stroke="#E65100" stroke-width="2"/>
+  <rect width="1140" height="30" rx="8" fill="url(#hdrChk)"/>
+  <rect y="22" width="1140" height="8" fill="#E65100"/>
+  <text x="570" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Slab 对象 Shadow 染色示意 — kmalloc(20) 分配 24 字节对象 + 8 字节 RedZone</text>
+
+  <!-- Real memory blocks (32 bytes = 4 groups of 8) -->
+  <text x="30" y="52" font-size="10" fill="#E65100" font-weight="bold">实际内存（32 字节对象 + RedZone）：</text>
+
+  <!-- Byte 0-7: valid -->
+  <rect x="30" y="58" width="120" height="36" rx="4" fill="#4CAF50" stroke="#2E7D32" stroke-width="1"/>
+  <text x="90" y="76" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">字节 0~7</text>
+  <text x="90" y="88" text-anchor="middle" font-size="8" fill="#E8F5E9">数据有效</text>
+
+  <!-- Byte 8-15: valid -->
+  <rect x="156" y="58" width="120" height="36" rx="4" fill="#4CAF50" stroke="#2E7D32" stroke-width="1"/>
+  <text x="216" y="76" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">字节 8~15</text>
+  <text x="216" y="88" text-anchor="middle" font-size="8" fill="#E8F5E9">数据有效</text>
+
+  <!-- Byte 16-23: partial (20 bytes alloc, so bytes 20-23 = redzone within this granule) -->
+  <rect x="282" y="58" width="60" height="36" rx="0" fill="#4CAF50" stroke="#2E7D32" stroke-width="1"/>
+  <text x="312" y="76" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">16~19</text>
+  <rect x="342" y="58" width="60" height="36" rx="0" fill="#FFC107" stroke="#FF8F00" stroke-width="1"/>
+  <text x="372" y="76" text-anchor="middle" font-size="9" fill="#333" font-weight="bold">20~23</text>
+  <text x="372" y="88" text-anchor="middle" font-size="7" fill="#333">不可用</text>
+
+  <!-- Byte 24-31: redzone -->
+  <rect x="408" y="58" width="120" height="36" rx="4" fill="#EC407A" stroke="#AD1457" stroke-width="1"/>
+  <text x="468" y="76" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">字节 24~31</text>
+  <text x="468" y="88" text-anchor="middle" font-size="8" fill="#fff">Slab RedZone</text>
+
+  <!-- Arrows down -->
+  <path d="M90,94 L90,116" fill="none" stroke="#6A1B9A" stroke-width="1.5" marker-end="url(#aP)"/>
+  <path d="M216,94 L216,116" fill="none" stroke="#6A1B9A" stroke-width="1.5" marker-end="url(#aP)"/>
+  <path d="M342,94 L342,116" fill="none" stroke="#6A1B9A" stroke-width="1.5" marker-end="url(#aP)"/>
+  <path d="M468,94 L468,116" fill="none" stroke="#6A1B9A" stroke-width="1.5" marker-end="url(#aP)"/>
+
+  <!-- Shadow bytes -->
+  <text x="30" y="132" font-size="10" fill="#6A1B9A" font-weight="bold">Shadow Bytes（4 个 Shadow Byte）：</text>
+
+  <rect x="60" y="138" width="60" height="32" rx="4" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+  <text x="90" y="158" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff" font-family="monospace">0x00</text>
+
+  <rect x="186" y="138" width="60" height="32" rx="4" fill="#4CAF50" stroke="#2E7D32" stroke-width="2"/>
+  <text x="216" y="158" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff" font-family="monospace">0x00</text>
+
+  <rect x="312" y="138" width="60" height="32" rx="4" fill="#FFC107" stroke="#FF8F00" stroke-width="2"/>
+  <text x="342" y="158" text-anchor="middle" font-size="12" font-weight="bold" fill="#333" font-family="monospace">0x04</text>
+
+  <rect x="438" y="138" width="60" height="32" rx="4" fill="#EC407A" stroke="#AD1457" stroke-width="2"/>
+  <text x="468" y="158" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff" font-family="monospace">0xFC</text>
+
+  <!-- Shadow byte explanations -->
+  <text x="90" y="186" text-anchor="middle" font-size="9" fill="#2E7D32">8B 全部可用</text>
+  <text x="216" y="186" text-anchor="middle" font-size="9" fill="#2E7D32">8B 全部可用</text>
+  <text x="342" y="186" text-anchor="middle" font-size="9" fill="#FF8F00">前 4B 可用</text>
+  <text x="468" y="186" text-anchor="middle" font-size="9" fill="#AD1457">Slab RedZone</text>
+
+  <!-- Right side: check flow -->
+  <line x1="560" y1="42" x2="560" y2="230" stroke="#E0E0E0" stroke-width="1"/>
+  <text x="580" y="58" font-size="11" font-weight="bold" fill="#E65100">编译器插桩检查流程：</text>
+
+  <rect x="580" y="66" width="530" height="24" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="595" y="82" font-size="10" font-family="monospace" fill="#333">① 源码: buf[21] = 'X';  // 访问 addr = base+21</text>
+
+  <rect x="580" y="96" width="530" height="24" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="595" y="112" font-size="10" font-family="monospace" fill="#333">② 插桩: shadow = *(s8*)((addr&gt;&gt;3)+OFFSET)  // = 0x04</text>
+
+  <rect x="580" y="126" width="530" height="24" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="595" y="142" font-size="10" font-family="monospace" fill="#333">③ 判断: shadow != 0 → 检查 (addr &amp; 7) vs shadow</text>
+
+  <rect x="580" y="156" width="530" height="24" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="595" y="172" font-size="10" font-family="monospace" fill="#333">④ 计算: (base+21) &amp; 7 = 5,  shadow = 4 → 5 &gt;= 4 !</text>
+
+  <rect x="580" y="186" width="530" height="24" rx="4" fill="#FFEBEE" stroke="#C62828" stroke-width="1.5"/>
+  <text x="595" y="202" font-size="10" font-family="monospace" fill="#C62828" font-weight="bold">⑤ 报告: BUG: KASAN: slab-out-of-bounds, 1 byte OOB write</text>
+
+  <text x="580" y="230" font-size="9" fill="#888">第 21 字节超出 20 字节分配 → 越界 1 字节写入到 RedZone 区域</text>
+</g>
+
+<!-- 底部：Inline vs Outline 对比 -->
+<g transform="translate(30,750)" filter="url(#sh)">
+  <rect width="1140" height="210" rx="8" fill="#fff" stroke="#757575" stroke-width="1.5"/>
+  <text x="570" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">编译器插桩模式：Inline vs Outline</text>
+
+  <!-- Inline -->
+  <rect x="20" y="36" width="540" height="160" rx="6" fill="#F3E5F5" stroke="#CE93D8" stroke-width="1"/>
+  <text x="290" y="54" text-anchor="middle" font-size="12" font-weight="bold" fill="#6A1B9A">CONFIG_KASAN_INLINE（默认推荐）</text>
+  <text x="30" y="74" font-size="10" font-family="monospace" fill="#333">// 编译器在每个 load/store 前直接内联插入检查代码</text>
+  <text x="30" y="90" font-size="10" font-family="monospace" fill="#333">mov  x0, addr</text>
+  <text x="30" y="104" font-size="10" font-family="monospace" fill="#6A1B9A">lsr  x1, x0, #3           // shadow = addr &gt;&gt; 3</text>
+  <text x="30" y="118" font-size="10" font-family="monospace" fill="#6A1B9A">add  x1, x1, OFFSET       // + KASAN_SHADOW_OFFSET</text>
+  <text x="30" y="132" font-size="10" font-family="monospace" fill="#6A1B9A">ldrsb w2, [x1]            // 加载 shadow byte</text>
+  <text x="30" y="146" font-size="10" font-family="monospace" fill="#6A1B9A">cbnz w2, __asan_report    // 非零则跳转报告</text>
+  <text x="30" y="160" font-size="10" font-family="monospace" fill="#333">ldr  x3, [x0]             // 原始 load 操作</text>
+  <text x="30" y="180" font-size="10" fill="#6A1B9A" font-weight="bold">✓ 性能更好（~2× vs ~3×） · ✗ .text 段更大</text>
+
+  <!-- Outline -->
+  <rect x="580" y="36" width="540" height="160" rx="6" fill="#E8F5E9" stroke="#A5D6A7" stroke-width="1"/>
+  <text x="850" y="54" text-anchor="middle" font-size="12" font-weight="bold" fill="#2E7D32">CONFIG_KASAN_OUTLINE</text>
+  <text x="590" y="74" font-size="10" font-family="monospace" fill="#333">// 编译器插入函数调用，检查逻辑在独立函数中</text>
+  <text x="590" y="90" font-size="10" font-family="monospace" fill="#333">mov  x0, addr</text>
+  <text x="590" y="104" font-size="10" font-family="monospace" fill="#2E7D32">bl   __asan_load8_noabort  // 调用外部检查函数</text>
+  <text x="590" y="118" font-size="10" font-family="monospace" fill="#333">ldr  x3, [x0]             // 原始 load 操作</text>
+  <text x="590" y="140" font-size="10" fill="#555">// __asan_load8_noabort 内部执行完整 Shadow 检查</text>
+  <text x="590" y="156" font-size="10" fill="#555">// 包含 memory_is_poisoned_2_4_8() 调用</text>
+  <text x="590" y="180" font-size="10" fill="#2E7D32" font-weight="bold">✓ .text 段更小 · ✗ 函数调用开销更大（~3×）</text>
+</g>
+</svg>

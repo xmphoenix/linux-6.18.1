@@ -1,0 +1,245 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 980" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <linearGradient id="hBoot" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1565c0"/><stop offset="100%" stop-color="#1e88e5"/></linearGradient>
+    <linearGradient id="hRun" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2e7d32"/><stop offset="100%" stop-color="#43a047"/></linearGradient>
+    <linearGradient id="hSys" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6a1b9a"/><stop offset="100%" stop-color="#8e24aa"/></linearGradient>
+    <linearGradient id="hKasan" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#c62828"/><stop offset="100%" stop-color="#e53935"/></linearGradient>
+    <linearGradient id="hKfence" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#e65100"/><stop offset="100%" stop-color="#f57c00"/></linearGradient>
+    <linearGradient id="hSlub" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00695c"/><stop offset="100%" stop-color="#00897b"/></linearGradient>
+    <linearGradient id="hPage" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4527a0"/><stop offset="100%" stop-color="#5e35b1"/></linearGradient>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565c0" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2e7d32" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6a1b9a" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- 标题 -->
+  <text x="650" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#263238">图 5.8-2 — 启动参数与运行时调优参数全景</text>
+  <text x="650" y="52" text-anchor="middle" font-size="11" fill="#78909c">Compile-time → Boot-time → Runtime 三阶段配置管线 · Linux 6.18.1</text>
+
+  <!-- ===== 阶段标签 ===== -->
+  <rect x="15" y="70" width="100" height="24" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5"/>
+  <text x="65" y="86" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565c0">① 编译期</text>
+  <path d="M115,82 L145,82" fill="none" stroke="#1565c0" stroke-width="1.5" marker-end="url(#aB)"/>
+
+  <rect x="155" y="70" width="100" height="24" rx="4" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+  <text x="205" y="86" text-anchor="middle" font-size="11" font-weight="bold" fill="#2e7d32">② 启动期</text>
+  <path d="M255,82 L285,82" fill="none" stroke="#2e7d32" stroke-width="1.5" marker-end="url(#aG)"/>
+
+  <rect x="295" y="70" width="100" height="24" rx="4" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="1.5"/>
+  <text x="345" y="86" text-anchor="middle" font-size="11" font-weight="bold" fill="#6a1b9a">③ 运行时</text>
+
+  <text x="440" y="86" font-size="10" fill="#78909c">编译期 → Kconfig 决定功能有无 | 启动期 → cmdline 覆盖默认值 | 运行时 → sysfs/debugfs 动态调整</text>
+
+  <!-- ===== KASAN 行 ===== -->
+  <g transform="translate(15,110)">
+    <rect width="1260" height="180" rx="8" fill="#fff" stroke="#c62828" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1260" height="28" rx="8" fill="url(#hKasan)"/>
+    <rect y="20" width="1260" height="8" fill="#e53935"/>
+    <text x="20" y="19" font-size="12" font-weight="bold" fill="#fff">KASAN 配置参数</text>
+
+    <!-- Compile-time -->
+    <text x="20" y="48" font-size="10" font-weight="bold" fill="#c62828">Kconfig (编译期)</text>
+    <text x="25" y="65" font-family="monospace" font-size="9" fill="#333">CONFIG_KASAN_GENERIC=y</text>
+    <text x="200" y="65" font-size="8" fill="#666">Generic Shadow Memory 模式</text>
+    <text x="25" y="80" font-family="monospace" font-size="9" fill="#333">CONFIG_KASAN_SW_TAGS=y</text>
+    <text x="200" y="80" font-size="8" fill="#666">Software Tag 模式 (ARM64)</text>
+    <text x="25" y="95" font-family="monospace" font-size="9" fill="#333">CONFIG_KASAN_HW_TAGS=y</text>
+    <text x="200" y="95" font-size="8" fill="#666">Hardware MTE 模式 (ARM64)</text>
+    <text x="25" y="110" font-family="monospace" font-size="9" fill="#333">CONFIG_KASAN_INLINE=y</text>
+    <text x="200" y="110" font-size="8" fill="#666">内联插桩 (快) vs OUTLINE (小)</text>
+    <text x="25" y="125" font-family="monospace" font-size="9" fill="#333">CONFIG_KASAN_STACK=y</text>
+    <text x="200" y="125" font-size="8" fill="#666">栈变量 OOB 检测</text>
+    <text x="25" y="140" font-family="monospace" font-size="9" fill="#333">CONFIG_KASAN_VMALLOC=y</text>
+    <text x="200" y="140" font-size="8" fill="#666">vmalloc 区域检测</text>
+    <text x="25" y="155" font-family="monospace" font-size="9" fill="#333">CONFIG_KASAN_EXTRA_INFO=y</text>
+    <text x="200" y="155" font-size="8" fill="#666">记录 CPU 号和时间戳</text>
+    <text x="25" y="170" font-family="monospace" font-size="9" fill="#333">CONFIG_KASAN_KUNIT_TEST=m</text>
+    <text x="200" y="170" font-size="8" fill="#666">KUnit 自动化测试</text>
+
+    <!-- Boot-time -->
+    <rect x="410" y="35" width="1" height="135" fill="#e0e0e0"/>
+    <text x="430" y="48" font-size="10" font-weight="bold" fill="#2e7d32">Boot cmdline (启动期)</text>
+    <text x="435" y="68" font-family="monospace" font-size="10" fill="#333">kasan=off</text>
+    <text x="560" y="68" font-size="9" fill="#666">完全禁用 KASAN</text>
+    <text x="435" y="88" font-family="monospace" font-size="10" fill="#333">kasan.mode=sync</text>
+    <text x="580" y="88" font-size="9" fill="#666">同步检测（精确）</text>
+    <text x="435" y="108" font-family="monospace" font-size="10" fill="#333">kasan.mode=async</text>
+    <text x="580" y="108" font-size="9" fill="#666">异步检测（快速）</text>
+    <text x="435" y="128" font-family="monospace" font-size="10" fill="#333">kasan.mode=asymm</text>
+    <text x="580" y="128" font-size="9" fill="#666">读异步/写同步</text>
+    <text x="435" y="148" font-family="monospace" font-size="10" fill="#333">kasan.fault=panic</text>
+    <text x="580" y="148" font-size="9" fill="#666">检测到错误立即 panic</text>
+    <text x="435" y="168" font-family="monospace" font-size="10" fill="#333">kasan.fault=report</text>
+    <text x="580" y="168" font-size="9" fill="#666">仅打印报告（默认）</text>
+
+    <!-- Runtime -->
+    <rect x="780" y="35" width="1" height="135" fill="#e0e0e0"/>
+    <text x="800" y="48" font-size="10" font-weight="bold" fill="#6a1b9a">sysfs (运行时)</text>
+    <text x="805" y="68" font-family="monospace" font-size="9" fill="#333">/sys/module/kasan/parameters/</text>
+    <text x="805" y="88" font-size="9" fill="#666">├── fault (report|panic)</text>
+    <text x="805" y="108" font-size="9" fill="#666">├── mode (HW_TAGS: sync|async|asymm)</text>
+    <text x="805" y="128" font-size="9" fill="#666">└── stacktrace (on|off)</text>
+    <text x="805" y="155" font-size="9" fill="#999">注：Generic 模式无运行时 sysfs 控制</text>
+    <text x="805" y="170" font-size="9" fill="#999">HW_TAGS/SW_TAGS 支持运行时模式切换</text>
+  </g>
+
+  <!-- ===== KFENCE 行 ===== -->
+  <g transform="translate(15,310)">
+    <rect width="1260" height="150" rx="8" fill="#fff" stroke="#e65100" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1260" height="28" rx="8" fill="url(#hKfence)"/>
+    <rect y="20" width="1260" height="8" fill="#f57c00"/>
+    <text x="20" y="19" font-size="12" font-weight="bold" fill="#fff">KFENCE 配置参数</text>
+
+    <!-- Compile-time -->
+    <text x="20" y="48" font-size="10" font-weight="bold" fill="#e65100">Kconfig (编译期)</text>
+    <text x="25" y="65" font-family="monospace" font-size="9" fill="#333">CONFIG_KFENCE=y</text>
+    <text x="200" y="65" font-size="8" fill="#666">启用 KFENCE</text>
+    <text x="25" y="80" font-family="monospace" font-size="9" fill="#333">CONFIG_KFENCE_SAMPLE_INTERVAL=100</text>
+    <text x="290" y="80" font-size="8" fill="#666">采样间隔 (ms)</text>
+    <text x="25" y="95" font-family="monospace" font-size="9" fill="#333">CONFIG_KFENCE_NUM_OBJECTS=255</text>
+    <text x="290" y="95" font-size="8" fill="#666">保护对象数 (1~65535)</text>
+    <text x="25" y="110" font-family="monospace" font-size="9" fill="#333">CONFIG_KFENCE_DEFERRABLE=n</text>
+    <text x="290" y="110" font-size="8" fill="#666">y=省电模式 (不唤醒 CPU)</text>
+    <text x="25" y="125" font-family="monospace" font-size="9" fill="#333">CONFIG_KFENCE_STATIC_KEYS=n</text>
+    <text x="290" y="125" font-size="8" fill="#666">y=大采样间隔用静态分支</text>
+    <text x="25" y="140" font-family="monospace" font-size="9" fill="#333">CONFIG_KFENCE_STRESS_TEST_FAULTS=0</text>
+    <text x="290" y="140" font-size="8" fill="#666">随机注入页保护故障(仅测试)</text>
+
+    <!-- Boot-time -->
+    <rect x="410" y="35" width="1" height="105" fill="#e0e0e0"/>
+    <text x="430" y="48" font-size="10" font-weight="bold" fill="#2e7d32">Boot cmdline (启动期)</text>
+    <text x="435" y="68" font-family="monospace" font-size="10" fill="#333">kfence.sample_interval=N</text>
+    <text x="640" y="68" font-size="9" fill="#666">覆盖编译期采样间隔</text>
+    <text x="435" y="88" font-family="monospace" font-size="10" fill="#333">kfence.sample_interval=0</text>
+    <text x="640" y="88" font-size="9" fill="#666">完全禁用 KFENCE</text>
+    <text x="435" y="108" font-family="monospace" font-size="10" fill="#333">kfence.check_on_panic=1</text>
+    <text x="640" y="108" font-size="9" fill="#666">panic 时校验所有 Canary</text>
+
+    <!-- Runtime -->
+    <rect x="780" y="35" width="1" height="105" fill="#e0e0e0"/>
+    <text x="800" y="48" font-size="10" font-weight="bold" fill="#6a1b9a">sysfs (运行时)</text>
+    <text x="805" y="68" font-family="monospace" font-size="9" fill="#333">/sys/module/kfence/parameters/</text>
+    <text x="805" y="88" font-size="9" fill="#666">├── sample_interval (ulong, RW)</text>
+    <text x="805" y="108" font-size="9" fill="#666">├── skip_covered_thresh (ulong, RW)</text>
+    <text x="805" y="128" font-size="9" fill="#666">└── burst (uint, RW)</text>
+    <text x="1050" y="88" font-size="8" fill="#999">动态开关：写 0 关 / 写 N 开</text>
+    <text x="1050" y="108" font-size="8" fill="#999">池使用率阈值 (默认75%)</text>
+    <text x="1050" y="128" font-size="8" fill="#999">每次采样额外保护数</text>
+  </g>
+
+  <!-- ===== SLUB Debug 行 ===== -->
+  <g transform="translate(15,480)">
+    <rect width="1260" height="165" rx="8" fill="#fff" stroke="#00695c" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1260" height="28" rx="8" fill="url(#hSlub)"/>
+    <rect y="20" width="1260" height="8" fill="#00897b"/>
+    <text x="20" y="19" font-size="12" font-weight="bold" fill="#fff">SLUB Debug 配置参数</text>
+
+    <!-- Compile-time -->
+    <text x="20" y="48" font-size="10" font-weight="bold" fill="#00695c">Kconfig (编译期)</text>
+    <text x="25" y="65" font-family="monospace" font-size="9" fill="#333">CONFIG_SLUB_DEBUG=y</text>
+    <text x="200" y="65" font-size="8" fill="#666">编译 SLUB debug 支持</text>
+    <text x="25" y="80" font-family="monospace" font-size="9" fill="#333">CONFIG_SLUB_DEBUG_ON=n</text>
+    <text x="200" y="80" font-size="8" fill="#666">y=默认开启全部检测</text>
+    <text x="25" y="95" font-family="monospace" font-size="9" fill="#333">CONFIG_SLUB_RCU_DEBUG=y</text>
+    <text x="200" y="95" font-size="8" fill="#666">RCU slab UAF 检测</text>
+
+    <!-- Boot-time -->
+    <rect x="410" y="35" width="1" height="120" fill="#e0e0e0"/>
+    <text x="430" y="48" font-size="10" font-weight="bold" fill="#2e7d32">Boot cmdline (启动期)</text>
+    <text x="435" y="68" font-family="monospace" font-size="10" fill="#333">slub_debug=FZ</text>
+    <text x="580" y="68" font-size="9" fill="#666">全局开启 Sanity+RedZone</text>
+    <text x="435" y="88" font-family="monospace" font-size="10" fill="#333">slub_debug=FZPU</text>
+    <text x="580" y="88" font-size="9" fill="#666">全局 Sanity+RZ+Poison+Track</text>
+    <text x="435" y="108" font-family="monospace" font-size="10" fill="#333">slub_debug=FZP,kmalloc-*</text>
+    <text x="640" y="108" font-size="9" fill="#666">仅 kmalloc 系列缓存</text>
+    <text x="435" y="128" font-family="monospace" font-size="10" fill="#333">slub_nomerge</text>
+    <text x="580" y="128" font-size="9" fill="#666">禁止 slab 缓存合并</text>
+    <text x="435" y="148" font-family="monospace" font-size="10" fill="#333">slub_debug=-</text>
+    <text x="580" y="148" font-size="9" fill="#666">关闭所有 slub debug</text>
+
+    <!-- Runtime -->
+    <rect x="780" y="35" width="1" height="120" fill="#e0e0e0"/>
+    <text x="800" y="48" font-size="10" font-weight="bold" fill="#6a1b9a">sysfs (运行时)</text>
+    <text x="805" y="68" font-family="monospace" font-size="9" fill="#333">/sys/kernel/slab/&lt;cache&gt;/</text>
+    <text x="805" y="88" font-size="9" fill="#666">├── sanity_checks (0|1)</text>
+    <text x="805" y="108" font-size="9" fill="#666">├── trace (0|1)</text>
+    <text x="805" y="128" font-size="9" fill="#666">├── red_zone (0|1)</text>
+    <text x="805" y="148" font-size="9" fill="#666">├── poison (0|1)</text>
+    <text x="1050" y="88" font-size="8" fill="#999">逐缓存控制</text>
+    <text x="1050" y="108" font-size="8" fill="#999">分配/释放打印</text>
+    <text x="1050" y="128" font-size="8" fill="#999">RedZone 开关</text>
+    <text x="1050" y="148" font-size="8" fill="#999">Poison 开关</text>
+
+    <!-- 标志说明 -->
+    <g transform="translate(25,110)">
+      <rect width="370" height="48" rx="4" fill="#e0f2f1" stroke="#80cbc4" stroke-width="0.8"/>
+      <text x="10" y="16" font-size="9" font-weight="bold" fill="#00695c">标志字母含义：</text>
+      <text x="10" y="32" font-family="monospace" font-size="9" fill="#333">F=Sanity  Z=RedZone  P=Poison  U=Track  T=Trace  A=All  O=Audit</text>
+      <text x="10" y="44" font-size="8" fill="#666">A 等价于 FZPU (不含 T) · O 等价于 FU</text>
+    </g>
+  </g>
+
+  <!-- ===== 页级与其他防御 行 ===== -->
+  <g transform="translate(15,665)">
+    <rect width="1260" height="150" rx="8" fill="#fff" stroke="#4527a0" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1260" height="28" rx="8" fill="url(#hPage)"/>
+    <rect y="20" width="1260" height="8" fill="#5e35b1"/>
+    <text x="20" y="19" font-size="12" font-weight="bold" fill="#fff">页级检测与其他防御配置</text>
+
+    <!-- Compile-time -->
+    <text x="20" y="48" font-size="10" font-weight="bold" fill="#4527a0">Kconfig (编译期)</text>
+    <text x="25" y="65" font-family="monospace" font-size="9" fill="#333">CONFIG_DEBUG_PAGEALLOC=y</text>
+    <text x="220" y="65" font-size="8" fill="#666">页释放后 unmap</text>
+    <text x="25" y="80" font-family="monospace" font-size="9" fill="#333">CONFIG_PAGE_POISONING=y</text>
+    <text x="220" y="80" font-size="8" fill="#666">页毒化填充</text>
+    <text x="25" y="95" font-family="monospace" font-size="9" fill="#333">CONFIG_PAGE_TABLE_CHECK=y</text>
+    <text x="220" y="95" font-size="8" fill="#666">页表映射校验</text>
+    <text x="25" y="110" font-family="monospace" font-size="9" fill="#333">CONFIG_PAGE_OWNER=y</text>
+    <text x="220" y="110" font-size="8" fill="#666">页分配调用栈追踪</text>
+    <text x="25" y="125" font-family="monospace" font-size="9" fill="#333">CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y</text>
+    <text x="290" y="125" font-size="8" fill="#666">堆分配自动清零</text>
+    <text x="25" y="140" font-family="monospace" font-size="9" fill="#333">CONFIG_INIT_ON_FREE_DEFAULT_ON=y</text>
+    <text x="290" y="140" font-size="8" fill="#666">堆释放自动清零</text>
+
+    <!-- Boot-time -->
+    <rect x="410" y="35" width="1" height="105" fill="#e0e0e0"/>
+    <text x="430" y="48" font-size="10" font-weight="bold" fill="#2e7d32">Boot cmdline (启动期)</text>
+    <text x="435" y="68" font-family="monospace" font-size="10" fill="#333">debug_pagealloc=on</text>
+    <text x="600" y="68" font-size="9" fill="#666">启用 debug pagealloc</text>
+    <text x="435" y="88" font-family="monospace" font-size="10" fill="#333">page_poison=1</text>
+    <text x="600" y="88" font-size="9" fill="#666">启用页毒化</text>
+    <text x="435" y="108" font-family="monospace" font-size="10" fill="#333">page_owner=on</text>
+    <text x="600" y="108" font-size="9" fill="#666">启用页分配追踪</text>
+    <text x="435" y="128" font-family="monospace" font-size="10" fill="#333">init_on_alloc=1</text>
+    <text x="600" y="128" font-size="9" fill="#666">运行时启用分配清零</text>
+    <text x="435" y="148" font-family="monospace" font-size="10" fill="#333">init_on_free=1</text>
+    <text x="600" y="148" font-size="9" fill="#666">运行时启用释放清零</text>
+
+    <!-- Runtime -->
+    <rect x="780" y="35" width="1" height="105" fill="#e0e0e0"/>
+    <text x="800" y="48" font-size="10" font-weight="bold" fill="#6a1b9a">debugfs / proc (运行时)</text>
+    <text x="805" y="68" font-family="monospace" font-size="9" fill="#333">/sys/kernel/debug/page_owner</text>
+    <text x="1050" y="68" font-size="8" fill="#999">页分配追踪信息</text>
+    <text x="805" y="88" font-family="monospace" font-size="9" fill="#333">/sys/kernel/debug/kfence/stats</text>
+    <text x="1050" y="88" font-size="8" fill="#999">KFENCE 统计信息</text>
+    <text x="805" y="108" font-family="monospace" font-size="9" fill="#333">/proc/slabinfo</text>
+    <text x="1050" y="108" font-size="8" fill="#999">slab 分配器统计</text>
+    <text x="805" y="128" font-family="monospace" font-size="9" fill="#333">cat /proc/meminfo | grep Slab</text>
+    <text x="1050" y="128" font-size="8" fill="#999">slab 内存占用</text>
+  </g>
+
+  <!-- 底部互斥/依赖说明 -->
+  <g transform="translate(15,835)">
+    <rect width="1260" height="120" rx="6" fill="#fafafa" stroke="#cfd8dc" stroke-width="1"/>
+    <text x="20" y="20" font-size="11" font-weight="bold" fill="#37474f">⚠ 互斥与依赖关系</text>
+    <text x="30" y="40" font-size="10" fill="#333">• KASAN_GENERIC / KASAN_SW_TAGS / KASAN_HW_TAGS 三者互斥，同一内核只能启用一种</text>
+    <text x="30" y="58" font-size="10" fill="#333">• KASAN 与 KMSAN (内存未初始化检测器) 互斥 · KASAN 与 KCSAN (数据竞争检测器) 互斥</text>
+    <text x="30" y="76" font-size="10" fill="#333">• KASAN_HW_TAGS 需要 ARMv8.5-MemTag 硬件支持 · KASAN_SW_TAGS 需要 ARM64 TBI (Top Byte Ignore)</text>
+    <text x="30" y="94" font-size="10" fill="#333">• KFENCE 可与 KASAN 同时使用（互补：KFENCE 采样 + KASAN 全量）</text>
+    <text x="30" y="112" font-size="10" fill="#333">• SLUB_DEBUG 需要 SYSFS 且不兼容 SLUB_TINY · DEBUG_PAGEALLOC 不兼容 HIBERNATION (部分架构)</text>
+  </g>
+
+  <!-- 来源 -->
+  <text x="650" y="975" text-anchor="middle" font-size="9" fill="#90a4ae">源码：lib/Kconfig.kasan · lib/Kconfig.kfence · mm/Kconfig.debug · security/Kconfig.hardening · Documentation/dev-tools/</text>
+</svg>

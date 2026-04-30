@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+<defs>
+  <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+  <linearGradient id="hDev" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8e44ad"/><stop offset="100%" stop-color="#6c3483"/></linearGradient>
+  <linearGradient id="hDbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e67e22"/><stop offset="100%" stop-color="#d35400"/></linearGradient>
+  <linearGradient id="hProd" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#27ae60"/><stop offset="100%" stop-color="#1e8449"/></linearGradient>
+  <linearGradient id="hMax" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e74c3c"/><stop offset="100%" stop-color="#c0392b"/></linearGradient>
+  <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#555" stroke-width="1.5"/></marker>
+  <marker id="aD" markerWidth="10" markerHeight="7" refX="5" refY="7" orient="auto"><path d="M1,1 L5,6 L9,1" fill="none" stroke="#555" stroke-width="1.5"/></marker>
+</defs>
+
+<!-- 标题 -->
+<text x="600" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#2c3e50">MemoryOverwritten 各层协同与组合策略</text>
+<text x="600" y="52" text-anchor="middle" font-size="11" fill="#7f8c8d">四种推荐组合方案 — 从开发调试到生产部署的渐进式防御</text>
+
+<!-- 方案 1: 开发阶段 -->
+<g transform="translate(30,75)">
+  <rect x="0" y="0" width="550" height="300" rx="10" fill="#fff" stroke="#8e44ad" stroke-width="2" filter="url(#sh)"/>
+  <rect x="0" y="0" width="550" height="32" rx="10" fill="url(#hDev)"/>
+  <rect x="0" y="22" width="550" height="10" fill="#6c3483"/>
+  <text x="275" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">方案 A: 开发阶段全检测</text>
+  <text x="20" y="52" font-size="11" fill="#8e44ad" font-weight="bold">目标：最大覆盖率，不考虑性能</text>
+
+  <!-- 编译层 -->
+  <rect x="15" y="65" width="520" height="28" rx="5" fill="#fef5f5" stroke="#e74c3c" stroke-width="1"/>
+  <text x="275" y="84" text-anchor="middle" font-size="11" fill="#c0392b">编译层: FORTIFY_SOURCE + STACKPROTECTOR_STRONG + INIT_STACK_ALL_ZERO</text>
+
+  <!-- 分配器层 -->
+  <rect x="15" y="100" width="520" height="28" rx="5" fill="#fdf5ef" stroke="#e67e22" stroke-width="1"/>
+  <text x="275" y="119" text-anchor="middle" font-size="11" fill="#d35400">分配器: SLUB_DEBUG=FPUZ + INIT_ON_ALLOC_DEFAULT_ON + PAGE_POISONING</text>
+
+  <!-- 访问检查层 -->
+  <rect x="15" y="135" width="520" height="28" rx="5" fill="#eaf2f8" stroke="#2980b9" stroke-width="1"/>
+  <text x="275" y="154" text-anchor="middle" font-size="11" fill="#1a5276">访问层: KASAN_GENERIC (shadow memory 全量插桩)</text>
+
+  <!-- 硬件层 -->
+  <rect x="15" y="170" width="520" height="28" rx="5" fill="#eafaf1" stroke="#27ae60" stroke-width="1"/>
+  <text x="275" y="189" text-anchor="middle" font-size="11" fill="#1e8449">硬件层: STRICT_KERNEL_RWX + HARDENED_USERCOPY + PAN</text>
+
+  <!-- 特性说明 -->
+  <text x="20" y="218" font-size="11" fill="#555">覆盖率: ★★★★★ — 字节级 OOB/UAF/堆栈溢出全覆盖</text>
+  <text x="20" y="236" font-size="11" fill="#555">性能开销: 内存 +87% (shadow)，CPU +50~100%</text>
+  <text x="20" y="254" font-size="11" fill="#555">检测延迟: 即时（每次 load/store 都检查）</text>
+  <text x="20" y="272" font-size="11" fill="#e74c3c" font-weight="bold">⚠ 不适合生产环境 — 仅用于开发/CI 测试</text>
+  <text x="20" y="290" font-size="10" fill="#888">注: KASAN 与 KFENCE 互斥，此方案选 KASAN 全量模式</text>
+</g>
+
+<!-- 方案 2: 调试阶段 -->
+<g transform="translate(620,75)">
+  <rect x="0" y="0" width="550" height="300" rx="10" fill="#fff" stroke="#e67e22" stroke-width="2" filter="url(#sh)"/>
+  <rect x="0" y="0" width="550" height="32" rx="10" fill="url(#hDbg)"/>
+  <rect x="0" y="22" width="550" height="10" fill="#d35400"/>
+  <text x="275" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">方案 B: 调试/预发布阶段</text>
+  <text x="20" y="52" font-size="11" fill="#e67e22" font-weight="bold">目标：平衡检测率与性能</text>
+
+  <!-- 编译层 -->
+  <rect x="15" y="65" width="520" height="28" rx="5" fill="#fef5f5" stroke="#e74c3c" stroke-width="1"/>
+  <text x="275" y="84" text-anchor="middle" font-size="11" fill="#c0392b">编译层: FORTIFY_SOURCE + STACKPROTECTOR_STRONG + INIT_STACK_ALL_ZERO</text>
+
+  <!-- 分配器层 -->
+  <rect x="15" y="100" width="520" height="28" rx="5" fill="#fdf5ef" stroke="#e67e22" stroke-width="1"/>
+  <text x="275" y="119" text-anchor="middle" font-size="11" fill="#d35400">分配器: SLUB_DEBUG=FZ (特定 cache) + INIT_ON_FREE_DEFAULT_ON</text>
+
+  <!-- 访问检查层 -->
+  <rect x="15" y="135" width="520" height="28" rx="5" fill="#eaf2f8" stroke="#2980b9" stroke-width="1"/>
+  <text x="275" y="154" text-anchor="middle" font-size="11" fill="#1a5276">访问层: KFENCE (采样) + mprotect 保护关键数据</text>
+
+  <!-- 硬件层 -->
+  <rect x="15" y="170" width="520" height="28" rx="5" fill="#eafaf1" stroke="#27ae60" stroke-width="1"/>
+  <text x="275" y="189" text-anchor="middle" font-size="11" fill="#1e8449">硬件层: STRICT_KERNEL_RWX + PAN + __ro_after_init</text>
+
+  <!-- 特性说明 -->
+  <text x="20" y="218" font-size="11" fill="#555">覆盖率: ★★★☆☆ — 采样检测 + 特定 cache 全检测</text>
+  <text x="20" y="236" font-size="11" fill="#555">性能开销: 内存 +5~10%，CPU +1~5%</text>
+  <text x="20" y="254" font-size="11" fill="#555">检测延迟: KFENCE 采样(默认 100ms)，SLUB 分配/释放时</text>
+  <text x="20" y="272" font-size="11" fill="#27ae60" font-weight="bold">✓ 适合预发布和内部测试环境</text>
+  <text x="20" y="290" font-size="10" fill="#888">KFENCE sample_interval 可调，slub_debug 可指定 cache</text>
+</g>
+
+<!-- 方案 3: 生产环境 -->
+<g transform="translate(30,400)">
+  <rect x="0" y="0" width="550" height="300" rx="10" fill="#fff" stroke="#27ae60" stroke-width="2" filter="url(#sh)"/>
+  <rect x="0" y="0" width="550" height="32" rx="10" fill="url(#hProd)"/>
+  <rect x="0" y="22" width="550" height="10" fill="#1e8449"/>
+  <text x="275" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">方案 C: 生产环境轻量防御</text>
+  <text x="20" y="52" font-size="11" fill="#27ae60" font-weight="bold">目标：最小性能影响，持续监控</text>
+
+  <!-- 编译层 -->
+  <rect x="15" y="65" width="520" height="28" rx="5" fill="#fef5f5" stroke="#e74c3c" stroke-width="1"/>
+  <text x="275" y="84" text-anchor="middle" font-size="11" fill="#c0392b">编译层: FORTIFY_SOURCE + STACKPROTECTOR_STRONG + INIT_STACK_ALL_ZERO</text>
+
+  <!-- 分配器层 -->
+  <rect x="15" y="100" width="520" height="28" rx="5" fill="#fdf5ef" stroke="#e67e22" stroke-width="1"/>
+  <text x="275" y="119" text-anchor="middle" font-size="11" fill="#d35400">分配器: INIT_ON_FREE_DEFAULT_ON（仅零初始化，无 redzone）</text>
+
+  <!-- 访问检查层 -->
+  <rect x="15" y="135" width="520" height="28" rx="5" fill="#eaf2f8" stroke="#2980b9" stroke-width="1"/>
+  <text x="275" y="154" text-anchor="middle" font-size="11" fill="#1a5276">访问层: KFENCE (sample_interval=500ms，低采样率)</text>
+
+  <!-- 硬件层 -->
+  <rect x="15" y="170" width="520" height="28" rx="5" fill="#eafaf1" stroke="#27ae60" stroke-width="1"/>
+  <text x="275" y="189" text-anchor="middle" font-size="11" fill="#1e8449">硬件层: STRICT_KERNEL_RWX + PAN + __ro_after_init + MTE(如可用)</text>
+
+  <!-- 特性说明 -->
+  <text x="20" y="218" font-size="11" fill="#555">覆盖率: ★★☆☆☆ — 采样 + 编译期 + 硬件保护</text>
+  <text x="20" y="236" font-size="11" fill="#555">性能开销: 内存 &lt;1%，CPU &lt;1%</text>
+  <text x="20" y="254" font-size="11" fill="#555">检测延迟: KFENCE 延迟采样，编译期/硬件即时</text>
+  <text x="20" y="272" font-size="11" fill="#27ae60" font-weight="bold">✓ 推荐生产环境长期开启</text>
+  <text x="20" y="290" font-size="10" fill="#888">编译期防御零开销，KFENCE/INIT_ON_FREE 开销极低</text>
+</g>
+
+<!-- 方案 4: MTE 硬件加速 -->
+<g transform="translate(620,400)">
+  <rect x="0" y="0" width="550" height="300" rx="10" fill="#fff" stroke="#e74c3c" stroke-width="2" filter="url(#sh)"/>
+  <rect x="0" y="0" width="550" height="32" rx="10" fill="url(#hMax)"/>
+  <rect x="0" y="22" width="550" height="10" fill="#c0392b"/>
+  <text x="275" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">方案 D: MTE 硬件加速 (未来)</text>
+  <text x="20" y="52" font-size="11" fill="#e74c3c" font-weight="bold">目标：硬件级全量检测，接近零开销</text>
+
+  <!-- 编译层 -->
+  <rect x="15" y="65" width="520" height="28" rx="5" fill="#fef5f5" stroke="#e74c3c" stroke-width="1"/>
+  <text x="275" y="84" text-anchor="middle" font-size="11" fill="#c0392b">编译层: FORTIFY_SOURCE + STACKPROTECTOR + INIT_STACK_ALL_ZERO</text>
+
+  <!-- 分配器层 -->
+  <rect x="15" y="100" width="520" height="28" rx="5" fill="#fdf5ef" stroke="#e67e22" stroke-width="1"/>
+  <text x="275" y="119" text-anchor="middle" font-size="11" fill="#d35400">分配器: INIT_ON_FREE + 分配器 tag 着色 (MTE 集成)</text>
+
+  <!-- 访问检查层 -->
+  <rect x="15" y="135" width="520" height="28" rx="5" fill="#eaf2f8" stroke="#2980b9" stroke-width="1"/>
+  <text x="275" y="154" text-anchor="middle" font-size="11" fill="#1a5276">访问层: KASAN_HW_TAGS (MTE 硬件标签检查)</text>
+
+  <!-- 硬件层 -->
+  <rect x="15" y="170" width="520" height="28" rx="5" fill="#eafaf1" stroke="#27ae60" stroke-width="1"/>
+  <text x="275" y="189" text-anchor="middle" font-size="11" fill="#1e8449">硬件层: MTE + PAN + BTI + PAC + STRICT_KERNEL_RWX</text>
+
+  <!-- 特性说明 -->
+  <text x="20" y="218" font-size="11" fill="#555">覆盖率: ★★★★☆ — 16B 粒度 tag 全量检测</text>
+  <text x="20" y="236" font-size="11" fill="#555">性能开销: CPU &lt;5%，内存 +3% (tag storage)</text>
+  <text x="20" y="254" font-size="11" fill="#555">检测延迟: 即时（硬件每次访问自动检查）</text>
+  <text x="20" y="272" font-size="11" fill="#e74c3c" font-weight="bold">★ 需要 ARMv8.5-MTE 硬件支持</text>
+  <text x="20" y="290" font-size="10" fill="#888">mte_set_mem_tag_range() 分配时着色，硬件自动校验</text>
+</g>
+
+<!-- 底部: 渐进式部署路径 -->
+<g transform="translate(30,730)">
+  <rect x="0" y="0" width="1140" height="40" rx="8" fill="#f8f9fa" stroke="#bdc3c7" stroke-width="1"/>
+  <text x="20" y="15" font-size="11" fill="#2c3e50" font-weight="bold">渐进式部署路径:</text>
+  <rect x="180" y="6" width="130" height="28" rx="5" fill="#f5eef8" stroke="#8e44ad" stroke-width="1.5"/>
+  <text x="245" y="24" text-anchor="middle" font-size="11" fill="#8e44ad" font-weight="bold">A: 开发/CI</text>
+  <path d="M315,20 L350,20" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#aR)"/>
+  <rect x="355" y="6" width="130" height="28" rx="5" fill="#fdf5ef" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="420" y="24" text-anchor="middle" font-size="11" fill="#e67e22" font-weight="bold">B: 预发布</text>
+  <path d="M490,20 L525,20" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#aR)"/>
+  <rect x="530" y="6" width="130" height="28" rx="5" fill="#eafaf1" stroke="#27ae60" stroke-width="1.5"/>
+  <text x="595" y="24" text-anchor="middle" font-size="11" fill="#27ae60" font-weight="bold">C: 生产</text>
+  <path d="M665,20 L700,20" fill="none" stroke="#555" stroke-width="1.5" marker-end="url(#aR)"/>
+  <rect x="705" y="6" width="180" height="28" rx="5" fill="#fef5f5" stroke="#e74c3c" stroke-width="1.5"/>
+  <text x="795" y="24" text-anchor="middle" font-size="11" fill="#e74c3c" font-weight="bold">D: MTE 硬件升级</text>
+  <text x="920" y="24" font-size="11" fill="#7f8c8d">编译期防御全程保持</text>
+</g>
+</svg>

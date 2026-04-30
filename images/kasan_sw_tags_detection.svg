@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 860" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+<defs>
+  <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+  <linearGradient id="hdrTBI" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#66BB6A"/></linearGradient>
+  <linearGradient id="hdrPRNG" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1565C0"/><stop offset="100%" stop-color="#42A5F5"/></linearGradient>
+  <linearGradient id="hdrRing" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6A1B9A"/><stop offset="100%" stop-color="#AB47BC"/></linearGradient>
+  <linearGradient id="hdrChk" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#E65100"/><stop offset="100%" stop-color="#FF9800"/></linearGradient>
+  <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2E7D32" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#E65100" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6A1B9A" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#C62828" stroke-width="1.5" stroke-linejoin="round"/></marker>
+</defs>
+
+<text x="600" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#212121">SW_TAGS KASAN — TBI 指针标签 + Shadow Tag 比较检测原理</text>
+<text x="600" y="48" text-anchor="middle" font-size="11" fill="#757575">源码：mm/kasan/sw_tags.c · mm/kasan/tags.c · arch/arm64/Makefile (SCALE_SHIFT=4)</text>
+
+<!-- ===== TBI 指针结构 ===== -->
+<g transform="translate(30,65)" filter="url(#sh)">
+  <rect width="540" height="200" rx="8" fill="#fff" stroke="#2E7D32" stroke-width="2"/>
+  <rect width="540" height="30" rx="8" fill="url(#hdrTBI)"/>
+  <rect y="22" width="540" height="8" fill="#2E7D32"/>
+  <text x="270" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">ARM64 TBI (Top Byte Ignore) — 指针 Tag 嵌入</text>
+
+  <text x="15" y="50" font-size="10" fill="#2E7D32" font-weight="bold">ARM64 虚拟地址 64-bit 格式：</text>
+
+  <!-- 64-bit pointer layout -->
+  <rect x="20" y="60" width="60" height="36" rx="4" fill="#66BB6A" stroke="#2E7D32" stroke-width="2"/>
+  <text x="50" y="78" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">Tag</text>
+  <text x="50" y="90" text-anchor="middle" font-size="8" fill="#fff">[63:56]</text>
+
+  <rect x="82" y="60" width="448" height="36" rx="4" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.5"/>
+  <text x="306" y="78" text-anchor="middle" font-size="10" font-weight="bold" fill="#1565C0">Virtual Address (56 bits)</text>
+  <text x="306" y="90" text-anchor="middle" font-size="8" fill="#1565C0">[55:0] — CPU 在地址翻译时忽略 Top Byte</text>
+
+  <text x="15" y="118" font-size="10" fill="#555">• ARM64 TBI 特性：CPU 在虚拟地址翻译时忽略高 8 位</text>
+  <text x="15" y="134" font-size="10" fill="#555">• SW_TAGS 利用此特性在指针高字节嵌入 8-bit 随机 Tag</text>
+  <text x="15" y="150" font-size="10" fill="#555">• Tag 范围：0x00 ~ 0xFD（KASAN_TAG_MAX），共 254 个有效值</text>
+  <text x="15" y="166" font-size="10" fill="#555">• 0xFF = KASAN_TAG_KERNEL — 原生内核指针，跳过检查</text>
+  <text x="15" y="182" font-size="10" fill="#555">• 0xFE = KASAN_TAG_INVALID — 不可访问标记</text>
+  <text x="15" y="198" font-size="10" fill="#C62828" font-weight="bold">• 漏检概率：1/254 ≈ 0.4%（两个不同对象碰巧同 Tag）</text>
+</g>
+
+<!-- ===== PRNG Tag 生成 ===== -->
+<g transform="translate(600,65)" filter="url(#sh)">
+  <rect width="570" height="200" rx="8" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <rect width="570" height="30" rx="8" fill="url(#hdrPRNG)"/>
+  <rect y="22" width="570" height="8" fill="#1565C0"/>
+  <text x="285" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Per-CPU PRNG Tag 生成算法</text>
+
+  <text x="15" y="50" font-size="10" fill="#1565C0" font-weight="bold">线性同余生成器 (LCG)：</text>
+
+  <rect x="15" y="58" width="540" height="50" rx="6" fill="#F5F5F5" stroke="#BDBDBD" stroke-width="1"/>
+  <text x="30" y="76" font-size="11" font-family="monospace" fill="#333">state = 1664525 * state + 1013904223;</text>
+  <text x="30" y="96" font-size="11" font-family="monospace" fill="#333">tag = (u8)(state % (KASAN_TAG_MAX + 1));</text>
+
+  <text x="15" y="126" font-size="10" fill="#555">• 每个 CPU 独立的 PRNG 状态：DEFINE_PER_CPU(u32, prng_state)</text>
+  <text x="15" y="142" font-size="10" fill="#555">• 初始种子：get_cycles()（CPU 周期计数器）</text>
+  <text x="15" y="158" font-size="10" fill="#555">• 非原子 RMW：中断随机打断只会增加随机性（正面效果）</text>
+  <text x="15" y="174" font-size="10" fill="#555">• 性能优先：不使用强密码学 PRNG，降低开销</text>
+  <text x="15" y="190" font-size="10" fill="#888">a = 1664525, c = 1013904223（Knuth 推荐的 LCG 参数）</text>
+</g>
+
+<!-- ===== Tag 比较检测流程 ===== -->
+<g transform="translate(30,295)" filter="url(#sh)">
+  <rect width="740" height="260" rx="8" fill="#fff" stroke="#E65100" stroke-width="2"/>
+  <rect width="740" height="30" rx="8" fill="url(#hdrChk)"/>
+  <rect y="22" width="740" height="8" fill="#E65100"/>
+  <text x="370" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">SW_TAGS 检测流程 — Pointer Tag vs Memory Tag 比较</text>
+
+  <!-- Step 1: Pointer -->
+  <text x="15" y="52" font-size="11" font-weight="bold" fill="#E65100">① 分配时：指针嵌入随机 Tag</text>
+  <rect x="15" y="60" width="60" height="26" rx="4" fill="#66BB6A" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="45" y="77" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">0xA3</text>
+  <rect x="77" y="60" width="200" height="26" rx="4" fill="#E3F2FD" stroke="#1565C0" stroke-width="1"/>
+  <text x="177" y="77" text-anchor="middle" font-size="10" fill="#1565C0">0x00FFFF80_12340000</text>
+  <text x="290" y="77" font-size="10" fill="#555">← kmalloc 返回的 tagged 指针</text>
+
+  <!-- Step 2: Shadow -->
+  <text x="15" y="106" font-size="11" font-weight="bold" fill="#E65100">② 同时：Shadow Memory 存储同一 Tag</text>
+  <rect x="15" y="114" width="320" height="26" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="175" y="131" text-anchor="middle" font-size="10" fill="#E65100">Shadow[addr/16] = 0xA3, Shadow[addr/16+1] = 0xA3, ...</text>
+  <text x="350" y="131" font-size="10" fill="#555">← 16B 粒度（SCALE_SHIFT=4）</text>
+
+  <!-- Step 3: Check -->
+  <text x="15" y="160" font-size="11" font-weight="bold" fill="#E65100">③ 访问时：编译器插桩比较两个 Tag</text>
+  <rect x="15" y="168" width="710" height="75" rx="6" fill="#F5F5F5" stroke="#BDBDBD" stroke-width="1"/>
+  <text x="30" y="186" font-size="10" font-family="monospace" fill="#333">ptr_tag = get_tag(addr);              // 提取指针高字节 = 0xA3</text>
+  <text x="30" y="202" font-size="10" font-family="monospace" fill="#333">if (ptr_tag == KASAN_TAG_KERNEL)  return true;  // 0xFF 跳过</text>
+  <text x="30" y="218" font-size="10" font-family="monospace" fill="#333">mem_tag = *kasan_mem_to_shadow(reset_tag(addr)); // Shadow 中的 Tag</text>
+  <text x="30" y="234" font-size="10" font-family="monospace" fill="#C62828" font-weight="bold">if (ptr_tag != mem_tag)  kasan_report();  // 不匹配 → 报错！</text>
+</g>
+
+<!-- ===== Stack Ring ===== -->
+<g transform="translate(800,295)" filter="url(#sh)">
+  <rect width="370" height="260" rx="8" fill="#fff" stroke="#6A1B9A" stroke-width="2"/>
+  <rect width="370" height="30" rx="8" fill="url(#hdrRing)"/>
+  <rect y="22" width="370" height="8" fill="#6A1B9A"/>
+  <text x="185" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Stack Ring 环形缓冲区</text>
+
+  <text x="15" y="52" font-size="10" fill="#6A1B9A" font-weight="bold">替代 Generic 的 Per-object Meta 方案</text>
+
+  <!-- Ring buffer visual -->
+  <rect x="20" y="62" width="330" height="80" rx="6" fill="#F3E5F5" stroke="#CE93D8" stroke-width="1"/>
+  <text x="25" y="78" font-size="9" font-family="monospace" fill="#333">entries[0]: {ptr, size, track, is_free}</text>
+  <text x="25" y="92" font-size="9" font-family="monospace" fill="#333">entries[1]: {ptr, size, track, is_free}</text>
+  <text x="25" y="106" font-size="9" font-family="monospace" fill="#6A1B9A" font-weight="bold">entries[N]: {ptr, size, track, is_free} ← pos</text>
+  <text x="25" y="120" font-size="9" font-family="monospace" fill="#333">entries[N+1]: ... (环形覆盖)</text>
+
+  <text x="15" y="158" font-size="10" fill="#555">• 默认 32K entries（可 boot 参数调整）</text>
+  <text x="15" y="174" font-size="10" fill="#555">• atomic64 pos 推进 + CAS 防止并发冲突</text>
+  <text x="15" y="190" font-size="10" fill="#555">• alloc 和 free 时都写入 Ring</text>
+  <text x="15" y="206" font-size="10" fill="#555">• 报告错误时遍历 Ring 查找匹配对象</text>
+  <text x="15" y="222" font-size="10" fill="#555">• rwlock 保护：写入 read_lock，</text>
+  <text x="15" y="238" font-size="10" fill="#555">  报告遍历 write_lock（互斥遍历）</text>
+</g>
+
+<!-- ===== 下方：与 Generic 的关键差异 ===== -->
+<g transform="translate(30,585)" filter="url(#sh)">
+  <rect width="1140" height="250" rx="8" fill="#fff" stroke="#757575" stroke-width="1.5"/>
+  <text x="570" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">SW_TAGS vs Generic — 核心差异对比</text>
+
+  <!-- Header row -->
+  <rect x="0" y="32" width="1140" height="24" fill="#F5F5F5"/>
+  <text x="120" y="48" text-anchor="middle" font-size="10" font-weight="bold" fill="#333">维度</text>
+  <text x="420" y="48" text-anchor="middle" font-size="10" font-weight="bold" fill="#1565C0">Generic KASAN</text>
+  <text x="870" y="48" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">SW_TAGS KASAN</text>
+  <line x1="0" y1="56" x2="1140" y2="56" stroke="#E0E0E0" stroke-width="1"/>
+
+  <text x="120" y="73" text-anchor="middle" font-size="10" fill="#555">Shadow 含义</text>
+  <text x="420" y="73" text-anchor="middle" font-size="10" fill="#333">编码可访问性状态（0x00=可用, 0xFB=freed...）</text>
+  <text x="870" y="73" text-anchor="middle" font-size="10" fill="#333">存储内存 Tag 值（0x00~0xFD 随机 Tag）</text>
+  <line x1="10" y1="80" x2="1130" y2="80" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="120" y="97" text-anchor="middle" font-size="10" fill="#555">检测方法</text>
+  <text x="420" y="97" text-anchor="middle" font-size="10" fill="#333">Shadow != 0 → 检查 (addr&amp;7) vs shadow</text>
+  <text x="870" y="97" text-anchor="middle" font-size="10" fill="#333">指针 Tag != Shadow Tag → 报错</text>
+  <line x1="10" y1="104" x2="1130" y2="104" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="120" y="121" text-anchor="middle" font-size="10" fill="#555">粒度</text>
+  <text x="420" y="121" text-anchor="middle" font-size="10" fill="#333">8 字节（SCALE_SHIFT=3）— 字节级精度</text>
+  <text x="870" y="121" text-anchor="middle" font-size="10" fill="#333">16 字节（SCALE_SHIFT=4）— 16B 粒度</text>
+  <line x1="10" y1="128" x2="1130" y2="128" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="120" y="145" text-anchor="middle" font-size="10" fill="#555">元数据</text>
+  <text x="420" y="145" text-anchor="middle" font-size="10" fill="#333">Per-object: kasan_alloc_meta + kasan_free_meta</text>
+  <text x="870" y="145" text-anchor="middle" font-size="10" fill="#333">Stack Ring: 全局环形缓冲区（无 per-object meta）</text>
+  <line x1="10" y1="152" x2="1130" y2="152" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="120" y="169" text-anchor="middle" font-size="10" fill="#555">Quarantine</text>
+  <text x="420" y="169" text-anchor="middle" font-size="10" fill="#333">✓ 有（Per-CPU + Global 隔离区）</text>
+  <text x="870" y="169" text-anchor="middle" font-size="10" fill="#333">✗ 无（释放后立即归还 SLUB）</text>
+  <line x1="10" y1="176" x2="1130" y2="176" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="120" y="193" text-anchor="middle" font-size="10" fill="#555">编译器</text>
+  <text x="420" y="193" text-anchor="middle" font-size="10" fill="#333">-fsanitize=kernel-address (ASan)</text>
+  <text x="870" y="193" text-anchor="middle" font-size="10" fill="#333">-fsanitize=kernel-hwaddress (HWASan)</text>
+  <line x1="10" y1="200" x2="1130" y2="200" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="120" y="217" text-anchor="middle" font-size="10" fill="#555">栈/全局保护</text>
+  <text x="420" y="217" text-anchor="middle" font-size="10" fill="#333">✓ 支持（CONFIG_KASAN_STACK + 构造函数）</text>
+  <text x="870" y="217" text-anchor="middle" font-size="10" fill="#333">✗ 不支持（仅堆检测）</text>
+  <line x1="10" y1="224" x2="1130" y2="224" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <text x="120" y="241" text-anchor="middle" font-size="10" fill="#555">检测确定性</text>
+  <text x="420" y="241" text-anchor="middle" font-size="10" font-weight="bold" fill="#1565C0">确定性 100%（Shadow 精确编码状态）</text>
+  <text x="870" y="241" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">概率性 ~99.6%（Tag 碰撞 1/254 漏检）</text>
+</g>
+</svg>

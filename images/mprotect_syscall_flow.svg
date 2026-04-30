@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1050 600" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hB" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+    <linearGradient id="hG" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#10b981"/></linearGradient>
+    <linearGradient id="hR" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#ef4444"/></linearGradient>
+    <linearGradient id="hP" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient>
+    <linearGradient id="hO" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#d97706"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#059669" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#d97706" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="525" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e293b">mprotect 系统调用完整执行路径</text>
+  <text x="525" y="46" text-anchor="middle" font-size="11" fill="#64748b">用户态 mprotect() → SYSCALL_DEFINE3 → do_mprotect_pkey → mprotect_fixup → change_pte_range → pte_modify</text>
+
+  <!-- Step 1: SYSCALL_DEFINE3 -->
+  <g transform="translate(30, 65)">
+    <rect width="200" height="90" rx="8" fill="#fff" stroke="#2563eb" stroke-width="2" filter="url(#sh)"/>
+    <rect width="200" height="28" rx="8" fill="url(#hB)"/>
+    <rect x="0" y="20" width="200" height="8" fill="#3b82f6"/>
+    <text x="100" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">① SYSCALL_DEFINE3</text>
+    <text x="15" y="46" font-size="10" font-family="monospace">mprotect(start,len,prot)</text>
+    <text x="15" y="62" font-size="9" fill="#6b7280">mm/mprotect.c:1008</text>
+    <text x="15" y="78" font-size="10" fill="#2563eb">→ do_mprotect_pkey(..,-1)</text>
+  </g>
+
+  <!-- Step 2: do_mprotect_pkey -->
+  <g transform="translate(280, 65)">
+    <rect width="230" height="90" rx="8" fill="#fff" stroke="#059669" stroke-width="2" filter="url(#sh)"/>
+    <rect width="230" height="28" rx="8" fill="url(#hG)"/>
+    <rect x="0" y="20" width="230" height="8" fill="#10b981"/>
+    <text x="115" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">② do_mprotect_pkey()</text>
+    <text x="15" y="46" font-size="10" font-family="monospace">参数校验 + VMA 遍历</text>
+    <text x="15" y="62" font-size="9" fill="#6b7280">mm/mprotect.c:861</text>
+    <text x="15" y="78" font-size="10" fill="#059669">calc_vm_prot_bits(prot)</text>
+  </g>
+
+  <!-- Arrow 1→2 -->
+  <path d="M230,110 L280,110" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#aB)"/>
+
+  <!-- Step 3: vma_modify_flags -->
+  <g transform="translate(560, 65)">
+    <rect width="210" height="90" rx="8" fill="#fff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+    <rect width="210" height="28" rx="8" fill="url(#hP)"/>
+    <rect x="0" y="20" width="210" height="8" fill="#8b5cf6"/>
+    <text x="105" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">③ vma_modify_flags()</text>
+    <text x="15" y="46" font-size="10" font-family="monospace">VMA 拆分/合并</text>
+    <text x="15" y="62" font-size="9" fill="#6b7280">mm/vma.c — 跨越 VMA 边界时拆分</text>
+    <text x="15" y="78" font-size="10" fill="#7c3aed">vm_flags_reset(newflags)</text>
+  </g>
+
+  <!-- Arrow 2→3 -->
+  <path d="M510,110 L560,110" fill="none" stroke="#059669" stroke-width="2" marker-end="url(#aG)"/>
+
+  <!-- Step 4: mprotect_fixup -->
+  <g transform="translate(820, 65)">
+    <rect width="200" height="90" rx="8" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+    <rect width="200" height="28" rx="8" fill="url(#hO)"/>
+    <rect x="0" y="20" width="200" height="8" fill="#f59e0b"/>
+    <text x="100" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">④ mprotect_fixup()</text>
+    <text x="15" y="46" font-size="10" font-family="monospace">VMA sealed 检查</text>
+    <text x="15" y="62" font-size="9" fill="#6b7280">mm/mprotect.c:755</text>
+    <text x="15" y="78" font-size="10" fill="#d97706">vma_set_page_prot(vma)</text>
+  </g>
+
+  <!-- Arrow 3→4 -->
+  <path d="M770,110 L820,110" fill="none" stroke="#7c3aed" stroke-width="2" marker-end="url(#aP)"/>
+
+  <!-- Row 2: change_protection chain -->
+  <!-- Step 5: change_protection -->
+  <g transform="translate(30, 210)">
+    <rect width="200" height="100" rx="8" fill="#fff" stroke="#dc2626" stroke-width="2" filter="url(#sh)"/>
+    <rect width="200" height="28" rx="8" fill="url(#hR)"/>
+    <rect x="0" y="20" width="200" height="8" fill="#ef4444"/>
+    <text x="100" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">⑤ change_protection()</text>
+    <text x="15" y="46" font-size="9" fill="#6b7280">mm/mprotect.c:693</text>
+    <text x="15" y="62" font-size="10" font-family="monospace">newprot = vma-&gt;vm_page_prot</text>
+    <text x="15" y="78" font-size="10" fill="#dc2626">→ change_protection_range()</text>
+    <text x="15" y="92" font-size="9" fill="#6b7280">hugetlb 特殊路径分流</text>
+  </g>
+
+  <!-- Arrow: Step4 down to Step5 -->
+  <path d="M920,155 L920,190 L230,190 L230,210" fill="none" stroke="#d97706" stroke-width="2" marker-end="url(#aO)"/>
+  <rect x="500" y="181" width="120" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="560" y="191" text-anchor="middle" font-size="9" fill="#d97706">mprotect_fixup 调用</text>
+
+  <!-- Step 6: change_protection_range -->
+  <g transform="translate(280, 210)">
+    <rect width="230" height="100" rx="8" fill="#fff" stroke="#2563eb" stroke-width="2" filter="url(#sh)"/>
+    <rect width="230" height="28" rx="8" fill="url(#hB)"/>
+    <rect x="0" y="20" width="230" height="8" fill="#3b82f6"/>
+    <text x="115" y="19" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">⑥ change_protection_range()</text>
+    <text x="15" y="46" font-size="9" fill="#6b7280">mm/mprotect.c — 页表四级遍历</text>
+    <text x="15" y="62" font-size="10" font-family="monospace">pgd → p4d → pud → pmd</text>
+    <text x="15" y="78" font-size="10" fill="#2563eb">逐级 offset + addr_end</text>
+    <text x="15" y="92" font-size="9" fill="#6b7280">THP 透明大页: split_huge_pmd</text>
+  </g>
+
+  <!-- Arrow 5→6 -->
+  <path d="M230,260 L280,260" fill="none" stroke="#dc2626" stroke-width="2" marker-end="url(#aR)"/>
+
+  <!-- Step 7: change_pte_range -->
+  <g transform="translate(560, 210)">
+    <rect width="210" height="100" rx="8" fill="#fff" stroke="#059669" stroke-width="2" filter="url(#sh)"/>
+    <rect width="210" height="28" rx="8" fill="url(#hG)"/>
+    <rect x="0" y="20" width="210" height="8" fill="#10b981"/>
+    <text x="105" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">⑦ change_pte_range()</text>
+    <text x="15" y="46" font-size="9" fill="#6b7280">实际修改 PTE 的核心函数</text>
+    <text x="15" y="62" font-size="10" font-family="monospace" fill="#059669">pte_modify(oldpte, newprot)</text>
+    <text x="15" y="78" font-size="10" font-family="monospace">批量: folio_pte_batch</text>
+    <text x="15" y="92" font-size="10" fill="#059669">swap PTE 也需更新</text>
+  </g>
+
+  <!-- Arrow 6→7 -->
+  <path d="M510,260 L560,260" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#aB)"/>
+
+  <!-- Step 8: Hardware commit -->
+  <g transform="translate(820, 210)">
+    <rect width="200" height="100" rx="8" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+    <rect width="200" height="28" rx="8" fill="url(#hO)"/>
+    <rect x="0" y="20" width="200" height="8" fill="#f59e0b"/>
+    <text x="100" y="19" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">⑧ PTE Commit + TLB</text>
+    <text x="15" y="46" font-size="10" font-family="monospace">set_pte_at(mm,addr,pte,new)</text>
+    <text x="15" y="62" font-size="10" font-family="monospace" fill="#d97706">flush_tlb_range()</text>
+    <text x="15" y="78" font-size="9" fill="#6b7280">TLB 失效确保新权限生效</text>
+    <text x="15" y="92" font-size="9" fill="#6b7280">mmu_notifier 通知 KVM 等</text>
+  </g>
+
+  <!-- Arrow 7→8 -->
+  <path d="M770,260 L820,260" fill="none" stroke="#059669" stroke-width="2" marker-end="url(#aG)"/>
+
+  <!-- Row 3: PTE modification detail -->
+  <g transform="translate(30, 370)">
+    <rect width="990" height="100" rx="8" fill="#fff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+    <rect width="990" height="28" rx="8" fill="url(#hP)"/>
+    <rect x="0" y="20" width="990" height="8" fill="#8b5cf6"/>
+    <text x="495" y="19" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">pte_modify() — PTE 权限位变换详解</text>
+
+    <!-- Before -->
+    <text x="30" y="50" font-size="11" font-weight="bold" fill="#374151">修改前 (RW):</text>
+    <rect x="150" y="38" width="50" height="20" rx="3" fill="#bbf7d0" stroke="#059669"/>
+    <text x="175" y="52" text-anchor="middle" font-size="9" font-family="monospace">VALID</text>
+    <rect x="205" y="38" width="50" height="20" rx="3" fill="#bbf7d0" stroke="#059669"/>
+    <text x="230" y="52" text-anchor="middle" font-size="9" font-family="monospace">USER</text>
+    <rect x="260" y="38" width="60" height="20" rx="3" fill="#bbf7d0" stroke="#059669"/>
+    <text x="290" y="52" text-anchor="middle" font-size="9" font-family="monospace">WRITE=1</text>
+    <rect x="325" y="38" width="70" height="20" rx="3" fill="#e0e7ff" stroke="#6366f1"/>
+    <text x="360" y="52" text-anchor="middle" font-size="9" font-family="monospace">RDONLY=0</text>
+    <rect x="400" y="38" width="40" height="20" rx="3" fill="#bbf7d0" stroke="#059669"/>
+    <text x="420" y="52" text-anchor="middle" font-size="9" font-family="monospace">AF</text>
+
+    <!-- Arrow -->
+    <text x="465" y="52" font-size="14" fill="#dc2626" font-weight="bold">→</text>
+
+    <!-- After -->
+    <text x="500" y="50" font-size="11" font-weight="bold" fill="#dc2626">修改后 (RO):</text>
+    <rect x="620" y="38" width="50" height="20" rx="3" fill="#bbf7d0" stroke="#059669"/>
+    <text x="645" y="52" text-anchor="middle" font-size="9" font-family="monospace">VALID</text>
+    <rect x="675" y="38" width="50" height="20" rx="3" fill="#bbf7d0" stroke="#059669"/>
+    <text x="700" y="52" text-anchor="middle" font-size="9" font-family="monospace">USER</text>
+    <rect x="730" y="38" width="60" height="20" rx="3" fill="#fecaca" stroke="#dc2626"/>
+    <text x="760" y="52" text-anchor="middle" font-size="9" font-family="monospace" fill="#dc2626">WRITE=0</text>
+    <rect x="795" y="38" width="70" height="20" rx="3" fill="#fecaca" stroke="#dc2626"/>
+    <text x="830" y="52" text-anchor="middle" font-size="9" font-family="monospace" fill="#dc2626">RDONLY=1</text>
+    <rect x="870" y="38" width="40" height="20" rx="3" fill="#bbf7d0" stroke="#059669"/>
+    <text x="890" y="52" text-anchor="middle" font-size="9" font-family="monospace">AF</text>
+
+    <!-- Explanation -->
+    <text x="30" y="82" font-size="10" fill="#6b7280">pte_modify() 保留 PFN 和属性不变位, 仅替换 pgprot 对应的权限位。set_memory_ro() 等效操作: set PTE_RDONLY + clear PTE_WRITE (PTE_DBM bit51)。</text>
+    <text x="30" y="95" font-size="10" fill="#6b7280">之后 CPU 对此页的任何 Store 指令 → MMU 检查 AP[2]=1 (只读) → 触发 Data Abort (Permission Fault at EL0/EL1)。</text>
+  </g>
+
+  <!-- Row 4: VMA split diagram -->
+  <g transform="translate(30, 500)">
+    <rect width="990" height="80" rx="8" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+    <rect width="990" height="28" rx="8" fill="url(#hO)"/>
+    <rect x="0" y="20" width="990" height="8" fill="#f59e0b"/>
+    <text x="495" y="19" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">VMA 拆分示意 — mprotect 部分区域时</text>
+
+    <!-- Before VMA -->
+    <text x="30" y="50" font-size="10" font-weight="bold" fill="#374151">原始 VMA:</text>
+    <rect x="130" y="38" width="380" height="22" rx="3" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="320" y="53" text-anchor="middle" font-size="10" font-family="monospace" fill="#2563eb">VMA [0x1000 - 0x5000) RW</text>
+
+    <text x="545" y="52" font-size="14" fill="#d97706" font-weight="bold">→</text>
+    <text x="565" y="42" font-size="9" fill="#d97706">mprotect(0x2000, 0x1000, PROT_READ)</text>
+
+    <!-- After VMAs -->
+    <rect x="565" y="48" width="120" height="22" rx="3" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="625" y="63" text-anchor="middle" font-size="9" font-family="monospace" fill="#2563eb">[1000-2000) RW</text>
+    <rect x="690" y="48" width="120" height="22" rx="3" fill="#fecaca" stroke="#dc2626"/>
+    <text x="750" y="63" text-anchor="middle" font-size="9" font-family="monospace" fill="#dc2626">[2000-3000) RO</text>
+    <rect x="815" y="48" width="120" height="22" rx="3" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="875" y="63" text-anchor="middle" font-size="9" font-family="monospace" fill="#2563eb">[3000-5000) RW</text>
+  </g>
+</svg>

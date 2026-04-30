@@ -1,0 +1,278 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1050" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hdrExc" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#e74c3c"/><stop offset="100%" stop-color="#c0392b"/></linearGradient>
+    <linearGradient id="hdrFlt" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2980b9"/><stop offset="100%" stop-color="#1a5276"/></linearGradient>
+    <linearGradient id="hdrDie" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8e44ad"/><stop offset="100%" stop-color="#6c3483"/></linearGradient>
+    <linearGradient id="hdrPnc" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#d35400"/><stop offset="100%" stop-color="#a04000"/></linearGradient>
+    <linearGradient id="hdrUsr" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#27ae60"/><stop offset="100%" stop-color="#1e8449"/></linearGradient>
+    <linearGradient id="hdrWrn" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#f39c12"/><stop offset="100%" stop-color="#d68910"/></linearGradient>
+    <marker id="arw" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#555" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arwR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#c0392b" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arwB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2980b9" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arwP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#8e44ad" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="arwO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#d35400" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="600" y="35" text-anchor="middle" font-size="20" font-weight="bold" fill="#2c3e50">ARM64 Kernel Panic / Oops 异常处理完整流程</text>
+  <text x="600" y="55" text-anchor="middle" font-size="11" fill="#7f8c8d">源码: arch/arm64/kernel/entry-common.c → arch/arm64/mm/fault.c → arch/arm64/kernel/traps.c → kernel/panic.c</text>
+
+  <!-- ========== Row 1: Exception Entry ========== -->
+  <g transform="translate(30,75)" filter="url(#sh)">
+    <rect width="260" height="165" rx="8" fill="#fff" stroke="#e74c3c" stroke-width="2"/>
+    <rect width="260" height="30" rx="8" fill="url(#hdrExc)"/>
+    <rect x="0" y="22" width="260" height="8" fill="#c0392b"/>
+    <text x="130" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">ARM64 异常向量入口</text>
+    <text x="15" y="48" font-size="10" fill="#e74c3c" font-weight="bold">硬件自动保存 PSTATE/ELR/SPSR</text>
+    <line x1="10" y1="55" x2="250" y2="55" stroke="#fde8e8" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10.5" font-family="monospace">el1h_64_sync_handler()</text>
+    <text x="200" y="70" font-size="9" fill="#888">EL1同步异常</text>
+    <text x="15" y="87" font-size="10.5" font-family="monospace">read_sysreg(esr_el1)</text>
+    <text x="200" y="87" font-size="9" fill="#888">读取ESR</text>
+    <text x="15" y="104" font-size="10.5" font-family="monospace">ESR_ELx_EC(esr)</text>
+    <text x="200" y="104" font-size="9" fill="#888">提取EC字段</text>
+    <line x1="10" y1="112" x2="250" y2="112" stroke="#fde8e8" stroke-width="0.8"/>
+    <text x="15" y="128" font-size="10" fill="#555">switch(EC) 分发:</text>
+    <text x="20" y="143" font-size="9.5" fill="#c0392b">• DABT_CUR/IABT_CUR → el1_abort()</text>
+    <text x="20" y="158" font-size="9.5" fill="#c0392b">• PC_ALIGN → el1_pc() / UNKNOWN → el1_undef()</text>
+  </g>
+
+  <!-- ========== Row 1: Fault Dispatch ========== -->
+  <g transform="translate(370,75)" filter="url(#sh)">
+    <rect width="280" height="165" rx="8" fill="#fff" stroke="#2980b9" stroke-width="2"/>
+    <rect width="280" height="30" rx="8" fill="url(#hdrFlt)"/>
+    <rect x="0" y="22" width="280" height="8" fill="#1a5276"/>
+    <text x="140" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">内存异常分发 (fault.c)</text>
+    <text x="15" y="48" font-size="10" fill="#2980b9" font-weight="bold">do_mem_abort(far, esr, regs)</text>
+    <line x1="10" y1="55" x2="270" y2="55" stroke="#d6eaf8" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10.5" font-family="monospace">esr_to_fault_info(esr)</text>
+    <text x="220" y="70" font-size="9" fill="#888">FSC查表</text>
+    <text x="15" y="87" font-size="10" fill="#555">fault_info[] 分发表(64项):</text>
+    <text x="20" y="102" font-size="9.5" fill="#2980b9">• Translation Fault → do_translation_fault()</text>
+    <text x="20" y="117" font-size="9.5" fill="#2980b9">• Permission Fault → do_page_fault()</text>
+    <text x="20" y="132" font-size="9.5" fill="#2980b9">• Sync External Abort → do_sea()</text>
+    <text x="20" y="147" font-size="9.5" fill="#2980b9">• Tag Check Fault → do_tag_check_fault()</text>
+    <text x="20" y="162" font-size="9.5" fill="#2980b9">• Alignment Fault → do_alignment_fault()</text>
+  </g>
+
+  <!-- ========== Row 1: Kernel Fault ========== -->
+  <g transform="translate(730,75)" filter="url(#sh)">
+    <rect width="260" height="165" rx="8" fill="#fff" stroke="#8e44ad" stroke-width="2"/>
+    <rect width="260" height="30" rx="8" fill="url(#hdrDie)"/>
+    <rect x="0" y="22" width="260" height="8" fill="#6c3483"/>
+    <text x="130" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">内核态异常处理</text>
+    <text x="15" y="48" font-size="10" fill="#8e44ad" font-weight="bold">__do_kernel_fault(addr, esr, regs)</text>
+    <line x1="10" y1="55" x2="250" y2="55" stroke="#e8daef" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10" fill="#555">异常消息判定:</text>
+    <text x="20" y="85" font-size="9.5" fill="#8e44ad">• addr &lt; PAGE_SIZE → "NULL pointer deref"</text>
+    <text x="20" y="100" font-size="9.5" fill="#8e44ad">• Permission + WNR → "write to read-only"</text>
+    <text x="20" y="115" font-size="9.5" fill="#8e44ad">• IABT → "execute from non-exec memory"</text>
+    <text x="20" y="130" font-size="9.5" fill="#8e44ad">• Translation → kfence_handle / "paging req"</text>
+    <line x1="10" y1="138" x2="250" y2="138" stroke="#e8daef" stroke-width="0.8"/>
+    <text x="15" y="155" font-size="10.5" font-family="monospace" fill="#8e44ad">die_kernel_fault() → die("Oops")</text>
+  </g>
+
+  <!-- Row 1 arrows -->
+  <path d="M290,157 L370,157" fill="none" stroke="#555" stroke-width="1.8" marker-end="url(#arw)"/>
+  <rect x="302" y="148" width="58" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="331" y="160" text-anchor="middle" font-size="9" fill="#555">el1_abort</text>
+
+  <path d="M650,157 L730,157" fill="none" stroke="#555" stroke-width="1.8" marker-end="url(#arw)"/>
+  <rect x="656" y="143" width="68" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="690" y="155" text-anchor="middle" font-size="9" fill="#555">内核态分支</text>
+
+  <!-- ========== Row 2: die() flow ========== -->
+  <g transform="translate(30,300)" filter="url(#sh)">
+    <rect width="340" height="195" rx="8" fill="#fff" stroke="#8e44ad" stroke-width="2"/>
+    <rect width="340" height="30" rx="8" fill="url(#hdrDie)"/>
+    <rect x="0" y="22" width="340" height="8" fill="#6c3483"/>
+    <text x="170" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">die() 完整流程 (traps.c)</text>
+    <text x="15" y="48" font-size="10" fill="#8e44ad" font-weight="bold">die(str, regs, err) — Oops 核心处理</text>
+    <line x1="10" y1="55" x2="330" y2="55" stroke="#e8daef" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10.5" font-family="monospace">1. raw_spin_lock_irqsave(&amp;die_lock)</text>
+    <text x="15" y="89" font-size="10.5" font-family="monospace">2. oops_enter()</text>
+    <text x="200" y="89" font-size="9" fill="#888">tracing_off + debug_locks_off</text>
+    <text x="15" y="106" font-size="10.5" font-family="monospace">3. console_verbose() + bust_spinlocks(1)</text>
+    <text x="15" y="123" font-size="10.5" font-family="monospace">4. __die(str, err, regs)</text>
+    <text x="200" y="123" font-size="9" fill="#888">打印Oops + show_regs</text>
+    <text x="15" y="140" font-size="10.5" font-family="monospace">5. crash_kexec(regs)</text>
+    <text x="200" y="140" font-size="9" fill="#888">若kexec_should_crash</text>
+    <text x="15" y="157" font-size="10.5" font-family="monospace">6. add_taint(TAINT_DIE)</text>
+    <text x="15" y="174" font-size="10.5" font-family="monospace">7. oops_exit()</text>
+    <text x="200" y="174" font-size="9" fill="#888">打印 end trace + kmsg_dump</text>
+    <text x="15" y="191" font-size="10.5" font-family="monospace">8. panic() 或 make_task_dead(SIGSEGV)</text>
+  </g>
+
+  <!-- ========== Row 2: __die() details ========== -->
+  <g transform="translate(430,300)" filter="url(#sh)">
+    <rect width="310" height="195" rx="8" fill="#fff" stroke="#e74c3c" stroke-width="2"/>
+    <rect width="310" height="30" rx="8" fill="url(#hdrExc)"/>
+    <rect x="0" y="22" width="310" height="8" fill="#c0392b"/>
+    <text x="155" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">__die() Oops 日志输出</text>
+    <text x="15" y="48" font-size="10" fill="#e74c3c" font-weight="bold">__die(str, err, regs) — 实际输出函数</text>
+    <line x1="10" y1="55" x2="300" y2="55" stroke="#fde8e8" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10.5" font-family="monospace">pr_emerg("Internal error: %s")</text>
+    <text x="15" y="89" font-size="10" fill="#555">输出格式:</text>
+    <text x="20" y="106" font-size="9.5" fill="#e74c3c">Internal error: Oops: 96000004 [#1] SMP</text>
+    <text x="20" y="121" font-size="9.5" fill="#888">       ESR值    第N次    SMP标识</text>
+    <line x1="10" y1="130" x2="300" y2="130" stroke="#fde8e8" stroke-width="0.8"/>
+    <text x="15" y="146" font-size="10.5" font-family="monospace">notify_die(DIE_OOPS, ...)</text>
+    <text x="235" y="146" font-size="9" fill="#888">通知链</text>
+    <text x="15" y="163" font-size="10.5" font-family="monospace">print_modules()</text>
+    <text x="235" y="163" font-size="9" fill="#888">已加载模块</text>
+    <text x="15" y="180" font-size="10.5" font-family="monospace">show_regs(regs)</text>
+    <text x="235" y="180" font-size="9" fill="#888">寄存器+栈回溯</text>
+    <text x="15" y="193" font-size="10.5" font-family="monospace">dump_kernel_instr(pc)</text>
+  </g>
+
+  <!-- ========== Row 2: show_regs ========== -->
+  <g transform="translate(800,300)" filter="url(#sh)">
+    <rect width="370" height="195" rx="8" fill="#fff" stroke="#27ae60" stroke-width="2"/>
+    <rect width="370" height="30" rx="8" fill="url(#hdrUsr)"/>
+    <rect x="0" y="22" width="370" height="8" fill="#1e8449"/>
+    <text x="185" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">Oops 日志各部分详解</text>
+    <text x="15" y="48" font-size="10" fill="#27ae60" font-weight="bold">show_regs() 输出内容</text>
+    <line x1="10" y1="55" x2="360" y2="55" stroke="#d5f5e3" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#555">① CPU / PID / Comm / Tainted / 内核版本</text>
+    <text x="15" y="89" font-size="10" fill="#555">② Hardware name (设备树 compatible)</text>
+    <text x="15" y="106" font-size="10" fill="#555">③ pstate: 20400005 (nzCv daif +PAN -UAO -TCO ...)</text>
+    <text x="15" y="123" font-size="10" fill="#555">④ pc : ffffffc0001234 lr : ffffffc0005678</text>
+    <text x="15" y="140" font-size="10" fill="#555">⑤ sp : ffffffc00089ab fp : ffffffc000cdef</text>
+    <text x="15" y="157" font-size="10" fill="#555">⑥ x0-x28 通用寄存器值</text>
+    <text x="15" y="174" font-size="10" fill="#555">⑦ Call trace: (dump_backtrace 栈回溯)</text>
+    <text x="15" y="191" font-size="10" fill="#555">⑧ Code: 指令码 (出错指令前4条+当前指令)</text>
+  </g>
+
+  <!-- Row 2 arrows -->
+  <path d="M200,240 L200,300" fill="none" stroke="#8e44ad" stroke-width="1.8" marker-end="url(#arwP)"/>
+  <path d="M370,397 L430,397" fill="none" stroke="#e74c3c" stroke-width="1.8" marker-end="url(#arwR)"/>
+  <rect x="375" y="388" width="50" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="400" y="400" text-anchor="middle" font-size="9" fill="#555">__die()</text>
+
+  <path d="M740,397 L800,397" fill="none" stroke="#27ae60" stroke-width="1.5" marker-end="url(#arw)"/>
+
+  <!-- ========== Row 3: panic() flow ========== -->
+  <g transform="translate(30,555)" filter="url(#sh)">
+    <rect width="420" height="210" rx="8" fill="#fff" stroke="#d35400" stroke-width="2"/>
+    <rect width="420" height="30" rx="8" fill="url(#hdrPnc)"/>
+    <rect x="0" y="22" width="420" height="8" fill="#a04000"/>
+    <text x="210" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">panic() 完整流程 (kernel/panic.c)</text>
+    <text x="15" y="48" font-size="10" fill="#d35400" font-weight="bold">vpanic(fmt, args) — 系统终止核心函数</text>
+    <line x1="10" y1="55" x2="410" y2="55" stroke="#fae5d3" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10.5" font-family="monospace">1. local_irq_disable() + preempt_disable()</text>
+    <text x="15" y="89" font-size="10.5" font-family="monospace">2. panic_try_start()</text>
+    <text x="250" y="89" font-size="9" fill="#888">atomic_try_cmpxchg(&amp;panic_cpu)</text>
+    <text x="15" y="106" font-size="10.5" font-family="monospace">3. pr_emerg("Kernel panic - not syncing: %s")</text>
+    <text x="15" y="123" font-size="10.5" font-family="monospace">4. dump_stack() / kgdb_panic(buf)</text>
+    <text x="15" y="140" font-size="10.5" font-family="monospace">5. __crash_kexec(NULL)</text>
+    <text x="250" y="140" font-size="9" fill="#888">若无 post_notifiers</text>
+    <text x="15" y="157" font-size="10.5" font-family="monospace">6. crash_smp_send_stop() — 停止其他CPU</text>
+    <text x="15" y="174" font-size="10.5" font-family="monospace">7. atomic_notifier_call_chain(&amp;panic_notifier_list)</text>
+    <text x="15" y="191" font-size="10.5" font-family="monospace">8. kmsg_dump(KMSG_DUMP_PANIC)</text>
+    <text x="15" y="208" font-size="10.5" font-family="monospace">9. emergency_restart() 或 死循环闪烁</text>
+  </g>
+
+  <!-- ========== Row 3: WARN/BUG path ========== -->
+  <g transform="translate(510,555)" filter="url(#sh)">
+    <rect width="300" height="210" rx="8" fill="#fff" stroke="#f39c12" stroke-width="2"/>
+    <rect width="300" height="30" rx="8" fill="url(#hdrWrn)"/>
+    <rect x="0" y="22" width="300" height="8" fill="#d68910"/>
+    <text x="150" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">WARN / BUG 宏触发路径</text>
+    <text x="15" y="48" font-size="10" fill="#f39c12" font-weight="bold">BUG() / BUG_ON() / WARN() / WARN_ON()</text>
+    <line x1="10" y1="55" x2="290" y2="55" stroke="#fef9e7" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#555" font-weight="bold">BUG() (ARM64):</text>
+    <text x="20" y="87" font-size="9.5" fill="#f39c12">brk #BUG_BRK_IMM → do_el1_brk64()</text>
+    <text x="20" y="102" font-size="9.5" fill="#f39c12">→ bug_handler() → die("Oops - BUG")</text>
+    <line x1="10" y1="112" x2="290" y2="112" stroke="#fef9e7" stroke-width="0.8"/>
+    <text x="15" y="128" font-size="10" fill="#555" font-weight="bold">WARN():</text>
+    <text x="20" y="143" font-size="9.5" fill="#f39c12">__warn(file, line, caller, taint, regs)</text>
+    <text x="20" y="158" font-size="9.5" fill="#f39c12">→ check_panic_on_warn("kernel")</text>
+    <text x="20" y="173" font-size="9.5" fill="#f39c12">→ 若 panic_on_warn → panic()</text>
+    <line x1="10" y1="183" x2="290" y2="183" stroke="#fef9e7" stroke-width="0.8"/>
+    <text x="15" y="200" font-size="10" fill="#555">BUG → 必死 / WARN → 可存活(默认)</text>
+  </g>
+
+  <!-- ========== Row 3: Stacktrace ========== -->
+  <g transform="translate(870,555)" filter="url(#sh)">
+    <rect width="300" height="210" rx="8" fill="#fff" stroke="#27ae60" stroke-width="2"/>
+    <rect width="300" height="30" rx="8" fill="url(#hdrUsr)"/>
+    <rect x="0" y="22" width="300" height="8" fill="#1e8449"/>
+    <text x="150" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">ARM64 栈回溯 (stacktrace.c)</text>
+    <text x="15" y="48" font-size="10" fill="#27ae60" font-weight="bold">dump_backtrace() → kunwind_stack_walk()</text>
+    <line x1="10" y1="55" x2="290" y2="55" stroke="#d5f5e3" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#555" font-weight="bold">栈帧结构:</text>
+    <text x="20" y="87" font-size="9.5" font-family="monospace">struct frame_record { fp; lr; }</text>
+    <text x="20" y="102" font-size="9.5" fill="#27ae60">x29(fp) → 上一帧fp, x30(lr) → 返回地址</text>
+    <line x1="10" y1="112" x2="290" y2="112" stroke="#d5f5e3" stroke-width="0.8"/>
+    <text x="15" y="128" font-size="10" fill="#555" font-weight="bold">回溯算法:</text>
+    <text x="20" y="143" font-size="9.5" fill="#27ae60">1. kunwind_next_frame_record()</text>
+    <text x="20" y="158" font-size="9.5" fill="#27ae60">2. new_fp = READ_ONCE(record-&gt;fp)</text>
+    <text x="20" y="173" font-size="9.5" fill="#27ae60">3. new_pc = READ_ONCE(record-&gt;lr)</text>
+    <text x="20" y="188" font-size="9.5" fill="#27ae60">4. ptrauth_strip_kernel_insn_pac(pc)</text>
+    <text x="20" y="203" font-size="9.5" fill="#27ae60">5. ftrace_graph / kretprobe 修正</text>
+  </g>
+
+  <!-- Row 2→3 arrows -->
+  <path d="M200,495 L200,555" fill="none" stroke="#d35400" stroke-width="1.8" marker-end="url(#arwO)"/>
+  <rect x="135" y="510" width="130" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="200" y="522" text-anchor="middle" font-size="9" fill="#555">panic_on_oops / in_interrupt</text>
+
+  <!-- ========== Row 4: Key Parameters ========== -->
+  <g transform="translate(30,825)" filter="url(#sh)">
+    <rect width="540" height="185" rx="8" fill="#fff" stroke="#34495e" stroke-width="2"/>
+    <rect width="540" height="30" rx="8" fill="#34495e"/>
+    <rect x="0" y="22" width="540" height="8" fill="#2c3e50"/>
+    <text x="270" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">关键内核参数与配置</text>
+    <text x="15" y="50" font-size="10.5" font-family="monospace">panic_on_oops</text>
+    <text x="180" y="50" font-size="9.5" fill="#555">= 1: Oops 后立即 panic / = 0: 仅杀死当前进程</text>
+    <text x="15" y="68" font-size="10.5" font-family="monospace">panic_timeout</text>
+    <text x="180" y="68" font-size="9.5" fill="#555">&gt; 0: N秒后重启 / = 0: 挂起 / &lt; 0: 立即重启</text>
+    <text x="15" y="86" font-size="10.5" font-family="monospace">panic_on_warn</text>
+    <text x="180" y="86" font-size="9.5" fill="#555">= 1: WARN 也触发 panic (调试用)</text>
+    <text x="15" y="104" font-size="10.5" font-family="monospace">panic_print / panic_sys_info</text>
+    <text x="180" y="104" font-size="9.5" fill="#555">位掩码控制 panic 时打印额外信息(tasks/mem/locks)</text>
+    <text x="15" y="122" font-size="10.5" font-family="monospace">oops_all_cpu_backtrace</text>
+    <text x="180" y="122" font-size="9.5" fill="#555">= 1: Oops 时打印所有 CPU 调用栈</text>
+    <text x="15" y="140" font-size="10.5" font-family="monospace">CONFIG_DEBUG_INFO_DWARF5</text>
+    <text x="180" y="140" font-size="9.5" fill="#555">编译选项: 生成 DWARF5 调试信息用于 addr2line</text>
+    <text x="15" y="158" font-size="10.5" font-family="monospace">CONFIG_KALLSYMS_ALL</text>
+    <text x="180" y="158" font-size="9.5" fill="#555">导出所有符号，使 Oops 日志可显示函数名</text>
+    <text x="15" y="176" font-size="10.5" font-family="monospace">CONFIG_FRAME_POINTER</text>
+    <text x="180" y="176" font-size="9.5" fill="#555">帧指针模式: 确保栈回溯完整准确</text>
+  </g>
+
+  <!-- ========== Row 4: ESR decode ========== -->
+  <g transform="translate(630,825)" filter="url(#sh)">
+    <rect width="540" height="185" rx="8" fill="#fff" stroke="#2980b9" stroke-width="2"/>
+    <rect width="540" height="30" rx="8" fill="url(#hdrFlt)"/>
+    <rect x="0" y="22" width="540" height="8" fill="#1a5276"/>
+    <text x="270" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">ESR_EL1 寄存器解码 (esr.h)</text>
+    <text x="15" y="50" font-size="10" fill="#555">ESR_EL1 = [31:26] EC | [25] IL | [24:0] ISS</text>
+    <line x1="10" y1="58" x2="530" y2="58" stroke="#d6eaf8" stroke-width="0.8"/>
+    <text x="15" y="75" font-size="10" fill="#555" font-weight="bold">常见 EC (Exception Class) 值:</text>
+    <text x="20" y="92" font-size="9.5" font-family="monospace" fill="#2980b9">0x20 IABT_LOW</text>
+    <text x="150" y="92" font-size="9" fill="#555">EL0 指令异常</text>
+    <text x="280" y="92" font-size="9.5" font-family="monospace" fill="#2980b9">0x21 IABT_CUR</text>
+    <text x="410" y="92" font-size="9" fill="#555">EL1 指令异常</text>
+    <text x="20" y="109" font-size="9.5" font-family="monospace" fill="#2980b9">0x24 DABT_LOW</text>
+    <text x="150" y="109" font-size="9" fill="#555">EL0 数据异常</text>
+    <text x="280" y="109" font-size="9.5" font-family="monospace" fill="#2980b9">0x25 DABT_CUR</text>
+    <text x="410" y="109" font-size="9" fill="#555">EL1 数据异常</text>
+    <text x="20" y="126" font-size="9.5" font-family="monospace" fill="#2980b9">0x00 UNKNOWN</text>
+    <text x="150" y="126" font-size="9" fill="#555">未知异常</text>
+    <text x="280" y="126" font-size="9.5" font-family="monospace" fill="#2980b9">0x22 PC_ALIGN</text>
+    <text x="410" y="126" font-size="9" fill="#555">PC 对齐异常</text>
+    <line x1="10" y1="136" x2="530" y2="136" stroke="#d6eaf8" stroke-width="0.8"/>
+    <text x="15" y="153" font-size="10" fill="#555" font-weight="bold">常见 FSC (Fault Status Code) 值:</text>
+    <text x="20" y="170" font-size="9.5" fill="#2980b9">0x04-0x07 Translation Fault (L0-L3)</text>
+    <text x="280" y="170" font-size="9.5" fill="#2980b9">0x08-0x0B Access Flag Fault</text>
+    <text x="20" y="183" font-size="9.5" fill="#2980b9">0x0C-0x0F Permission Fault (L0-L3)</text>
+    <text x="280" y="183" font-size="9.5" fill="#2980b9">0x10 Sync External Abort</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(30,1020)">
+    <text x="0" y="12" font-size="10" fill="#888">© Linux 6.18.1 | 异常向量(红) → 内存异常分发(蓝) → 内核态故障/die(紫) → panic(橙) | WARN/BUG(黄) | 栈回溯/日志(绿)</text>
+  </g>
+</svg>

@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 920" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <linearGradient id="hKasan" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#e53935"/><stop offset="100%" stop-color="#ef5350"/></linearGradient>
+    <linearGradient id="hKfence" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1e88e5"/><stop offset="100%" stop-color="#42a5f5"/></linearGradient>
+    <linearGradient id="hSlub" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#43a047"/><stop offset="100%" stop-color="#66bb6a"/></linearGradient>
+    <linearGradient id="hCanary" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#f57c00"/><stop offset="100%" stop-color="#ffa726"/></linearGradient>
+    <linearGradient id="hList" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8e24aa"/><stop offset="100%" stop-color="#ab47bc"/></linearGradient>
+  </defs>
+
+  <!-- Title -->
+  <text x="640" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#333">图 5.9-1  MemoryOverwritten 各机制告警 Log 关键字段解剖</text>
+  <text x="640" y="52" text-anchor="middle" font-size="11" fill="#888">源文件：mm/kasan/report.c · mm/kfence/report.c · mm/slub.c · kernel/panic.c · lib/list_debug.c</text>
+
+  <!-- ==================== KASAN Report ==================== -->
+  <g transform="translate(30,72)" filter="url(#sh)">
+    <rect width="580" height="270" rx="8" fill="#fff" stroke="#e53935" stroke-width="2"/>
+    <rect width="580" height="30" rx="8" fill="url(#hKasan)"/>
+    <rect y="22" width="580" height="8" fill="#e53935"/>
+    <text x="290" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">KASAN 报告结构 (mm/kasan/report.c)</text>
+
+    <text x="15" y="52" font-size="10" fill="#e53935" font-weight="bold">print_error_description() → print_track() → describe_object() → print_memory_metadata()</text>
+
+    <line x1="10" y1="60" x2="570" y2="60" stroke="#fce4ec" stroke-width="0.8"/>
+
+    <!-- Log lines -->
+    <text x="15" y="78" font-family="monospace" font-size="10.5" fill="#333">==================================================================</text>
+    <text x="15" y="94" font-family="monospace" font-size="10.5" fill="#c62828" font-weight="bold">BUG: KASAN: <tspan fill="#1565c0">slab-out-of-bounds</tspan> in <tspan fill="#6a1b9a">driver_func+0x48/0x120</tspan></text>
+    <text x="15" y="110" font-family="monospace" font-size="10.5" fill="#333"><tspan fill="#e65100">Write</tspan> of size <tspan fill="#e65100">4</tspan> at addr <tspan fill="#e65100">ffff0000c1a2b340</tspan> by task <tspan fill="#2e7d32">insmod</tspan>/<tspan fill="#2e7d32">1234</tspan></text>
+    <text x="15" y="130" font-family="monospace" font-size="10.5" fill="#333">Call trace:</text>
+    <text x="15" y="144" font-family="monospace" font-size="10.5" fill="#555"> driver_func+0x48/0x120 [my_module]</text>
+
+    <line x1="10" y1="154" x2="570" y2="154" stroke="#fce4ec" stroke-width="0.8"/>
+
+    <text x="15" y="170" font-family="monospace" font-size="10.5" fill="#1565c0" font-weight="bold">Allocated by task 1200:</text>
+    <text x="15" y="184" font-family="monospace" font-size="10.5" fill="#555"> kmalloc_trace+0x28/0x40 → driver_init+0x30/0x80</text>
+    <text x="15" y="200" font-family="monospace" font-size="10.5" fill="#c62828" font-weight="bold">Freed by task 1180:</text>
+    <text x="15" y="214" font-family="monospace" font-size="10.5" fill="#555"> kfree+0x98/0x120 → driver_cleanup+0x20/0x60</text>
+
+    <line x1="10" y1="224" x2="570" y2="224" stroke="#fce4ec" stroke-width="0.8"/>
+
+    <text x="15" y="240" font-family="monospace" font-size="10.5" fill="#333">Memory state around the buggy address:</text>
+    <text x="15" y="254" font-family="monospace" font-size="10.5" fill="#555"> ffff0000c1a2b300: 00 00 00 00 <tspan fill="#c62828" font-weight="bold">04</tspan> fc fc fc fc fc fc fc</text>
+    <text x="15" y="265" font-family="monospace" font-size="10.5" fill="#c62828">                               ^</text>
+  </g>
+
+  <!-- KASAN annotations -->
+  <g transform="translate(620,72)">
+    <rect width="340" height="270" rx="8" fill="#fff3e0" stroke="#ff9800" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="170" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#e65100">KASAN Shadow 编码速查</text>
+    <line x1="10" y1="30" x2="330" y2="30" stroke="#ffe0b2" stroke-width="0.8"/>
+    <text x="15" y="50" font-family="monospace" font-size="10.5" fill="#333">00      — 8字节全部可访问</text>
+    <text x="15" y="68" font-family="monospace" font-size="10.5" fill="#333">01~07   — 前N字节可访问(部分)</text>
+    <text x="15" y="86" font-family="monospace" font-size="10.5" fill="#c62828">fb (251) — KASAN_SLAB_FREE (已释放)</text>
+    <text x="15" y="104" font-family="monospace" font-size="10.5" fill="#c62828">fc (252) — KASAN_SLAB_REDZONE</text>
+    <text x="15" y="122" font-family="monospace" font-size="10.5" fill="#c62828">fa (250) — KASAN_SLAB_FREE_META</text>
+    <text x="15" y="140" font-family="monospace" font-size="10.5" fill="#c62828">f8 (248) — KASAN_VMALLOC_INVALID</text>
+    <text x="15" y="158" font-family="monospace" font-size="10.5" fill="#c62828">f9 (249) — KASAN_GLOBAL_REDZONE</text>
+    <text x="15" y="176" font-family="monospace" font-size="10.5" fill="#c62828">f1 (241) — KASAN_STACK_LEFT</text>
+    <text x="15" y="194" font-family="monospace" font-size="10.5" fill="#c62828">f2 (242) — KASAN_STACK_MID</text>
+    <text x="15" y="212" font-family="monospace" font-size="10.5" fill="#c62828">f3 (243) — KASAN_STACK_RIGHT</text>
+    <text x="15" y="230" font-family="monospace" font-size="10.5" fill="#c62828">ff (255) — KASAN_PAGE_FREE</text>
+    <line x1="10" y1="240" x2="330" y2="240" stroke="#ffe0b2" stroke-width="0.8"/>
+    <text x="15" y="258" font-size="10" fill="#795548">^ 指向触发越界访问的第一个 bad byte</text>
+  </g>
+
+  <!-- ==================== KFENCE Report ==================== -->
+  <g transform="translate(30,362)" filter="url(#sh)">
+    <rect width="580" height="180" rx="8" fill="#fff" stroke="#1e88e5" stroke-width="2"/>
+    <rect width="580" height="30" rx="8" fill="url(#hKfence)"/>
+    <rect y="22" width="580" height="8" fill="#1e88e5"/>
+    <text x="290" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">KFENCE 报告结构 (mm/kfence/report.c)</text>
+
+    <text x="15" y="52" font-size="10" fill="#1e88e5" font-weight="bold">kfence_report_error() → kfence_print_object() → kfence_print_stack()</text>
+
+    <line x1="10" y1="60" x2="570" y2="60" stroke="#e3f2fd" stroke-width="0.8"/>
+
+    <text x="15" y="78" font-family="monospace" font-size="10.5" fill="#333">==================================================================</text>
+    <text x="15" y="94" font-family="monospace" font-size="10.5" fill="#1565c0" font-weight="bold">BUG: KFENCE: <tspan fill="#c62828">out-of-bounds write</tspan> in <tspan fill="#6a1b9a">driver_func+0x48/0x120</tspan></text>
+    <text x="15" y="110" font-family="monospace" font-size="10.5" fill="#333">Out-of-bounds write at 0xffff0000d5600100 (<tspan fill="#e65100">4B right</tspan> of <tspan fill="#1565c0">kfence-#117</tspan>):</text>
+    <text x="15" y="126" font-family="monospace" font-size="10.5" fill="#555"> driver_func+0x48/0x120 → kmalloc_trace+0x28/0x40</text>
+
+    <line x1="10" y1="136" x2="570" y2="136" stroke="#e3f2fd" stroke-width="0.8"/>
+
+    <text x="15" y="152" font-family="monospace" font-size="10.5" fill="#1565c0">kfence-#117: 0xffff0000d5600000-0xffff0000d56000ff, size=256, cache=kmalloc-256</text>
+    <text x="15" y="168" font-family="monospace" font-size="10.5" fill="#333">==================================================================</text>
+  </g>
+
+  <!-- KFENCE annotations -->
+  <g transform="translate(620,362)">
+    <rect width="340" height="180" rx="8" fill="#e3f2fd" stroke="#90caf9" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="170" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#1565c0">KFENCE 错误类型速查</text>
+    <line x1="10" y1="30" x2="330" y2="30" stroke="#bbdefb" stroke-width="0.8"/>
+    <text x="15" y="50" font-family="monospace" font-size="10.5" fill="#333">KFENCE_ERROR_OOB         — 越界读/写</text>
+    <text x="15" y="68" font-family="monospace" font-size="10.5" fill="#333">KFENCE_ERROR_UAF         — 释放后使用</text>
+    <text x="15" y="86" font-family="monospace" font-size="10.5" fill="#333">KFENCE_ERROR_CORRUPTION  — Canary 损坏</text>
+    <text x="15" y="104" font-family="monospace" font-size="10.5" fill="#333">KFENCE_ERROR_INVALID     — 非法地址访问</text>
+    <text x="15" y="122" font-family="monospace" font-size="10.5" fill="#333">KFENCE_ERROR_INVALID_FREE— 非法释放</text>
+    <line x1="10" y1="135" x2="330" y2="135" stroke="#bbdefb" stroke-width="0.8"/>
+    <text x="15" y="152" font-size="10" fill="#795548">"NB left/right" 指示越界方向和距离</text>
+    <text x="15" y="168" font-size="10" fill="#795548">kfence-#N 是 KFENCE 池中对象编号</text>
+  </g>
+
+  <!-- ==================== SLUB Debug Report ==================== -->
+  <g transform="translate(30,562)" filter="url(#sh)">
+    <rect width="580" height="170" rx="8" fill="#fff" stroke="#43a047" stroke-width="2"/>
+    <rect width="580" height="30" rx="8" fill="url(#hSlub)"/>
+    <rect y="22" width="580" height="8" fill="#43a047"/>
+    <text x="290" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">SLUB Debug 报告结构 (mm/slub.c)</text>
+
+    <text x="15" y="52" font-size="10" fill="#43a047" font-weight="bold">check_bytes_and_report() → slab_bug() → print_trailer() → print_tracking()</text>
+
+    <line x1="10" y1="60" x2="570" y2="60" stroke="#e8f5e9" stroke-width="0.8"/>
+
+    <text x="15" y="78" font-family="monospace" font-size="10.5" fill="#333">=============================================================================</text>
+    <text x="15" y="94" font-family="monospace" font-size="10.5" fill="#2e7d32" font-weight="bold">BUG <tspan fill="#c62828">kmalloc-128</tspan> (Not tainted): <tspan fill="#6a1b9a">Right Redzone overwritten</tspan></text>
+    <text x="15" y="108" font-family="monospace" font-size="10.5" fill="#333">-----------------------------------------------------------------------------</text>
+    <text x="15" y="124" font-family="monospace" font-size="10.5" fill="#555">[Right Redzone overwritten] 0xffff0000c1a2b380-0xffff0000c1a2b387 @offset=128</text>
+    <text x="15" y="140" font-family="monospace" font-size="10.5" fill="#555">  First byte 0x41 instead of 0xbb</text>
+    <text x="15" y="156" font-family="monospace" font-size="10.5" fill="#2e7d32">FIX kmalloc-128: Restoring Right Redzone 0x...=0xbb</text>
+  </g>
+
+  <!-- SLUB annotations -->
+  <g transform="translate(620,562)">
+    <rect width="340" height="170" rx="8" fill="#e8f5e9" stroke="#a5d6a7" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="170" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#2e7d32">SLUB Debug 哨兵值速查</text>
+    <line x1="10" y1="30" x2="330" y2="30" stroke="#c8e6c9" stroke-width="0.8"/>
+    <text x="15" y="50" font-family="monospace" font-size="10.5" fill="#333">0xbb — Red Zone 填充字节</text>
+    <text x="15" y="68" font-family="monospace" font-size="10.5" fill="#333">0x6b — Poison (POISON_FREE)</text>
+    <text x="15" y="86" font-family="monospace" font-size="10.5" fill="#333">0xa5 — Poison 末字节 (POISON_END)</text>
+    <text x="15" y="104" font-family="monospace" font-size="10.5" fill="#333">0x5a — 未初始化对象填充</text>
+    <text x="15" y="122" font-family="monospace" font-size="10.5" fill="#333">0x6c — 活跃对象区域填充</text>
+    <line x1="10" y1="135" x2="330" y2="135" stroke="#c8e6c9" stroke-width="0.8"/>
+    <text x="15" y="152" font-size="10" fill="#795548">"FIX" 行表示 SLUB 自动修复了损坏</text>
+    <text x="15" y="168" font-size="10" fill="#795548">@offset 是对象内偏移（定位覆写位置）</text>
+  </g>
+
+  <!-- ==================== Stack Canary + List ==================== -->
+  <g transform="translate(30,752)" filter="url(#sh)">
+    <rect width="470" height="150" rx="8" fill="#fff" stroke="#f57c00" stroke-width="2"/>
+    <rect width="470" height="30" rx="8" fill="url(#hCanary)"/>
+    <rect y="22" width="470" height="8" fill="#f57c00"/>
+    <text x="235" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Stack Canary 报告 (kernel/panic.c)</text>
+
+    <text x="15" y="52" font-size="10" fill="#f57c00" font-weight="bold">__stack_chk_fail() → panic()</text>
+    <line x1="10" y1="60" x2="460" y2="60" stroke="#fff3e0" stroke-width="0.8"/>
+    <text x="15" y="80" font-family="monospace" font-size="10.5" fill="#e65100" font-weight="bold">Kernel panic - not syncing:</text>
+    <text x="15" y="96" font-family="monospace" font-size="10.5" fill="#c62828" font-weight="bold">stack-protector: Kernel stack is corrupted in: <tspan fill="#6a1b9a">func+0x1c0/0x200</tspan></text>
+    <text x="15" y="116" font-family="monospace" font-size="10.5" fill="#555">CPU: 2 PID: 1234 Comm: worker Not tainted 6.18.1 #1</text>
+    <text x="15" y="132" font-family="monospace" font-size="10.5" fill="#555">Call trace: ...</text>
+  </g>
+
+  <g transform="translate(520,752)" filter="url(#sh)">
+    <rect width="440" height="150" rx="8" fill="#fff" stroke="#8e24aa" stroke-width="2"/>
+    <rect width="440" height="30" rx="8" fill="url(#hList)"/>
+    <rect y="22" width="440" height="8" fill="#8e24aa"/>
+    <text x="220" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">List Corruption 报告 (lib/list_debug.c)</text>
+
+    <text x="15" y="52" font-size="10" fill="#8e24aa" font-weight="bold">__list_add_valid_or_report() / __list_del_entry_valid_or_report()</text>
+    <line x1="10" y1="60" x2="430" y2="60" stroke="#f3e5f5" stroke-width="0.8"/>
+    <text x="15" y="80" font-family="monospace" font-size="10.5" fill="#6a1b9a" font-weight="bold">list_add corruption.</text>
+    <text x="15" y="96" font-family="monospace" font-size="10.5" fill="#333">next-&gt;prev should be prev (<tspan fill="#e65100">ffff...a00</tspan>),</text>
+    <text x="15" y="112" font-family="monospace" font-size="10.5" fill="#333">but was <tspan fill="#c62828">ffff...dead</tspan>. (next=<tspan fill="#e65100">ffff...b00</tspan>)</text>
+    <text x="15" y="132" font-family="monospace" font-size="10.5" fill="#555">kernel BUG at lib/list_debug.c:37!</text>
+  </g>
+</svg>

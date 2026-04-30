@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+<defs>
+  <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+  <linearGradient id="hdrMTE" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C62828"/><stop offset="100%" stop-color="#EF5350"/></linearGradient>
+  <linearGradient id="hdrMode" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1565C0"/><stop offset="100%" stop-color="#42A5F5"/></linearGradient>
+  <linearGradient id="hdrSamp" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#66BB6A"/></linearGradient>
+  <linearGradient id="hdrInst" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6A1B9A"/><stop offset="100%" stop-color="#AB47BC"/></linearGradient>
+  <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#C62828" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/></marker>
+</defs>
+
+<text x="600" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#212121">HW_TAGS KASAN — ARM64 MTE 硬件标签检测原理</text>
+<text x="600" y="48" text-anchor="middle" font-size="11" fill="#757575">源码：mm/kasan/hw_tags.c · arch/arm64/include/asm/mte-kasan.h · ARMv8.5-MemTag</text>
+
+<!-- MTE 硬件原理 -->
+<g transform="translate(30,65)" filter="url(#sh)">
+  <rect width="560" height="300" rx="8" fill="#fff" stroke="#C62828" stroke-width="2"/>
+  <rect width="560" height="30" rx="8" fill="url(#hdrMTE)"/>
+  <rect y="22" width="560" height="8" fill="#C62828"/>
+  <text x="280" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">MTE 硬件原理 — Allocation Tag &amp; Logical Tag</text>
+
+  <text x="15" y="52" font-size="10" fill="#C62828" font-weight="bold">MTE (Memory Tagging Extension) — ARMv8.5 引入</text>
+
+  <!-- Pointer with tag -->
+  <text x="15" y="75" font-size="10" fill="#555" font-weight="bold">Logical Tag — 嵌入指针高 4 位：</text>
+  <rect x="15" y="82" width="50" height="28" rx="4" fill="#EF5350" stroke="#C62828" stroke-width="1.5"/>
+  <text x="40" y="100" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">Tag</text>
+  <rect x="67" y="82" width="40" height="28" rx="0" fill="#FFCDD2"/>
+  <text x="87" y="100" text-anchor="middle" font-size="8" fill="#C62828">[59:56]</text>
+  <rect x="109" y="82" width="420" height="28" rx="4" fill="#E3F2FD" stroke="#1565C0" stroke-width="1"/>
+  <text x="319" y="100" text-anchor="middle" font-size="10" fill="#1565C0">Virtual Address [55:0]</text>
+
+  <!-- Memory granule with tag -->
+  <text x="15" y="130" font-size="10" fill="#555" font-weight="bold">Allocation Tag — DRAM 中每 16B 存储 4-bit：</text>
+  <rect x="15" y="138" width="130" height="28" rx="4" fill="#FFEBEE" stroke="#C62828" stroke-width="1"/>
+  <text x="80" y="156" text-anchor="middle" font-size="10" fill="#C62828" font-weight="bold">Granule (16 字节)</text>
+  <text x="150" y="156" font-size="10" fill="#555">→</text>
+  <rect x="165" y="138" width="70" height="28" rx="4" fill="#EF5350" stroke="#C62828" stroke-width="1.5"/>
+  <text x="200" y="156" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">4-bit Tag</text>
+  <text x="245" y="156" font-size="9" fill="#888">存储在物理 DRAM Tag 区域</text>
+
+  <!-- CPU auto check -->
+  <line x1="10" y1="178" x2="550" y2="178" stroke="#FFCDD2" stroke-width="1"/>
+  <text x="15" y="198" font-size="10" fill="#C62828" font-weight="bold">CPU 硬件自动比较（零软件开销）：</text>
+  <rect x="15" y="206" width="530" height="50" rx="6" fill="#F5F5F5" stroke="#BDBDBD" stroke-width="1"/>
+  <text x="30" y="224" font-size="10" font-family="monospace" fill="#333">每次 load/store 时，CPU 自动执行：</text>
+  <text x="30" y="242" font-size="10" font-family="monospace" fill="#C62828" font-weight="bold">if (Logical_Tag(ptr) != Allocation_Tag(mem)) → Fault!</text>
+
+  <text x="15" y="274" font-size="10" fill="#555">• Tag 范围：4-bit → 16 个值 → 漏检概率 1/16 ≈ 6.25%</text>
+  <text x="15" y="290" font-size="10" fill="#555">• MTE_GRANULE_SIZE = 16 字节（最小检测粒度）</text>
+</g>
+
+<!-- 三种模式 -->
+<g transform="translate(620,65)" filter="url(#sh)">
+  <rect width="550" height="300" rx="8" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <rect width="550" height="30" rx="8" fill="url(#hdrMode)"/>
+  <rect y="22" width="550" height="8" fill="#1565C0"/>
+  <text x="275" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">三种硬件检测模式 — SYNC / ASYNC / ASYMM</text>
+
+  <!-- SYNC -->
+  <rect x="15" y="40" width="520" height="70" rx="6" fill="#FFEBEE" stroke="#EF5350" stroke-width="1"/>
+  <text x="25" y="58" font-size="11" font-weight="bold" fill="#C62828">SYNC（同步模式）— kasan.mode=sync</text>
+  <text x="25" y="74" font-size="10" fill="#555">• Tag 不匹配时立即触发同步异常（Data Abort）</text>
+  <text x="25" y="88" font-size="10" fill="#555">• PC 精确指向出错指令 → 最佳调试体验</text>
+  <text x="25" y="102" font-size="10" fill="#C62828">• 性能开销：~5%（每次访存检查 Tag）</text>
+
+  <!-- ASYNC -->
+  <rect x="15" y="116" width="520" height="70" rx="6" fill="#E3F2FD" stroke="#42A5F5" stroke-width="1"/>
+  <text x="25" y="134" font-size="11" font-weight="bold" fill="#1565C0">ASYNC（异步模式）— kasan.mode=async</text>
+  <text x="25" y="150" font-size="10" fill="#555">• Tag 不匹配时设置 TFSR_EL1 寄存器标志，不立即中断</text>
+  <text x="25" y="164" font-size="10" fill="#555">• 内核在特定同步点（如上下文切换）检查 TFSR_EL1</text>
+  <text x="25" y="178" font-size="10" fill="#1565C0">• 性能开销：&lt;1%（生产环境可用）· PC 不精确</text>
+
+  <!-- ASYMM -->
+  <rect x="15" y="192" width="520" height="70" rx="6" fill="#E8F5E9" stroke="#66BB6A" stroke-width="1"/>
+  <text x="25" y="210" font-size="11" font-weight="bold" fill="#2E7D32">ASYMM（混合模式）— kasan.mode=asymm</text>
+  <text x="25" y="226" font-size="10" fill="#555">• 读操作 → 异步（ASYNC，低开销）</text>
+  <text x="25" y="242" font-size="10" fill="#555">• 写操作 → 同步（SYNC，精确定位）</text>
+  <text x="25" y="254" font-size="10" fill="#2E7D32">• 平衡性能与精度：写入错误通常更严重</text>
+
+  <line x1="10" y1="272" x2="540" y2="272" stroke="#E0E0E0" stroke-width="1"/>
+  <text x="25" y="290" font-size="10" fill="#555" font-weight="bold">模式选择：生产用 ASYNC，调试用 SYNC，折中用 ASYMM</text>
+</g>
+
+<!-- Page Alloc 采样策略 -->
+<g transform="translate(30,395)" filter="url(#sh)">
+  <rect width="560" height="200" rx="8" fill="#fff" stroke="#2E7D32" stroke-width="2"/>
+  <rect width="560" height="30" rx="8" fill="url(#hdrSamp)"/>
+  <rect y="22" width="560" height="8" fill="#2E7D32"/>
+  <text x="280" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Page Allocator 采样策略</text>
+
+  <text x="15" y="52" font-size="10" fill="#2E7D32" font-weight="bold">两级过滤减少标记开销：</text>
+
+  <rect x="15" y="60" width="530" height="65" rx="6" fill="#F5F5F5" stroke="#BDBDBD" stroke-width="1"/>
+  <text x="30" y="78" font-size="10" font-family="monospace" fill="#333">kasan_page_alloc_sample = 1;       // 默认：每次都标记</text>
+  <text x="30" y="94" font-size="10" font-family="monospace" fill="#333">kasan_page_alloc_sample_order = 3; // order &lt; 3 始终标记</text>
+  <text x="30" y="110" font-size="10" font-family="monospace" fill="#333">DEFINE_PER_CPU(long, kasan_page_alloc_skip);</text>
+
+  <text x="15" y="138" font-size="10" fill="#555">• order &lt; sample_order → 始终标记（小分配更频繁）</text>
+  <text x="15" y="154" font-size="10" fill="#555">• order ≥ sample_order → 按 sample 间隔跳过</text>
+  <text x="15" y="170" font-size="10" fill="#555">• Per-CPU skip 计数器：递减到 0 时标记，然后重置为 sample-1</text>
+  <text x="15" y="186" font-size="10" fill="#555">• Boot 参数：kasan.page_alloc.sample=N / kasan.page_alloc.sample.order=M</text>
+</g>
+
+<!-- MTE 指令集 -->
+<g transform="translate(620,395)" filter="url(#sh)">
+  <rect width="550" height="200" rx="8" fill="#fff" stroke="#6A1B9A" stroke-width="2"/>
+  <rect width="550" height="30" rx="8" fill="url(#hdrInst)"/>
+  <rect y="22" width="550" height="8" fill="#6A1B9A"/>
+  <text x="275" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">MTE 核心指令集</text>
+
+  <rect x="15" y="40" width="520" height="148" rx="6" fill="#F5F5F5" stroke="#BDBDBD" stroke-width="1"/>
+
+  <text x="25" y="58" font-size="10" font-family="monospace" fill="#6A1B9A" font-weight="bold">IRG  Xd, Xn          </text>
+  <text x="210" y="58" font-size="10" fill="#555">Insert Random Tag — 为指针生成随机 Tag</text>
+
+  <text x="25" y="78" font-size="10" font-family="monospace" fill="#6A1B9A" font-weight="bold">ADDG Xd, Xn, #imm, #t</text>
+  <text x="210" y="78" font-size="10" fill="#555">Add with Tag — 指针加偏移并设置 Tag</text>
+
+  <text x="25" y="98" font-size="10" font-family="monospace" fill="#6A1B9A" font-weight="bold">STG  Xt, [Xn]         </text>
+  <text x="210" y="98" font-size="10" fill="#555">Store Allocation Tag — 将 Tag 写入物理 DRAM</text>
+
+  <text x="25" y="118" font-size="10" font-family="monospace" fill="#6A1B9A" font-weight="bold">LDG  Xt, [Xn]         </text>
+  <text x="210" y="118" font-size="10" fill="#555">Load Allocation Tag — 从 DRAM 读取 Tag</text>
+
+  <text x="25" y="138" font-size="10" font-family="monospace" fill="#6A1B9A" font-weight="bold">SUBP Xd, Xn, Xm       </text>
+  <text x="210" y="138" font-size="10" fill="#555">Subtract Pointer — 忽略 Tag 的指针减法</text>
+
+  <text x="25" y="158" font-size="10" font-family="monospace" fill="#6A1B9A" font-weight="bold">ST2G Xt, [Xn], #imm    </text>
+  <text x="210" y="158" font-size="10" fill="#555">Store Tag Pair — 一次设置 2 个 Granule 的 Tag</text>
+
+  <text x="25" y="178" font-size="10" font-family="monospace" fill="#6A1B9A" font-weight="bold">STZG / STZ2G           </text>
+  <text x="210" y="178" font-size="10" fill="#555">Store + Zero — 设置 Tag 同时清零内存</text>
+</g>
+
+<!-- 底部：初始化流程 -->
+<g transform="translate(30,625)" filter="url(#sh)">
+  <rect width="1140" height="175" rx="8" fill="#fff" stroke="#757575" stroke-width="1.5"/>
+  <text x="570" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">HW_TAGS 初始化与 CPU 热插拔流程</text>
+
+  <!-- Boot init -->
+  <rect x="20" y="38" width="200" height="50" rx="6" fill="#FFEBEE" stroke="#EF5350" stroke-width="1.5"/>
+  <text x="120" y="58" text-anchor="middle" font-size="10" font-weight="bold" fill="#C62828">kasan_init_hw_tags()</text>
+  <text x="120" y="76" text-anchor="middle" font-size="9" fill="#555">Boot CPU · __init</text>
+
+  <path d="M220,63 L260,63" fill="none" stroke="#C62828" stroke-width="1.5" marker-end="url(#aR)"/>
+
+  <rect x="260" y="38" width="200" height="50" rx="6" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="360" y="55" text-anchor="middle" font-size="9" fill="#333">system_supports_mte()?</text>
+  <text x="360" y="72" text-anchor="middle" font-size="9" fill="#333">kasan_arg == OFF?</text>
+
+  <path d="M460,63 L500,63" fill="none" stroke="#1565C0" stroke-width="1.5" marker-end="url(#aB)"/>
+
+  <rect x="500" y="38" width="200" height="50" rx="6" fill="#E3F2FD" stroke="#1565C0" stroke-width="1"/>
+  <text x="600" y="55" text-anchor="middle" font-size="9" fill="#333">设置 kasan_mode</text>
+  <text x="600" y="72" text-anchor="middle" font-size="9" fill="#333">SYNC/ASYNC/ASYMM</text>
+
+  <path d="M700,63 L740,63" fill="none" stroke="#2E7D32" stroke-width="1.5"/>
+
+  <rect x="740" y="38" width="180" height="50" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="830" y="55" text-anchor="middle" font-size="9" fill="#333">kasan_init_tags()</text>
+  <text x="830" y="72" text-anchor="middle" font-size="9" fill="#333">Stack Ring + kasan_enable()</text>
+
+  <path d="M920,63 L960,63" fill="none" stroke="#C62828" stroke-width="1.5" marker-end="url(#aR)"/>
+
+  <rect x="960" y="38" width="160" height="50" rx="6" fill="#FFEBEE" stroke="#EF5350" stroke-width="1.5"/>
+  <text x="1040" y="55" text-anchor="middle" font-size="10" font-weight="bold" fill="#C62828">KASAN 就绪</text>
+  <text x="1040" y="72" text-anchor="middle" font-size="9" fill="#555">pr_info 输出</text>
+
+  <!-- CPU hotplug -->
+  <rect x="20" y="105" width="200" height="50" rx="6" fill="#F3E5F5" stroke="#CE93D8" stroke-width="1.5"/>
+  <text x="120" y="125" text-anchor="middle" font-size="10" font-weight="bold" fill="#6A1B9A">kasan_init_hw_tags_cpu()</text>
+  <text x="120" y="143" text-anchor="middle" font-size="9" fill="#555">每个 CPU 上线时调用</text>
+
+  <path d="M220,130 L280,130" fill="none" stroke="#6A1B9A" stroke-width="1.5"/>
+
+  <rect x="280" y="105" width="300" height="50" rx="6" fill="#F5F5F5" stroke="#BDBDBD" stroke-width="1"/>
+  <text x="430" y="125" text-anchor="middle" font-size="10" fill="#333">kasan_enable_hw_tags()</text>
+  <text x="430" y="143" text-anchor="middle" font-size="9" fill="#555">配置 CPU 的 SCTLR_EL1 / TCR_EL1 MTE 控制位</text>
+
+  <text x="620" y="143" font-size="9" fill="#888">→ 设置 SYNC/ASYNC/ASYMM 模式对应的 CPU 寄存器</text>
+</g>
+</svg>

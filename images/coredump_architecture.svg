@@ -1,0 +1,333 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hSig" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#e74c3c"/><stop offset="100%" stop-color="#c0392b"/></linearGradient>
+    <linearGradient id="hCore" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2980b9"/><stop offset="100%" stop-color="#2471a3"/></linearGradient>
+    <linearGradient id="hElf" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#27ae60"/><stop offset="100%" stop-color="#229954"/></linearGradient>
+    <linearGradient id="hOut" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8e44ad"/><stop offset="100%" stop-color="#7d3c98"/></linearGradient>
+    <linearGradient id="hData" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#e67e22"/><stop offset="100%" stop-color="#d35400"/></linearGradient>
+    <linearGradient id="hNote" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#16a085"/><stop offset="100%" stop-color="#138d75"/></linearGradient>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#e74c3c" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2980b9" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#27ae60" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#8e44ad" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#e67e22" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aD" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#555" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="600" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#2c3e50">Linux 6.18.1 Coredump 执行流程与 ELF Core 文件结构</text>
+  <text x="600" y="50" text-anchor="middle" font-size="11" fill="#7f8c8d">fs/coredump.c · fs/binfmt_elf.c · arch/arm64/kernel/ptrace.c</text>
+
+  <!-- ===== ROW 1: Signal trigger ===== -->
+  <g transform="translate(30,70)" filter="url(#sh)">
+    <rect width="220" height="130" rx="8" fill="#fff" stroke="#e74c3c" stroke-width="2"/>
+    <rect width="220" height="30" rx="8" fill="url(#hSig)"/>
+    <rect y="22" width="220" height="8" fill="#e74c3c"/>
+    <text x="110" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">信号触发</text>
+    <text x="15" y="48" font-size="10" fill="#e74c3c" font-weight="bold">致命信号 → coredump</text>
+    <line x1="10" y1="54" x2="210" y2="54" stroke="#fce4e4" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10" fill="#333" font-family="monospace">SIGSEGV (11)</text><text x="140" y="70" font-size="9" fill="#888">空指针/非法访问</text>
+    <text x="15" y="84" font-size="10" fill="#333" font-family="monospace">SIGABRT (6)</text><text x="140" y="84" font-size="9" fill="#888">abort()/堆损坏</text>
+    <text x="15" y="98" font-size="10" fill="#333" font-family="monospace">SIGBUS  (7)</text><text x="140" y="98" font-size="9" fill="#888">非对齐/mmap</text>
+    <text x="15" y="112" font-size="10" fill="#333" font-family="monospace">SIGFPE  (8)</text><text x="140" y="112" font-size="9" fill="#888">除零/溢出</text>
+    <text x="15" y="126" font-size="10" fill="#333" font-family="monospace">SIGILL  (4)</text><text x="140" y="126" font-size="9" fill="#888">非法指令</text>
+  </g>
+
+  <!-- ===== ROW 1: vfs_coredump() ===== -->
+  <g transform="translate(310,70)" filter="url(#sh)">
+    <rect width="300" height="130" rx="8" fill="#fff" stroke="#2980b9" stroke-width="2"/>
+    <rect width="300" height="30" rx="8" fill="url(#hCore)"/>
+    <rect y="22" width="300" height="8" fill="#2980b9"/>
+    <text x="150" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">vfs_coredump() 主流程</text>
+    <text x="15" y="48" font-size="10" fill="#2980b9" font-weight="bold">fs/coredump.c:1131</text>
+    <line x1="10" y1="54" x2="290" y2="54" stroke="#d6eaf8" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10" fill="#333">1. coredump_skip() — 检查 dumpable/binfmt</text>
+    <text x="15" y="84" font-size="10" fill="#333">2. prepare_creds() — SUID 处理</text>
+    <text x="15" y="98" font-size="10" fill="#333">3. coredump_wait() — 冻结所有线程</text>
+    <text x="15" y="112" font-size="10" fill="#333">4. coredump_parse() — 解析 core_pattern</text>
+    <text x="15" y="126" font-size="10" fill="#333">5. coredump_write() → binfmt-&gt;core_dump()</text>
+  </g>
+
+  <!-- ===== ROW 1: Output modes ===== -->
+  <g transform="translate(670,70)" filter="url(#sh)">
+    <rect width="230" height="130" rx="8" fill="#fff" stroke="#8e44ad" stroke-width="2"/>
+    <rect width="230" height="30" rx="8" fill="url(#hOut)"/>
+    <rect y="22" width="230" height="8" fill="#8e44ad"/>
+    <text x="115" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">输出模式</text>
+    <text x="15" y="48" font-size="10" fill="#8e44ad" font-weight="bold">core_pattern 三种模式</text>
+    <line x1="10" y1="54" x2="220" y2="54" stroke="#e8daef" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#333" font-family="monospace">COREDUMP_FILE</text>
+    <text x="150" y="72" font-size="9" fill="#888">→ 写入文件</text>
+    <text x="15" y="92" font-size="10" fill="#333" font-family="monospace">COREDUMP_PIPE</text>
+    <text x="150" y="92" font-size="9" fill="#888">→ |program</text>
+    <text x="15" y="112" font-size="10" fill="#333" font-family="monospace">COREDUMP_SOCK</text>
+    <text x="150" y="112" font-size="9" fill="#888">→ @socket</text>
+    <text x="15" y="126" font-size="9" fill="#999">6.18 新增 socket 模式</text>
+  </g>
+
+  <!-- ===== ROW 1: Thread sync ===== -->
+  <g transform="translate(960,70)" filter="url(#sh)">
+    <rect width="210" height="130" rx="8" fill="#fff" stroke="#e67e22" stroke-width="2"/>
+    <rect width="210" height="30" rx="8" fill="url(#hData)"/>
+    <rect y="22" width="210" height="8" fill="#e67e22"/>
+    <text x="105" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">多线程同步</text>
+    <text x="15" y="48" font-size="10" fill="#e67e22" font-weight="bold">coredump_wait()</text>
+    <line x1="10" y1="54" x2="200" y2="54" stroke="#fdebd0" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10" fill="#333">zap_threads()</text>
+    <text x="15" y="84" font-size="10" fill="#888">  → SIGKILL 所有线程</text>
+    <text x="15" y="98" font-size="10" fill="#333">wait_for_completion()</text>
+    <text x="15" y="112" font-size="10" fill="#888">  → 线程停止通知</text>
+    <text x="15" y="126" font-size="10" fill="#333">wait_task_inactive()</text>
+  </g>
+
+  <!-- Arrows Row 1 -->
+  <path d="M250,135 L310,135" fill="none" stroke="#e74c3c" stroke-width="2" marker-end="url(#aR)"/>
+  <rect x="254" y="126" width="52" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="280" y="136" text-anchor="middle" font-size="8" fill="#e74c3c">get_signal</text>
+
+  <path d="M610,135 L670,135" fill="none" stroke="#2980b9" stroke-width="2" marker-end="url(#aB)"/>
+  <path d="M610,160 L640,160 L640,135 L670,135" fill="none" stroke="#2980b9" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aB)"/>
+
+  <path d="M610,110 L640,110 L640,98 L660,98 L660,135 L960,135" fill="none" stroke="#e67e22" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aO)"/>
+
+  <!-- ===== ROW 2: elf_core_dump() ===== -->
+  <g transform="translate(30,260)" filter="url(#sh)">
+    <rect width="340" height="160" rx="8" fill="#fff" stroke="#27ae60" stroke-width="2"/>
+    <rect width="340" height="30" rx="8" fill="url(#hElf)"/>
+    <rect y="22" width="340" height="8" fill="#27ae60"/>
+    <text x="170" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">elf_core_dump() — ELF Core 生成</text>
+    <text x="15" y="48" font-size="10" fill="#27ae60" font-weight="bold">fs/binfmt_elf.c:1995 — 两遍处理</text>
+    <line x1="10" y1="54" x2="330" y2="54" stroke="#d5f5e3" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#333">Pass 1: fill_note_info() — 收集所有 NOTE 数据</text>
+    <text x="15" y="86" font-size="10" fill="#888">  → fill_thread_core_info() × 每线程</text>
+    <text x="15" y="100" font-size="10" fill="#888">  → fill_psinfo() / fill_siginfo_note()</text>
+    <text x="15" y="114" font-size="10" fill="#888">  → fill_auxv_note() / fill_files_note()</text>
+    <text x="15" y="130" font-size="10" fill="#333">Pass 2: 顺序写出</text>
+    <text x="15" y="144" font-size="10" fill="#888">  → ELF Header → Phdrs → NOTEs → LOADs</text>
+    <text x="15" y="158" font-size="10" fill="#888">  → dump_user_range() 写出用户内存</text>
+  </g>
+
+  <!-- ===== ROW 2: VMA snapshot ===== -->
+  <g transform="translate(430,260)" filter="url(#sh)">
+    <rect width="260" height="160" rx="8" fill="#fff" stroke="#e67e22" stroke-width="2"/>
+    <rect width="260" height="30" rx="8" fill="url(#hData)"/>
+    <rect y="22" width="260" height="8" fill="#e67e22"/>
+    <text x="130" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">VMA 快照与过滤</text>
+    <text x="15" y="48" font-size="10" fill="#e67e22" font-weight="bold">dump_vma_snapshot() + vma_dump_size()</text>
+    <line x1="10" y1="54" x2="250" y2="54" stroke="#fdebd0" stroke-width="0.8"/>
+    <text x="15" y="72" font-size="10" fill="#333">coredump_filter 控制:</text>
+    <text x="15" y="86" font-size="10" fill="#888">  bit0: 匿名私有 (堆/栈) ✓</text>
+    <text x="15" y="100" font-size="10" fill="#888">  bit1: 匿名共享         ✓</text>
+    <text x="15" y="114" font-size="10" fill="#888">  bit4: ELF headers      ✓</text>
+    <text x="15" y="128" font-size="10" fill="#888">  bit2-3: 文件映射       ✗</text>
+    <text x="15" y="142" font-size="10" fill="#333">默认 filter = 0x33</text>
+    <text x="15" y="158" font-size="10" fill="#888">VM_DONTDUMP / VM_IO → 永不转储</text>
+  </g>
+
+  <!-- ===== ROW 2: ARM64 regsets ===== -->
+  <g transform="translate(750,260)" filter="url(#sh)">
+    <rect width="240" height="160" rx="8" fill="#fff" stroke="#16a085" stroke-width="2"/>
+    <rect width="240" height="30" rx="8" fill="url(#hNote)"/>
+    <rect y="22" width="240" height="8" fill="#16a085"/>
+    <text x="120" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">ARM64 Regsets</text>
+    <text x="15" y="48" font-size="10" fill="#16a085" font-weight="bold">aarch64_regsets[] — ptrace.c:1587</text>
+    <line x1="10" y1="54" x2="230" y2="54" stroke="#d1f2eb" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10" fill="#333" font-family="monospace">REGSET_GPR</text><text x="130" y="70" font-size="9" fill="#888">NT_PRSTATUS</text>
+    <text x="15" y="84" font-size="10" fill="#333" font-family="monospace">REGSET_FPR</text><text x="130" y="84" font-size="9" fill="#888">NT_PRFPREG</text>
+    <text x="15" y="98" font-size="10" fill="#333" font-family="monospace">REGSET_TLS</text><text x="130" y="98" font-size="9" fill="#888">NT_ARM_TLS</text>
+    <text x="15" y="112" font-size="10" fill="#333" font-family="monospace">REGSET_SVE</text><text x="130" y="112" font-size="9" fill="#888">NT_ARM_SVE</text>
+    <text x="15" y="126" font-size="10" fill="#333" font-family="monospace">REGSET_PAC_*</text><text x="130" y="126" font-size="9" fill="#888">NT_ARM_PAC_*</text>
+    <text x="15" y="140" font-size="10" fill="#333" font-family="monospace">REGSET_ZA/ZT</text><text x="130" y="140" font-size="9" fill="#888">NT_ARM_ZA/ZT</text>
+    <text x="15" y="158" font-size="9" fill="#999">+ HW_BREAK, FPMR, GCS, POE...</text>
+  </g>
+
+  <!-- Arrows Row 1→2 -->
+  <path d="M460,200 L200,260" fill="none" stroke="#27ae60" stroke-width="2" marker-end="url(#aG)"/>
+  <rect x="290" y="220" width="88" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="334" y="230" text-anchor="middle" font-size="8" fill="#27ae60">binfmt-&gt;core_dump</text>
+
+  <path d="M370,340 L430,340" fill="none" stroke="#e67e22" stroke-width="1.5" marker-end="url(#aO)"/>
+
+  <path d="M200,420 L200,460 L870,460 L870,420" fill="none" stroke="#16a085" stroke-width="1.5" marker-end="url(#aG)"/>
+  <rect x="470" y="452" width="100" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="520" y="462" text-anchor="middle" font-size="8" fill="#16a085">fill_thread_core_info</text>
+
+  <!-- ===== ROW 3: ELF Core File Layout ===== -->
+  <g transform="translate(30,490)" filter="url(#sh)">
+    <rect width="1140" height="200" rx="8" fill="#fff" stroke="#2c3e50" stroke-width="2"/>
+    <rect width="1140" height="30" rx="8" fill="#2c3e50"/>
+    <rect y="22" width="1140" height="8" fill="#2c3e50"/>
+    <text x="570" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="14">ELF Core 文件内部布局</text>
+
+    <!-- ELF Header block -->
+    <rect x="15" y="42" width="110" height="145" rx="4" fill="#ebf5fb" stroke="#2980b9" stroke-width="1.5"/>
+    <text x="70" y="58" text-anchor="middle" font-size="11" font-weight="bold" fill="#2980b9">ELF Header</text>
+    <text x="70" y="74" text-anchor="middle" font-size="9" fill="#555">e_type=ET_CORE</text>
+    <text x="70" y="88" text-anchor="middle" font-size="9" fill="#555">e_machine=</text>
+    <text x="70" y="100" text-anchor="middle" font-size="9" fill="#555">EM_AARCH64</text>
+    <text x="70" y="116" text-anchor="middle" font-size="9" fill="#555">e_phoff=64</text>
+    <text x="70" y="132" text-anchor="middle" font-size="9" fill="#555">ELFCLASS64</text>
+    <text x="70" y="148" text-anchor="middle" font-size="9" fill="#555">ELFDATA2LSB</text>
+    <text x="70" y="170" text-anchor="middle" font-size="8" fill="#aaa">64 bytes</text>
+
+    <!-- Program Headers block -->
+    <rect x="140" y="42" width="130" height="145" rx="4" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/>
+    <text x="205" y="58" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67e22">Program Headers</text>
+    <text x="205" y="76" text-anchor="middle" font-size="9" fill="#555">PT_NOTE (1个)</text>
+    <rect x="155" y="82" width="100" height="14" rx="2" fill="#fadbd8" stroke="#e74c3c" stroke-width="0.5"/>
+    <text x="205" y="92" text-anchor="middle" font-size="8" fill="#c0392b">→ NOTE 段偏移</text>
+    <text x="205" y="110" text-anchor="middle" font-size="9" fill="#555">PT_LOAD ×N</text>
+    <rect x="155" y="116" width="100" height="14" rx="2" fill="#d5f5e3" stroke="#27ae60" stroke-width="0.5"/>
+    <text x="205" y="126" text-anchor="middle" font-size="8" fill="#229954">→ VMA 数据偏移</text>
+    <text x="205" y="146" text-anchor="middle" font-size="9" fill="#888">每段 56 bytes</text>
+    <text x="205" y="162" text-anchor="middle" font-size="9" fill="#888">segs = vma_count</text>
+    <text x="205" y="176" text-anchor="middle" font-size="9" fill="#888">+ 1 (NOTE)</text>
+
+    <!-- PT_NOTE content -->
+    <rect x="285" y="42" width="420" height="145" rx="4" fill="#eafaf1" stroke="#27ae60" stroke-width="1.5"/>
+    <text x="495" y="58" text-anchor="middle" font-size="11" font-weight="bold" fill="#27ae60">PT_NOTE 段 — ELF Notes</text>
+
+    <!-- Note boxes inside -->
+    <rect x="295" y="66" width="90" height="36" rx="3" fill="#fadbd8" stroke="#e74c3c" stroke-width="1"/>
+    <text x="340" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#c0392b">NT_PRSTATUS</text>
+    <text x="340" y="96" text-anchor="middle" font-size="8" fill="#888">每线程 × regs</text>
+
+    <rect x="395" y="66" width="90" height="36" rx="3" fill="#d6eaf8" stroke="#2980b9" stroke-width="1"/>
+    <text x="440" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#2471a3">NT_PRPSINFO</text>
+    <text x="440" y="96" text-anchor="middle" font-size="8" fill="#888">进程信息 ×1</text>
+
+    <rect x="495" y="66" width="80" height="36" rx="3" fill="#fdebd0" stroke="#e67e22" stroke-width="1"/>
+    <text x="535" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#d35400">NT_SIGINFO</text>
+    <text x="535" y="96" text-anchor="middle" font-size="8" fill="#888">信号信息</text>
+
+    <rect x="585" y="66" width="55" height="36" rx="3" fill="#e8daef" stroke="#8e44ad" stroke-width="1"/>
+    <text x="612" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#7d3c98">NT_AUXV</text>
+    <text x="612" y="96" text-anchor="middle" font-size="8" fill="#888">辅助向量</text>
+
+    <rect x="650" y="66" width="50" height="36" rx="3" fill="#d1f2eb" stroke="#16a085" stroke-width="1"/>
+    <text x="675" y="80" text-anchor="middle" font-size="9" font-weight="bold" fill="#138d75">NT_FILE</text>
+    <text x="675" y="96" text-anchor="middle" font-size="8" fill="#888">映射表</text>
+
+    <!-- ARM64 specific notes -->
+    <rect x="295" y="110" width="80" height="28" rx="3" fill="#d1f2eb" stroke="#16a085" stroke-width="1"/>
+    <text x="335" y="128" text-anchor="middle" font-size="8" font-weight="bold" fill="#138d75">NT_PRFPREG</text>
+
+    <rect x="385" y="110" width="80" height="28" rx="3" fill="#d1f2eb" stroke="#16a085" stroke-width="1"/>
+    <text x="425" y="128" text-anchor="middle" font-size="8" font-weight="bold" fill="#138d75">NT_ARM_TLS</text>
+
+    <rect x="475" y="110" width="80" height="28" rx="3" fill="#d1f2eb" stroke="#16a085" stroke-width="1"/>
+    <text x="515" y="128" text-anchor="middle" font-size="8" font-weight="bold" fill="#138d75">NT_ARM_SVE</text>
+
+    <rect x="565" y="110" width="80" height="28" rx="3" fill="#d1f2eb" stroke="#16a085" stroke-width="1"/>
+    <text x="605" y="128" text-anchor="middle" font-size="8" font-weight="bold" fill="#138d75">NT_ARM_PAC*</text>
+
+    <text x="660" y="128" text-anchor="start" font-size="8" fill="#999">...</text>
+
+    <text x="495" y="158" text-anchor="middle" font-size="8" fill="#888">namesz | descsz | type | name | data (4字节对齐)</text>
+    <text x="495" y="174" text-anchor="middle" font-size="8" fill="#aaa">崩溃线程 NOTE 在最前（GDB 以此为当前线程）</text>
+
+    <!-- PT_LOAD segments -->
+    <rect x="720" y="42" width="405" height="145" rx="4" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/>
+    <text x="922" y="58" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67e22">PT_LOAD 段 — 用户内存</text>
+
+    <rect x="730" y="66" width="90" height="50" rx="3" fill="#fadbd8" stroke="#e74c3c" stroke-width="1"/>
+    <text x="775" y="82" text-anchor="middle" font-size="9" font-weight="bold" fill="#c0392b">[stack]</text>
+    <text x="775" y="96" text-anchor="middle" font-size="8" fill="#888">RW- 匿名</text>
+    <text x="775" y="108" text-anchor="middle" font-size="7" fill="#aaa">p_filesz=dump_size</text>
+
+    <rect x="830" y="66" width="90" height="50" rx="3" fill="#d5f5e3" stroke="#27ae60" stroke-width="1"/>
+    <text x="875" y="82" text-anchor="middle" font-size="9" font-weight="bold" fill="#229954">[heap]</text>
+    <text x="875" y="96" text-anchor="middle" font-size="8" fill="#888">RW- 匿名</text>
+    <text x="875" y="108" text-anchor="middle" font-size="7" fill="#aaa">p_memsz=vma_size</text>
+
+    <rect x="930" y="66" width="90" height="50" rx="3" fill="#d6eaf8" stroke="#2980b9" stroke-width="1"/>
+    <text x="975" y="82" text-anchor="middle" font-size="9" font-weight="bold" fill="#2471a3">.text/.data</text>
+    <text x="975" y="96" text-anchor="middle" font-size="8" fill="#888">R-X / RW-</text>
+    <text x="975" y="108" text-anchor="middle" font-size="7" fill="#aaa">仅 ELF header 页</text>
+
+    <rect x="1030" y="66" width="85" height="50" rx="3" fill="#e8daef" stroke="#8e44ad" stroke-width="1"/>
+    <text x="1072" y="82" text-anchor="middle" font-size="9" font-weight="bold" fill="#7d3c98">[vdso]</text>
+    <text x="1072" y="96" text-anchor="middle" font-size="8" fill="#888">R-X</text>
+    <text x="1072" y="108" text-anchor="middle" font-size="7" fill="#aaa">始终转储</text>
+
+    <text x="922" y="140" text-anchor="middle" font-size="9" fill="#555">dump_user_range() → get_dump_page()</text>
+    <text x="922" y="156" text-anchor="middle" font-size="9" fill="#888">稀疏页 → dump_skip() → sparse file</text>
+    <text x="922" y="172" text-anchor="middle" font-size="8" fill="#aaa">页对齐: roundup(offset, ELF_EXEC_PAGESIZE)</text>
+  </g>
+
+  <!-- ===== ROW 4: Key data structures ===== -->
+  <g transform="translate(30,720)" filter="url(#sh)">
+    <rect width="280" height="140" rx="8" fill="#fff" stroke="#2980b9" stroke-width="2"/>
+    <rect width="280" height="30" rx="8" fill="url(#hCore)"/>
+    <rect y="22" width="280" height="8" fill="#2980b9"/>
+    <text x="140" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">struct coredump_params</text>
+    <text x="15" y="48" font-size="10" fill="#2980b9" font-weight="bold">include/linux/coredump.h:19</text>
+    <line x1="10" y1="54" x2="270" y2="54" stroke="#d6eaf8" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10" fill="#333" font-family="monospace">siginfo</text><text x="100" y="70" font-size="9" fill="#888">触发信号信息</text>
+    <text x="15" y="84" font-size="10" fill="#333" font-family="monospace">file</text><text x="100" y="84" font-size="9" fill="#888">输出文件/管道/socket</text>
+    <text x="15" y="98" font-size="10" fill="#333" font-family="monospace">limit</text><text x="100" y="98" font-size="9" fill="#888">RLIMIT_CORE</text>
+    <text x="15" y="112" font-size="10" fill="#333" font-family="monospace">vma_meta[]</text><text x="100" y="112" font-size="9" fill="#888">VMA 元数据快照</text>
+    <text x="15" y="126" font-size="10" fill="#333" font-family="monospace">written/pos</text><text x="100" y="126" font-size="9" fill="#888">写入跟踪</text>
+    <text x="15" y="140" font-size="10" fill="#333" font-family="monospace">to_skip</text><text x="100" y="140" font-size="9" fill="#888">延迟跳过 (稀疏)</text>
+  </g>
+
+  <g transform="translate(370,720)" filter="url(#sh)">
+    <rect width="250" height="140" rx="8" fill="#fff" stroke="#e74c3c" stroke-width="2"/>
+    <rect width="250" height="30" rx="8" fill="url(#hSig)"/>
+    <rect y="22" width="250" height="8" fill="#e74c3c"/>
+    <text x="125" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">struct elf_prstatus</text>
+    <text x="15" y="48" font-size="10" fill="#e74c3c" font-weight="bold">include/linux/elfcore.h:53</text>
+    <line x1="10" y1="54" x2="240" y2="54" stroke="#fce4e4" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10" fill="#333" font-family="monospace">pr_info</text><text x="100" y="70" font-size="9" fill="#888">信号信息</text>
+    <text x="15" y="84" font-size="10" fill="#333" font-family="monospace">pr_cursig</text><text x="100" y="84" font-size="9" fill="#888">当前信号编号</text>
+    <text x="15" y="98" font-size="10" fill="#333" font-family="monospace">pr_pid</text><text x="100" y="98" font-size="9" fill="#888">进程 ID</text>
+    <text x="15" y="112" font-size="10" fill="#e74c3c" font-weight="bold" font-family="monospace">pr_reg[34]</text><text x="120" y="112" font-size="9" fill="#888">GP 寄存器 (272B)</text>
+    <text x="15" y="126" font-size="10" fill="#333" font-family="monospace">pr_utime/stime</text><text x="140" y="126" font-size="9" fill="#888">CPU 时间</text>
+    <text x="15" y="140" font-size="10" fill="#333" font-family="monospace">pr_fpvalid</text><text x="100" y="140" font-size="9" fill="#888">FP 有效标志</text>
+  </g>
+
+  <g transform="translate(680,720)" filter="url(#sh)">
+    <rect width="220" height="140" rx="8" fill="#fff" stroke="#27ae60" stroke-width="2"/>
+    <rect width="220" height="30" rx="8" fill="url(#hElf)"/>
+    <rect y="22" width="220" height="8" fill="#27ae60"/>
+    <text x="110" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">struct core_state</text>
+    <text x="15" y="48" font-size="10" fill="#27ae60" font-weight="bold">sched/signal.h:81</text>
+    <line x1="10" y1="54" x2="210" y2="54" stroke="#d5f5e3" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10" fill="#333" font-family="monospace">nr_threads</text><text x="110" y="70" font-size="9" fill="#888">待停止线程数</text>
+    <text x="15" y="88" font-size="10" fill="#333" font-family="monospace">dumper</text><text x="110" y="88" font-size="9" fill="#888">core_thread 链表</text>
+    <text x="15" y="106" font-size="10" fill="#333" font-family="monospace">startup</text><text x="110" y="106" font-size="9" fill="#888">completion 完成量</text>
+    <line x1="10" y1="114" x2="210" y2="114" stroke="#d5f5e3" stroke-width="0.8"/>
+    <text x="15" y="130" font-size="10" fill="#27ae60" font-weight="bold">core_thread:</text>
+    <text x="110" y="130" font-size="9" fill="#888">task + next 链表</text>
+  </g>
+
+  <g transform="translate(960,720)" filter="url(#sh)">
+    <rect width="210" height="140" rx="8" fill="#fff" stroke="#8e44ad" stroke-width="2"/>
+    <rect width="210" height="30" rx="8" fill="url(#hOut)"/>
+    <rect y="22" width="210" height="8" fill="#8e44ad"/>
+    <text x="105" y="20" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">struct linux_binfmt</text>
+    <text x="15" y="48" font-size="10" fill="#8e44ad" font-weight="bold">include/linux/binfmts.h:89</text>
+    <line x1="10" y1="54" x2="200" y2="54" stroke="#e8daef" stroke-width="0.8"/>
+    <text x="15" y="70" font-size="10" fill="#333" font-family="monospace">load_binary</text><text x="110" y="70" font-size="9" fill="#888">加载可执行</text>
+    <text x="15" y="88" font-size="10" fill="#8e44ad" font-weight="bold" font-family="monospace">core_dump</text><text x="110" y="88" font-size="9" fill="#888">→elf_core_dump</text>
+    <text x="15" y="106" font-size="10" fill="#333" font-family="monospace">min_coredump</text><text x="110" y="106" font-size="9" fill="#888">4096 (ARM64)</text>
+    <line x1="10" y1="114" x2="200" y2="114" stroke="#e8daef" stroke-width="0.8"/>
+    <text x="15" y="130" font-size="9" fill="#888">elf_format 注册于</text>
+    <text x="15" y="143" font-size="9" fill="#888">fs/binfmt_elf.c:96</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(1000,260)">
+    <rect width="190" height="100" rx="6" fill="white" fill-opacity="0.9" stroke="#ccc" stroke-width="1"/>
+    <text x="95" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#555">图例</text>
+    <line x1="10" y1="32" x2="40" y2="32" stroke="#e74c3c" stroke-width="2" marker-end="url(#aR)"/>
+    <text x="48" y="36" font-size="9" fill="#555">信号/数据流</text>
+    <line x1="10" y1="50" x2="40" y2="50" stroke="#2980b9" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aB)"/>
+    <text x="48" y="54" font-size="9" fill="#555">调用关系</text>
+    <line x1="10" y1="68" x2="40" y2="68" stroke="#27ae60" stroke-width="2" marker-end="url(#aG)"/>
+    <text x="48" y="72" font-size="9" fill="#555">核心路径</text>
+    <line x1="10" y1="86" x2="40" y2="86" stroke="#e67e22" stroke-width="1.5" marker-end="url(#aO)"/>
+    <text x="48" y="90" font-size="9" fill="#555">VMA/过滤</text>
+  </g>
+</svg>

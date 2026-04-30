@@ -1,0 +1,249 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 780" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <linearGradient id="hdr1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+    <linearGradient id="hdr2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#10b981"/></linearGradient>
+    <linearGradient id="hdr3" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#d97706"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+    <linearGradient id="hdr4" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#ef4444"/></linearGradient>
+    <linearGradient id="hdr5" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#059669" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#d97706" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">图 5.10-3  Quarantine FIFO 批量回收算法</text>
+  <text x="550" y="52" text-anchor="middle" font-size="11" fill="#64748b">源码：mm/kasan/quarantine.c → quarantine_put() / quarantine_reduce()</text>
+
+  <!-- ============ Per-CPU Queues ============ -->
+  <g transform="translate(30,75)">
+    <rect width="280" height="310" rx="8" fill="#fff" stroke="#2563eb" stroke-width="2" filter="url(#sh)"/>
+    <rect width="280" height="30" rx="8" fill="url(#hdr1)"/>
+    <rect x="0" y="22" width="280" height="8" fill="#2563eb"/>
+    <text x="140" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Per-CPU 隔离队列</text>
+    <text x="140" y="46" text-anchor="middle" fill="#2563eb" font-size="10" font-weight="bold">QUARANTINE_PERCPU_SIZE = 1MB</text>
+
+    <!-- CPU 0 queue -->
+    <rect x="15" y="58" width="250" height="56" rx="5" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="25" y="74" font-size="10" font-weight="bold" fill="#1e40af">cpu_quarantine[CPU 0]</text>
+    <g transform="translate(25,80)">
+      <rect width="38" height="24" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="19" y="16" text-anchor="middle" font-size="8" fill="#1e40af">obj</text>
+      <rect x="42" width="38" height="24" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="61" y="16" text-anchor="middle" font-size="8" fill="#1e40af">obj</text>
+      <rect x="84" width="38" height="24" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="103" y="16" text-anchor="middle" font-size="8" fill="#1e40af">obj</text>
+      <text x="130" y="16" font-size="10" fill="#6b7280">→ ... → tail</text>
+    </g>
+
+    <!-- CPU 1 queue -->
+    <rect x="15" y="122" width="250" height="56" rx="5" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="25" y="138" font-size="10" font-weight="bold" fill="#1e40af">cpu_quarantine[CPU 1]</text>
+    <g transform="translate(25,144)">
+      <rect width="38" height="24" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="19" y="16" text-anchor="middle" font-size="8" fill="#1e40af">obj</text>
+      <rect x="42" width="38" height="24" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="61" y="16" text-anchor="middle" font-size="8" fill="#1e40af">obj</text>
+      <text x="88" y="16" font-size="10" fill="#6b7280">→ ... → tail</text>
+    </g>
+
+    <!-- CPU N queue -->
+    <text x="140" y="196" text-anchor="middle" font-size="12" fill="#93c5fd">⋮</text>
+
+    <rect x="15" y="206" width="250" height="56" rx="5" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="25" y="222" font-size="10" font-weight="bold" fill="#1e40af">cpu_quarantine[CPU N]</text>
+    <g transform="translate(25,228)">
+      <rect width="38" height="24" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="19" y="16" text-anchor="middle" font-size="8" fill="#1e40af">obj</text>
+      <rect x="42" width="38" height="24" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="61" y="16" text-anchor="middle" font-size="8" fill="#1e40af">obj</text>
+      <text x="88" y="16" font-size="10" fill="#6b7280">→ ... → tail</text>
+    </g>
+
+    <!-- Trigger condition -->
+    <rect x="15" y="272" width="250" height="28" rx="4" fill="#fef3c7" stroke="#d97706"/>
+    <text x="140" y="290" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">bytes &gt; 1MB → 移入 Global Queue</text>
+  </g>
+
+  <!-- Arrow from per-CPU to global -->
+  <path d="M310,230 L390,230" fill="none" stroke="#d97706" stroke-width="2.5" marker-end="url(#aO)"/>
+  <rect x="315" y="215" width="70" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="350" y="227" text-anchor="middle" font-size="9" font-weight="bold" fill="#d97706">qlist_move_all</text>
+
+  <!-- ============ Global Quarantine (Round-Robin FIFO) ============ -->
+  <g transform="translate(400,75)">
+    <rect width="350" height="310" rx="8" fill="#fff" stroke="#059669" stroke-width="2" filter="url(#sh)"/>
+    <rect width="350" height="30" rx="8" fill="url(#hdr2)"/>
+    <rect x="0" y="22" width="350" height="8" fill="#059669"/>
+    <text x="175" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Global Quarantine (环形 FIFO)</text>
+    <text x="175" y="46" text-anchor="middle" fill="#059669" font-size="10" font-weight="bold">QUARANTINE_BATCHES = max(1024, 4×NR_CPUS)</text>
+
+    <!-- Circular buffer visualization -->
+    <g transform="translate(30,55)">
+      <!-- Batch slots -->
+      <rect width="60" height="42" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="30" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#991b1b">Batch 0</text>
+      <text x="30" y="30" text-anchor="middle" font-size="8" fill="#dc2626">← head</text>
+      <text x="30" y="40" text-anchor="middle" font-size="7" fill="#dc2626">(最老)</text>
+
+      <rect x="68" width="60" height="42" rx="4" fill="#d1fae5" stroke="#059669"/>
+      <text x="98" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#065f46">Batch 1</text>
+      <text x="98" y="32" text-anchor="middle" font-size="8" fill="#059669">已满</text>
+
+      <rect x="136" width="60" height="42" rx="4" fill="#d1fae5" stroke="#059669"/>
+      <text x="166" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#065f46">Batch 2</text>
+      <text x="166" y="32" text-anchor="middle" font-size="8" fill="#059669">已满</text>
+
+      <text x="210" y="25" font-size="14" fill="#6b7280">...</text>
+
+      <rect x="230" width="60" height="42" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+      <text x="260" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#92400e">Batch N</text>
+      <text x="260" y="30" text-anchor="middle" font-size="8" fill="#d97706">← tail</text>
+      <text x="260" y="40" text-anchor="middle" font-size="7" fill="#d97706">(最新)</text>
+    </g>
+
+    <!-- Batch detail -->
+    <text x="20" y="118" font-size="10" font-weight="bold" fill="#059669">每个 Batch 是一个 qlist_head:</text>
+    <rect x="15" y="124" width="320" height="50" rx="4" fill="#ecfdf5" stroke="#6ee7b7"/>
+    <text x="25" y="142" font-size="9" font-family="monospace" fill="#065f46">struct qlist_head {</text>
+    <text x="45" y="155" font-size="9" font-family="monospace" fill="#065f46">head → obj → obj → ... → tail</text>
+    <text x="45" y="168" font-size="9" font-family="monospace" fill="#065f46">bytes: 当前 batch 总大小</text>
+
+    <!-- Size management -->
+    <line x1="15" y1="184" x2="335" y2="184" stroke="#6ee7b7" stroke-width="0.5" stroke-dasharray="4,2"/>
+    <text x="20" y="200" font-size="10" font-weight="bold" fill="#059669">容量管理:</text>
+    <text x="20" y="216" font-size="9" fill="#475569">quarantine_max_size =</text>
+    <text x="30" y="230" font-size="9" font-family="monospace" fill="#065f46">total_RAM/32 - 1MB×num_cpus</text>
+    <text x="20" y="248" font-size="9" fill="#475569">quarantine_batch_size =</text>
+    <text x="30" y="262" font-size="9" font-family="monospace" fill="#065f46">max(1MB, 2×total_RAM/(32×BATCHES))</text>
+
+    <!-- Rotation -->
+    <rect x="15" y="274" width="320" height="26" rx="4" fill="#fef3c7" stroke="#d97706"/>
+    <text x="175" y="291" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">Batch 满 → tail++ (环形前进)</text>
+  </g>
+
+  <!-- Arrow from global to free -->
+  <path d="M750,230 L810,230" fill="none" stroke="#dc2626" stroke-width="2.5" marker-end="url(#aR)"/>
+  <rect x="753" y="215" width="55" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="780" y="227" text-anchor="middle" font-size="9" font-weight="bold" fill="#dc2626">evict</text>
+
+  <!-- ============ Eviction / Free ============ -->
+  <g transform="translate(820,75)">
+    <rect width="250" height="310" rx="8" fill="#fff" stroke="#dc2626" stroke-width="2" filter="url(#sh)"/>
+    <rect width="250" height="30" rx="8" fill="url(#hdr4)"/>
+    <rect x="0" y="22" width="250" height="8" fill="#dc2626"/>
+    <text x="125" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Eviction 回收</text>
+    <text x="125" y="46" text-anchor="middle" fill="#dc2626" font-size="10" font-weight="bold">quarantine_reduce()</text>
+
+    <!-- Trigger -->
+    <rect x="15" y="58" width="220" height="28" rx="5" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="125" y="76" text-anchor="middle" font-size="10" fill="#991b1b">触发: size &gt; max_size</text>
+
+    <path d="M125,86 L125,98" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#aR)"/>
+
+    <!-- Step 1 -->
+    <rect x="15" y="98" width="220" height="28" rx="5" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="25" y="116" font-size="9" fill="#991b1b">❶ srcu_read_lock()</text>
+
+    <path d="M125,126 L125,138" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#aR)"/>
+
+    <!-- Step 2 -->
+    <rect x="15" y="138" width="220" height="28" rx="5" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="25" y="156" font-size="9" fill="#991b1b">❷ 重算 max_size, batch_size</text>
+
+    <path d="M125,166 L125,178" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#aR)"/>
+
+    <!-- Step 3 -->
+    <rect x="15" y="178" width="220" height="36" rx="5" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+    <text x="25" y="196" font-size="9" font-weight="bold" fill="#92400e">❸ 摘取 head batch → to_free</text>
+    <text x="25" y="208" font-size="8" fill="#92400e">   quarantine_head++ (环形)</text>
+
+    <path d="M125,214 L125,226" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#aR)"/>
+
+    <!-- Step 4 -->
+    <rect x="15" y="226" width="220" height="28" rx="5" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="25" y="244" font-size="9" fill="#991b1b">❹ raw_spin_unlock()</text>
+
+    <path d="M125,254 L125,266" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#aR)"/>
+
+    <!-- Step 5 -->
+    <rect x="15" y="266" width="220" height="28" rx="5" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+    <text x="25" y="284" font-size="9" font-weight="bold" fill="#065f46">❺ qlist_free_all(to_free) → kmem_cache_free</text>
+  </g>
+
+  <!-- ============ Bottom: Timeline ============ -->
+  <g transform="translate(30,420)">
+    <rect width="1040" height="340" rx="8" fill="#fff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1040" height="30" rx="8" fill="url(#hdr5)"/>
+    <rect x="0" y="22" width="1040" height="8" fill="#7c3aed"/>
+    <text x="520" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">对象生命周期与隔离区 Timeline</text>
+
+    <!-- Timeline axis -->
+    <line x1="60" y1="70" x2="980" y2="70" stroke="#6b7280" stroke-width="1.5"/>
+    <text x="30" y="74" font-size="10" fill="#6b7280">时间 →</text>
+
+    <!-- Phase 1: Active -->
+    <rect x="60" y="80" width="200" height="50" rx="5" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+    <text x="160" y="100" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Active 使用中</text>
+    <text x="160" y="118" text-anchor="middle" font-size="9" fill="#3b82f6">Shadow = 0x00 (可访问)</text>
+    <text x="160" y="65" text-anchor="middle" font-size="9" fill="#3b82f6">kmalloc()</text>
+    <circle cx="60" cy="70" r="4" fill="#3b82f6"/>
+
+    <!-- Phase 2: kfree -->
+    <circle cx="260" cy="70" r="4" fill="#dc2626"/>
+    <text x="260" y="65" text-anchor="middle" font-size="9" fill="#dc2626">kfree()</text>
+
+    <!-- Phase 3: Per-CPU quarantine -->
+    <rect x="270" y="80" width="180" height="50" rx="5" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+    <text x="360" y="100" text-anchor="middle" font-size="11" font-weight="bold" fill="#92400e">Per-CPU 隔离</text>
+    <text x="360" y="118" text-anchor="middle" font-size="9" fill="#d97706">Shadow = 0xFB (已释放)</text>
+
+    <!-- Phase 4: Global quarantine -->
+    <rect x="460" y="80" width="280" height="50" rx="5" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+    <text x="600" y="100" text-anchor="middle" font-size="11" font-weight="bold" fill="#065f46">Global 隔离 (FIFO 排队)</text>
+    <text x="600" y="118" text-anchor="middle" font-size="9" fill="#059669">Shadow = 0xFB (已释放, UAF 可检测)</text>
+    <circle cx="460" cy="70" r="4" fill="#059669"/>
+    <text x="460" y="65" text-anchor="middle" font-size="9" fill="#059669">溢出移入</text>
+
+    <!-- Phase 5: Actually freed -->
+    <rect x="750" y="80" width="230" height="50" rx="5" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="865" y="100" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">真正释放回 SLUB</text>
+    <text x="865" y="118" text-anchor="middle" font-size="9" fill="#dc2626">Shadow 清除, 对象可重新分配</text>
+    <circle cx="750" cy="70" r="4" fill="#dc2626"/>
+    <text x="750" y="65" text-anchor="middle" font-size="9" fill="#dc2626">reduce() 淘汰</text>
+
+    <!-- UAF detection window -->
+    <path d="M270,145 L270,165" fill="none" stroke="#7c3aed" stroke-width="1.5"/>
+    <path d="M740,145 L740,165" fill="none" stroke="#7c3aed" stroke-width="1.5"/>
+    <path d="M270,160 L740,160" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <rect x="400" y="150" width="210" height="20" rx="4" fill="white" fill-opacity="0.95" stroke="#7c3aed"/>
+    <text x="505" y="164" text-anchor="middle" font-size="10" font-weight="bold" fill="#7c3aed">★ UAF 检测窗口 ★</text>
+
+    <text x="60" y="195" font-size="11" font-weight="bold" fill="#7c3aed">关键设计意图:</text>
+    <text x="60" y="215" font-size="10" fill="#475569">• 对象 kfree() 后不立即回收，而是进入隔离区 → 如果有悬垂指针再次访问，Shadow 仍为 0xFB → KASAN 报 UAF</text>
+    <text x="60" y="235" font-size="10" fill="#475569">• 隔离时间越长（队列越大），UAF 检测窗口越宽，但内存开销越大 → 通过 QUARANTINE_FRACTION 平衡</text>
+    <text x="60" y="255" font-size="10" fill="#475569">• Per-CPU → Global 的两级结构减少锁竞争：Per-CPU 操作只需 local_irq_save，不需 spinlock</text>
+
+    <!-- Sync mechanisms -->
+    <line x1="60" y1="268" x2="980" y2="268" stroke="#c4b5fd" stroke-width="0.5" stroke-dasharray="4,2"/>
+    <text x="60" y="286" font-size="11" font-weight="bold" fill="#7c3aed">同步机制:</text>
+
+    <rect x="60" y="294" width="220" height="36" rx="4" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="170" y="310" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e40af">Per-CPU: local_irq_save</text>
+    <text x="170" y="324" text-anchor="middle" font-size="9" fill="#3b82f6">防止 IRQ 竞态</text>
+
+    <rect x="310" y="294" width="220" height="36" rx="4" fill="#ecfdf5" stroke="#6ee7b7"/>
+    <text x="420" y="310" text-anchor="middle" font-size="10" font-weight="bold" fill="#065f46">Global: raw_spinlock</text>
+    <text x="420" y="324" text-anchor="middle" font-size="9" fill="#059669">保护 FIFO 结构</text>
+
+    <rect x="560" y="294" width="220" height="36" rx="4" fill="#fae8ff" stroke="#d946ef"/>
+    <text x="670" y="310" text-anchor="middle" font-size="10" font-weight="bold" fill="#86198f">Cache 销毁: SRCU</text>
+    <text x="670" y="324" text-anchor="middle" font-size="9" fill="#86198f">synchronize_srcu 确保安全</text>
+
+    <rect x="810" y="294" width="170" height="36" rx="4" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="895" y="310" text-anchor="middle" font-size="10" font-weight="bold" fill="#991b1b">CPU 热插拔</text>
+    <text x="895" y="324" text-anchor="middle" font-size="9" fill="#dc2626">on_each_cpu() 同步</text>
+  </g>
+</svg>

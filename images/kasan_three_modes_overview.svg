@@ -1,0 +1,220 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 920" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+<defs>
+  <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+  <linearGradient id="hdrGen" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1565C0"/><stop offset="100%" stop-color="#42A5F5"/></linearGradient>
+  <linearGradient id="hdrSW" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#66BB6A"/></linearGradient>
+  <linearGradient id="hdrHW" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C62828"/><stop offset="100%" stop-color="#EF5350"/></linearGradient>
+  <linearGradient id="hdrKasan" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4527A0"/><stop offset="100%" stop-color="#7E57C2"/></linearGradient>
+  <linearGradient id="hdrBug" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#E65100"/><stop offset="100%" stop-color="#FF9800"/></linearGradient>
+  <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2E7D32" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#C62828" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#4527A0" stroke-width="1.5" stroke-linejoin="round"/></marker>
+</defs>
+
+<text x="600" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#212121">KASAN 三种检测模式全景对比</text>
+<text x="600" y="52" text-anchor="middle" font-size="11" fill="#757575">源码：lib/Kconfig.kasan · mm/kasan/{generic.c, sw_tags.c, hw_tags.c, kasan.h}</text>
+
+<!-- KASAN 顶层框 -->
+<g transform="translate(380,70)" filter="url(#sh)">
+  <rect width="440" height="66" rx="8" fill="#fff" stroke="#4527A0" stroke-width="2"/>
+  <rect width="440" height="30" rx="8" fill="url(#hdrKasan)"/>
+  <rect y="22" width="440" height="8" fill="#4527A0"/>
+  <text x="220" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">KASAN — Kernel Address Sanitizer</text>
+  <text x="220" y="50" text-anchor="middle" font-size="10" fill="#4527A0" font-weight="bold">动态内存安全错误检测器 · CONFIG_KASAN · mm/kasan/</text>
+</g>
+
+<!-- 三条分支线 -->
+<path d="M500,136 L500,170 L240,170 L240,200" fill="none" stroke="#1565C0" stroke-width="2" marker-end="url(#aB)"/>
+<path d="M600,136 L600,200" fill="none" stroke="#2E7D32" stroke-width="2" marker-end="url(#aG)"/>
+<path d="M700,136 L700,170 L960,170 L960,200" fill="none" stroke="#C62828" stroke-width="2" marker-end="url(#aR)"/>
+
+<!-- Generic KASAN -->
+<g transform="translate(40,200)" filter="url(#sh)">
+  <rect width="390" height="290" rx="8" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <rect width="390" height="30" rx="8" fill="url(#hdrGen)"/>
+  <rect y="22" width="390" height="8" fill="#1565C0"/>
+  <text x="195" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">① Generic KASAN (CONFIG_KASAN_GENERIC)</text>
+  <text x="15" y="50" font-size="10" fill="#1565C0" font-weight="bold">类似用户态 ASan · 最精确 · 性能 ~3× 慢</text>
+  <line x1="10" y1="58" x2="380" y2="58" stroke="#E3F2FD" stroke-width="0.8"/>
+
+  <text x="15" y="75" font-size="11" font-weight="bold" fill="#333">检测原理</text>
+  <text x="15" y="91" font-size="10" fill="#555">Shadow Memory 8:1 压缩 — 8 字节映射 1 个 Shadow Byte</text>
+  <text x="15" y="105" font-size="10" fill="#555">编译器 (-fsanitize=kernel-address) 在每次 load/store 前插桩</text>
+  <text x="15" y="119" font-size="10" fill="#555">检查对应 Shadow Byte 是否为毒化值 → 报告错误</text>
+
+  <line x1="10" y1="128" x2="380" y2="128" stroke="#E3F2FD" stroke-width="0.8"/>
+  <text x="15" y="145" font-size="11" font-weight="bold" fill="#333">关键特性</text>
+  <text x="15" y="161" font-size="10" fill="#555">✓ 字节级精度检测（精确到单字节越界）</text>
+  <text x="15" y="175" font-size="10" fill="#555">✓ 支持栈变量 / 全局变量 / Slab / vmalloc 保护</text>
+  <text x="15" y="189" font-size="10" fill="#555">✓ Quarantine 隔离区延长 UAF 检测窗口</text>
+  <text x="15" y="203" font-size="10" fill="#555">✓ Per-object 元数据记录 alloc/free 调用栈</text>
+
+  <line x1="10" y1="212" x2="380" y2="212" stroke="#E3F2FD" stroke-width="0.8"/>
+  <text x="15" y="229" font-size="11" font-weight="bold" fill="#333">开销</text>
+  <text x="15" y="245" font-size="10" fill="#555">内存：~1/8 物理内存用于 Shadow（+ Quarantine + Meta）</text>
+  <text x="15" y="259" font-size="10" fill="#555">性能：~3× 降速（Inline 插桩 ~2×，Outline ~3×）</text>
+  <text x="15" y="273" font-size="10" fill="#555">架构：x86_64 / arm64 / riscv / s390 等多架构支持</text>
+  <text x="15" y="287" font-size="10" fill="#888">GCC 8.3+ / Clang</text>
+</g>
+
+<!-- SW_TAGS KASAN -->
+<g transform="translate(460,200)" filter="url(#sh)">
+  <rect width="300" height="290" rx="8" fill="#fff" stroke="#2E7D32" stroke-width="2"/>
+  <rect width="300" height="30" rx="8" fill="url(#hdrSW)"/>
+  <rect y="22" width="300" height="8" fill="#2E7D32"/>
+  <text x="150" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">② SW_TAGS (CONFIG_KASAN_SW_TAGS)</text>
+  <text x="15" y="50" font-size="10" fill="#2E7D32" font-weight="bold">类似用户态 HWASan · arm64 专属 · TBI</text>
+  <line x1="10" y1="58" x2="290" y2="58" stroke="#E8F5E9" stroke-width="0.8"/>
+
+  <text x="15" y="75" font-size="11" font-weight="bold" fill="#333">检测原理</text>
+  <text x="15" y="91" font-size="10" fill="#555">指针 Top Byte 嵌入 8-bit Tag</text>
+  <text x="15" y="105" font-size="10" fill="#555">Shadow 存储每 16B 内存的 Tag</text>
+  <text x="15" y="119" font-size="10" fill="#555">访问时比较 Pointer Tag ≠ Shadow Tag → 报错</text>
+
+  <line x1="10" y1="128" x2="290" y2="128" stroke="#E8F5E9" stroke-width="0.8"/>
+  <text x="15" y="145" font-size="11" font-weight="bold" fill="#333">关键特性</text>
+  <text x="15" y="161" font-size="10" fill="#555">✓ Per-CPU PRNG 随机 Tag 生成</text>
+  <text x="15" y="175" font-size="10" fill="#555">✓ Stack Ring 追踪 alloc/free（无 Meta）</text>
+  <text x="15" y="189" font-size="10" fill="#555">✓ 概率检测（1/256 漏检概率）</text>
+  <text x="15" y="203" font-size="10" fill="#555">✗ 不支持栈变量/全局变量保护</text>
+
+  <line x1="10" y1="212" x2="290" y2="212" stroke="#E8F5E9" stroke-width="0.8"/>
+  <text x="15" y="229" font-size="11" font-weight="bold" fill="#333">开销</text>
+  <text x="15" y="245" font-size="10" fill="#555">内存：~1/16 物理内存</text>
+  <text x="15" y="259" font-size="10" fill="#555">性能：~20% 动态分配开销</text>
+  <text x="15" y="273" font-size="10" fill="#555">架构：arm64 only (需 TBI)</text>
+  <text x="15" y="287" font-size="10" fill="#888">GCC 11+ / Clang</text>
+</g>
+
+<!-- HW_TAGS KASAN -->
+<g transform="translate(790,200)" filter="url(#sh)">
+  <rect width="370" height="290" rx="8" fill="#fff" stroke="#C62828" stroke-width="2"/>
+  <rect width="370" height="30" rx="8" fill="url(#hdrHW)"/>
+  <rect y="22" width="370" height="8" fill="#C62828"/>
+  <text x="185" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">③ HW_TAGS (CONFIG_KASAN_HW_TAGS)</text>
+  <text x="15" y="50" font-size="10" fill="#C62828" font-weight="bold">ARM64 MTE 硬件加速 · 生产可用 · ARMv8.5+</text>
+  <line x1="10" y1="58" x2="360" y2="58" stroke="#FFEBEE" stroke-width="0.8"/>
+
+  <text x="15" y="75" font-size="11" font-weight="bold" fill="#333">检测原理</text>
+  <text x="15" y="91" font-size="10" fill="#555">CPU MTE 硬件为每 16B 存储 4-bit Tag</text>
+  <text x="15" y="105" font-size="10" fill="#555">指针 Top Byte 嵌入 Logical Tag</text>
+  <text x="15" y="119" font-size="10" fill="#555">CPU 自动比较两个 Tag → 异常 / 异步中断</text>
+
+  <line x1="10" y1="128" x2="360" y2="128" stroke="#FFEBEE" stroke-width="0.8"/>
+  <text x="15" y="145" font-size="11" font-weight="bold" fill="#333">关键特性</text>
+  <text x="15" y="161" font-size="10" fill="#555">✓ 三种模式：SYNC / ASYNC / ASYMM</text>
+  <text x="15" y="175" font-size="10" fill="#555">✓ 零软件插桩开销（硬件执行检查）</text>
+  <text x="15" y="189" font-size="10" fill="#555">✓ Page Allocator 采样策略（可调间隔）</text>
+  <text x="15" y="203" font-size="10" fill="#555">✓ 生产环境可用（ASYNC 极低开销）</text>
+
+  <line x1="10" y1="212" x2="360" y2="212" stroke="#FFEBEE" stroke-width="0.8"/>
+  <text x="15" y="229" font-size="11" font-weight="bold" fill="#333">开销</text>
+  <text x="15" y="245" font-size="10" fill="#555">内存：~1/32 物理内存（MTE Tag 存储在 DRAM）</text>
+  <text x="15" y="259" font-size="10" fill="#555">性能：SYNC ~5%, ASYNC &lt;1%</text>
+  <text x="15" y="273" font-size="10" fill="#555">架构：arm64 only (ARMv8.5+ MTE)</text>
+  <text x="15" y="287" font-size="10" fill="#888">GCC 10+ / Clang 12+</text>
+</g>
+
+<!-- Bug Types Box -->
+<g transform="translate(40,530)" filter="url(#sh)">
+  <rect width="1120" height="136" rx="8" fill="#fff" stroke="#E65100" stroke-width="2"/>
+  <rect width="1120" height="30" rx="8" fill="url(#hdrBug)"/>
+  <rect y="22" width="1120" height="8" fill="#E65100"/>
+  <text x="560" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">KASAN 可检测的 Bug 类型全景</text>
+
+  <!-- Row 1 -->
+  <text x="30" y="52" font-size="11" font-weight="bold" fill="#E65100">Heap 层</text>
+  <rect x="100" y="40" width="130" height="22" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="165" y="55" text-anchor="middle" font-size="10" fill="#E65100">Slab Out-of-Bounds</text>
+  <rect x="240" y="40" width="130" height="22" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="305" y="55" text-anchor="middle" font-size="10" fill="#E65100">Use-After-Free</text>
+  <rect x="380" y="40" width="100" height="22" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="430" y="55" text-anchor="middle" font-size="10" fill="#E65100">Double-Free</text>
+  <rect x="490" y="40" width="100" height="22" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="540" y="55" text-anchor="middle" font-size="10" fill="#E65100">Invalid-Free</text>
+  <rect x="600" y="40" width="155" height="22" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="677" y="55" text-anchor="middle" font-size="10" fill="#E65100">kmalloc_large OOB</text>
+
+  <!-- Row 2 -->
+  <text x="30" y="82" font-size="11" font-weight="bold" fill="#E65100">Stack 层</text>
+  <rect x="100" y="70" width="140" height="22" rx="4" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
+  <text x="170" y="85" text-anchor="middle" font-size="10" fill="#2E7D32">Stack Out-of-Bounds</text>
+  <rect x="250" y="70" width="135" height="22" rx="4" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
+  <text x="317" y="85" text-anchor="middle" font-size="10" fill="#2E7D32">Stack Use-After-Return</text>
+  <text x="400" y="85" font-size="9" fill="#999">（仅 Generic + CONFIG_KASAN_STACK）</text>
+
+  <!-- Row 3 -->
+  <text x="30" y="112" font-size="11" font-weight="bold" fill="#E65100">Global 层</text>
+  <rect x="100" y="100" width="155" height="22" rx="4" fill="#E3F2FD" stroke="#1565C0" stroke-width="1"/>
+  <text x="177" y="115" text-anchor="middle" font-size="10" fill="#1565C0">Global Out-of-Bounds</text>
+  <text x="270" y="115" font-size="9" fill="#999">（仅 Generic + 编译器构造函数注册）</text>
+
+  <text x="560" y="82" font-size="11" font-weight="bold" fill="#E65100">Page 层</text>
+  <rect x="625" y="70" width="140" height="22" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="695" y="85" text-anchor="middle" font-size="10" fill="#E65100">Page Use-After-Free</text>
+  <rect x="775" y="70" width="130" height="22" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="840" y="85" text-anchor="middle" font-size="10" fill="#E65100">vmalloc OOB/UAF</text>
+
+  <text x="560" y="112" font-size="11" font-weight="bold" fill="#E65100">API 层</text>
+  <rect x="625" y="100" width="155" height="22" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="702" y="115" text-anchor="middle" font-size="10" fill="#E65100">memcpy/memset OOB</text>
+  <rect x="790" y="100" width="155" height="22" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+  <text x="867" y="115" text-anchor="middle" font-size="10" fill="#E65100">copy_from/to_user OOB</text>
+</g>
+
+<!-- 对比表 -->
+<g transform="translate(40,700)" filter="url(#sh)">
+  <rect width="1120" height="200" rx="8" fill="#fff" stroke="#757575" stroke-width="1.5"/>
+  <text x="560" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">三种模式核心指标对比</text>
+
+  <!-- Table header -->
+  <rect x="0" y="32" width="1120" height="24" fill="#F5F5F5"/>
+  <text x="80" y="48" text-anchor="middle" font-size="10" font-weight="bold" fill="#333">对比维度</text>
+  <text x="300" y="48" text-anchor="middle" font-size="10" font-weight="bold" fill="#1565C0">Generic</text>
+  <text x="600" y="48" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">SW_TAGS</text>
+  <text x="900" y="48" text-anchor="middle" font-size="10" font-weight="bold" fill="#C62828">HW_TAGS</text>
+  <line x1="0" y1="56" x2="1120" y2="56" stroke="#E0E0E0" stroke-width="1"/>
+
+  <!-- Row: Shadow ratio -->
+  <text x="80" y="73" text-anchor="middle" font-size="10" fill="#555">Shadow 比例</text>
+  <text x="300" y="73" text-anchor="middle" font-size="10" fill="#333">8:1（8B→1B Shadow）</text>
+  <text x="600" y="73" text-anchor="middle" font-size="10" fill="#333">16:1（16B→1B Tag）</text>
+  <text x="900" y="73" text-anchor="middle" font-size="10" fill="#333">16:1（16B→4bit HW Tag）</text>
+  <line x1="10" y1="80" x2="1110" y2="80" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <!-- Row: Memory overhead -->
+  <text x="80" y="97" text-anchor="middle" font-size="10" fill="#555">内存开销</text>
+  <text x="300" y="97" text-anchor="middle" font-size="10" fill="#333">~1/8 + Quarantine + Meta</text>
+  <text x="600" y="97" text-anchor="middle" font-size="10" fill="#333">~1/16 + Stack Ring</text>
+  <text x="900" y="97" text-anchor="middle" font-size="10" fill="#333">~1/32（DRAM Tag 存储）</text>
+  <line x1="10" y1="104" x2="1110" y2="104" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <!-- Row: Performance -->
+  <text x="80" y="121" text-anchor="middle" font-size="10" fill="#555">性能影响</text>
+  <text x="300" y="121" text-anchor="middle" font-size="10" fill="#333">~3× 降速</text>
+  <text x="600" y="121" text-anchor="middle" font-size="10" fill="#333">~1.2× 降速</text>
+  <text x="900" y="121" text-anchor="middle" font-size="10" fill="#333">SYNC~5% / ASYNC&lt;1%</text>
+  <line x1="10" y1="128" x2="1110" y2="128" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <!-- Row: Precision -->
+  <text x="80" y="145" text-anchor="middle" font-size="10" fill="#555">检测精度</text>
+  <text x="300" y="145" text-anchor="middle" font-size="10" fill="#333">字节级（最高）</text>
+  <text x="600" y="145" text-anchor="middle" font-size="10" fill="#333">概率性（1/256 漏检）</text>
+  <text x="900" y="145" text-anchor="middle" font-size="10" fill="#333">概率性（1/16 漏检）</text>
+  <line x1="10" y1="152" x2="1110" y2="152" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <!-- Row: Arch -->
+  <text x="80" y="169" text-anchor="middle" font-size="10" fill="#555">架构支持</text>
+  <text x="300" y="169" text-anchor="middle" font-size="10" fill="#333">多架构（x86/arm64/riscv/s390）</text>
+  <text x="600" y="169" text-anchor="middle" font-size="10" fill="#333">arm64 only（需 TBI）</text>
+  <text x="900" y="169" text-anchor="middle" font-size="10" fill="#333">arm64 only（ARMv8.5+ MTE）</text>
+  <line x1="10" y1="176" x2="1110" y2="176" stroke="#F5F5F5" stroke-width="0.8"/>
+
+  <!-- Row: Scenario -->
+  <text x="80" y="193" text-anchor="middle" font-size="10" fill="#555">适用场景</text>
+  <text x="300" y="193" text-anchor="middle" font-size="10" font-weight="bold" fill="#1565C0">开发调试 / 精确复现</text>
+  <text x="600" y="193" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">CI 自动化 / 大型代码库</text>
+  <text x="900" y="193" text-anchor="middle" font-size="10" font-weight="bold" fill="#C62828">生产环境 / 7×24 在线</text>
+</g>
+</svg>

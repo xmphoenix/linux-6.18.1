@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 920" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hdrBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/><stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="hdrGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/><stop offset="100%" style="stop-color:#047857"/>
+    </linearGradient>
+    <linearGradient id="hdrRed" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ef4444"/><stop offset="100%" style="stop-color:#dc2626"/>
+    </linearGradient>
+    <linearGradient id="hdrPurple" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/><stop offset="100%" style="stop-color:#6d28d9"/>
+    </linearGradient>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#047857" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aGray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="480" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#1e293b">【图 5.4-2】check_object() 校验流程 — 分步决策图</text>
+  <text x="480" y="48" text-anchor="middle" font-size="11" fill="#64748b">源码: mm/slub.c — check_object() / check_bytes_and_report() / check_pad_bytes()</text>
+
+  <!-- Entry -->
+  <g transform="translate(350,65)">
+    <rect width="260" height="36" rx="18" fill="url(#hdrBlue)" filter="url(#sh)"/>
+    <text x="130" y="23" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">check_object(s, slab, obj, val)</text>
+  </g>
+  <!-- Arrow from entry to step1 -->
+  <path d="M480,101 L480,130" fill="none" stroke="#1d4ed8" stroke-width="2" marker-end="url(#aB)"/>
+  <text x="488" y="120" font-size="9" fill="#1d4ed8">val = 0xbb(空闲) / 0xcc(使用中)</text>
+
+  <!-- Step 1: SLAB_RED_ZONE? -->
+  <g transform="translate(340,133)">
+    <polygon points="140,0 280,35 140,70 0,35" fill="#fff8e1" stroke="#f59e0b" stroke-width="2" filter="url(#sh)"/>
+    <text x="140" y="32" text-anchor="middle" font-size="11" font-weight="bold" fill="#92400e">SLAB_RED_ZONE?</text>
+    <text x="140" y="46" text-anchor="middle" font-size="9" fill="#92400e">s-&gt;flags &amp; SLAB_RED_ZONE</text>
+  </g>
+
+  <!-- Yes → Red Zone checks -->
+  <path d="M480,203 L480,230" fill="none" stroke="#047857" stroke-width="2" marker-end="url(#aG)"/>
+  <text x="488" y="222" font-size="10" font-weight="bold" fill="#047857">Yes</text>
+
+  <!-- Step 1a: Left Redzone -->
+  <g transform="translate(70,233)">
+    <rect width="260" height="52" rx="6" fill="#fff" stroke="#ef4444" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="130" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#dc2626">步骤 1a: 左红区校验</text>
+    <text x="130" y="33" text-anchor="middle" font-size="9" fill="#555">check_bytes_and_report("Left Redzone")</text>
+    <text x="130" y="46" text-anchor="middle" font-size="9" fill="#555" font-family="monospace">obj - red_left_pad ~ obj == val?</text>
+  </g>
+  <!-- Step 1b: Right Redzone -->
+  <g transform="translate(350,233)">
+    <rect width="260" height="52" rx="6" fill="#fff" stroke="#ef4444" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="130" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#dc2626">步骤 1b: 右红区校验</text>
+    <text x="130" y="33" text-anchor="middle" font-size="9" fill="#555">check_bytes_and_report("Right Redzone")</text>
+    <text x="130" y="46" text-anchor="middle" font-size="9" fill="#555" font-family="monospace">obj + object_size ~ inuse == val?</text>
+  </g>
+  <!-- Step 1c: kmalloc Redzone -->
+  <g transform="translate(630,233)">
+    <rect width="280" height="52" rx="6" fill="#fff" stroke="#f59e0b" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="140" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#92400e">步骤 1c: kmalloc 精确红区</text>
+    <text x="140" y="33" text-anchor="middle" font-size="9" fill="#555">仅 val==SLUB_RED_ACTIVE (0xcc)</text>
+    <text x="140" y="46" text-anchor="middle" font-size="9" fill="#555" font-family="monospace">obj + orig_size ~ object_size == 0xcc?</text>
+  </g>
+  <!-- Connecting lines from diamond to steps -->
+  <path d="M480,203 L200,233" fill="none" stroke="#047857" stroke-width="1.5"/>
+  <path d="M480,203 L480,233" fill="none" stroke="#047857" stroke-width="1.5"/>
+  <path d="M480,203 L770,233" fill="none" stroke="#047857" stroke-width="1.5"/>
+
+  <!-- Arrow from steps to step 2 decision -->
+  <path d="M480,285 L480,315" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#aGray)"/>
+
+  <!-- Step 2: SLAB_POISON? -->
+  <g transform="translate(340,318)">
+    <polygon points="140,0 280,35 140,70 0,35" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2" filter="url(#sh)"/>
+    <text x="140" y="32" text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">SLAB_POISON?</text>
+    <text x="140" y="46" text-anchor="middle" font-size="9" fill="#5b21b6">s-&gt;flags &amp; SLAB_POISON</text>
+  </g>
+  <path d="M480,388 L480,420" fill="none" stroke="#047857" stroke-width="2" marker-end="url(#aG)"/>
+  <text x="488" y="410" font-size="10" font-weight="bold" fill="#047857">Yes</text>
+
+  <!-- Sub-decision: val != SLUB_RED_ACTIVE? -->
+  <g transform="translate(280,423)">
+    <polygon points="100,0 200,25 100,50 0,25" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+    <text x="100" y="22" text-anchor="middle" font-size="9" font-weight="bold" fill="#166534">val != RED_ACTIVE?</text>
+    <text x="100" y="36" text-anchor="middle" font-size="8" fill="#166534">(对象是否释放态)</text>
+  </g>
+  <path d="M380,473 L380,505" fill="none" stroke="#047857" stroke-width="1.5" marker-end="url(#aG)"/>
+  <text x="388" y="495" font-size="9" font-weight="bold" fill="#047857">Yes (释放态)</text>
+
+  <!-- Step 2a: Poison check -->
+  <g transform="translate(70,508)">
+    <rect width="310" height="52" rx="6" fill="#fff" stroke="#8b5cf6" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="155" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">步骤 2a: Poison 校验</text>
+    <text x="155" y="33" text-anchor="middle" font-size="9" fill="#555">check_bytes_and_report("Poison")</text>
+    <text x="155" y="46" text-anchor="middle" font-size="9" fill="#555" font-family="monospace">obj[0..N-2] == 0x6b (POISON_FREE)?</text>
+  </g>
+  <!-- Step 2b: End Poison -->
+  <g transform="translate(410,508)">
+    <rect width="260" height="52" rx="6" fill="#fff" stroke="#8b5cf6" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="130" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">步骤 2b: End Poison 校验</text>
+    <text x="130" y="33" text-anchor="middle" font-size="9" fill="#555">check_bytes_and_report("End Poison")</text>
+    <text x="130" y="46" text-anchor="middle" font-size="9" fill="#555" font-family="monospace">obj[N-1] == 0xa5 (POISON_END)?</text>
+  </g>
+  <path d="M380,473 L225,508" fill="none" stroke="#047857" stroke-width="1"/>
+  <path d="M380,473 L540,508" fill="none" stroke="#047857" stroke-width="1"/>
+
+  <!-- Step 2c: Pad bytes -->
+  <g transform="translate(700,508)">
+    <rect width="230" height="52" rx="6" fill="#fff" stroke="#8b5cf6" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="115" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#6d28d9">步骤 2c: Pad 校验</text>
+    <text x="115" y="33" text-anchor="middle" font-size="9" fill="#555">check_pad_bytes()</text>
+    <text x="115" y="46" text-anchor="middle" font-size="9" fill="#555" font-family="monospace">padding 区域 == 0x5a?</text>
+  </g>
+  <!-- Always runs for SLAB_POISON -->
+  <path d="M480,388 L815,508" fill="none" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4,2"/>
+  <text x="720" y="465" font-size="8" fill="#6d28d9">所有 SLAB_POISON</text>
+
+  <!-- Arrow down to step 3 -->
+  <path d="M480,560 L480,595" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#aGray)"/>
+
+  <!-- Step 3: Freelist pointer -->
+  <g transform="translate(300,598)">
+    <rect width="360" height="52" rx="6" fill="#fff" stroke="#3b82f6" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="180" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#1d4ed8">步骤 3: Freelist 指针校验</text>
+    <text x="180" y="33" text-anchor="middle" font-size="9" fill="#555">check_valid_pointer(s, slab, get_freepointer(s, p))</text>
+    <text x="180" y="46" text-anchor="middle" font-size="9" fill="#555">解码后验证: 地址在 slab 页内 &amp;&amp; 对齐到 s-&gt;size</text>
+  </g>
+
+  <!-- Arrow to result -->
+  <path d="M480,650 L480,680" fill="none" stroke="#6b7280" stroke-width="1.5" marker-end="url(#aGray)"/>
+
+  <!-- Result: OK / FAIL -->
+  <g transform="translate(200,683)">
+    <rect width="230" height="45" rx="22" fill="#f0fdf4" stroke="#22c55e" stroke-width="2" filter="url(#sh)"/>
+    <text x="115" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">全部通过 → return 1</text>
+    <text x="115" y="34" text-anchor="middle" font-size="9" fill="#166534">对象完整，继续 alloc/free</text>
+  </g>
+  <g transform="translate(530,683)">
+    <rect width="260" height="45" rx="22" fill="#fef2f2" stroke="#ef4444" stroke-width="2" filter="url(#sh)"/>
+    <text x="130" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#dc2626">任一失败 → return 0</text>
+    <text x="130" y="34" text-anchor="middle" font-size="9" fill="#dc2626">触发 BUG 报告 + restore_bytes()</text>
+  </g>
+
+  <path d="M480,680 L315,683" fill="none" stroke="#22c55e" stroke-width="1.5"/>
+  <path d="M480,680 L660,683" fill="none" stroke="#ef4444" stroke-width="1.5"/>
+
+  <!-- No branch from SLAB_RED_ZONE → Alignment padding -->
+  <path d="M620,168 L820,168 L820,233" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aR)"/>
+  <text x="720" y="162" font-size="9" font-weight="bold" fill="#dc2626">No (无红区)</text>
+
+  <!-- No branch from SLAB_POISON -->
+  <path d="M620,353 L870,353 L870,598" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aR)"/>
+  <text x="750" y="346" font-size="9" font-weight="bold" fill="#dc2626">No → 跳到步骤 3</text>
+
+  <!-- Error report detail box -->
+  <g transform="translate(30,750)">
+    <rect width="900" height="150" rx="8" fill="#fff" stroke="#ef4444" stroke-width="1.5" filter="url(#sh)"/>
+    <rect width="900" height="28" rx="8" fill="url(#hdrRed)"/>
+    <rect x="0" y="20" width="900" height="8" fill="#dc2626"/>
+    <text x="450" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">check_bytes_and_report() — 异常检测与自动修复</text>
+
+    <text x="20" y="48" font-size="10" fill="#333" font-weight="bold">1. memchr_inv(start, value, bytes)</text>
+    <text x="30" y="63" font-size="9" fill="#555">在指定区域找第一个不等于 value 的字节 → fault 指针</text>
+
+    <text x="20" y="82" font-size="10" fill="#333" font-weight="bold">2. 定位破坏范围 [fault, end)</text>
+    <text x="30" y="97" font-size="9" fill="#555">从 end 反向扫描找到最后一个被破坏的字节 → 精确报告被覆写的地址范围</text>
+
+    <text x="20" y="116" font-size="10" fill="#333" font-weight="bold">3. pr_err("[%s overwritten] 0x%p-0x%p @offset=%tu. First byte 0x%x instead of 0x%x")</text>
+    <text x="30" y="131" font-size="9" fill="#555">输出: 区域名称 + 被破坏地址范围 + slab 页内偏移 + 期望值 vs 实际值</text>
+
+    <text x="480" y="48" font-size="10" fill="#333" font-weight="bold">4. object_err() → print_trailer()</text>
+    <text x="490" y="63" font-size="9" fill="#555">打印: Allocated/Freed 调用栈 + hexdump (Redzone/Object/Padding)</text>
+
+    <text x="480" y="82" font-size="10" fill="#333" font-weight="bold">5. restore_bytes(s, what, value, fault, end)</text>
+    <text x="490" y="97" font-size="9" fill="#555">自动将被破坏的字节恢复为期望值 → 尽量避免后续级联错误</text>
+
+    <text x="480" y="116" font-size="10" fill="#c62828" font-weight="bold">6. add_taint(TAINT_BAD_PAGE, LOCKDEP_NOW_UNRELIABLE)</text>
+    <text x="490" y="131" font-size="9" fill="#c62828">标记内核为 tainted → 后续 bug 报告会标记 'B' 标志</text>
+  </g>
+</svg>

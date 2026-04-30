@@ -1,0 +1,260 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 880" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+<defs>
+  <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+  <linearGradient id="hB" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1565C0"/><stop offset="100%" stop-color="#42A5F5"/></linearGradient>
+  <linearGradient id="hG" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#66BB6A"/></linearGradient>
+  <linearGradient id="hR" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C62828"/><stop offset="100%" stop-color="#EF5350"/></linearGradient>
+  <linearGradient id="hP" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4527A0"/><stop offset="100%" stop-color="#7E57C2"/></linearGradient>
+  <linearGradient id="hO" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#E65100"/><stop offset="100%" stop-color="#FF9800"/></linearGradient>
+  <linearGradient id="hT" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00695C"/><stop offset="100%" stop-color="#26A69A"/></linearGradient>
+  <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#555" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#C62828" stroke-width="1.5" stroke-linejoin="round"/></marker>
+</defs>
+
+<text x="600" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#212121">KASAN 关键数据结构关系图</text>
+<text x="600" y="48" text-anchor="middle" font-size="11" fill="#757575">mm/kasan/kasan.h · mm/kasan/quarantine.c · mm/kasan/tags.c</text>
+
+<!-- kasan_track -->
+<g transform="translate(30,65)" filter="url(#sh)">
+  <rect width="260" height="130" rx="8" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <rect width="260" height="30" rx="8" fill="url(#hB)"/>
+  <rect y="22" width="260" height="8" fill="#1565C0"/>
+  <text x="130" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">kasan_track</text>
+  <text x="15" y="48" font-size="10" fill="#555" font-style="italic">// 记录分配或释放的调用栈</text>
+  <line x1="10" y1="55" x2="250" y2="55" stroke="#E3F2FD" stroke-width="0.8"/>
+  <text x="15" y="72" font-size="11" font-family="monospace" fill="#333">pid</text>
+  <text x="245" y="72" text-anchor="end" font-size="9" fill="#888">u32 进程 PID</text>
+  <line x1="10" y1="79" x2="250" y2="79" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="96" font-size="11" font-family="monospace" fill="#333">stack</text>
+  <text x="245" y="96" text-anchor="end" font-size="9" fill="#888">depot_stack_handle_t</text>
+  <line x1="10" y1="103" x2="250" y2="103" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="118" font-size="11" font-family="monospace" fill="#1565C0">cpu</text>
+  <text x="245" y="118" text-anchor="end" font-size="9" fill="#888">u64:20 (EXTRA_INFO)</text>
+  <text x="15" y="128" font-size="9" fill="#1565C0" font-family="monospace">timestamp</text>
+  <text x="245" y="128" text-anchor="end" font-size="8" fill="#888">u64:44 (EXTRA_INFO)</text>
+</g>
+
+<!-- kasan_alloc_meta (Generic) -->
+<g transform="translate(340,65)" filter="url(#sh)">
+  <rect width="280" height="110" rx="8" fill="#fff" stroke="#2E7D32" stroke-width="2"/>
+  <rect width="280" height="30" rx="8" fill="url(#hG)"/>
+  <rect y="22" width="280" height="8" fill="#2E7D32"/>
+  <text x="140" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">kasan_alloc_meta</text>
+  <text x="15" y="48" font-size="10" fill="#555" font-style="italic">// Generic 专属，存于 redzone</text>
+  <line x1="10" y1="55" x2="270" y2="55" stroke="#E8F5E9" stroke-width="0.8"/>
+  <text x="15" y="72" font-size="11" font-family="monospace" fill="#1565C0">alloc_track</text>
+  <text x="265" y="72" text-anchor="end" font-size="9" fill="#888">struct kasan_track</text>
+  <line x1="10" y1="79" x2="270" y2="79" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="96" font-size="11" font-family="monospace" fill="#333">aux_stack[2]</text>
+  <text x="265" y="96" text-anchor="end" font-size="9" fill="#888">depot_stack_handle_t</text>
+</g>
+
+<!-- kasan_free_meta (Generic) -->
+<g transform="translate(340,210)" filter="url(#sh)">
+  <rect width="280" height="110" rx="8" fill="#fff" stroke="#C62828" stroke-width="2"/>
+  <rect width="280" height="30" rx="8" fill="url(#hR)"/>
+  <rect y="22" width="280" height="8" fill="#C62828"/>
+  <text x="140" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">kasan_free_meta</text>
+  <text x="15" y="48" font-size="10" fill="#555" font-style="italic">// Generic 专属，存于对象内部</text>
+  <line x1="10" y1="55" x2="270" y2="55" stroke="#FFEBEE" stroke-width="0.8"/>
+  <text x="15" y="72" font-size="11" font-family="monospace" fill="#C62828">quarantine_link</text>
+  <text x="265" y="72" text-anchor="end" font-size="9" fill="#888">struct qlist_node</text>
+  <line x1="10" y1="79" x2="270" y2="79" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="96" font-size="11" font-family="monospace" fill="#1565C0">free_track</text>
+  <text x="265" y="96" text-anchor="end" font-size="9" fill="#888">struct kasan_track</text>
+</g>
+
+<!-- qlist_head -->
+<g transform="translate(670,210)" filter="url(#sh)">
+  <rect width="240" height="130" rx="8" fill="#fff" stroke="#E65100" stroke-width="2"/>
+  <rect width="240" height="30" rx="8" fill="url(#hO)"/>
+  <rect y="22" width="240" height="8" fill="#E65100"/>
+  <text x="120" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">qlist_head</text>
+  <text x="15" y="48" font-size="10" fill="#555" font-style="italic">// 隔离区队列头</text>
+  <line x1="10" y1="55" x2="230" y2="55" stroke="#FFF3E0" stroke-width="0.8"/>
+  <text x="15" y="72" font-size="11" font-family="monospace" fill="#333">*head</text>
+  <text x="225" y="72" text-anchor="end" font-size="9" fill="#888">qlist_node*</text>
+  <line x1="10" y1="79" x2="230" y2="79" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="96" font-size="11" font-family="monospace" fill="#333">*tail</text>
+  <text x="225" y="96" text-anchor="end" font-size="9" fill="#888">qlist_node*</text>
+  <line x1="10" y1="103" x2="230" y2="103" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="118" font-size="11" font-family="monospace" fill="#333">bytes</text>
+  <text x="225" y="118" text-anchor="end" font-size="9" fill="#888">size_t 总字节数</text>
+</g>
+
+<!-- kasan_report_info -->
+<g transform="translate(670,65)" filter="url(#sh)">
+  <rect width="500" height="130" rx="8" fill="#fff" stroke="#4527A0" stroke-width="2"/>
+  <rect width="500" height="30" rx="8" fill="url(#hP)"/>
+  <rect y="22" width="500" height="8" fill="#4527A0"/>
+  <text x="250" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">kasan_report_info</text>
+  <text x="15" y="48" font-size="10" fill="#555" font-style="italic">// 完整错误报告信息</text>
+  <line x1="10" y1="55" x2="490" y2="55" stroke="#EDE7F6" stroke-width="0.8"/>
+  <text x="15" y="72" font-size="10" font-family="monospace" fill="#333">type, access_addr, access_size, is_write, ip</text>
+  <text x="485" y="72" text-anchor="end" font-size="8" fill="#888">调用方填写</text>
+  <line x1="10" y1="79" x2="490" y2="79" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="96" font-size="10" font-family="monospace" fill="#333">first_bad_addr, cache, object, alloc_size</text>
+  <text x="485" y="96" text-anchor="end" font-size="8" fill="#888">公共报告层填写</text>
+  <line x1="10" y1="103" x2="490" y2="103" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="118" font-size="10" font-family="monospace" fill="#1565C0">bug_type, alloc_track, free_track</text>
+  <text x="485" y="118" text-anchor="end" font-size="8" fill="#888">模式特化层填写</text>
+</g>
+
+<!-- kasan_stack_ring -->
+<g transform="translate(30,380)" filter="url(#sh)">
+  <rect width="300" height="140" rx="8" fill="#fff" stroke="#00695C" stroke-width="2"/>
+  <rect width="300" height="30" rx="8" fill="url(#hT)"/>
+  <rect y="22" width="300" height="8" fill="#00695C"/>
+  <text x="150" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">kasan_stack_ring</text>
+  <text x="15" y="48" font-size="10" fill="#555" font-style="italic">// SW/HW_TAGS 共享栈环</text>
+  <line x1="10" y1="55" x2="290" y2="55" stroke="#E0F2F1" stroke-width="0.8"/>
+  <text x="15" y="72" font-size="11" font-family="monospace" fill="#333">lock</text>
+  <text x="285" y="72" text-anchor="end" font-size="9" fill="#888">rwlock_t</text>
+  <line x1="10" y1="79" x2="290" y2="79" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="96" font-size="11" font-family="monospace" fill="#333">size</text>
+  <text x="285" y="96" text-anchor="end" font-size="9" fill="#888">size_t (默认 32K)</text>
+  <line x1="10" y1="103" x2="290" y2="103" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="118" font-size="11" font-family="monospace" fill="#333">pos</text>
+  <text x="285" y="118" text-anchor="end" font-size="9" fill="#888">atomic64_t 写入游标</text>
+  <line x1="10" y1="125" x2="290" y2="125" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="140" font-size="11" font-family="monospace" fill="#00695C">*entries</text>
+  <text x="285" y="140" text-anchor="end" font-size="9" fill="#888">stack_ring_entry[]</text>
+</g>
+
+<!-- kasan_stack_ring_entry -->
+<g transform="translate(380,380)" filter="url(#sh)">
+  <rect width="280" height="150" rx="8" fill="#fff" stroke="#00695C" stroke-width="2"/>
+  <rect width="280" height="30" rx="8" fill="url(#hT)"/>
+  <rect y="22" width="280" height="8" fill="#00695C"/>
+  <text x="140" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">kasan_stack_ring_entry</text>
+  <text x="15" y="48" font-size="10" fill="#555" font-style="italic">// 环形缓冲区每条记录</text>
+  <line x1="10" y1="55" x2="270" y2="55" stroke="#E0F2F1" stroke-width="0.8"/>
+  <text x="15" y="72" font-size="11" font-family="monospace" fill="#333">*ptr</text>
+  <text x="265" y="72" text-anchor="end" font-size="9" fill="#888">void* 对象地址</text>
+  <line x1="10" y1="79" x2="270" y2="79" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="96" font-size="11" font-family="monospace" fill="#333">size</text>
+  <text x="265" y="96" text-anchor="end" font-size="9" fill="#888">size_t 对象大小</text>
+  <line x1="10" y1="103" x2="270" y2="103" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="118" font-size="11" font-family="monospace" fill="#1565C0">track</text>
+  <text x="265" y="118" text-anchor="end" font-size="9" fill="#888">struct kasan_track</text>
+  <line x1="10" y1="125" x2="270" y2="125" stroke="#F5F5F5" stroke-width="0.5"/>
+  <text x="15" y="140" font-size="11" font-family="monospace" fill="#333">is_free</text>
+  <text x="265" y="140" text-anchor="end" font-size="9" fill="#888">bool 是否释放操作</text>
+</g>
+
+<!-- Shadow Byte 编码表 -->
+<g transform="translate(30,555)" filter="url(#sh)">
+  <rect width="1140" height="300" rx="8" fill="#fff" stroke="#757575" stroke-width="1.5"/>
+  <text x="570" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Shadow Byte 编码值全表 (Generic 模式)</text>
+
+  <rect x="0" y="32" width="1140" height="20" fill="#F5F5F5"/>
+  <text x="80" y="46" text-anchor="middle" font-size="10" font-weight="bold">值</text>
+  <text x="250" y="46" text-anchor="middle" font-size="10" font-weight="bold">宏名</text>
+  <text x="520" y="46" text-anchor="middle" font-size="10" font-weight="bold">含义</text>
+  <text x="850" y="46" text-anchor="middle" font-size="10" font-weight="bold">来源</text>
+
+  <text x="80" y="68" text-anchor="middle" font-size="10" font-family="monospace" fill="#2E7D32" font-weight="bold">0x00</text>
+  <text x="250" y="68" text-anchor="middle" font-size="10">—</text>
+  <text x="520" y="68" text-anchor="middle" font-size="10">8 字节全部可访问</text>
+  <text x="850" y="68" text-anchor="middle" font-size="9" fill="#888">kasan_unpoison()</text>
+
+  <text x="80" y="88" text-anchor="middle" font-size="10" font-family="monospace" fill="#2E7D32">0x01-0x07</text>
+  <text x="250" y="88" text-anchor="middle" font-size="10">—</text>
+  <text x="520" y="88" text-anchor="middle" font-size="10">前 N 字节可访问（部分可用）</text>
+  <text x="850" y="88" text-anchor="middle" font-size="9" fill="#888">kmalloc 尾部 redzone</text>
+
+  <text x="80" y="108" text-anchor="middle" font-size="10" font-family="monospace" fill="#C62828" font-weight="bold">0xCA</text>
+  <text x="250" y="108" text-anchor="middle" font-size="10" font-family="monospace">KASAN_ALLOCA_LEFT</text>
+  <text x="520" y="108" text-anchor="middle" font-size="10">alloca 左 redzone</text>
+  <text x="850" y="108" text-anchor="middle" font-size="9" fill="#888">编译器 alloca 插桩</text>
+
+  <text x="80" y="128" text-anchor="middle" font-size="10" font-family="monospace" fill="#C62828">0xCB</text>
+  <text x="250" y="128" text-anchor="middle" font-size="10" font-family="monospace">KASAN_ALLOCA_RIGHT</text>
+  <text x="520" y="128" text-anchor="middle" font-size="10">alloca 右 redzone</text>
+  <text x="850" y="128" text-anchor="middle" font-size="9" fill="#888">编译器 alloca 插桩</text>
+
+  <text x="80" y="148" text-anchor="middle" font-size="10" font-family="monospace" fill="#C62828">0xF1</text>
+  <text x="250" y="148" text-anchor="middle" font-size="10" font-family="monospace">KASAN_STACK_LEFT</text>
+  <text x="520" y="148" text-anchor="middle" font-size="10">栈变量左 redzone</text>
+  <text x="850" y="148" text-anchor="middle" font-size="9" fill="#888">编译器栈插桩 (ABI)</text>
+
+  <text x="80" y="168" text-anchor="middle" font-size="10" font-family="monospace" fill="#C62828">0xF2/F3/F4</text>
+  <text x="250" y="168" text-anchor="middle" font-size="10" font-family="monospace">STACK_MID/RIGHT/PARTIAL</text>
+  <text x="520" y="168" text-anchor="middle" font-size="10">栈变量中/右/部分 redzone</text>
+  <text x="850" y="168" text-anchor="middle" font-size="9" fill="#888">编译器栈插桩 (ABI)</text>
+
+  <text x="80" y="188" text-anchor="middle" font-size="10" font-family="monospace" fill="#C62828">0xF8</text>
+  <text x="250" y="188" text-anchor="middle" font-size="10" font-family="monospace">KASAN_VMALLOC_INVALID</text>
+  <text x="520" y="188" text-anchor="middle" font-size="10">vmalloc 不可访问区域</text>
+  <text x="850" y="188" text-anchor="middle" font-size="9" fill="#888">kasan_populate_vmalloc()</text>
+
+  <text x="80" y="208" text-anchor="middle" font-size="10" font-family="monospace" fill="#C62828">0xF9</text>
+  <text x="250" y="208" text-anchor="middle" font-size="10" font-family="monospace">KASAN_GLOBAL_REDZONE</text>
+  <text x="520" y="208" text-anchor="middle" font-size="10">全局变量 redzone</text>
+  <text x="850" y="208" text-anchor="middle" font-size="9" fill="#888">__asan_register_globals()</text>
+
+  <text x="80" y="228" text-anchor="middle" font-size="10" font-family="monospace" fill="#C62828" font-weight="bold">0xFA</text>
+  <text x="250" y="228" text-anchor="middle" font-size="10" font-family="monospace">KASAN_SLAB_FREE_META</text>
+  <text x="520" y="228" text-anchor="middle" font-size="10">已释放 slab + free meta 有效</text>
+  <text x="850" y="228" text-anchor="middle" font-size="9" fill="#888">poison_slab_object()</text>
+
+  <text x="80" y="248" text-anchor="middle" font-size="10" font-family="monospace" fill="#C62828" font-weight="bold">0xFB</text>
+  <text x="250" y="248" text-anchor="middle" font-size="10" font-family="monospace">KASAN_SLAB_FREE</text>
+  <text x="520" y="248" text-anchor="middle" font-size="10">已释放 slab 对象</text>
+  <text x="850" y="248" text-anchor="middle" font-size="9" fill="#888">poison_slab_object()</text>
+
+  <text x="80" y="268" text-anchor="middle" font-size="10" font-family="monospace" fill="#C62828" font-weight="bold">0xFC</text>
+  <text x="250" y="268" text-anchor="middle" font-size="10" font-family="monospace">KASAN_SLAB_REDZONE</text>
+  <text x="520" y="268" text-anchor="middle" font-size="10">slab 对象 redzone</text>
+  <text x="850" y="268" text-anchor="middle" font-size="9" fill="#888">__kasan_poison_slab()</text>
+
+  <text x="80" y="288" text-anchor="middle" font-size="10" font-family="monospace" fill="#C62828" font-weight="bold">0xFE</text>
+  <text x="250" y="288" text-anchor="middle" font-size="10" font-family="monospace">KASAN_PAGE_REDZONE</text>
+  <text x="520" y="288" text-anchor="middle" font-size="10">kmalloc_large redzone</text>
+  <text x="850" y="288" text-anchor="middle" font-size="9" fill="#888">poison_kmalloc_redzone()</text>
+</g>
+
+<!-- Arrows -->
+<path d="M340,110 L290,110" fill="none" stroke="#1565C0" stroke-width="1.5" marker-end="url(#aB)"/>
+<rect x="292" y="100" width="46" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+<text x="315" y="110" text-anchor="middle" font-size="8" fill="#1565C0">嵌入</text>
+
+<path d="M340,280 L290,170" fill="none" stroke="#1565C0" stroke-width="1.5" marker-end="url(#aB)"/>
+<rect x="294" y="215" width="46" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+<text x="317" y="225" text-anchor="middle" font-size="8" fill="#1565C0">嵌入</text>
+
+<path d="M620,265 L670,265" fill="none" stroke="#C62828" stroke-width="1.5" marker-end="url(#aR)"/>
+<rect x="625" y="255" width="42" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+<text x="646" y="265" text-anchor="middle" font-size="8" fill="#C62828">链入</text>
+
+<path d="M330,460 L380,460" fill="none" stroke="#00695C" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="336" y="450" width="42" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+<text x="357" y="460" text-anchor="middle" font-size="8" fill="#00695C">数组</text>
+
+<path d="M520,380 L200,195" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aB)"/>
+<rect x="350" y="275" width="46" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+<text x="373" y="285" text-anchor="middle" font-size="8" fill="#1565C0">嵌入</text>
+
+<path d="M670,150 L290,150" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aB)"/>
+<rect x="470" y="140" width="72" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+<text x="506" y="150" text-anchor="middle" font-size="8" fill="#1565C0">alloc/free_track</text>
+
+<!-- Legend -->
+<g transform="translate(700,380)">
+  <rect width="460" height="140" rx="6" fill="#FAFAFA" fill-opacity="0.95" stroke="#E0E0E0"/>
+  <text x="230" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#333">图例 — 数据结构所属模式</text>
+  <rect x="15" y="28" width="14" height="14" rx="3" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="35" y="39" font-size="10" fill="#333">kasan_alloc_meta — Generic 专属，存于 redzone</text>
+  <rect x="15" y="48" width="14" height="14" rx="3" fill="#FFEBEE" stroke="#C62828" stroke-width="1.5"/>
+  <text x="35" y="59" font-size="10" fill="#333">kasan_free_meta — Generic 专属，存于对象内部</text>
+  <rect x="15" y="68" width="14" height="14" rx="3" fill="#E0F2F1" stroke="#00695C" stroke-width="1.5"/>
+  <text x="35" y="79" font-size="10" fill="#333">stack_ring / entry — SW_TAGS + HW_TAGS 共享</text>
+  <rect x="15" y="88" width="14" height="14" rx="3" fill="#FFF3E0" stroke="#E65100" stroke-width="1.5"/>
+  <text x="35" y="99" font-size="10" fill="#333">qlist_head — Generic Quarantine 队列</text>
+  <rect x="15" y="108" width="14" height="14" rx="3" fill="#EDE7F6" stroke="#4527A0" stroke-width="1.5"/>
+  <text x="35" y="119" font-size="10" fill="#333">kasan_report_info — 所有模式公共</text>
+  <rect x="15" y="128" width="14" height="14" rx="3" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.5"/>
+  <text x="35" y="139" font-size="10" fill="#333">kasan_track — 基础类型，被多处嵌入</text>
+</g>
+</svg>

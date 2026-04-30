@@ -1,0 +1,266 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 820" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <linearGradient id="hdr1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+    <linearGradient id="hdr2" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#10b981"/></linearGradient>
+    <linearGradient id="hdr3" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#d97706"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+    <linearGradient id="hdr4" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#ef4444"/></linearGradient>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#059669" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#d97706" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aK" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#1e293b">图 5.10-1  Shadow Memory 地址映射算法全景</text>
+  <text x="550" y="52" text-anchor="middle" font-size="11" fill="#64748b">源码：include/linux/kasan.h → kasan_mem_to_shadow() ｜ arch/arm64/include/asm/memory.h</text>
+
+  <!-- ============ LEFT: Kernel Virtual Address Space ============ -->
+  <g transform="translate(30,80)">
+    <rect width="300" height="380" rx="8" fill="#fff" stroke="#2563eb" stroke-width="2" filter="url(#sh)"/>
+    <rect width="300" height="30" rx="8" fill="url(#hdr1)"/>
+    <rect x="0" y="22" width="300" height="8" fill="#2563eb"/>
+    <text x="150" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">内核虚拟地址空间</text>
+    <text x="150" y="46" text-anchor="middle" fill="#2563eb" font-size="10" font-weight="bold">ARM64 VA_BITS=48, 256TB 内核空间</text>
+
+    <!-- Address blocks -->
+    <rect x="15" y="58" width="270" height="32" rx="4" fill="#dbeafe" stroke="#93c5fd"/>
+    <text x="150" y="78" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Linear Map (直接映射区)</text>
+
+    <rect x="15" y="98" width="270" height="32" rx="4" fill="#d1fae5" stroke="#6ee7b7"/>
+    <text x="150" y="118" text-anchor="middle" font-size="11" font-weight="bold" fill="#065f46">vmalloc / ioremap 区</text>
+
+    <rect x="15" y="138" width="270" height="32" rx="4" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="150" y="158" text-anchor="middle" font-size="11" font-weight="bold" fill="#92400e">KASAN Shadow 区</text>
+
+    <rect x="15" y="178" width="270" height="32" rx="4" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="150" y="198" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">Module 区</text>
+
+    <rect x="15" y="218" width="270" height="32" rx="4" fill="#e0e7ff" stroke="#a5b4fc"/>
+    <text x="150" y="238" text-anchor="middle" font-size="11" font-weight="bold" fill="#3730a3">vmemmap 区</text>
+
+    <!-- Address labels -->
+    <text x="15" y="270" font-size="9" fill="#6b7280" font-family="monospace">高地址 0xFFFF_FFFF_FFFF_FFFF</text>
+    <line x1="15" y1="275" x2="285" y2="275" stroke="#d1d5db" stroke-width="0.5"/>
+    <text x="15" y="290" font-size="9" fill="#6b7280" font-family="monospace">PAGE_OFFSET  (线性映射起始)</text>
+    <text x="15" y="305" font-size="9" fill="#6b7280" font-family="monospace">VMALLOC_START</text>
+    <text x="15" y="320" font-size="9" fill="#d97706" font-family="monospace">KASAN_SHADOW_START</text>
+    <text x="15" y="335" font-size="9" fill="#d97706" font-family="monospace">KASAN_SHADOW_END</text>
+    <text x="15" y="350" font-size="9" fill="#6b7280" font-family="monospace">低地址 0xFFFF_0000_0000_0000</text>
+
+    <text x="150" y="372" text-anchor="middle" font-size="10" fill="#475569">每 8 字节内核内存 → 1 字节 Shadow</text>
+  </g>
+
+  <!-- ============ CENTER: Mapping Formula ============ -->
+  <g transform="translate(370,80)">
+    <rect width="350" height="200" rx="8" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+    <rect width="350" height="30" rx="8" fill="url(#hdr3)"/>
+    <rect x="0" y="22" width="350" height="8" fill="#d97706"/>
+    <text x="175" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">映射公式 — kasan_mem_to_shadow()</text>
+
+    <!-- Forward mapping -->
+    <text x="20" y="52" font-size="11" font-weight="bold" fill="#d97706">正向映射 (内核地址 → Shadow 地址):</text>
+    <rect x="15" y="58" width="320" height="26" rx="4" fill="#fffbeb" stroke="#fcd34d"/>
+    <text x="175" y="76" text-anchor="middle" font-size="12" font-family="monospace" font-weight="bold" fill="#92400e">shadow = (addr &gt;&gt; 3) + OFFSET</text>
+
+    <!-- Reverse mapping -->
+    <text x="20" y="104" font-size="11" font-weight="bold" fill="#d97706">逆向映射 (Shadow 地址 → 内核地址):</text>
+    <rect x="15" y="110" width="320" height="26" rx="4" fill="#fffbeb" stroke="#fcd34d"/>
+    <text x="175" y="128" text-anchor="middle" font-size="12" font-family="monospace" font-weight="bold" fill="#92400e">addr = (shadow - OFFSET) &lt;&lt; 3</text>
+
+    <!-- Constants -->
+    <text x="20" y="155" font-size="10" fill="#475569">KASAN_SHADOW_SCALE_SHIFT = 3 (Generic/SW_TAGS)</text>
+    <text x="20" y="170" font-size="10" fill="#475569">KASAN_SHADOW_SCALE_SHIFT = 4 (HW_TAGS/MTE)</text>
+    <text x="20" y="185" font-size="10" fill="#475569">KASAN_SHADOW_OFFSET = CONFIG 值, 编译时确定</text>
+  </g>
+
+  <!-- ============ Mapping Arrows ============ -->
+  <!-- From kernel space to formula -->
+  <path d="M330,180 L370,180" fill="none" stroke="#d97706" stroke-width="2" marker-end="url(#aO)"/>
+
+  <!-- ============ RIGHT: Shadow Memory Layout ============ -->
+  <g transform="translate(760,80)">
+    <rect width="310" height="380" rx="8" fill="#fff" stroke="#059669" stroke-width="2" filter="url(#sh)"/>
+    <rect width="310" height="30" rx="8" fill="url(#hdr2)"/>
+    <rect x="0" y="22" width="310" height="8" fill="#059669"/>
+    <text x="155" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Shadow Memory 区</text>
+    <text x="155" y="46" text-anchor="middle" fill="#059669" font-size="10" font-weight="bold">1 Shadow Byte = 8 字节内核内存的可访问状态</text>
+
+    <!-- Shadow byte value table -->
+    <text x="15" y="66" font-size="10" font-weight="bold" fill="#059669">Shadow Byte 值 → 含义:</text>
+
+    <rect x="15" y="74" width="280" height="20" rx="3" fill="#d1fae5" stroke="#6ee7b7"/>
+    <text x="25" y="88" font-size="10" font-family="monospace" font-weight="bold" fill="#065f46">0x00      </text>
+    <text x="100" y="88" font-size="10" fill="#065f46">8 字节全部可访问</text>
+
+    <rect x="15" y="98" width="280" height="20" rx="3" fill="#d1fae5" stroke="#6ee7b7"/>
+    <text x="25" y="112" font-size="10" font-family="monospace" font-weight="bold" fill="#065f46">0x01~0x07 </text>
+    <text x="100" y="112" font-size="10" fill="#065f46">前 N 字节可访问 (部分可访问)</text>
+
+    <rect x="15" y="122" width="280" height="20" rx="3" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="25" y="136" font-size="10" font-family="monospace" font-weight="bold" fill="#991b1b">0xFB      </text>
+    <text x="100" y="136" font-size="10" fill="#991b1b">KASAN_SLAB_FREE (已释放)</text>
+
+    <rect x="15" y="146" width="280" height="20" rx="3" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="25" y="160" font-size="10" font-family="monospace" font-weight="bold" fill="#991b1b">0xFA      </text>
+    <text x="100" y="160" font-size="10" fill="#991b1b">KASAN_SLAB_FREE_META</text>
+
+    <rect x="15" y="170" width="280" height="20" rx="3" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="25" y="184" font-size="10" font-family="monospace" font-weight="bold" fill="#92400e">0xFC      </text>
+    <text x="100" y="184" font-size="10" fill="#92400e">KASAN_SLAB_REDZONE</text>
+
+    <rect x="15" y="194" width="280" height="20" rx="3" fill="#fef3c7" stroke="#fcd34d"/>
+    <text x="25" y="208" font-size="10" font-family="monospace" font-weight="bold" fill="#92400e">0xFE      </text>
+    <text x="100" y="208" font-size="10" fill="#92400e">KASAN_PAGE_REDZONE</text>
+
+    <rect x="15" y="218" width="280" height="20" rx="3" fill="#e0e7ff" stroke="#a5b4fc"/>
+    <text x="25" y="232" font-size="10" font-family="monospace" font-weight="bold" fill="#3730a3">0xFF      </text>
+    <text x="100" y="232" font-size="10" fill="#3730a3">KASAN_PAGE_FREE</text>
+
+    <rect x="15" y="242" width="280" height="20" rx="3" fill="#e0e7ff" stroke="#a5b4fc"/>
+    <text x="25" y="256" font-size="10" font-family="monospace" font-weight="bold" fill="#3730a3">0xF8      </text>
+    <text x="100" y="256" font-size="10" fill="#3730a3">KASAN_VMALLOC_INVALID</text>
+
+    <rect x="15" y="266" width="280" height="20" rx="3" fill="#f3e8ff" stroke="#c4b5fd"/>
+    <text x="25" y="280" font-size="10" font-family="monospace" font-weight="bold" fill="#6b21a8">0xF9      </text>
+    <text x="100" y="280" font-size="10" fill="#6b21a8">KASAN_GLOBAL_REDZONE</text>
+
+    <rect x="15" y="290" width="280" height="20" rx="3" fill="#f3e8ff" stroke="#c4b5fd"/>
+    <text x="25" y="304" font-size="10" font-family="monospace" font-weight="bold" fill="#6b21a8">0xF1~0xF4 </text>
+    <text x="100" y="304" font-size="10" fill="#6b21a8">KASAN_STACK_* (栈变量红区)</text>
+
+    <!-- Mapping ratio -->
+    <rect x="15" y="320" width="280" height="40" rx="5" fill="#f0fdf4" stroke="#059669" stroke-width="1.5"/>
+    <text x="155" y="337" text-anchor="middle" font-size="11" font-weight="bold" fill="#059669">压缩比: 8:1</text>
+    <text x="155" y="352" text-anchor="middle" font-size="10" fill="#065f46">128TB 内核空间 → 16TB Shadow</text>
+  </g>
+
+  <!-- ============ Formula Arrow from formula to shadow ============ -->
+  <path d="M720,180 L760,180" fill="none" stroke="#059669" stroke-width="2" marker-end="url(#aG)"/>
+
+  <!-- ============ Bottom: Concrete Example ============ -->
+  <g transform="translate(30,490)">
+    <rect width="1040" height="300" rx="8" fill="#fff" stroke="#dc2626" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1040" height="30" rx="8" fill="url(#hdr4)"/>
+    <rect x="0" y="22" width="1040" height="8" fill="#dc2626"/>
+    <text x="520" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">具体示例 — kmalloc-64 对象的 Shadow 映射</text>
+
+    <!-- Kernel object -->
+    <text x="20" y="50" font-size="11" font-weight="bold" fill="#dc2626">Step 1: 内核对象地址</text>
+    <text x="20" y="68" font-size="10" fill="#475569">kmalloc(64, GFP_KERNEL) 返回: obj = 0xffff0000_c1a2b300</text>
+    <text x="20" y="83" font-size="10" fill="#475569">对象范围: [0xffff0000_c1a2b300, 0xffff0000_c1a2b340) — 64 字节</text>
+
+    <!-- 8-byte granules -->
+    <text x="20" y="106" font-size="11" font-weight="bold" fill="#dc2626">Step 2: 拆分为 8 字节 Granule（颗粒）</text>
+    <g transform="translate(20,112)">
+      <rect width="115" height="28" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="57" y="15" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e40af">...b300~b307</text>
+      <text x="57" y="25" text-anchor="middle" font-size="7" fill="#3b82f6">Granule 0</text>
+
+      <rect x="120" width="115" height="28" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="177" y="15" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e40af">...b308~b30f</text>
+      <text x="177" y="25" text-anchor="middle" font-size="7" fill="#3b82f6">Granule 1</text>
+
+      <rect x="240" width="115" height="28" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="297" y="15" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e40af">...b310~b317</text>
+      <text x="297" y="25" text-anchor="middle" font-size="7" fill="#3b82f6">Granule 2</text>
+
+      <rect x="360" width="115" height="28" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="417" y="15" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e40af">...b318~b31f</text>
+      <text x="417" y="25" text-anchor="middle" font-size="7" fill="#3b82f6">Granule 3</text>
+
+      <rect x="480" width="115" height="28" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="537" y="15" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e40af">...b320~b327</text>
+      <text x="537" y="25" text-anchor="middle" font-size="7" fill="#3b82f6">Granule 4</text>
+
+      <rect x="600" width="115" height="28" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="657" y="15" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e40af">...b328~b32f</text>
+      <text x="657" y="25" text-anchor="middle" font-size="7" fill="#3b82f6">Granule 5</text>
+
+      <rect x="720" width="115" height="28" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="777" y="15" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e40af">...b330~b337</text>
+      <text x="777" y="25" text-anchor="middle" font-size="7" fill="#3b82f6">Granule 6</text>
+
+      <rect x="840" width="115" height="28" rx="3" fill="#dbeafe" stroke="#3b82f6"/>
+      <text x="897" y="15" text-anchor="middle" font-size="8" font-family="monospace" fill="#1e40af">...b338~b33f</text>
+      <text x="897" y="25" text-anchor="middle" font-size="7" fill="#3b82f6">Granule 7</text>
+    </g>
+
+    <text x="980" y="130" font-size="10" fill="#6b7280">64B ÷ 8 = 8 颗粒</text>
+
+    <!-- Arrows down -->
+    <g transform="translate(20,145)">
+      <text x="57" y="12" text-anchor="middle" font-size="14" fill="#dc2626">↓</text>
+      <text x="177" y="12" text-anchor="middle" font-size="14" fill="#dc2626">↓</text>
+      <text x="297" y="12" text-anchor="middle" font-size="14" fill="#dc2626">↓</text>
+      <text x="417" y="12" text-anchor="middle" font-size="14" fill="#dc2626">↓</text>
+      <text x="537" y="12" text-anchor="middle" font-size="14" fill="#dc2626">↓</text>
+      <text x="657" y="12" text-anchor="middle" font-size="14" fill="#dc2626">↓</text>
+      <text x="777" y="12" text-anchor="middle" font-size="14" fill="#dc2626">↓</text>
+      <text x="897" y="12" text-anchor="middle" font-size="14" fill="#dc2626">↓</text>
+    </g>
+
+    <!-- Formula in center -->
+    <rect x="350" y="152" width="320" height="22" rx="4" fill="#fef3c7" stroke="#d97706"/>
+    <text x="510" y="167" text-anchor="middle" font-size="10" font-family="monospace" font-weight="bold" fill="#92400e">shadow = (0xffff0000c1a2b300 &gt;&gt; 3) + OFFSET</text>
+
+    <!-- Shadow bytes -->
+    <text x="20" y="192" font-size="11" font-weight="bold" fill="#dc2626">Step 3: 对应 Shadow Bytes（8 连续字节）</text>
+    <g transform="translate(20,198)">
+      <rect width="115" height="32" rx="3" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="57" y="15" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="57" y="27" text-anchor="middle" font-size="8" fill="#059669">可访问</text>
+
+      <rect x="120" width="115" height="32" rx="3" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="177" y="15" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="177" y="27" text-anchor="middle" font-size="8" fill="#059669">可访问</text>
+
+      <rect x="240" width="115" height="32" rx="3" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="297" y="15" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="297" y="27" text-anchor="middle" font-size="8" fill="#059669">可访问</text>
+
+      <rect x="360" width="115" height="32" rx="3" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="417" y="15" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="417" y="27" text-anchor="middle" font-size="8" fill="#059669">可访问</text>
+
+      <rect x="480" width="115" height="32" rx="3" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="537" y="15" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="537" y="27" text-anchor="middle" font-size="8" fill="#059669">可访问</text>
+
+      <rect x="600" width="115" height="32" rx="3" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="657" y="15" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="657" y="27" text-anchor="middle" font-size="8" fill="#059669">可访问</text>
+
+      <rect x="720" width="115" height="32" rx="3" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="777" y="15" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="777" y="27" text-anchor="middle" font-size="8" fill="#059669">可访问</text>
+
+      <rect x="840" width="115" height="32" rx="3" fill="#d1fae5" stroke="#059669" stroke-width="1.5"/>
+      <text x="897" y="15" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#065f46">0x00</text>
+      <text x="897" y="27" text-anchor="middle" font-size="8" fill="#059669">可访问</text>
+    </g>
+
+    <!-- Redzone shadow -->
+    <text x="20" y="250" font-size="11" font-weight="bold" fill="#dc2626">Step 4: 紧随其后的 Red Zone Shadow</text>
+    <g transform="translate(20,256)">
+      <rect width="115" height="28" rx="3" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="57" y="14" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#991b1b">0xFC</text>
+      <text x="57" y="25" text-anchor="middle" font-size="8" fill="#dc2626">SLAB_REDZONE</text>
+
+      <rect x="120" width="115" height="28" rx="3" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="177" y="14" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#991b1b">0xFC</text>
+      <text x="177" y="25" text-anchor="middle" font-size="8" fill="#dc2626">SLAB_REDZONE</text>
+
+      <rect x="240" width="115" height="28" rx="3" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="297" y="14" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#991b1b">0xFC</text>
+      <text x="297" y="25" text-anchor="middle" font-size="8" fill="#dc2626">SLAB_REDZONE</text>
+
+      <rect x="360" width="115" height="28" rx="3" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="417" y="14" text-anchor="middle" font-size="11" font-family="monospace" font-weight="bold" fill="#991b1b">0xFC</text>
+      <text x="417" y="25" text-anchor="middle" font-size="8" fill="#dc2626">SLAB_REDZONE</text>
+
+      <text x="530" y="14" font-size="10" fill="#6b7280">← 越界写入触及这些 Shadow → KASAN 立即报错</text>
+    </g>
+  </g>
+</svg>

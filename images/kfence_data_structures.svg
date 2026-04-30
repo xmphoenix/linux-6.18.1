@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1260 780" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hdrMeta" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#0891b2"/><stop offset="100%" stop-color="#22d3ee"/></linearGradient>
+    <linearGradient id="hdrTrack" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#818cf8"/></linearGradient>
+    <linearGradient id="hdrState" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#16a34a"/><stop offset="100%" stop-color="#4ade80"/></linearGradient>
+    <linearGradient id="hdrError" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#f87171"/></linearGradient>
+    <linearGradient id="hdrPool" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#9333ea"/><stop offset="100%" stop-color="#c084fc"/></linearGradient>
+    <linearGradient id="hdrCanary" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#ea580c"/><stop offset="100%" stop-color="#fb923c"/></linearGradient>
+    <!-- Markers -->
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6366f1" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aT" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#0891b2" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#9333ea" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aD" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#475569" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="630" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#1e293b">KFENCE 关键数据结构关系图</text>
+  <text x="630" y="48" text-anchor="middle" font-size="10" fill="#64748b">源码: mm/kfence/kfence.h, mm/kfence/core.c</text>
+
+  <!-- ============ kfence_metadata ============ -->
+  <g transform="translate(30,70)">
+    <rect width="380" height="400" rx="8" fill="#fff" stroke="#0891b2" stroke-width="2" filter="url(#sh)"/>
+    <rect width="380" height="30" rx="8" fill="url(#hdrMeta)"/>
+    <rect x="0" y="22" width="380" height="8" fill="#0891b2"/>
+    <text x="190" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">kfence_metadata</text>
+    <text x="15" y="48" font-size="9" font-weight="bold" fill="#0891b2">// 每个受保护对象一份，核心元数据结构</text>
+    <line x1="10" y1="56" x2="370" y2="56" stroke="#cffafe" stroke-width="0.8"/>
+    <!-- Fields -->
+    <text x="15" y="74" font-size="11" font-family="monospace" fill="#334155">list</text>
+    <text x="200" y="74" font-size="9" fill="#94a3b8">list_head — freelist 节点</text>
+    <text x="15" y="96" font-size="11" font-family="monospace" fill="#334155">rcu_head</text>
+    <text x="200" y="96" font-size="9" fill="#94a3b8">rcu_head — 延迟释放</text>
+    <text x="15" y="118" font-size="11" font-family="monospace" fill="#334155">lock</text>
+    <text x="200" y="118" font-size="9" fill="#94a3b8">raw_spinlock_t — 元数据锁</text>
+    <line x1="10" y1="128" x2="370" y2="128" stroke="#cffafe" stroke-width="0.8"/>
+    <text x="15" y="146" font-size="11" font-family="monospace" fill="#16a34a">state</text>
+    <text x="200" y="146" font-size="9" fill="#94a3b8">enum kfence_object_state</text>
+    <text x="15" y="168" font-size="11" font-family="monospace" fill="#334155">addr</text>
+    <text x="200" y="168" font-size="9" fill="#94a3b8">unsigned long — 对象地址</text>
+    <text x="15" y="190" font-size="11" font-family="monospace" fill="#334155">size</text>
+    <text x="200" y="190" font-size="9" fill="#94a3b8">size_t — 原始分配大小</text>
+    <text x="15" y="212" font-size="11" font-family="monospace" fill="#334155">cache</text>
+    <text x="200" y="212" font-size="9" fill="#94a3b8">kmem_cache* — 所属 slab 缓存</text>
+    <line x1="10" y1="222" x2="370" y2="222" stroke="#cffafe" stroke-width="0.8"/>
+    <text x="15" y="240" font-size="11" font-family="monospace" fill="#334155">unprotected_page</text>
+    <text x="200" y="240" font-size="9" fill="#94a3b8">unsigned long — 解保护页</text>
+    <line x1="10" y1="250" x2="370" y2="250" stroke="#cffafe" stroke-width="0.8"/>
+    <text x="15" y="268" font-size="11" font-family="monospace" fill="#6366f1">alloc_track</text>
+    <text x="200" y="268" font-size="9" fill="#94a3b8">kfence_track — 分配栈信息</text>
+    <text x="15" y="290" font-size="11" font-family="monospace" fill="#6366f1">free_track</text>
+    <text x="200" y="290" font-size="9" fill="#94a3b8">kfence_track — 释放栈信息</text>
+    <line x1="10" y1="300" x2="370" y2="300" stroke="#cffafe" stroke-width="0.8"/>
+    <text x="15" y="318" font-size="11" font-family="monospace" fill="#334155">alloc_stack_hash</text>
+    <text x="200" y="318" font-size="9" fill="#94a3b8">u32 — Bloom Filter 哈希</text>
+    <text x="15" y="340" font-size="11" font-family="monospace" fill="#818cf8">obj_exts</text>
+    <text x="200" y="340" font-size="9" fill="#94a3b8">slabobj_ext (CONFIG_MEMCG)</text>
+    <line x1="10" y1="350" x2="370" y2="350" stroke="#cffafe" stroke-width="0.8"/>
+    <text x="15" y="370" font-size="9" fill="#64748b">KFENCE_METADATA_SIZE = PAGE_ALIGN(sizeof × NUM_OBJECTS)</text>
+    <text x="15" y="386" font-size="9" fill="#64748b">kfence_metadata = vmalloc(KFENCE_METADATA_SIZE)</text>
+  </g>
+
+  <!-- ============ kfence_track ============ -->
+  <g transform="translate(500,70)">
+    <rect width="280" height="200" rx="8" fill="#fff" stroke="#6366f1" stroke-width="2" filter="url(#sh)"/>
+    <rect width="280" height="30" rx="8" fill="url(#hdrTrack)"/>
+    <rect x="0" y="22" width="280" height="8" fill="#6366f1"/>
+    <text x="140" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">kfence_track</text>
+    <text x="15" y="48" font-size="9" font-weight="bold" fill="#6366f1">// 分配/释放追踪信息</text>
+    <line x1="10" y1="56" x2="270" y2="56" stroke="#e0e7ff" stroke-width="0.8"/>
+    <text x="15" y="74" font-size="11" font-family="monospace" fill="#334155">pid</text>
+    <text x="180" y="74" font-size="9" fill="#94a3b8">pid_t — 操作进程</text>
+    <text x="15" y="96" font-size="11" font-family="monospace" fill="#334155">cpu</text>
+    <text x="180" y="96" font-size="9" fill="#94a3b8">int — 操作 CPU</text>
+    <text x="15" y="118" font-size="11" font-family="monospace" fill="#334155">ts_nsec</text>
+    <text x="180" y="118" font-size="9" fill="#94a3b8">u64 — 纳秒时间戳</text>
+    <text x="15" y="140" font-size="11" font-family="monospace" fill="#334155">num_stack_entries</text>
+    <text x="180" y="140" font-size="9" fill="#94a3b8">int — 有效栈帧数</text>
+    <text x="15" y="162" font-size="11" font-family="monospace" fill="#334155">stack_entries[64]</text>
+    <text x="180" y="162" font-size="9" fill="#94a3b8">unsigned long[] — 栈</text>
+    <text x="15" y="184" font-size="9" fill="#64748b">KFENCE_STACK_DEPTH = 64</text>
+  </g>
+
+  <!-- ============ kfence_object_state ============ -->
+  <g transform="translate(500,330)">
+    <rect width="280" height="150" rx="8" fill="#fff" stroke="#16a34a" stroke-width="2" filter="url(#sh)"/>
+    <rect width="280" height="30" rx="8" fill="url(#hdrState)"/>
+    <rect x="0" y="22" width="280" height="8" fill="#16a34a"/>
+    <text x="140" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">kfence_object_state</text>
+    <text x="15" y="48" font-size="9" font-weight="bold" fill="#16a34a">// 对象状态枚举</text>
+    <line x1="10" y1="56" x2="270" y2="56" stroke="#bbf7d0" stroke-width="0.8"/>
+    <text x="15" y="76" font-size="11" font-family="monospace" fill="#334155">KFENCE_OBJECT_UNUSED</text>
+    <text x="235" y="76" font-size="9" fill="#94a3b8">未使用</text>
+    <text x="15" y="96" font-size="11" font-family="monospace" fill="#16a34a">KFENCE_OBJECT_ALLOCATED</text>
+    <text x="235" y="96" font-size="9" fill="#94a3b8">已分配</text>
+    <text x="15" y="116" font-size="11" font-family="monospace" fill="#ea580c">KFENCE_OBJECT_RCU_FREEING</text>
+    <text x="235" y="116" font-size="9" fill="#94a3b8">RCU 释放中</text>
+    <text x="15" y="136" font-size="11" font-family="monospace" fill="#dc2626">KFENCE_OBJECT_FREED</text>
+    <text x="235" y="136" font-size="9" fill="#94a3b8">已释放</text>
+  </g>
+
+  <!-- ============ kfence_error_type ============ -->
+  <g transform="translate(860,70)">
+    <rect width="280" height="180" rx="8" fill="#fff" stroke="#dc2626" stroke-width="2" filter="url(#sh)"/>
+    <rect width="280" height="30" rx="8" fill="url(#hdrError)"/>
+    <rect x="0" y="22" width="280" height="8" fill="#dc2626"/>
+    <text x="140" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">kfence_error_type</text>
+    <text x="15" y="48" font-size="9" font-weight="bold" fill="#dc2626">// 错误类型枚举</text>
+    <line x1="10" y1="56" x2="270" y2="56" stroke="#fecaca" stroke-width="0.8"/>
+    <text x="15" y="76" font-size="11" font-family="monospace" fill="#334155">KFENCE_ERROR_OOB</text>
+    <text x="205" y="76" font-size="9" fill="#94a3b8">越界访问</text>
+    <text x="15" y="96" font-size="11" font-family="monospace" fill="#334155">KFENCE_ERROR_UAF</text>
+    <text x="205" y="96" font-size="9" fill="#94a3b8">释放后使用</text>
+    <text x="15" y="116" font-size="11" font-family="monospace" fill="#334155">KFENCE_ERROR_CORRUPTION</text>
+    <text x="205" y="116" font-size="9" fill="#94a3b8">Canary 腐蚀</text>
+    <text x="15" y="136" font-size="11" font-family="monospace" fill="#334155">KFENCE_ERROR_INVALID</text>
+    <text x="205" y="136" font-size="9" fill="#94a3b8">未知越界</text>
+    <text x="15" y="156" font-size="11" font-family="monospace" fill="#334155">KFENCE_ERROR_INVALID_FREE</text>
+    <text x="205" y="156" font-size="9" fill="#94a3b8">无效释放</text>
+  </g>
+
+  <!-- ============ Pool 布局 ============ -->
+  <g transform="translate(30,530)">
+    <rect width="1200" height="220" rx="8" fill="#faf5ff" stroke="#9333ea" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="600" y="24" text-anchor="middle" font-size="13" font-weight="bold" fill="#7e22ce">__kfence_pool 内存布局 (CONFIG_KFENCE_NUM_OBJECTS 个对象)</text>
+    <line x1="10" y1="34" x2="1190" y2="34" stroke="#d8b4fe" stroke-width="0.8"/>
+
+    <!-- Pool pages visualization -->
+    <text x="15" y="58" font-size="10" font-weight="bold" fill="#475569">物理页布局:</text>
+
+    <!-- Guard page 0 -->
+    <rect x="15" y="68" width="80" height="45" rx="4" fill="#fecaca" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="55" y="86" text-anchor="middle" font-size="9" font-weight="bold" fill="#991b1b">Guard</text>
+    <text x="55" y="100" text-anchor="middle" font-size="8" fill="#991b1b">Page 0</text>
+
+    <!-- Object page 0 -->
+    <rect x="105" y="68" width="120" height="45" rx="4" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="165" y="86" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">Object Page 0</text>
+    <text x="165" y="100" text-anchor="middle" font-size="8" fill="#1e40af">metadata[0].addr</text>
+
+    <!-- Guard page 1 -->
+    <rect x="235" y="68" width="80" height="45" rx="4" fill="#fecaca" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="275" y="86" text-anchor="middle" font-size="9" font-weight="bold" fill="#991b1b">Guard</text>
+    <text x="275" y="100" text-anchor="middle" font-size="8" fill="#991b1b">Page 1</text>
+
+    <!-- Object page 1 -->
+    <rect x="325" y="68" width="120" height="45" rx="4" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="385" y="86" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">Object Page 1</text>
+    <text x="385" y="100" text-anchor="middle" font-size="8" fill="#1e40af">metadata[1].addr</text>
+
+    <!-- Guard page 2 -->
+    <rect x="455" y="68" width="80" height="45" rx="4" fill="#fecaca" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="495" y="86" text-anchor="middle" font-size="9" font-weight="bold" fill="#991b1b">Guard</text>
+    <text x="495" y="100" text-anchor="middle" font-size="8" fill="#991b1b">Page 2</text>
+
+    <!-- ... -->
+    <text x="560" y="95" font-size="16" fill="#475569">···</text>
+
+    <!-- Object page N-1 -->
+    <rect x="600" y="68" width="120" height="45" rx="4" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="660" y="86" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e40af">Object Page N-1</text>
+    <text x="660" y="100" text-anchor="middle" font-size="8" fill="#1e40af">metadata[N-1].addr</text>
+
+    <!-- Guard page N -->
+    <rect x="730" y="68" width="80" height="45" rx="4" fill="#fecaca" stroke="#dc2626" stroke-width="1.5"/>
+    <text x="770" y="86" text-anchor="middle" font-size="9" font-weight="bold" fill="#991b1b">Guard</text>
+    <text x="770" y="100" text-anchor="middle" font-size="8" fill="#991b1b">Page N</text>
+
+    <!-- Index formula -->
+    <text x="15" y="136" font-size="10" font-weight="bold" fill="#475569">地址映射公式:</text>
+    <text x="15" y="156" font-size="10" font-family="monospace" fill="#334155">index = (addr - __kfence_pool) / (PAGE_SIZE × 2) - 1</text>
+    <text x="15" y="176" font-size="10" font-family="monospace" fill="#334155">metadata = &amp;kfence_metadata[index]</text>
+
+    <!-- Canary pattern -->
+    <text x="600" y="136" font-size="10" font-weight="bold" fill="#ea580c">Canary 填充模式:</text>
+    <text x="600" y="156" font-size="10" font-family="monospace" fill="#ea580c">KFENCE_CANARY_PATTERN_U8(addr) = 0xAA ^ (addr &amp; 0x7)</text>
+    <text x="600" y="176" font-size="9" fill="#64748b">对象周围剩余空间 + Guard Page 间隙填充 Canary</text>
+
+    <!-- Object detail -->
+    <text x="15" y="200" font-size="10" font-weight="bold" fill="#475569">池大小: (2 × NUM_OBJECTS + 1) 页 — 默认 NUM_OBJECTS = 255</text>
+    <text x="600" y="200" font-size="10" font-weight="bold" fill="#475569">总计 511 页 = 约 2MB</text>
+  </g>
+
+  <!-- ========== Connection lines ========== -->
+
+  <!-- metadata.alloc_track / free_track → kfence_track -->
+  <path d="M410,338 L460,338 L460,170 L500,170" fill="none" stroke="#6366f1" stroke-width="2" marker-end="url(#aB)"/>
+  <rect x="420" y="244" width="76" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="458" y="255" text-anchor="middle" font-size="8" fill="#6366f1">alloc/free_track</text>
+
+  <!-- metadata.state → kfence_object_state -->
+  <path d="M410,216 L460,216 L460,380 L500,380" fill="none" stroke="#16a34a" stroke-width="2" marker-end="url(#aG)"/>
+  <rect x="420" y="296" width="44" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="442" y="307" text-anchor="middle" font-size="8" fill="#16a34a">state</text>
+
+  <!-- metadata → pool layout (conceptual) -->
+  <path d="M220,470 L220,530" fill="none" stroke="#9333ea" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aP)"/>
+  <rect x="180" y="494" width="86" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="223" y="505" text-anchor="middle" font-size="8" fill="#9333ea">addr 指向 pool</text>
+
+  <!-- error_type used by kfence_report_error -->
+  <rect x="860" y="284" width="280" height="60" rx="8" fill="#fff" stroke="#dc2626" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="1000" y="306" text-anchor="middle" font-size="11" font-weight="bold" fill="#dc2626">kfence_report_error()</text>
+  <text x="1000" y="324" text-anchor="middle" font-size="9" fill="#64748b">address, is_write, regs, meta, type</text>
+
+  <path d="M1000,250 L1000,284" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#aR)"/>
+  <path d="M860,314 L810,314 L810,470 L410,470" fill="none" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aT)"/>
+  <rect x="570" y="468" width="46" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="593" y="479" text-anchor="middle" font-size="8" fill="#0891b2">meta</text>
+
+  <!-- State transition arrows -->
+  <g transform="translate(500,495)">
+    <rect width="280" height="26" rx="4" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+    <text x="140" y="17" text-anchor="middle" font-size="9" fill="#16a34a">UNUSED → ALLOCATED → RCU_FREEING → FREED → UNUSED</text>
+  </g>
+
+  <!-- ========== Legend ========== -->
+  <g transform="translate(860,400)">
+    <rect width="300" height="56" rx="6" fill="white" fill-opacity="0.9" stroke="#cbd5e1" stroke-width="0.8"/>
+    <text x="10" y="16" font-size="9" font-weight="bold" fill="#475569">图例</text>
+    <line x1="10" y1="32" x2="40" y2="32" stroke="#6366f1" stroke-width="2"/>
+    <text x="45" y="36" font-size="8" fill="#475569">嵌入字段</text>
+    <line x1="100" y1="32" x2="130" y2="32" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="135" y="36" font-size="8" fill="#475569">指针引用</text>
+    <line x1="200" y1="32" x2="230" y2="32" stroke="#9333ea" stroke-width="2" stroke-dasharray="6,3"/>
+    <text x="235" y="36" font-size="8" fill="#475569">地址映射</text>
+    <rect x="10" y="42" width="10" height="10" rx="2" fill="#fecaca" stroke="#dc2626" stroke-width="1"/>
+    <text x="25" y="51" font-size="8" fill="#475569">Guard Page (不可访问)</text>
+    <rect x="150" y="42" width="10" height="10" rx="2" fill="#dbeafe" stroke="#2563eb" stroke-width="1"/>
+    <text x="165" y="51" font-size="8" fill="#475569">Object Page (可用)</text>
+  </g>
+</svg>
