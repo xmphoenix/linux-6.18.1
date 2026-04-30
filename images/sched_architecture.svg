@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 850" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="1.5" dy="1.5" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <linearGradient id="gUser" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8F5E9"/><stop offset="100%" stop-color="#C8E6C9"/></linearGradient>
+    <linearGradient id="gSyscall" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E3F2FD"/><stop offset="100%" stop-color="#BBDEFB"/></linearGradient>
+    <linearGradient id="gCore" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFF3E0"/><stop offset="100%" stop-color="#FFE0B2"/></linearGradient>
+    <linearGradient id="gClass" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FCE4EC"/><stop offset="100%" stop-color="#F8BBD0"/></linearGradient>
+    <linearGradient id="gRq" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8EAF6"/><stop offset="100%" stop-color="#C5CAE9"/></linearGradient>
+    <linearGradient id="gPelt" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F3E5F5"/><stop offset="100%" stop-color="#E1BEE7"/></linearGradient>
+    <linearGradient id="gTopo" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ECEFF1"/><stop offset="100%" stop-color="#CFD8DC"/></linearGradient>
+    <linearGradient id="gHw" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EFEBE9"/><stop offset="100%" stop-color="#D7CCC8"/></linearGradient>
+    <marker id="arrDown" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M1,1 L4,7 L7,1" fill="none" stroke="#546E7A" stroke-width="1.5"/></marker>
+    <marker id="arrUp" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M1,7 L4,1 L7,7" fill="none" stroke="#546E7A" stroke-width="1.5"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="600" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#212121">Linux 调度子系统分层架构</text>
+  <text x="600" y="50" text-anchor="middle" font-size="11" fill="#757575">kernel/sched/ · include/linux/sched/ · Linux 6.18</text>
+
+  <!-- Layer 1: User Space -->
+  <g filter="url(#sh)">
+    <rect x="60" y="65" width="1080" height="55" rx="8" fill="url(#gUser)" stroke="#4CAF50" stroke-width="1.5"/>
+    <text x="600" y="85" text-anchor="middle" font-size="13" font-weight="bold" fill="#2E7D32">用户空间 (User Space)</text>
+    <text x="600" y="105" text-anchor="middle" font-size="11" fill="#424242">应用程序 · libpthread · libc (sched_setscheduler / nice / pthread_setschedparam)</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="600" y1="120" x2="600" y2="135" stroke="#546E7A" stroke-width="1.5" marker-end="url(#arrDown)"/>
+
+  <!-- Layer 2: Syscall -->
+  <g filter="url(#sh)">
+    <rect x="60" y="140" width="1080" height="50" rx="8" fill="url(#gSyscall)" stroke="#1976D2" stroke-width="1.5"/>
+    <text x="600" y="162" text-anchor="middle" font-size="13" font-weight="bold" fill="#1565C0">系统调用层 (syscalls.c)</text>
+    <text x="600" y="180" text-anchor="middle" font-size="10" fill="#424242">sched_setattr · sched_getattr · sched_setaffinity · sched_yield · sched_setscheduler · nice</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="600" y1="190" x2="600" y2="205" stroke="#546E7A" stroke-width="1.5" marker-end="url(#arrDown)"/>
+
+  <!-- Layer 3: Core -->
+  <g filter="url(#sh)">
+    <rect x="60" y="210" width="1080" height="90" rx="8" fill="url(#gCore)" stroke="#F57C00" stroke-width="1.5"/>
+    <text x="600" y="232" text-anchor="middle" font-size="13" font-weight="bold" fill="#E65100">调度核心 (core.c)</text>
+    <rect x="100" y="240" width="300" height="45" rx="5" fill="#fff" fill-opacity="0.7" stroke="#F57C00" stroke-width="0.8"/>
+    <text x="250" y="258" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">__schedule()</text>
+    <text x="250" y="275" text-anchor="middle" font-size="10" fill="#424242">pick_next_task → context_switch</text>
+    <rect x="450" y="240" width="300" height="45" rx="5" fill="#fff" fill-opacity="0.7" stroke="#F57C00" stroke-width="0.8"/>
+    <text x="600" y="258" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">try_to_wake_up()</text>
+    <text x="600" y="275" text-anchor="middle" font-size="10" fill="#424242">select_task_rq → enqueue → resched</text>
+    <rect x="800" y="240" width="300" height="45" rx="5" fill="#fff" fill-opacity="0.7" stroke="#F57C00" stroke-width="0.8"/>
+    <text x="950" y="258" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">scheduler_tick()</text>
+    <text x="950" y="275" text-anchor="middle" font-size="10" fill="#424242">update_curr → check_preempt → LB</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="600" y1="300" x2="600" y2="315" stroke="#546E7A" stroke-width="1.5" marker-end="url(#arrDown)"/>
+
+  <!-- Layer 4: Sched Classes -->
+  <g filter="url(#sh)">
+    <rect x="60" y="320" width="1080" height="80" rx="8" fill="url(#gClass)" stroke="#C62828" stroke-width="1.5"/>
+    <text x="600" y="340" text-anchor="middle" font-size="13" font-weight="bold" fill="#B71C1C">调度类优先级链 (sched_class)</text>
+    <!-- Class boxes -->
+    <rect x="95" y="350" width="120" height="35" rx="4" fill="#D32F2F" stroke="none"/><text x="155" y="372" text-anchor="middle" font-size="11" fill="#fff" font-weight="bold">stop</text>
+    <text x="225" y="372" font-size="16" fill="#C62828">→</text>
+    <rect x="240" y="350" width="120" height="35" rx="4" fill="#7B1FA2" stroke="none"/><text x="300" y="372" text-anchor="middle" font-size="11" fill="#fff" font-weight="bold">dl (EDF+CBS)</text>
+    <text x="370" y="372" font-size="16" fill="#C62828">→</text>
+    <rect x="385" y="350" width="120" height="35" rx="4" fill="#E64A19" stroke="none"/><text x="445" y="372" text-anchor="middle" font-size="11" fill="#fff" font-weight="bold">rt (FIFO/RR)</text>
+    <text x="515" y="372" font-size="16" fill="#C62828">→</text>
+    <rect x="530" y="350" width="120" height="35" rx="4" fill="#00838F" stroke="none"/><text x="590" y="372" text-anchor="middle" font-size="11" fill="#fff" font-weight="bold">ext (BPF)</text>
+    <text x="660" y="372" font-size="16" fill="#C62828">→</text>
+    <rect x="675" y="350" width="140" height="35" rx="4" fill="#2E7D32" stroke="none"/><text x="745" y="372" text-anchor="middle" font-size="11" fill="#fff" font-weight="bold">fair (EEVDF)</text>
+    <text x="825" y="372" font-size="16" fill="#C62828">→</text>
+    <rect x="840" y="350" width="120" height="35" rx="4" fill="#78909C" stroke="none"/><text x="900" y="372" text-anchor="middle" font-size="11" fill="#fff" font-weight="bold">idle</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="600" y1="400" x2="600" y2="415" stroke="#546E7A" stroke-width="1.5" marker-end="url(#arrDown)"/>
+
+  <!-- Layer 5: Per-CPU rq -->
+  <g filter="url(#sh)">
+    <rect x="60" y="420" width="1080" height="100" rx="8" fill="url(#gRq)" stroke="#3F51B5" stroke-width="1.5"/>
+    <text x="600" y="440" text-anchor="middle" font-size="13" font-weight="bold" fill="#283593">Per-CPU 运行队列 (struct rq)</text>
+    <!-- CPU boxes -->
+    <rect x="100" y="450" width="220" height="55" rx="5" fill="#fff" fill-opacity="0.8" stroke="#3F51B5" stroke-width="0.8"/>
+    <text x="210" y="468" text-anchor="middle" font-size="11" font-weight="bold" fill="#283593">CPU 0 (rq)</text>
+    <text x="210" y="485" text-anchor="middle" font-size="9" fill="#424242">cfs_rq(rb_tree) · rt_rq(bitmap) · dl_rq(rb)</text>
+    <text x="210" y="498" text-anchor="middle" font-size="9" fill="#424242">curr · clock · nr_running</text>
+
+    <rect x="370" y="450" width="220" height="55" rx="5" fill="#fff" fill-opacity="0.8" stroke="#3F51B5" stroke-width="0.8"/>
+    <text x="480" y="468" text-anchor="middle" font-size="11" font-weight="bold" fill="#283593">CPU 1 (rq)</text>
+    <text x="480" y="485" text-anchor="middle" font-size="9" fill="#424242">cfs_rq(rb_tree) · rt_rq(bitmap) · dl_rq(rb)</text>
+    <text x="480" y="498" text-anchor="middle" font-size="9" fill="#424242">curr · clock · nr_running</text>
+
+    <rect x="640" y="450" width="220" height="55" rx="5" fill="#fff" fill-opacity="0.8" stroke="#3F51B5" stroke-width="0.8"/>
+    <text x="750" y="468" text-anchor="middle" font-size="11" font-weight="bold" fill="#283593">CPU 2 (rq)</text>
+    <text x="750" y="485" text-anchor="middle" font-size="9" fill="#424242">cfs_rq(rb_tree) · rt_rq(bitmap) · dl_rq(rb)</text>
+    <text x="750" y="498" text-anchor="middle" font-size="9" fill="#424242">curr · clock · nr_running</text>
+
+    <rect x="910" y="450" width="220" height="55" rx="5" fill="#fff" fill-opacity="0.8" stroke="#3F51B5" stroke-width="0.8"/>
+    <text x="1020" y="468" text-anchor="middle" font-size="11" font-weight="bold" fill="#283593">CPU 3 (rq)</text>
+    <text x="1020" y="485" text-anchor="middle" font-size="9" fill="#424242">cfs_rq(rb_tree) · rt_rq(bitmap) · dl_rq(rb)</text>
+    <text x="1020" y="498" text-anchor="middle" font-size="9" fill="#424242">curr · clock · nr_running</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="600" y1="520" x2="600" y2="535" stroke="#546E7A" stroke-width="1.5" marker-end="url(#arrDown)"/>
+
+  <!-- Layer 6: PELT & Load Balancing -->
+  <g filter="url(#sh)">
+    <rect x="60" y="540" width="530" height="80" rx="8" fill="url(#gPelt)" stroke="#7B1FA2" stroke-width="1.5"/>
+    <text x="325" y="562" text-anchor="middle" font-size="13" font-weight="bold" fill="#4A148C">负载追踪 &amp; 均衡</text>
+    <text x="325" y="582" text-anchor="middle" font-size="11" fill="#424242">PELT (pelt.c) — 指数衰减 EWMA 信号</text>
+    <text x="325" y="600" text-anchor="middle" font-size="11" fill="#424242">Load Balance (fair.c) — 周期性/idle/fork 迁移</text>
+    <text x="325" y="616" text-anchor="middle" font-size="10" fill="#7B1FA2">cpufreq_schedutil — 频率跟随 util_avg</text>
+  </g>
+
+  <!-- Layer 6b: Topology -->
+  <g filter="url(#sh)">
+    <rect x="610" y="540" width="530" height="80" rx="8" fill="url(#gTopo)" stroke="#455A64" stroke-width="1.5"/>
+    <text x="875" y="562" text-anchor="middle" font-size="13" font-weight="bold" fill="#263238">调度域拓扑 (topology.c)</text>
+    <text x="875" y="582" text-anchor="middle" font-size="11" fill="#424242">MC (core) → DIE (socket) → NUMA (node)</text>
+    <text x="875" y="600" text-anchor="middle" font-size="11" fill="#424242">sched_domain + sched_group 层级</text>
+    <text x="875" y="616" text-anchor="middle" font-size="10" fill="#455A64">SD_SHARE_PKG · SD_NUMA · SD_ASYM_PACKING</text>
+  </g>
+
+  <!-- Bidirectional arrow between PELT and Topology -->
+  <line x1="590" y1="580" x2="610" y2="580" stroke="#546E7A" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+  <!-- Arrow down -->
+  <line x1="600" y1="620" x2="600" y2="640" stroke="#546E7A" stroke-width="1.5" marker-end="url(#arrDown)"/>
+
+  <!-- Layer 7: Hardware -->
+  <g filter="url(#sh)">
+    <rect x="60" y="645" width="1080" height="70" rx="8" fill="url(#gHw)" stroke="#795548" stroke-width="1.5"/>
+    <text x="600" y="667" text-anchor="middle" font-size="13" font-weight="bold" fill="#4E342E">底层硬件交互</text>
+    <rect x="100" y="678" width="200" height="28" rx="4" fill="#fff" fill-opacity="0.8" stroke="#795548" stroke-width="0.6"/>
+    <text x="200" y="696" text-anchor="middle" font-size="10" fill="#4E342E">Timer Tick (arch_timer)</text>
+    <rect x="330" y="678" width="200" height="28" rx="4" fill="#fff" fill-opacity="0.8" stroke="#795548" stroke-width="0.6"/>
+    <text x="430" y="696" text-anchor="middle" font-size="10" fill="#4E342E">IPI (resched_curr)</text>
+    <rect x="560" y="678" width="230" height="28" rx="4" fill="#fff" fill-opacity="0.8" stroke="#795548" stroke-width="0.6"/>
+    <text x="675" y="696" text-anchor="middle" font-size="10" fill="#4E342E">context_switch (arch/arm64)</text>
+    <rect x="820" y="678" width="200" height="28" rx="4" fill="#fff" fill-opacity="0.8" stroke="#795548" stroke-width="0.6"/>
+    <text x="920" y="696" text-anchor="middle" font-size="10" fill="#4E342E">cpufreq driver</text>
+  </g>
+
+  <!-- Side: Related subsystems -->
+  <g filter="url(#sh)">
+    <rect x="60" y="740" width="1080" height="95" rx="8" fill="#FAFAFA" stroke="#9E9E9E" stroke-width="1"/>
+    <text x="600" y="760" text-anchor="middle" font-size="12" font-weight="bold" fill="#424242">关联子系统</text>
+    <!-- subsystem boxes -->
+    <rect x="80" y="770" width="130" height="50" rx="4" fill="#E8F5E9" stroke="#4CAF50" stroke-width="0.8"/>
+    <text x="145" y="790" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">MM</text>
+    <text x="145" y="806" text-anchor="middle" font-size="9" fill="#424242">switch_mm()</text>
+    <text x="145" y="816" text-anchor="middle" font-size="9" fill="#424242">mmgrab/mmput</text>
+
+    <rect x="230" y="770" width="130" height="50" rx="4" fill="#E3F2FD" stroke="#1976D2" stroke-width="0.8"/>
+    <text x="295" y="790" text-anchor="middle" font-size="10" font-weight="bold" fill="#1565C0">cgroup</text>
+    <text x="295" y="806" text-anchor="middle" font-size="9" fill="#424242">task_group</text>
+    <text x="295" y="816" text-anchor="middle" font-size="9" fill="#424242">cpu.max 带宽</text>
+
+    <rect x="380" y="770" width="130" height="50" rx="4" fill="#FFF3E0" stroke="#F57C00" stroke-width="0.8"/>
+    <text x="445" y="790" text-anchor="middle" font-size="10" font-weight="bold" fill="#E65100">cpufreq</text>
+    <text x="445" y="806" text-anchor="middle" font-size="9" fill="#424242">schedutil gov</text>
+    <text x="445" y="816" text-anchor="middle" font-size="9" fill="#424242">util_avg驱动</text>
+
+    <rect x="530" y="770" width="130" height="50" rx="4" fill="#FCE4EC" stroke="#C62828" stroke-width="0.8"/>
+    <text x="595" y="790" text-anchor="middle" font-size="10" font-weight="bold" fill="#B71C1C">PSI</text>
+    <text x="595" y="806" text-anchor="middle" font-size="9" fill="#424242">psi_task_switch</text>
+    <text x="595" y="816" text-anchor="middle" font-size="9" fill="#424242">压力监控</text>
+
+    <rect x="680" y="770" width="130" height="50" rx="4" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="0.8"/>
+    <text x="745" y="790" text-anchor="middle" font-size="10" font-weight="bold" fill="#4A148C">ftrace</text>
+    <text x="745" y="806" text-anchor="middle" font-size="9" fill="#424242">sched_switch</text>
+    <text x="745" y="816" text-anchor="middle" font-size="9" fill="#424242">tracepoints</text>
+
+    <rect x="830" y="770" width="130" height="50" rx="4" fill="#ECEFF1" stroke="#455A64" stroke-width="0.8"/>
+    <text x="895" y="790" text-anchor="middle" font-size="10" font-weight="bold" fill="#263238">RCU</text>
+    <text x="895" y="806" text-anchor="middle" font-size="9" fill="#424242">context_switch</text>
+    <text x="895" y="816" text-anchor="middle" font-size="9" fill="#424242">quiescent state</text>
+
+    <rect x="980" y="770" width="130" height="50" rx="4" fill="#EFEBE9" stroke="#795548" stroke-width="0.8"/>
+    <text x="1045" y="790" text-anchor="middle" font-size="10" font-weight="bold" fill="#4E342E">perf</text>
+    <text x="1045" y="806" text-anchor="middle" font-size="9" fill="#424242">sched_in/out</text>
+    <text x="1045" y="816" text-anchor="middle" font-size="9" fill="#424242">PMU counters</text>
+  </g>
+</svg>

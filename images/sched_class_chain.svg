@@ -1,0 +1,232 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 680" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <linearGradient id="hStop" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e74c3c"/>
+      <stop offset="100%" style="stop-color:#c0392b"/>
+    </linearGradient>
+    <linearGradient id="hDl" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e67e22"/>
+      <stop offset="100%" style="stop-color:#d35400"/>
+    </linearGradient>
+    <linearGradient id="hRt" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f39c12"/>
+      <stop offset="100%" style="stop-color:#e67e22"/>
+    </linearGradient>
+    <linearGradient id="hExt" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#9b59b6"/>
+      <stop offset="100%" style="stop-color:#8e44ad"/>
+    </linearGradient>
+    <linearGradient id="hFair" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#2ecc71"/>
+      <stop offset="100%" style="stop-color:#27ae60"/>
+    </linearGradient>
+    <linearGradient id="hIdle" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#95a5a6"/>
+      <stop offset="100%" style="stop-color:#7f8c8d"/>
+    </linearGradient>
+    <linearGradient id="hRq" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3498db"/>
+      <stop offset="100%" style="stop-color:#2980b9"/>
+    </linearGradient>
+    <marker id="arw" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#34495e" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arwR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#e74c3c" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arwG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#27ae60" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#2c3e50">Linux 6.18 调度类优先级链与 Per-CPU 运行队列架构</text>
+  <text x="550" y="50" text-anchor="middle" font-size="11" fill="#7f8c8d">kernel/sched/sched.h — DEFINE_SCHED_CLASS 通过 linker section 排列优先级</text>
+
+  <!-- Priority chain (top row) -->
+  <!-- stop -->
+  <g transform="translate(30,80)">
+    <rect width="140" height="100" rx="8" fill="#fff" stroke="#e74c3c" stroke-width="2" filter="url(#sh)"/>
+    <rect width="140" height="30" rx="8" fill="url(#hStop)"/>
+    <rect x="0" y="22" width="140" height="8" fill="#c0392b"/>
+    <text x="70" y="20" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">stop_sched_class</text>
+    <text x="10" y="46" font-size="9" fill="#e74c3c" font-weight="bold">最高优先级</text>
+    <text x="10" y="62" font-size="9" fill="#555">stop_task.c (145行)</text>
+    <text x="10" y="76" font-size="9" fill="#555">每CPU 1个任务</text>
+    <text x="10" y="90" font-size="9" fill="#555">不可迁移/不可抢占</text>
+  </g>
+
+  <!-- dl -->
+  <g transform="translate(210,80)">
+    <rect width="140" height="100" rx="8" fill="#fff" stroke="#e67e22" stroke-width="2" filter="url(#sh)"/>
+    <rect width="140" height="30" rx="8" fill="url(#hDl)"/>
+    <rect x="0" y="22" width="140" height="8" fill="#d35400"/>
+    <text x="70" y="20" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">dl_sched_class</text>
+    <text x="10" y="46" font-size="9" fill="#e67e22" font-weight="bold">EDF + CBS</text>
+    <text x="10" y="62" font-size="9" fill="#555">deadline.c (3531行)</text>
+    <text x="10" y="76" font-size="9" fill="#555">红黑树(abs deadline)</text>
+    <text x="10" y="90" font-size="9" fill="#555">带宽准入控制</text>
+  </g>
+
+  <!-- rt -->
+  <g transform="translate(390,80)">
+    <rect width="140" height="100" rx="8" fill="#fff" stroke="#f39c12" stroke-width="2" filter="url(#sh)"/>
+    <rect width="140" height="30" rx="8" fill="url(#hRt)"/>
+    <rect x="0" y="22" width="140" height="8" fill="#e67e22"/>
+    <text x="70" y="20" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">rt_sched_class</text>
+    <text x="10" y="46" font-size="9" fill="#f39c12" font-weight="bold">FIFO / RR</text>
+    <text x="10" y="62" font-size="9" fill="#555">rt.c (2938行)</text>
+    <text x="10" y="76" font-size="9" fill="#555">100级优先级位图</text>
+    <text x="10" y="90" font-size="9" fill="#555">O(1) 选择</text>
+  </g>
+
+  <!-- ext -->
+  <g transform="translate(570,80)">
+    <rect width="140" height="100" rx="8" fill="#fff" stroke="#9b59b6" stroke-width="2" filter="url(#sh)"/>
+    <rect width="140" height="30" rx="8" fill="url(#hExt)"/>
+    <rect x="0" y="22" width="140" height="8" fill="#8e44ad"/>
+    <text x="70" y="20" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">ext_sched_class</text>
+    <text x="10" y="46" font-size="9" fill="#9b59b6" font-weight="bold">BPF struct_ops</text>
+    <text x="10" y="62" font-size="9" fill="#555">ext.c (6841行)</text>
+    <text x="10" y="76" font-size="9" fill="#555">DSQ 分发队列</text>
+    <text x="10" y="90" font-size="9" fill="#555">用户态可编程</text>
+  </g>
+
+  <!-- fair -->
+  <g transform="translate(750,80)">
+    <rect width="140" height="100" rx="8" fill="#fff" stroke="#2ecc71" stroke-width="2" filter="url(#sh)"/>
+    <rect width="140" height="30" rx="8" fill="url(#hFair)"/>
+    <rect x="0" y="22" width="140" height="8" fill="#27ae60"/>
+    <text x="70" y="20" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">fair_sched_class</text>
+    <text x="10" y="46" font-size="9" fill="#27ae60" font-weight="bold">EEVDF (CFS 演进)</text>
+    <text x="10" y="62" font-size="9" fill="#555">fair.c (13727行)</text>
+    <text x="10" y="76" font-size="9" fill="#555">增广红黑树</text>
+    <text x="10" y="90" font-size="9" fill="#555">vruntime + deadline</text>
+  </g>
+
+  <!-- idle -->
+  <g transform="translate(930,80)">
+    <rect width="140" height="100" rx="8" fill="#fff" stroke="#95a5a6" stroke-width="2" filter="url(#sh)"/>
+    <rect width="140" height="30" rx="8" fill="url(#hIdle)"/>
+    <rect x="0" y="22" width="140" height="8" fill="#7f8c8d"/>
+    <text x="70" y="20" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">idle_sched_class</text>
+    <text x="10" y="46" font-size="9" fill="#95a5a6" font-weight="bold">最低优先级兜底</text>
+    <text x="10" y="62" font-size="9" fill="#555">idle.c (519行)</text>
+    <text x="10" y="76" font-size="9" fill="#555">swapper/N 线程</text>
+    <text x="10" y="90" font-size="9" fill="#555">cpuidle C-state</text>
+  </g>
+
+  <!-- Priority arrows between classes -->
+  <path d="M170,130 L210,130" fill="none" stroke="#34495e" stroke-width="2" marker-end="url(#arw)"/>
+  <path d="M350,130 L390,130" fill="none" stroke="#34495e" stroke-width="2" marker-end="url(#arw)"/>
+  <path d="M530,130 L570,130" fill="none" stroke="#34495e" stroke-width="2" marker-end="url(#arw)"/>
+  <path d="M710,130 L750,130" fill="none" stroke="#34495e" stroke-width="2" marker-end="url(#arw)"/>
+  <path d="M890,130 L930,130" fill="none" stroke="#34495e" stroke-width="2" marker-end="url(#arw)"/>
+
+  <!-- Labels on arrows -->
+  <text x="190" y="122" text-anchor="middle" font-size="8" fill="#34495e">→</text>
+
+  <!-- Priority label -->
+  <text x="30" y="200" font-size="10" fill="#e74c3c" font-weight="bold">← 高优先级</text>
+  <text x="990" y="200" font-size="10" fill="#95a5a6" font-weight="bold">低优先级 →</text>
+
+  <!-- Section divider -->
+  <line x1="30" y1="220" x2="1070" y2="220" stroke="#ecf0f1" stroke-width="2"/>
+
+  <!-- Per-CPU struct rq -->
+  <text x="550" y="245" text-anchor="middle" font-size="14" font-weight="bold" fill="#2c3e50">Per-CPU struct rq (运行队列)</text>
+  <text x="550" y="262" text-anchor="middle" font-size="10" fill="#7f8c8d">kernel/sched/sched.h:1119 — DEFINE_PER_CPU(struct rq, runqueues)</text>
+
+  <!-- rq box -->
+  <g transform="translate(80,280)">
+    <rect width="940" height="380" rx="10" fill="#fff" stroke="#3498db" stroke-width="2.5" filter="url(#sh)"/>
+    <rect width="940" height="32" rx="10" fill="url(#hRq)"/>
+    <rect x="0" y="24" width="940" height="8" fill="#2980b9"/>
+    <text x="470" y="22" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">struct rq (Per-CPU 运行队列) — raw_spinlock_t __lock</text>
+
+    <!-- Sub-queues -->
+    <!-- dl_rq -->
+    <g transform="translate(20,50)">
+      <rect width="200" height="130" rx="6" fill="#fff8f0" stroke="#e67e22" stroke-width="1.5"/>
+      <text x="100" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67e22">struct dl_rq</text>
+      <line x1="5" y1="24" x2="195" y2="24" stroke="#f0d0b0" stroke-width="0.8"/>
+      <text x="10" y="40" font-size="9" fill="#555">root (rb_root_cached)</text>
+      <text x="10" y="55" font-size="9" fill="#555">dl_nr_running</text>
+      <text x="10" y="70" font-size="9" fill="#555">earliest_dl {curr, next}</text>
+      <text x="10" y="85" font-size="9" fill="#555">running_bw / this_bw</text>
+      <text x="10" y="100" font-size="9" fill="#555">overloaded</text>
+      <text x="10" y="115" font-size="9" fill="#555">pushable_dl_tasks_root</text>
+    </g>
+
+    <!-- rt_rq -->
+    <g transform="translate(250,50)">
+      <rect width="200" height="130" rx="6" fill="#fffcf0" stroke="#f39c12" stroke-width="1.5"/>
+      <text x="100" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#f39c12">struct rt_rq</text>
+      <line x1="5" y1="24" x2="195" y2="24" stroke="#f0e0b0" stroke-width="0.8"/>
+      <text x="10" y="40" font-size="9" fill="#555">active (rt_prio_array)</text>
+      <text x="10" y="55" font-size="9" fill="#555">  bitmap[101]</text>
+      <text x="10" y="70" font-size="9" fill="#555">  queue[100] (链表数组)</text>
+      <text x="10" y="85" font-size="9" fill="#555">rt_nr_running</text>
+      <text x="10" y="100" font-size="9" fill="#555">highest_prio {curr,next}</text>
+      <text x="10" y="115" font-size="9" fill="#555">rt_throttled / rt_time</text>
+    </g>
+
+    <!-- cfs_rq -->
+    <g transform="translate(480,50)">
+      <rect width="220" height="165" rx="6" fill="#f0fff0" stroke="#2ecc71" stroke-width="1.5"/>
+      <text x="110" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#27ae60">struct cfs_rq</text>
+      <line x1="5" y1="24" x2="215" y2="24" stroke="#b0e0b0" stroke-width="0.8"/>
+      <text x="10" y="40" font-size="9" fill="#555">tasks_timeline (rb_root_cached)</text>
+      <text x="10" y="55" font-size="9" fill="#555">nr_queued / h_nr_queued</text>
+      <text x="10" y="70" font-size="9" fill="#27ae60" font-weight="bold">min_vruntime (单调递增)</text>
+      <text x="10" y="85" font-size="9" fill="#27ae60" font-weight="bold">avg_vruntime (加权平均 V)</text>
+      <text x="10" y="100" font-size="9" fill="#555">load (队列总权重)</text>
+      <text x="10" y="115" font-size="9" fill="#555">avg (PELT: load/util/runnable)</text>
+      <text x="10" y="130" font-size="9" fill="#555">curr (当前运行实体)</text>
+      <text x="10" y="145" font-size="9" fill="#555">throttled / runtime_remaining</text>
+      <text x="10" y="160" font-size="9" fill="#555">tg (task_group *)</text>
+    </g>
+
+    <!-- scx_rq -->
+    <g transform="translate(730,50)">
+      <rect width="190" height="130" rx="6" fill="#f8f0ff" stroke="#9b59b6" stroke-width="1.5"/>
+      <text x="95" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#9b59b6">struct scx_rq</text>
+      <line x1="5" y1="24" x2="185" y2="24" stroke="#d0b0e0" stroke-width="0.8"/>
+      <text x="10" y="40" font-size="9" fill="#555">local_dsq (scx_dispatch_q)</text>
+      <text x="10" y="55" font-size="9" fill="#555">  list (FIFO 任务链表)</text>
+      <text x="10" y="70" font-size="9" fill="#555">  priq (vtime 红黑树)</text>
+      <text x="10" y="85" font-size="9" fill="#555">  nr (队列任务数)</text>
+      <text x="10" y="100" font-size="9" fill="#555">flags</text>
+      <text x="10" y="115" font-size="9" fill="#555">cpu_released</text>
+    </g>
+
+    <!-- Bottom section: common rq fields -->
+    <line x1="20" y1="235" x2="920" y2="235" stroke="#d0e0f0" stroke-width="1"/>
+    <text x="30" y="255" font-size="10" font-weight="bold" fill="#2980b9">通用字段</text>
+
+    <text x="30" y="275" font-size="9" fill="#555">nr_running (所有类总数)</text>
+    <text x="30" y="293" font-size="9" fill="#555">curr / donor (当前任务/调度上下文)</text>
+    <text x="30" y="311" font-size="9" fill="#555">idle / stop (idle线程/stop线程)</text>
+    <text x="30" y="329" font-size="9" fill="#555">clock / clock_task / clock_pelt</text>
+
+    <text x="300" y="275" font-size="9" fill="#555">sd (sched_domain *, 最底层域)</text>
+    <text x="300" y="293" font-size="9" fill="#555">rd (root_domain *)</text>
+    <text x="300" y="311" font-size="9" fill="#555">cpu_capacity (算力容量)</text>
+    <text x="300" y="329" font-size="9" fill="#555">next_balance (下次均衡时间)</text>
+
+    <text x="580" y="275" font-size="9" fill="#555">ttwu_pending (跨CPU唤醒积压)</text>
+    <text x="580" y="293" font-size="9" fill="#555">nr_switches (上下文切换计数)</text>
+    <text x="580" y="311" font-size="9" fill="#555">fair_server (DL-server 带宽保证)</text>
+    <text x="580" y="329" font-size="9" fill="#555">last_seen_need_resched_ns</text>
+
+    <!-- pick_next_task flow -->
+    <text x="30" y="358" font-size="10" font-weight="bold" fill="#e74c3c">pick_next_task() 遍历顺序:</text>
+    <text x="260" y="358" font-size="9" fill="#555">stop → dl → rt → ext → fair → idle (第一个返回非 NULL 即为下一任务)</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(30,668)">
+    <text x="0" y="0" font-size="9" fill="#7f8c8d">源码: kernel/sched/sched.h:1119 (struct rq) | 各 sub-rq 按调度类拆分，独立数据结构独立算法</text>
+  </g>
+</svg>

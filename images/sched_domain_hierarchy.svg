@@ -1,0 +1,257 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 780" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <marker id="ar" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#34495e" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#e74c3c" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <linearGradient id="hNuma" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#8e44ad"/>
+      <stop offset="100%" style="stop-color:#6c3483"/>
+    </linearGradient>
+    <linearGradient id="hPkg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#2980b9"/>
+      <stop offset="100%" style="stop-color:#1a5276"/>
+    </linearGradient>
+    <linearGradient id="hMc" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#27ae60"/>
+      <stop offset="100%" style="stop-color:#1e8449"/>
+    </linearGradient>
+    <linearGradient id="hSmt" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e67e22"/>
+      <stop offset="100%" style="stop-color:#d35400"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#2c3e50">调度域层级与负载均衡架构 (8核 dual-socket 示例)</text>
+  <text x="550" y="46" text-anchor="middle" font-size="10" fill="#7f8c8d">kernel/sched/topology.c — build_sched_domains() | 每CPU独立的 sched_domain 链</text>
+
+  <!-- Level labels (left side) -->
+  <text x="15" y="105" font-size="10" font-weight="bold" fill="#8e44ad">Level 3</text>
+  <text x="15" y="120" font-size="9" fill="#8e44ad">NUMA</text>
+
+  <text x="15" y="215" font-size="10" font-weight="bold" fill="#2980b9">Level 2</text>
+  <text x="15" y="230" font-size="9" fill="#2980b9">PKG</text>
+
+  <text x="15" y="345" font-size="10" font-weight="bold" fill="#27ae60">Level 1</text>
+  <text x="15" y="360" font-size="9" fill="#27ae60">MC</text>
+
+  <text x="15" y="470" font-size="10" font-weight="bold" fill="#e67e22">Level 0</text>
+  <text x="15" y="485" font-size="9" fill="#e67e22">SMT</text>
+
+  <!-- NUMA domain (top) -->
+  <rect x="80" y="70" width="980" height="70" rx="10" fill="#f5eef8" stroke="#8e44ad" stroke-width="2" filter="url(#sh)"/>
+  <rect x="80" y="70" width="980" height="25" rx="10" fill="url(#hNuma)"/>
+  <rect x="80" y="87" width="980" height="8" fill="#6c3483"/>
+  <text x="570" y="88" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">sched_domain (NUMA) — SD_NUMA | SD_SERIALIZE</text>
+  <text x="100" y="115" font-size="9" fill="#555">span: CPU 0-7 | balance_interval: 64ms | imbalance_pct: 125% | flags: SD_NUMA|SD_SERIALIZE|SD_BALANCE_NEWIDLE</text>
+  <text x="100" y="130" font-size="9" fill="#555">sched_group[0]: CPU 0-3 (capacity=4096) | sched_group[1]: CPU 4-7 (capacity=4096)</text>
+
+  <!-- PKG domains -->
+  <rect x="80" y="180" width="470" height="70" rx="8" fill="#eaf2f8" stroke="#2980b9" stroke-width="2" filter="url(#sh)"/>
+  <rect x="80" y="180" width="470" height="25" rx="8" fill="url(#hPkg)"/>
+  <rect x="80" y="197" width="470" height="8" fill="#1a5276"/>
+  <text x="315" y="198" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">sched_domain (PKG) — Socket 0</text>
+  <text x="100" y="225" font-size="9" fill="#555">span: CPU 0-3 | balance_interval: 8ms</text>
+  <text x="100" y="240" font-size="9" fill="#555">SD_SHARE_LLC | SD_BALANCE_NEWIDLE | SD_BALANCE_EXEC</text>
+
+  <rect x="590" y="180" width="470" height="70" rx="8" fill="#eaf2f8" stroke="#2980b9" stroke-width="2" filter="url(#sh)"/>
+  <rect x="590" y="180" width="470" height="25" rx="8" fill="url(#hPkg)"/>
+  <rect x="590" y="197" width="470" height="8" fill="#1a5276"/>
+  <text x="825" y="198" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">sched_domain (PKG) — Socket 1</text>
+  <text x="610" y="225" font-size="9" fill="#555">span: CPU 4-7 | balance_interval: 8ms</text>
+  <text x="610" y="240" font-size="9" fill="#555">SD_SHARE_LLC | SD_BALANCE_NEWIDLE | SD_BALANCE_EXEC</text>
+
+  <!-- MC domains -->
+  <rect x="80" y="290" width="220" height="70" rx="6" fill="#eafaf1" stroke="#27ae60" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="80" y="290" width="220" height="22" rx="6" fill="url(#hMc)"/>
+  <rect x="80" y="305" width="220" height="7" fill="#1e8449"/>
+  <text x="190" y="306" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">MC domain (Core 0-1)</text>
+  <text x="95" y="330" font-size="8" fill="#555">span: CPU 0-1</text>
+  <text x="95" y="345" font-size="8" fill="#555">SD_SHARE_CPUCAPACITY</text>
+
+  <rect x="330" y="290" width="220" height="70" rx="6" fill="#eafaf1" stroke="#27ae60" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="330" y="290" width="220" height="22" rx="6" fill="url(#hMc)"/>
+  <rect x="330" y="305" width="220" height="7" fill="#1e8449"/>
+  <text x="440" y="306" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">MC domain (Core 2-3)</text>
+  <text x="345" y="330" font-size="8" fill="#555">span: CPU 2-3</text>
+  <text x="345" y="345" font-size="8" fill="#555">SD_SHARE_CPUCAPACITY</text>
+
+  <rect x="590" y="290" width="220" height="70" rx="6" fill="#eafaf1" stroke="#27ae60" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="590" y="290" width="220" height="22" rx="6" fill="url(#hMc)"/>
+  <rect x="590" y="305" width="220" height="7" fill="#1e8449"/>
+  <text x="700" y="306" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">MC domain (Core 4-5)</text>
+  <text x="605" y="330" font-size="8" fill="#555">span: CPU 4-5</text>
+  <text x="605" y="345" font-size="8" fill="#555">SD_SHARE_CPUCAPACITY</text>
+
+  <rect x="840" y="290" width="220" height="70" rx="6" fill="#eafaf1" stroke="#27ae60" stroke-width="1.5" filter="url(#sh)"/>
+  <rect x="840" y="290" width="220" height="22" rx="6" fill="url(#hMc)"/>
+  <rect x="840" y="305" width="220" height="7" fill="#1e8449"/>
+  <text x="950" y="306" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">MC domain (Core 6-7)</text>
+  <text x="855" y="330" font-size="8" fill="#555">span: CPU 6-7</text>
+  <text x="855" y="345" font-size="8" fill="#555">SD_SHARE_CPUCAPACITY</text>
+
+  <!-- SMT domains (CPU boxes) -->
+  <rect x="95" y="400" width="80" height="55" rx="5" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="135" y="420" text-anchor="middle" font-size="9" font-weight="bold" fill="#e67e22">CPU 0</text>
+  <text x="135" y="435" text-anchor="middle" font-size="8" fill="#555">HW Thread</text>
+  <text x="135" y="448" text-anchor="middle" font-size="7" fill="#7f8c8d">rq[0]</text>
+
+  <rect x="205" y="400" width="80" height="55" rx="5" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="245" y="420" text-anchor="middle" font-size="9" font-weight="bold" fill="#e67e22">CPU 1</text>
+  <text x="245" y="435" text-anchor="middle" font-size="8" fill="#555">HW Thread</text>
+  <text x="245" y="448" text-anchor="middle" font-size="7" fill="#7f8c8d">rq[1]</text>
+
+  <rect x="345" y="400" width="80" height="55" rx="5" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="385" y="420" text-anchor="middle" font-size="9" font-weight="bold" fill="#e67e22">CPU 2</text>
+  <text x="385" y="435" text-anchor="middle" font-size="8" fill="#555">HW Thread</text>
+  <text x="385" y="448" text-anchor="middle" font-size="7" fill="#7f8c8d">rq[2]</text>
+
+  <rect x="455" y="400" width="80" height="55" rx="5" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="495" y="420" text-anchor="middle" font-size="9" font-weight="bold" fill="#e67e22">CPU 3</text>
+  <text x="495" y="435" text-anchor="middle" font-size="8" fill="#555">HW Thread</text>
+  <text x="495" y="448" text-anchor="middle" font-size="7" fill="#7f8c8d">rq[3]</text>
+
+  <rect x="605" y="400" width="80" height="55" rx="5" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="645" y="420" text-anchor="middle" font-size="9" font-weight="bold" fill="#e67e22">CPU 4</text>
+  <text x="645" y="435" text-anchor="middle" font-size="8" fill="#555">HW Thread</text>
+  <text x="645" y="448" text-anchor="middle" font-size="7" fill="#7f8c8d">rq[4]</text>
+
+  <rect x="715" y="400" width="80" height="55" rx="5" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="755" y="420" text-anchor="middle" font-size="9" font-weight="bold" fill="#e67e22">CPU 5</text>
+  <text x="755" y="435" text-anchor="middle" font-size="8" fill="#555">HW Thread</text>
+  <text x="755" y="448" text-anchor="middle" font-size="7" fill="#7f8c8d">rq[5]</text>
+
+  <rect x="855" y="400" width="80" height="55" rx="5" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="895" y="420" text-anchor="middle" font-size="9" font-weight="bold" fill="#e67e22">CPU 6</text>
+  <text x="895" y="435" text-anchor="middle" font-size="8" fill="#555">HW Thread</text>
+  <text x="895" y="448" text-anchor="middle" font-size="7" fill="#7f8c8d">rq[6]</text>
+
+  <rect x="965" y="400" width="80" height="55" rx="5" fill="#fef9e7" stroke="#e67e22" stroke-width="1.5"/>
+  <text x="1005" y="420" text-anchor="middle" font-size="9" font-weight="bold" fill="#e67e22">CPU 7</text>
+  <text x="1005" y="435" text-anchor="middle" font-size="8" fill="#555">HW Thread</text>
+  <text x="1005" y="448" text-anchor="middle" font-size="7" fill="#7f8c8d">rq[7]</text>
+
+  <!-- Connection lines (domain hierarchy) -->
+  <!-- MC to SMT -->
+  <line x1="145" y1="360" x2="135" y2="400" stroke="#27ae60" stroke-width="1"/>
+  <line x1="235" y1="360" x2="245" y2="400" stroke="#27ae60" stroke-width="1"/>
+  <line x1="395" y1="360" x2="385" y2="400" stroke="#27ae60" stroke-width="1"/>
+  <line x1="485" y1="360" x2="495" y2="400" stroke="#27ae60" stroke-width="1"/>
+  <line x1="655" y1="360" x2="645" y2="400" stroke="#27ae60" stroke-width="1"/>
+  <line x1="745" y1="360" x2="755" y2="400" stroke="#27ae60" stroke-width="1"/>
+  <line x1="905" y1="360" x2="895" y2="400" stroke="#27ae60" stroke-width="1"/>
+  <line x1="995" y1="360" x2="1005" y2="400" stroke="#27ae60" stroke-width="1"/>
+
+  <!-- PKG to MC -->
+  <line x1="190" y1="250" x2="190" y2="290" stroke="#2980b9" stroke-width="1"/>
+  <line x1="440" y1="250" x2="440" y2="290" stroke="#2980b9" stroke-width="1"/>
+  <line x1="700" y1="250" x2="700" y2="290" stroke="#2980b9" stroke-width="1"/>
+  <line x1="950" y1="250" x2="950" y2="290" stroke="#2980b9" stroke-width="1"/>
+
+  <!-- NUMA to PKG -->
+  <line x1="315" y1="140" x2="315" y2="180" stroke="#8e44ad" stroke-width="1"/>
+  <line x1="825" y1="140" x2="825" y2="180" stroke="#8e44ad" stroke-width="1"/>
+
+  <!-- Load Balance Flow (bottom section) -->
+  <g transform="translate(30,490)">
+    <rect width="1040" height="270" rx="8" fill="#fff" stroke="#2c3e50" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="20" y="22" font-size="12" font-weight="bold" fill="#2c3e50">负载均衡流程 — sched_balance_rq() (原 load_balance)</text>
+
+    <!-- Flow boxes -->
+    <rect x="20" y="40" width="145" height="55" rx="5" fill="#fadbd8" stroke="#e74c3c" stroke-width="1.5"/>
+    <text x="92" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="#e74c3c">触发时机</text>
+    <text x="92" y="72" text-anchor="middle" font-size="8" fill="#555">① tick 定时均衡</text>
+    <text x="92" y="84" text-anchor="middle" font-size="8" fill="#555">② newidle 均衡</text>
+    <text x="92" y="93" text-anchor="middle" font-size="8" fill="#555">③ nohz idle 唤醒</text>
+
+    <rect x="200" y="40" width="155" height="55" rx="5" fill="#d6eaf8" stroke="#2980b9" stroke-width="1.5"/>
+    <text x="277" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="#2980b9">find_busiest_group()</text>
+    <text x="277" y="72" text-anchor="middle" font-size="8" fill="#555">遍历 sd 各 sched_group</text>
+    <text x="277" y="84" text-anchor="middle" font-size="8" fill="#555">计算 group 类型:</text>
+    <text x="277" y="93" text-anchor="middle" font-size="8" fill="#555">overloaded/imbalanced/...</text>
+
+    <rect x="390" y="40" width="155" height="55" rx="5" fill="#d5f5e3" stroke="#27ae60" stroke-width="1.5"/>
+    <text x="467" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="#27ae60">find_busiest_queue()</text>
+    <text x="467" y="72" text-anchor="middle" font-size="8" fill="#555">在最忙组中找最忙rq</text>
+    <text x="467" y="84" text-anchor="middle" font-size="8" fill="#555">比较 rq-&gt;nr_running</text>
+    <text x="467" y="93" text-anchor="middle" font-size="8" fill="#555">或 rq-&gt;cfs.avg.load</text>
+
+    <rect x="580" y="40" width="145" height="55" rx="5" fill="#fdebd0" stroke="#e67e22" stroke-width="1.5"/>
+    <text x="652" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="#e67e22">detach_tasks()</text>
+    <text x="652" y="72" text-anchor="middle" font-size="8" fill="#555">从 busiest rq 摘取</text>
+    <text x="652" y="84" text-anchor="middle" font-size="8" fill="#555">最多 nr_migrate 个</text>
+    <text x="652" y="93" text-anchor="middle" font-size="8" fill="#555">跳过 cache-hot 任务</text>
+
+    <rect x="760" y="40" width="130" height="55" rx="5" fill="#e8daef" stroke="#8e44ad" stroke-width="1.5"/>
+    <text x="825" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="#8e44ad">attach_tasks()</text>
+    <text x="825" y="72" text-anchor="middle" font-size="8" fill="#555">放入 this_rq</text>
+    <text x="825" y="84" text-anchor="middle" font-size="8" fill="#555">activate_task()</text>
+    <text x="825" y="93" text-anchor="middle" font-size="8" fill="#555">check_preempt()</text>
+
+    <rect x="925" y="40" width="95" height="55" rx="5" fill="#d4efdf" stroke="#1e8449" stroke-width="1.5"/>
+    <text x="972" y="60" text-anchor="middle" font-size="9" font-weight="bold" fill="#1e8449">完成</text>
+    <text x="972" y="75" text-anchor="middle" font-size="8" fill="#555">更新统计</text>
+    <text x="972" y="87" text-anchor="middle" font-size="8" fill="#555">sd-&gt;last_balance</text>
+
+    <!-- Arrows -->
+    <path d="M165,67 L200,67" fill="none" stroke="#34495e" stroke-width="1.5" marker-end="url(#ar)"/>
+    <path d="M355,67 L390,67" fill="none" stroke="#34495e" stroke-width="1.5" marker-end="url(#ar)"/>
+    <path d="M545,67 L580,67" fill="none" stroke="#34495e" stroke-width="1.5" marker-end="url(#ar)"/>
+    <path d="M725,67 L760,67" fill="none" stroke="#34495e" stroke-width="1.5" marker-end="url(#ar)"/>
+    <path d="M890,67 L925,67" fill="none" stroke="#34495e" stroke-width="1.5" marker-end="url(#ar)"/>
+
+    <!-- Balance parameters table -->
+    <text x="20" y="120" font-size="10" font-weight="bold" fill="#2c3e50">域级均衡参数 (sd_init 默认值)</text>
+
+    <rect x="20" y="130" width="1000" height="20" rx="0" fill="#ecf0f1"/>
+    <text x="30" y="144" font-size="8" font-weight="bold" fill="#2c3e50">Level</text>
+    <text x="120" y="144" font-size="8" font-weight="bold" fill="#2c3e50">min_interval</text>
+    <text x="240" y="144" font-size="8" font-weight="bold" fill="#2c3e50">max_interval</text>
+    <text x="370" y="144" font-size="8" font-weight="bold" fill="#2c3e50">busy_factor</text>
+    <text x="490" y="144" font-size="8" font-weight="bold" fill="#2c3e50">imbalance_pct</text>
+    <text x="620" y="144" font-size="8" font-weight="bold" fill="#2c3e50">cache_nice_tries</text>
+    <text x="770" y="144" font-size="8" font-weight="bold" fill="#2c3e50">特殊行为</text>
+
+    <text x="30" y="162" font-size="8" fill="#e67e22">SMT (0)</text>
+    <text x="120" y="162" font-size="8" fill="#555">1ms</text>
+    <text x="240" y="162" font-size="8" fill="#555">2×cpus ms</text>
+    <text x="370" y="162" font-size="8" fill="#555">32</text>
+    <text x="490" y="162" font-size="8" fill="#555">110%</text>
+    <text x="620" y="162" font-size="8" fill="#555">0</text>
+    <text x="770" y="162" font-size="8" fill="#555">SD_SHARE_CPUCAPACITY (算力共享)</text>
+
+    <text x="30" y="178" font-size="8" fill="#27ae60">MC (1)</text>
+    <text x="120" y="178" font-size="8" fill="#555">1ms</text>
+    <text x="240" y="178" font-size="8" fill="#555">2×cpus ms</text>
+    <text x="370" y="178" font-size="8" fill="#555">32</text>
+    <text x="490" y="178" font-size="8" fill="#555">117%</text>
+    <text x="620" y="178" font-size="8" fill="#555">1</text>
+    <text x="770" y="178" font-size="8" fill="#555">SD_SHARE_LLC (共享L3 cache)</text>
+
+    <text x="30" y="194" font-size="8" fill="#2980b9">PKG (2)</text>
+    <text x="120" y="194" font-size="8" fill="#555">2ms</text>
+    <text x="240" y="194" font-size="8" fill="#555">4×cpus ms</text>
+    <text x="370" y="194" font-size="8" fill="#555">32</text>
+    <text x="490" y="194" font-size="8" fill="#555">125%</text>
+    <text x="620" y="194" font-size="8" fill="#555">2</text>
+    <text x="770" y="194" font-size="8" fill="#555">跨 socket, cache 迁移代价高</text>
+
+    <text x="30" y="210" font-size="8" fill="#8e44ad">NUMA (3)</text>
+    <text x="120" y="210" font-size="8" fill="#555">16ms</text>
+    <text x="240" y="210" font-size="8" fill="#555">64ms</text>
+    <text x="370" y="210" font-size="8" fill="#555">32</text>
+    <text x="490" y="210" font-size="8" fill="#555">125%</text>
+    <text x="620" y="210" font-size="8" fill="#555">2</text>
+    <text x="770" y="210" font-size="8" fill="#555">SD_NUMA|SD_SERIALIZE (串行化避免乒乓)</text>
+
+    <!-- Key insight -->
+    <rect x="20" y="225" width="1000" height="35" rx="4" fill="#fef9e7" stroke="#f39c12" stroke-width="1"/>
+    <text x="30" y="240" font-size="9" fill="#e67e22" font-weight="bold">核心设计:</text>
+    <text x="100" y="240" font-size="9" fill="#555">从最底层域开始均衡，逐层上升。低层级均衡频繁(1ms)+低代价，高层级稀疏(16ms)+高阈值。</text>
+    <text x="30" y="255" font-size="9" fill="#555">当低层无法解决不均衡时(nr_balance_failed++)，升级到上层域重新尝试。每CPU由 softirq SCHED_SOFTIRQ 驱动。</text>
+  </g>
+</svg>

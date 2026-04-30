@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 800" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <marker id="ar" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#34495e" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2980b9" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#27ae60" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#e67e22" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#8e44ad" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <linearGradient id="hPelt" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3498db"/>
+      <stop offset="100%" style="stop-color:#2980b9"/>
+    </linearGradient>
+    <linearGradient id="hSignal" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#27ae60"/>
+      <stop offset="100%" style="stop-color:#1e8449"/>
+    </linearGradient>
+    <linearGradient id="hConsumer" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e67e22"/>
+      <stop offset="100%" style="stop-color:#d35400"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="#2c3e50">PELT (Per-Entity Load Tracking) 信号流与衰减机制</text>
+  <text x="550" y="46" text-anchor="middle" font-size="10" fill="#7f8c8d">kernel/sched/pelt.c — ___update_load_sum() 几何衰减公式 | LOAD_AVG_PERIOD=32ms</text>
+
+  <!-- Section 1: Decay Formula -->
+  <g transform="translate(30,65)">
+    <rect width="500" height="200" rx="8" fill="#fff" stroke="#3498db" stroke-width="2" filter="url(#sh)"/>
+    <rect width="500" height="30" rx="8" fill="url(#hPelt)"/>
+    <rect x="0" y="22" width="500" height="8" fill="#2980b9"/>
+    <text x="250" y="21" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">衰减公式 — 几何级数 (half-life ≈ 32ms)</text>
+
+    <text x="15" y="50" font-size="10" fill="#2c3e50" font-weight="bold">核心衰减:</text>
+    <text x="15" y="70" font-size="10" fill="#2980b9" font-weight="bold">load_sum = Σ (running × weight × y^n)</text>
+    <text x="15" y="88" font-size="9" fill="#555">其中 y = (2^32 - 1) / 2^32 ≈ 0.99999999977 (每μs衰减因子)</text>
+    <text x="15" y="103" font-size="9" fill="#555">y^1024 = y^(1ms*1024) ≈ 0.5 → 半衰期 ≈ 32ms (LOAD_AVG_PERIOD)</text>
+
+    <text x="15" y="125" font-size="10" fill="#2c3e50" font-weight="bold">稳态最大值:</text>
+    <text x="15" y="143" font-size="9" fill="#555">LOAD_AVG_MAX = Σ(y^n, n=0..∞) = 1/(1-y^1024) ≈ 47742</text>
+    <text x="15" y="158" font-size="9" fill="#555">一个持续运行的 nice-0 任务: load_avg = 1024, util_avg = 1024 (满载)</text>
+
+    <text x="15" y="180" font-size="10" fill="#2c3e50" font-weight="bold">三段分割 (__accumulate_pelt_segments):</text>
+    <text x="15" y="195" font-size="9" fill="#555">|--d1--|---periods×1024μs---|--d3--| → 分别累加不完整段+完整段+尾部段</text>
+  </g>
+
+  <!-- Section 2: Three Signals -->
+  <g transform="translate(570,65)">
+    <rect width="500" height="200" rx="8" fill="#fff" stroke="#27ae60" stroke-width="2" filter="url(#sh)"/>
+    <rect width="500" height="30" rx="8" fill="url(#hSignal)"/>
+    <rect x="0" y="22" width="500" height="8" fill="#1e8449"/>
+    <text x="250" y="21" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">三维信号 — struct sched_avg</text>
+
+    <!-- Signal 1: load -->
+    <rect x="15" y="40" width="470" height="45" rx="4" fill="#eaf2f8" stroke="#3498db" stroke-width="1"/>
+    <text x="25" y="57" font-size="10" fill="#2980b9" font-weight="bold">load_avg (负载)</text>
+    <text x="25" y="72" font-size="9" fill="#555">= load_sum / divider × weight | 衡量任务对CPU的"压力需求"</text>
+    <text x="25" y="82" font-size="8" fill="#7f8c8d">贡献因子: 任务权重(nice) | 用途: 负载均衡、task_group share 分配</text>
+
+    <!-- Signal 2: runnable -->
+    <rect x="15" y="92" width="470" height="45" rx="4" fill="#eafaf1" stroke="#27ae60" stroke-width="1"/>
+    <text x="25" y="109" font-size="10" fill="#27ae60" font-weight="bold">runnable_avg (可运行)</text>
+    <text x="25" y="124" font-size="9" fill="#555">= runnable_sum / divider | 衡量"想运行但未必在运行"的需求</text>
+    <text x="25" y="134" font-size="8" fill="#7f8c8d">贡献因子: on_rq=1 时累积 | 用途: 过载检测、选核</text>
+
+    <!-- Signal 3: util -->
+    <rect x="15" y="144" width="470" height="45" rx="4" fill="#fef9e7" stroke="#e67e22" stroke-width="1"/>
+    <text x="25" y="161" font-size="10" fill="#e67e22" font-weight="bold">util_avg (利用率)</text>
+    <text x="25" y="176" font-size="9" fill="#555">= util_sum / divider | 衡量实际消耗的CPU算力</text>
+    <text x="25" y="186" font-size="8" fill="#7f8c8d">贡献因子: on_cpu=1 时累积 | 用途: DVFS调频、EAS选核</text>
+  </g>
+
+  <!-- Section 3: Update Pipeline (flow diagram) -->
+  <g transform="translate(30,290)">
+    <rect width="1040" height="210" rx="8" fill="#fafcff" stroke="#2c3e50" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="20" y="22" font-size="12" font-weight="bold" fill="#2c3e50">更新管线 (触发 → 计算 → 传播)</text>
+
+    <!-- Trigger boxes -->
+    <rect x="20" y="40" width="140" height="50" rx="5" fill="#fadbd8" stroke="#e74c3c" stroke-width="1.5"/>
+    <text x="90" y="60" text-anchor="middle" font-size="9" font-weight="bold" fill="#e74c3c">触发点</text>
+    <text x="90" y="75" text-anchor="middle" font-size="8" fill="#555">update_curr()</text>
+    <text x="90" y="85" text-anchor="middle" font-size="8" fill="#555">enqueue/dequeue</text>
+
+    <!-- Core calculation -->
+    <rect x="200" y="40" width="200" height="50" rx="5" fill="#d6eaf8" stroke="#2980b9" stroke-width="1.5"/>
+    <text x="300" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="#2980b9">___update_load_sum()</text>
+    <text x="300" y="73" text-anchor="middle" font-size="8" fill="#555">decay_load() × y^periods</text>
+    <text x="300" y="83" text-anchor="middle" font-size="8" fill="#555">+ accumulate_sum(d1,periods,d3)</text>
+
+    <!-- Per-entity -->
+    <rect x="440" y="40" width="180" height="50" rx="5" fill="#d5f5e3" stroke="#27ae60" stroke-width="1.5"/>
+    <text x="530" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="#27ae60">___update_load_avg()</text>
+    <text x="530" y="73" text-anchor="middle" font-size="8" fill="#555">load_avg = sum/divider</text>
+    <text x="530" y="83" text-anchor="middle" font-size="8" fill="#555">util_avg = sum/divider</text>
+
+    <!-- Propagation -->
+    <rect x="660" y="40" width="160" height="50" rx="5" fill="#fdebd0" stroke="#e67e22" stroke-width="1.5"/>
+    <text x="740" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="#e67e22">传播到 cfs_rq</text>
+    <text x="740" y="73" text-anchor="middle" font-size="8" fill="#555">cfs_rq.avg += delta</text>
+    <text x="740" y="83" text-anchor="middle" font-size="8" fill="#555">update_tg_load_avg()</text>
+
+    <!-- Consumer -->
+    <rect x="860" y="40" width="160" height="50" rx="5" fill="#e8daef" stroke="#8e44ad" stroke-width="1.5"/>
+    <text x="940" y="58" text-anchor="middle" font-size="9" font-weight="bold" fill="#8e44ad">消费者</text>
+    <text x="940" y="73" text-anchor="middle" font-size="8" fill="#555">schedutil / EAS</text>
+    <text x="940" y="83" text-anchor="middle" font-size="8" fill="#555">load_balance()</text>
+
+    <!-- Flow arrows -->
+    <path d="M160,65 L200,65" fill="none" stroke="#34495e" stroke-width="1.5" marker-end="url(#ar)"/>
+    <path d="M400,65 L440,65" fill="none" stroke="#34495e" stroke-width="1.5" marker-end="url(#ar)"/>
+    <path d="M620,65 L660,65" fill="none" stroke="#34495e" stroke-width="1.5" marker-end="url(#ar)"/>
+    <path d="M820,65 L860,65" fill="none" stroke="#34495e" stroke-width="1.5" marker-end="url(#ar)"/>
+
+    <!-- Hierarchy propagation -->
+    <text x="20" y="115" font-size="10" font-weight="bold" fill="#2c3e50">层级传播 (task_group 树)</text>
+
+    <!-- Task level -->
+    <rect x="80" y="128" width="120" height="35" rx="4" fill="#fff" stroke="#3498db" stroke-width="1.5"/>
+    <text x="140" y="150" text-anchor="middle" font-size="9" fill="#2980b9">task se.avg</text>
+
+    <!-- Group se -->
+    <rect x="300" y="128" width="140" height="35" rx="4" fill="#fff" stroke="#27ae60" stroke-width="1.5"/>
+    <text x="370" y="150" text-anchor="middle" font-size="9" fill="#27ae60">group cfs_rq.avg</text>
+
+    <!-- Parent group se -->
+    <rect x="540" y="128" width="160" height="35" rx="4" fill="#fff" stroke="#e67e22" stroke-width="1.5"/>
+    <text x="620" y="150" text-anchor="middle" font-size="9" fill="#e67e22">parent group_se.avg</text>
+
+    <!-- Root rq -->
+    <rect x="800" y="128" width="130" height="35" rx="4" fill="#fff" stroke="#8e44ad" stroke-width="1.5"/>
+    <text x="865" y="150" text-anchor="middle" font-size="9" fill="#8e44ad">root rq.avg</text>
+
+    <!-- Arrows -->
+    <path d="M200,145 L300,145" fill="none" stroke="#2980b9" stroke-width="1.5" marker-end="url(#arB)"/>
+    <path d="M440,145 L540,145" fill="none" stroke="#27ae60" stroke-width="1.5" marker-end="url(#arG)"/>
+    <path d="M700,145 L800,145" fill="none" stroke="#e67e22" stroke-width="1.5" marker-end="url(#arO)"/>
+
+    <text x="240" y="140" font-size="7" fill="#2980b9">enqueue时加</text>
+    <text x="240" y="167" font-size="7" fill="#2980b9">dequeue时减</text>
+    <text x="475" y="140" font-size="7" fill="#27ae60">update_cfs_group()</text>
+    <text x="735" y="140" font-size="7" fill="#e67e22">update_tg_load_avg()</text>
+
+    <!-- Bottom: schedutil path -->
+    <text x="20" y="195" font-size="10" font-weight="bold" fill="#8e44ad">→ schedutil 消费路径:</text>
+    <text x="200" y="195" font-size="9" fill="#555">cpu_util_cfs(cpu) = root cfs_rq.avg.util_avg → sugov_get_util() → get_next_freq() → cpufreq driver</text>
+  </g>
+
+  <!-- Section 4: Decay visualization -->
+  <g transform="translate(30,520)">
+    <rect width="1040" height="260" rx="8" fill="#fff" stroke="#34495e" stroke-width="1.5" filter="url(#sh)"/>
+    <text x="20" y="22" font-size="12" font-weight="bold" fill="#2c3e50">衰减可视化 — 信号响应特性</text>
+
+    <!-- Time axis -->
+    <line x1="80" y1="220" x2="1000" y2="220" stroke="#bdc3c7" stroke-width="1"/>
+    <text x="540" y="248" text-anchor="middle" font-size="9" fill="#7f8c8d">时间 (ms) →</text>
+
+    <!-- Y axis -->
+    <line x1="80" y1="50" x2="80" y2="220" stroke="#bdc3c7" stroke-width="1"/>
+    <text x="40" y="140" text-anchor="middle" font-size="9" fill="#7f8c8d" transform="rotate(-90,40,140)">信号值</text>
+
+    <!-- Y labels -->
+    <text x="70" y="55" text-anchor="end" font-size="8" fill="#7f8c8d">1024</text>
+    <text x="70" y="95" text-anchor="end" font-size="8" fill="#7f8c8d">768</text>
+    <text x="70" y="138" text-anchor="end" font-size="8" fill="#7f8c8d">512</text>
+    <text x="70" y="180" text-anchor="end" font-size="8" fill="#7f8c8d">256</text>
+    <text x="70" y="222" text-anchor="end" font-size="8" fill="#7f8c8d">0</text>
+    <line x1="80" y1="135" x2="1000" y2="135" stroke="#ecf0f1" stroke-width="0.5" stroke-dasharray="4,2"/>
+
+    <!-- X labels -->
+    <text x="80" y="235" text-anchor="middle" font-size="8" fill="#7f8c8d">0</text>
+    <text x="195" y="235" text-anchor="middle" font-size="8" fill="#7f8c8d">32</text>
+    <text x="310" y="235" text-anchor="middle" font-size="8" fill="#7f8c8d">64</text>
+    <text x="425" y="235" text-anchor="middle" font-size="8" fill="#7f8c8d">96</text>
+    <text x="540" y="235" text-anchor="middle" font-size="8" fill="#7f8c8d">128</text>
+    <text x="655" y="235" text-anchor="middle" font-size="8" fill="#7f8c8d">160</text>
+    <text x="770" y="235" text-anchor="middle" font-size="8" fill="#7f8c8d">192</text>
+    <text x="885" y="235" text-anchor="middle" font-size="8" fill="#7f8c8d">224</text>
+
+    <!-- Curve 1: Task starts running (ramp up) -->
+    <path d="M80,220 Q115,180 150,155 Q195,115 240,90 Q310,68 380,58 Q450,53 540,52 L1000,52" 
+          fill="none" stroke="#e67e22" stroke-width="2.5"/>
+    <text x="540" y="45" font-size="9" fill="#e67e22" font-weight="bold">任务持续运行: util_avg → 1024</text>
+
+    <!-- Curve 2: Task stops (decay) -->
+    <path d="M540,52 Q575,85 610,105 Q655,135 700,150 Q770,170 840,182 Q910,192 1000,198"
+          fill="none" stroke="#3498db" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <text x="820" y="165" font-size="9" fill="#3498db" font-weight="bold">任务停止: 指数衰减</text>
+
+    <!-- Half-life markers -->
+    <line x1="195" y1="50" x2="195" y2="220" stroke="#e74c3c" stroke-width="0.8" stroke-dasharray="3,3"/>
+    <text x="195" y="45" text-anchor="middle" font-size="8" fill="#e74c3c">T½=32ms</text>
+
+    <line x1="655" y1="50" x2="655" y2="220" stroke="#e74c3c" stroke-width="0.8" stroke-dasharray="3,3"/>
+    <text x="655" y="45" text-anchor="middle" font-size="8" fill="#e74c3c">衰减50%</text>
+
+    <line x1="770" y1="50" x2="770" y2="220" stroke="#e74c3c" stroke-width="0.8" stroke-dasharray="3,3"/>
+    <text x="770" y="45" text-anchor="middle" font-size="8" fill="#e74c3c">衰减75%</text>
+
+    <!-- Annotations -->
+    <rect x="100" y="70" width="180" height="45" rx="4" fill="white" fill-opacity="0.92" stroke="#ddd" stroke-width="1"/>
+    <text x="110" y="85" font-size="8" fill="#555">达到稳态 ≈ 345ms (7个半衰期)</text>
+    <text x="110" y="97" font-size="8" fill="#555">63.2% 稳态 ≈ 1个时间常数 (46ms)</text>
+    <text x="110" y="109" font-size="8" fill="#555">时间常数 τ = 32ms / ln2 ≈ 46ms</text>
+  </g>
+</svg>
