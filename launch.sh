@@ -9,7 +9,7 @@ export KCFLAGS="-Wno-return-type -Wno-error=return-type"
 
 
 if [ $# -ne 2 ]; then
-    echo "Usage: $0 [arch] [compile/compiled/run/debug/]"
+    echo "Usage: $0 [arch] [compile/compiled/run/debug/clang/clang-compile]"
     exit 1
 fi 
 
@@ -17,10 +17,10 @@ if [ $1 == "arm64" ] && [ $2 == "compile" ]; then
     echo "start to build the kernel for $1"
     cd $LROOT
     
-    make LLVM=/repo/ybzhang/kernel/rootfs/bin/ ARCH=arm64 distclean -j20
-    make LLVM=/repo/ybzhang/kernel/rootfs/bin/ ARCH=arm64 ybzhang_defconfig -j20
-    make LLVM=/repo/ybzhang/kernel/rootfs/bin/ ARCH=arm64  CONFIG_INITRAMFS_SOURCE="rootfs extra_nodes.txt" -j20
-    make LLVM=/repo/ybzhang/kernel/rootfs/bin/ ARCH=arm64 compile_commands.json -j20
+    make ARCH=arm64 distclean -j20
+    make ARCH=arm64 ybzhang_defconfig -j20
+    make ARCH=arm64  CONFIG_INITRAMFS_SOURCE="rootfs extra_nodes.txt" -j20
+    make ARCH=arm64 compile_commands.json -j20
 
 elif [ $1 == "arm64" ] && [ $2 == "compiled" ]; then
     echo "start to build the kernel for $1 (direct compile)"
@@ -65,6 +65,20 @@ elif [ $1 == "arm64" ] && [ $2 == "run" ]; then
               --append "nokaslr rdinit=/linuxrc console=ttyAMA0" -nographic \
               --fsdev local,id=kmod_dev,path=$PWD/kmodules,security_model=none \
               -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount
+
+elif [ $1 == "arm64" ] && [ $2 == "clanged" ]; then
+    echo "start to build the kernel for $1 with LLVM (incremental)"
+    cd $LROOT
+    make ARCH=arm64 LLVM=1 CONFIG_INITRAMFS_SOURCE="rootfs extra_nodes.txt" -j20
+    make ARCH=arm64 LLVM=1 compile_commands.json -j20
+
+elif [ $1 == "arm64" ] && [ $2 == "clang" ]; then
+    echo "start to build the kernel for $1 with LLVM (full)"
+    cd $LROOT
+    make ARCH=arm64 distclean -j20
+    make ARCH=arm64 LLVM=1 ybzhang_defconfig -j20
+    make ARCH=arm64 LLVM=1 CONFIG_INITRAMFS_SOURCE="rootfs extra_nodes.txt" -j20
+    make ARCH=arm64 LLVM=1 compile_commands.json -j20
 
 fi
 
