@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" style="max-width: 100%; height: auto; background: #fafafa; border: 2px solid #ddd;">
+  <defs>
+    <!-- 渐变定义 -->
+    <linearGradient id="safeZone" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e6ffe6;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#e6ffe6;stop-opacity:0.6" />
+    </linearGradient>
+    <linearGradient id="warningZone" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff4e6;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#fff4e6;stop-opacity:0.6" />
+    </linearGradient>
+    <linearGradient id="dangerZone" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffe6e6;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#ffe6e6;stop-opacity:0.6" />
+    </linearGradient>
+    
+    <!-- 箭头标记 -->
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0,0 0,6 9,3" fill="#cc0000" />
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0,0 0,6 9,3" fill="#0066cc" />
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0,0 0,6 9,3" fill="#009900" />
+    </marker>
+  </defs>
+  
+  <!-- 标题 -->
+  <text x="600" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#333">
+    页面回收触发机制动态演示（512MB ARM64 设备）
+  </text>
+  
+  <!-- 坐标轴 -->
+  <line x1="100" y1="600" x2="1100" y2="600" stroke="#666" stroke-width="2"/>
+  <line x1="100" y1="100" x2="100" y2="600" stroke="#666" stroke-width="2"/>
+  
+  <!-- Y轴标签 -->
+  <text x="40" y="110" font-size="12" fill="#666">空闲内存</text>
+  <text x="50" y="605" font-size="12" fill="#666">0</text>
+  
+  <!-- X轴标签（时间轴） -->
+  <text x="590" y="630" text-anchor="middle" font-size="14" fill="#666" font-weight="bold">时间轴 →</text>
+  
+  <!-- 水位线区域填充 -->
+  <!-- 安全区 (WMARK_HIGH 以上) -->
+  <rect x="100" y="200" width="1000" height="100" fill="url(#safeZone)"/>
+  <!-- 警告区 (WMARK_LOW - WMARK_HIGH) -->
+  <rect x="100" y="300" width="1000" height="120" fill="url(#warningZone)"/>
+  <!-- 危险区 (WMARK_MIN - WMARK_LOW) -->
+  <rect x="100" y="420" width="1000" height="100" fill="url(#dangerZone)"/>
+  <!-- 紧急区 (WMARK_MIN 以下) -->
+  <rect x="100" y="520" width="1000" height="80" fill="#fff0f0"/>
+  
+  <!-- 水位线 -->
+  <!-- WMARK_HIGH (1086 pages) -->
+  <line x1="100" y1="300" x2="1100" y2="300" stroke="#009900" stroke-width="3" stroke-dasharray="8,4"/>
+  <text x="1110" y="305" font-size="13" font-weight="bold" fill="#009900">WMARK_HIGH</text>
+  <text x="1110" y="320" font-size="11" fill="#009900">(1086 pages)</text>
+  
+  <!-- WMARK_LOW (905 pages) -->
+  <line x1="100" y1="420" x2="1100" y2="420" stroke="#0066cc" stroke-width="3" stroke-dasharray="8,4"/>
+  <text x="1110" y="425" font-size="13" font-weight="bold" fill="#0066cc">WMARK_LOW</text>
+  <text x="1110" y="440" font-size="11" fill="#0066cc">(905 pages)</text>
+  
+  <!-- WMARK_MIN (724 pages) -->
+  <line x1="100" y1="520" x2="1100" y2="520" stroke="#cc0000" stroke-width="3" stroke-dasharray="8,4"/>
+  <text x="1110" y="525" font-size="13" font-weight="bold" fill="#cc0000">WMARK_MIN</text>
+  <text x="1110" y="540" font-size="11" fill="#cc0000">(724 pages)</text>
+  
+  <!-- 内存使用曲线（空闲内存逐渐减少） -->
+  <path d="M 120,180 L 200,200 L 280,240 L 360,290 L 440,360 L 520,440 L 600,540 L 680,545 L 760,520 L 840,460 L 920,380 L 1000,320 L 1080,280"
+        stroke="#ff6600" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+  <!-- 内存曲线标注点 -->
+  <circle cx="200" cy="200" r="6" fill="#009900"/>
+  <circle cx="440" cy="360" r="6" fill="#ffaa00"/>
+  <circle cx="600" cy="540" r="6" fill="#cc0000"/>
+  <circle cx="760" cy="520" r="6" fill="#009900"/>
+  
+  <!-- 场景1: 正常状态 -->
+  <g>
+    <rect x="140" y="140" width="140" height="60" fill="white" stroke="#009900" stroke-width="2" rx="5"/>
+    <text x="210" y="160" text-anchor="middle" font-size="12" font-weight="bold" fill="#009900">T1: 正常状态</text>
+    <text x="210" y="177" text-anchor="middle" font-size="11" fill="#666">空闲内存充足</text>
+    <text x="210" y="192" text-anchor="middle" font-size="11" fill="#009900">✓ 无需回收</text>
+  </g>
+  
+  <!-- 场景2: kswapd 唤醒 -->
+  <g>
+    <rect x="350" y="230" width="180" height="75" fill="white" stroke="#0066cc" stroke-width="2" rx="5"/>
+    <text x="440" y="250" text-anchor="middle" font-size="12" font-weight="bold" fill="#0066cc">T2: 跨越 WMARK_LOW</text>
+    <text x="440" y="267" text-anchor="middle" font-size="11" fill="#666">空闲内存下降</text>
+    <text x="440" y="282" text-anchor="middle" font-size="11" fill="#0066cc" font-weight="bold">⚡ 唤醒 kswapd</text>
+    <text x="440" y="297" text-anchor="middle" font-size="10" fill="#0066cc">(后台异步回收)</text>
+  </g>
+  <line x1="440" y1="310" x2="440" y2="350" stroke="#0066cc" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  
+  <!-- 场景3: 直接回收 -->
+  <g>
+    <rect x="510" y="470" width="180" height="90" fill="white" stroke="#cc0000" stroke-width="3" rx="5"/>
+    <text x="600" y="490" text-anchor="middle" font-size="12" font-weight="bold" fill="#cc0000">T3: 跨越 WMARK_MIN</text>
+    <text x="600" y="507" text-anchor="middle" font-size="11" fill="#666">内存严重不足</text>
+    <text x="600" y="522" text-anchor="middle" font-size="11" fill="#cc0000" font-weight="bold">🔥 直接回收</text>
+    <text x="600" y="537" text-anchor="middle" font-size="10" fill="#cc0000">(阻塞进程)</text>
+    <text x="600" y="552" text-anchor="middle" font-size="9" fill="#cc0000">kswapd 来不及回收</text>
+  </g>
+  <line x1="600" y1="565" x2="600" y2="590" stroke="#cc0000" stroke-width="3" marker-end="url(#arrowRed)"/>
+  
+  <!-- 场景4: 回收成功，内存恢复 -->
+  <g>
+    <rect x="680" y="450" width="160" height="60" fill="white" stroke="#009900" stroke-width="2" rx="5"/>
+    <text x="760" y="470" text-anchor="middle" font-size="12" font-weight="bold" fill="#009900">T4: 回收成功</text>
+    <text x="760" y="487" text-anchor="middle" font-size="11" fill="#666">空闲内存增加</text>
+    <text x="760" y="502" text-anchor="middle" font-size="11" fill="#009900">✓ 继续运行</text>
+  </g>
+  
+  <!-- 场景5: 主动回收（独立时间线） -->
+  <g>
+    <rect x="150" y="420" width="200" height="90" fill="#f0fff0" stroke="#009900" stroke-width="2" rx="5" stroke-dasharray="5,3"/>
+    <text x="250" y="440" text-anchor="middle" font-size="12" font-weight="bold" fill="#009900">任意时刻: 主动回收</text>
+    <text x="250" y="457" text-anchor="middle" font-size="10" fill="#666">echo "100M" &gt; memory.reclaim</text>
+    <text x="250" y="472" text-anchor="middle" font-size="11" fill="#009900" font-weight="bold">🛠️ Proactive Reclaim</text>
+    <text x="250" y="487" text-anchor="middle" font-size="10" fill="#009900">(用户主动触发)</text>
+    <text x="250" y="502" text-anchor="middle" font-size="9" fill="#666">不依赖水位线</text>
+  </g>
+  
+  <!-- kswapd 工作示意 -->
+  <g>
+    <rect x="750" y="340" width="180" height="65" fill="#e6f2ff" stroke="#0066cc" stroke-width="2" rx="5"/>
+    <text x="840" y="360" text-anchor="middle" font-size="12" font-weight="bold" fill="#0066cc">kswapd 持续工作</text>
+    <text x="840" y="377" text-anchor="middle" font-size="10" fill="#0066cc">目标: 回收到 WMARK_HIGH</text>
+    <text x="840" y="392" text-anchor="middle" font-size="10" fill="#666">T2 → T4 期间后台运行</text>
+  </g>
+  <path d="M 530,420 Q 600,380 670,380 Q 740,380 820,360" 
+        stroke="#0066cc" stroke-width="2" fill="none" stroke-dasharray="4,2" marker-end="url(#arrowBlue)"/>
+  
+  <!-- 图例 -->
+  <g transform="translate(100, 650)">
+    <text x="0" y="0" font-size="13" font-weight="bold" fill="#333">图例：</text>
+    
+    <circle cx="60" cy="-3" r="5" fill="#ff6600"/>
+    <text x="70" y="0" font-size="11" fill="#666">空闲内存变化曲线</text>
+    
+    <line x1="200" y1="-3" x2="250" y2="-3" stroke="#009900" stroke-width="2" stroke-dasharray="6,3"/>
+    <text x="260" y="0" font-size="11" fill="#666">水位线</text>
+    
+    <rect x="350" y="-10" width="15" height="10" fill="#e6ffe6"/>
+    <text x="370" y="0" font-size="11" fill="#666">安全区</text>
+    
+    <rect x="450" y="-10" width="15" height="10" fill="#fff4e6"/>
+    <text x="470" y="0" font-size="11" fill="#666">警告区</text>
+    
+    <rect x="550" y="-10" width="15" height="10" fill="#ffe6e6"/>
+    <text x="570" y="0" font-size="11" fill="#666">危险区</text>
+  </g>
+  
+  <!-- 关键时刻标注 -->
+  <text x="120" y="615" font-size="10" fill="#999">T0</text>
+  <text x="360" y="615" font-size="10" fill="#0066cc" font-weight="bold">T2</text>
+  <text x="600" y="615" font-size="10" fill="#cc0000" font-weight="bold">T3</text>
+  <text x="920" y="615" font-size="10" fill="#009900" font-weight="bold">T4</text>
+  
+  <!-- 底部说明 -->
+  <text x="600" y="685" text-anchor="middle" font-size="11" fill="#666">
+    随着系统运行，空闲内存逐渐减少，触发不同级别的回收机制
+  </text>
+</svg>

@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 780" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/>
+    </filter>
+    <linearGradient id="hdrCPU" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2196F3"/>
+      <stop offset="100%" stop-color="#1976D2"/>
+    </linearGradient>
+    <linearGradient id="hdrSlab" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4CAF50"/>
+      <stop offset="100%" stop-color="#388E3C"/>
+    </linearGradient>
+    <linearGradient id="hdrObj" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF9800"/>
+      <stop offset="100%" stop-color="#F57C00"/>
+    </linearGradient>
+    <linearGradient id="hdrCmpxchg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#9C27B0"/>
+      <stop offset="100%" stop-color="#7B1FA2"/>
+    </linearGradient>
+    <marker id="aBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1976D2" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#388E3C" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aOrange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#F57C00" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aPurple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#7B1FA2" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aRed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#D32F2F" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#212121">SLUB Lockless Per-CPU Freelist Fastpath</text>
+  <text x="550" y="56" text-anchor="middle" font-size="11" fill="#757575">mm/slub.c :: __slab_alloc_node() — 无锁快路径数据流</text>
+
+  <!-- ==================== kmem_cache_cpu 结构体 ==================== -->
+  <g transform="translate(60, 80)" filter="url(#sh)">
+    <rect width="340" height="230" rx="8" fill="#fff" stroke="#1976D2" stroke-width="2"/>
+    <rect width="340" height="30" rx="8" fill="url(#hdrCPU)"/>
+    <rect x="0" y="22" width="340" height="8" fill="#1976D2"/>
+    <text x="170" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">kmem_cache_cpu (Per-CPU)</text>
+    <text x="15" y="52" font-size="10" fill="#1976D2" font-weight="bold">每个 CPU 独占，不需要锁</text>
+    <line x1="10" y1="60" x2="330" y2="60" stroke="#BBDEFB" stroke-width="0.8"/>
+    <!-- freelist field -->
+    <text x="15" y="82" font-size="12" font-family="monospace" fill="#1976D2" font-weight="bold">freelist</text>
+    <text x="100" y="82" font-size="10" fill="#616161">→ 指向第一个空闲对象</text>
+    <!-- tid field -->
+    <text x="15" y="106" font-size="12" font-family="monospace" fill="#7B1FA2" font-weight="bold">tid</text>
+    <text x="100" y="106" font-size="10" fill="#616161">→ 全局唯一事务 ID</text>
+    <line x1="10" y1="116" x2="330" y2="116" stroke="#BBDEFB" stroke-width="0.8"/>
+    <!-- union highlight -->
+    <rect x="10" y="120" width="320" height="40" rx="4" fill="#F3E5F5" stroke="#CE93D8" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="20" y="138" font-size="10" font-family="monospace" fill="#7B1FA2">union freelist_aba_t freelist_tid;</text>
+    <text x="20" y="154" font-size="9" fill="#7B1FA2">↑ 两字段合并为一个原子操作单元 (cmpxchg)</text>
+    <!-- slab field -->
+    <text x="15" y="180" font-size="12" font-family="monospace" fill="#388E3C" font-weight="bold">slab</text>
+    <text x="100" y="180" font-size="10" fill="#616161">→ 当前活跃 slab (frozen)</text>
+    <!-- partial field -->
+    <text x="15" y="204" font-size="12" font-family="monospace" fill="#616161">partial</text>
+    <text x="100" y="204" font-size="10" fill="#616161">→ CPU 本地 partial 缓存</text>
+    <!-- lock field -->
+    <text x="15" y="224" font-size="12" font-family="monospace" fill="#9E9E9E">lock</text>
+    <text x="100" y="224" font-size="10" fill="#9E9E9E">→ 仅慢路径使用 (local_lock)</text>
+  </g>
+
+  <!-- ==================== Slab Page (frozen) ==================== -->
+  <g transform="translate(60, 380)" filter="url(#sh)">
+    <rect width="340" height="140" rx="8" fill="#fff" stroke="#388E3C" stroke-width="2"/>
+    <rect width="340" height="30" rx="8" fill="url(#hdrSlab)"/>
+    <rect x="0" y="22" width="340" height="8" fill="#388E3C"/>
+    <text x="170" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">struct slab (CPU Slab, frozen=1)</text>
+    <text x="15" y="52" font-size="10" fill="#388E3C" font-weight="bold">被当前 CPU 冻结，不在 node 链表上</text>
+    <line x1="10" y1="60" x2="330" y2="60" stroke="#C8E6C9" stroke-width="0.8"/>
+    <text x="15" y="82" font-size="12" font-family="monospace">freelist</text>
+    <text x="100" y="82" font-size="10" fill="#616161">→ slab 级空闲链 (regular freelist)</text>
+    <text x="15" y="106" font-size="12" font-family="monospace">counters</text>
+    <text x="100" y="106" font-size="10" fill="#616161">→ inuse / objects / frozen 位</text>
+    <text x="15" y="130" font-size="12" font-family="monospace">objects[]</text>
+    <text x="100" y="130" font-size="10" fill="#616161">→ 对象内存区 (含嵌入式 FP)</text>
+  </g>
+
+  <!-- ==================== Object Freelist Chain ==================== -->
+  <g transform="translate(520, 120)" filter="url(#sh)">
+    <rect width="520" height="190" rx="8" fill="#fff" stroke="#F57C00" stroke-width="2"/>
+    <rect width="520" height="30" rx="8" fill="url(#hdrObj)"/>
+    <rect x="0" y="22" width="520" height="8" fill="#F57C00"/>
+    <text x="260" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Per-CPU Freelist 对象链 (嵌入式单链表)</text>
+    <text x="15" y="52" font-size="10" fill="#F57C00" font-weight="bold">c-&gt;freelist 指向链表头，每个对象内含 next 指针 (FP)</text>
+
+    <!-- Object boxes -->
+    <rect x="20" y="70" width="100" height="60" rx="5" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.5"/>
+    <text x="70" y="90" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">Object A</text>
+    <text x="70" y="108" text-anchor="middle" font-size="9" fill="#F57C00">FP → B</text>
+    <text x="70" y="122" text-anchor="middle" font-size="8" fill="#9E9E9E">(返回给调用者)</text>
+
+    <rect x="160" y="70" width="100" height="60" rx="5" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.5"/>
+    <text x="210" y="90" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">Object B</text>
+    <text x="210" y="108" text-anchor="middle" font-size="9" fill="#F57C00">FP → C</text>
+    <text x="210" y="122" text-anchor="middle" font-size="8" fill="#9E9E9E">(新的链表头)</text>
+
+    <rect x="300" y="70" width="100" height="60" rx="5" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.2"/>
+    <text x="350" y="90" text-anchor="middle" font-size="11" fill="#E65100">Object C</text>
+    <text x="350" y="108" text-anchor="middle" font-size="9" fill="#F57C00">FP → D</text>
+
+    <rect x="440" y="70" width="60" height="60" rx="5" fill="#FFF3E0" stroke="#F57C00" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="470" y="95" text-anchor="middle" font-size="10" fill="#BDBDBD">...</text>
+    <text x="470" y="112" text-anchor="middle" font-size="9" fill="#F57C00">→ NULL</text>
+
+    <!-- Arrows between objects -->
+    <path d="M120,100 L155,100" fill="none" stroke="#F57C00" stroke-width="1.5" marker-end="url(#aOrange)"/>
+    <path d="M260,100 L295,100" fill="none" stroke="#F57C00" stroke-width="1.5" marker-end="url(#aOrange)"/>
+    <path d="M400,100 L435,100" fill="none" stroke="#F57C00" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#aOrange)"/>
+
+    <!-- cmpxchg annotation -->
+    <rect x="20" y="145" width="490" height="36" rx="4" fill="#F3E5F5" stroke="#9C27B0" stroke-width="1"/>
+    <text x="265" y="162" text-anchor="middle" font-size="10" font-family="monospace" fill="#7B1FA2">this_cpu_try_cmpxchg(freelist_tid, {A,tid}, {B,tid+1})</text>
+    <text x="265" y="176" text-anchor="middle" font-size="9" fill="#7B1FA2">成功 → 返回 A；失败 → goto redo 重试 (ABA 防护靠 tid 递增)</text>
+  </g>
+
+  <!-- ==================== Fastpath Flow (右下) ==================== -->
+  <g transform="translate(520, 380)" filter="url(#sh)">
+    <rect width="520" height="360" rx="8" fill="#fff" stroke="#9C27B0" stroke-width="2"/>
+    <rect width="520" height="30" rx="8" fill="url(#hdrCmpxchg)"/>
+    <rect x="0" y="22" width="520" height="8" fill="#9C27B0"/>
+    <text x="260" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Fastpath 执行流程 (无锁!)</text>
+
+    <text x="20" y="55" font-size="11" fill="#424242" font-weight="bold">① 读取 percpu 状态 (无屏障，允许被抢占)</text>
+    <text x="35" y="73" font-size="10" font-family="monospace" fill="#1976D2">c = raw_cpu_ptr(s-&gt;cpu_slab);</text>
+    <text x="35" y="89" font-size="10" font-family="monospace" fill="#7B1FA2">tid = READ_ONCE(c-&gt;tid);</text>
+    <text x="35" y="105" font-size="10" font-family="monospace" fill="#616161">barrier();</text>
+    <text x="35" y="121" font-size="10" font-family="monospace" fill="#1976D2">object = c-&gt;freelist; slab = c-&gt;slab;</text>
+
+    <line x1="15" y1="132" x2="505" y2="132" stroke="#E1BEE7" stroke-width="0.8"/>
+
+    <text x="20" y="152" font-size="11" fill="#424242" font-weight="bold">② 检查条件</text>
+    <text x="35" y="170" font-size="10" font-family="monospace" fill="#616161">if (!object || !slab || !node_match(...))</text>
+    <text x="50" y="186" font-size="10" fill="#D32F2F">→ 条件不满足 → 走慢路径 __slab_alloc()</text>
+    <text x="50" y="202" font-size="10" fill="#388E3C">→ 条件满足 → 继续无锁路径 ↓</text>
+
+    <line x1="15" y1="212" x2="505" y2="212" stroke="#E1BEE7" stroke-width="0.8"/>
+
+    <text x="20" y="232" font-size="11" fill="#424242" font-weight="bold">③ 读取下一对象指针</text>
+    <text x="35" y="250" font-size="10" font-family="monospace" fill="#F57C00">next_object = get_freepointer_safe(s, object);</text>
+    <text x="35" y="266" font-size="9" fill="#757575">// 从 object 内嵌的 FP 位置读出下一个空闲对象地址</text>
+
+    <line x1="15" y1="278" x2="505" y2="278" stroke="#E1BEE7" stroke-width="0.8"/>
+
+    <text x="20" y="298" font-size="11" fill="#424242" font-weight="bold">④ 原子 CAS 更新 (freelist, tid)</text>
+    <text x="35" y="316" font-size="10" font-family="monospace" fill="#7B1FA2">__update_cpu_freelist_fast(s, object, next_object, tid)</text>
+    <text x="35" y="334" font-size="9" fill="#757575">// old = {object, tid}  new = {next_object, tid+1}</text>
+    <text x="35" y="350" font-size="9" fill="#757575">// this_cpu_try_cmpxchg_freelist() — percpu 级 CAS</text>
+  </g>
+
+  <!-- ==================== Arrows: freelist → Object chain ==================== -->
+  <path d="M400,182 L520,182" fill="none" stroke="#1976D2" stroke-width="2" marker-end="url(#aBlue)"/>
+  <rect x="420" y="170" width="80" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="460" y="182" text-anchor="middle" font-size="9" fill="#1976D2" font-weight="bold">c-&gt;freelist</text>
+
+  <!-- Arrow: slab → struct slab -->
+  <path d="M200,310 L200,380" fill="none" stroke="#388E3C" stroke-width="2" marker-end="url(#aGreen)"/>
+  <rect x="155" y="335" width="80" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="195" y="347" text-anchor="middle" font-size="9" fill="#388E3C" font-weight="bold">c-&gt;slab</text>
+
+  <!-- ==================== Legend ==================== -->
+  <g transform="translate(60, 560)">
+    <rect width="340" height="190" rx="6" fill="#FAFAFA" fill-opacity="0.95" stroke="#E0E0E0" stroke-width="1"/>
+    <text x="15" y="22" font-size="12" font-weight="bold" fill="#424242">为什么是 "无锁" (Lockless)?</text>
+    <line x1="10" y1="30" x2="330" y2="30" stroke="#E0E0E0" stroke-width="0.8"/>
+    <text x="15" y="48" font-size="10" fill="#424242">• 整条路径没有 spin_lock / local_lock / IRQ disable</text>
+    <text x="15" y="66" font-size="10" fill="#424242">• 用 percpu cmpxchg 原子替换 (freelist, tid) 二元组</text>
+    <text x="15" y="84" font-size="10" fill="#424242">• tid 每次操作 +1，防止 ABA 问题</text>
+    <text x="15" y="102" font-size="10" fill="#424242">• 被抢占/迁移到其他 CPU → cmpxchg 必然失败 → 重试</text>
+    <text x="15" y="120" font-size="10" fill="#424242">• 中断处理程序若也分配 → 同样走 cmpxchg，互不阻塞</text>
+    <line x1="10" y1="130" x2="330" y2="130" stroke="#E0E0E0" stroke-width="0.8"/>
+    <text x="15" y="148" font-size="10" fill="#D32F2F" font-weight="bold">性能效果：</text>
+    <text x="15" y="166" font-size="10" fill="#424242">  kmalloc() 热路径 ≈ 10~20 条指令，无任何锁开销</text>
+    <text x="15" y="184" font-size="10" fill="#424242">  绝大多数分配/释放(~99%)在此路径完成</text>
+  </g>
+
+</svg>

@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1800" font-family="Consolas, monospace">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#555"/>
+    </marker>
+    <marker id="arr-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#1565C0"/>
+    </marker>
+    <marker id="arr-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2E7D32"/>
+    </marker>
+    <marker id="arr-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#E65100"/>
+    </marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FAFAFA"/>
+      <stop offset="100%" stop-color="#EEEEEE"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1100" height="1800" fill="url(#bg)" rx="8"/>
+
+  <!-- Title -->
+  <text x="550" y="40" text-anchor="middle" font-size="24" font-weight="bold" fill="#1A237E">Linux ARM64 Memory Management Architecture</text>
+  <text x="550" y="65" text-anchor="middle" font-size="13" fill="#666">Three Functions, Three Abstraction Layers: NUMA Node / Section / Zone</text>
+
+  <!-- ===== Layer 0: Physical Memory (Hardware) ===== -->
+  <rect x="30" y="90" width="1040" height="120" rx="6" fill="#ECEFF1" stroke="#B0BEC5" stroke-width="1.5"/>
+  <text x="50" y="115" font-size="16" font-weight="bold" fill="#37474F">Layer 0: Physical Hardware (Given by Hardware)</text>
+
+  <rect x="60" y="130" width="300" height="55" rx="4" fill="#CFD8DC" stroke="#78909C" stroke-width="1.5"/>
+  <text x="210" y="150" text-anchor="middle" font-size="12" font-weight="bold" fill="#37474F">DDR Controller 0</text>
+  <text x="210" y="168" text-anchor="middle" font-size="11" fill="#555">PA: 0x8000_0000 ~ 0xC000_0000 (1GB)</text>
+
+  <rect x="400" y="130" width="300" height="55" rx="4" fill="#CFD8DC" stroke="#78909C" stroke-width="1.5"/>
+  <text x="550" y="150" text-anchor="middle" font-size="12" font-weight="bold" fill="#37474F">DDR Controller 1</text>
+  <text x="550" y="168" text-anchor="middle" font-size="11" fill="#555">PA: 0x1_0000_0000 ~ 0x1_4000_0000 (1GB)</text>
+
+  <rect x="740" y="130" width="300" height="55" rx="4" fill="#E0E0E0" stroke="#9E9E9E" stroke-width="1" stroke-dasharray="4,2"/>
+  <text x="890" y="155" text-anchor="middle" font-size="12" fill="#999">MMIO / Holes (no RAM)</text>
+
+  <!-- ===== Layer 1: arch_numa_init() ===== -->
+  <rect x="30" y="230" width="1040" height="260" rx="6" fill="#E3F2FD" stroke="#90CAF9" stroke-width="1.5"/>
+  <text x="50" y="257" font-size="16" font-weight="bold" fill="#1565C0">Layer 1: NUMA Topology &#x2014; arch_numa_init()</text>
+  <text x="50" y="277" font-size="12" fill="#555">Question: "Which physical memory belongs to which CPU cluster?"</text>
+
+  <!-- Node 0 -->
+  <rect x="60" y="295" width="460" height="170" rx="6" fill="#BBDEFB" stroke="#1565C0" stroke-width="2"/>
+  <text x="80" y="318" font-size="15" font-weight="bold" fill="#1565C0">NUMA Node 0 (pgdat[0])</text>
+  <text x="80" y="338" font-size="11" fill="#333">CPU: cpu@0, cpu@1, cpu@2, cpu@3</text>
+  <text x="80" y="356" font-size="11" fill="#333">Memory: 0x8000_0000 ~ 0xC000_0000 (1GB)</text>
+  <text x="80" y="374" font-size="11" fill="#333">LOCAL_DISTANCE = 10 (fast)</text>
+
+  <!-- Mini pgdat inside node 0 -->
+  <rect x="80" y="388" width="200" height="60" rx="3" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1"/>
+  <text x="95" y="406" font-size="10" font-weight="bold" fill="#1565C0">pg_data_t (pgdat)</text>
+  <text x="95" y="420" font-size="9" fill="#555">node_id = 0</text>
+  <text x="95" y="432" font-size="9" fill="#555">node_start_pfn = 0x80000</text>
+  <text x="95" y="444" font-size="9" fill="#555">node_zones[MAX_NR_ZONES]</text>
+
+  <!-- Data sources -->
+  <rect x="310" y="388" width="190" height="60" rx="3" fill="#fff" stroke="#90CAF9" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="325" y="406" font-size="10" font-weight="bold" fill="#1565C0">Data Sources</text>
+  <text x="325" y="420" font-size="9" fill="#555">numa_nodes_parsed (bitmap)</text>
+  <text x="325" y="432" font-size="9" fill="#555">numa_meminfo (memblk[])</text>
+  <text x="325" y="444" font-size="9" fill="#555">numa_distance (N x N)</text>
+
+  <!-- Node 1 -->
+  <rect x="550" y="295" width="490" height="170" rx="6" fill="#BBDEFB" stroke="#1565C0" stroke-width="2"/>
+  <text x="570" y="318" font-size="15" font-weight="bold" fill="#1565C0">NUMA Node 1 (pgdat[1])</text>
+  <text x="570" y="338" font-size="11" fill="#333">CPU: cpu@4, cpu@5, cpu@6, cpu@7</text>
+  <text x="570" y="356" font-size="11" fill="#333">Memory: 0x1_0000_0000 ~ 0x1_4000_0000 (1GB)</text>
+  <text x="570" y="374" font-size="11" fill="#333">REMOTE_DISTANCE = 20 (slow cross-node)</text>
+
+  <rect x="570" y="388" width="200" height="60" rx="3" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1"/>
+  <text x="585" y="406" font-size="10" font-weight="bold" fill="#1565C0">pg_data_t (pgdat)</text>
+  <text x="585" y="420" font-size="9" fill="#555">node_id = 1</text>
+  <text x="585" y="432" font-size="9" fill="#555">node_start_pfn = 0x100000</text>
+  <text x="585" y="444" font-size="9" fill="#555">node_zones[MAX_NR_ZONES]</text>
+
+  <!-- ===== Layer 2: sparse_init() ===== -->
+  <rect x="30" y="510" width="1040" height="320" rx="6" fill="#E8F5E9" stroke="#A5D6A7" stroke-width="1.5"/>
+  <text x="50" y="537" font-size="16" font-weight="bold" fill="#2E7D32">Layer 2: Sparse Memory Model &#x2014; sparse_init()</text>
+  <text x="50" y="557" font-size="12" fill="#555">Question: "How to efficiently manage struct page for non-contiguous physical memory?"</text>
+
+  <!-- Section diagram -->
+  <text x="60" y="585" font-size="13" font-weight="bold" fill="#333">Physical address space divided into 128MB sections:</text>
+
+  <!-- Section boxes - Node 0 -->
+  <rect x="60" y="600" width="100" height="45" rx="3" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="110" y="618" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">Section 4</text>
+  <text x="110" y="634" text-anchor="middle" font-size="8" fill="#555">128MB</text>
+
+  <rect x="170" y="600" width="100" height="45" rx="3" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="220" y="618" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">Section 5</text>
+  <text x="220" y="634" text-anchor="middle" font-size="8" fill="#555">128MB</text>
+
+  <rect x="280" y="600" width="100" height="45" rx="3" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="330" y="618" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">Section 6</text>
+  <text x="330" y="634" text-anchor="middle" font-size="8" fill="#555">128MB</text>
+
+  <rect x="390" y="600" width="100" height="45" rx="3" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="440" y="618" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">Section 7</text>
+  <text x="440" y="634" text-anchor="middle" font-size="8" fill="#555">128MB</text>
+
+  <!-- Hole -->
+  <rect x="500" y="600" width="80" height="45" rx="0" fill="#fff" stroke="#ccc" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="540" y="627" text-anchor="middle" font-size="9" fill="#aaa">hole</text>
+
+  <!-- Section boxes - Node 1 -->
+  <rect x="590" y="600" width="100" height="45" rx="3" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="640" y="618" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">Section 32</text>
+  <text x="640" y="634" text-anchor="middle" font-size="8" fill="#555">128MB</text>
+
+  <rect x="700" y="600" width="100" height="45" rx="3" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="750" y="618" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">Section 33</text>
+  <text x="750" y="634" text-anchor="middle" font-size="8" fill="#555">128MB</text>
+
+  <rect x="810" y="600" width="100" height="45" rx="3" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="860" y="618" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">Section 34</text>
+  <text x="860" y="634" text-anchor="middle" font-size="8" fill="#555">128MB</text>
+
+  <!-- Node labels below sections -->
+  <text x="250" y="665" text-anchor="middle" font-size="11" fill="#1565C0" font-weight="bold">Node 0 sections</text>
+  <text x="750" y="665" text-anchor="middle" font-size="11" fill="#1565C0" font-weight="bold">Node 1 sections</text>
+
+  <!-- VMEMMAP mapping -->
+  <text x="60" y="700" font-size="13" font-weight="bold" fill="#333">Each section gets a struct page array in VMEMMAP:</text>
+
+  <rect x="60" y="715" width="950" height="50" rx="4" fill="#fff" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="70" y="733" font-size="11" font-weight="bold" fill="#2E7D32">VMEMMAP region (virtual address space)</text>
+  <rect x="80" y="740" width="90" height="16" rx="2" fill="#A5D6A7" stroke="#2E7D32" stroke-width="1"/>
+  <text x="125" y="752" text-anchor="middle" font-size="8" fill="#333">page[sec4]</text>
+  <rect x="180" y="740" width="90" height="16" rx="2" fill="#A5D6A7" stroke="#2E7D32" stroke-width="1"/>
+  <text x="225" y="752" text-anchor="middle" font-size="8" fill="#333">page[sec5]</text>
+  <rect x="280" y="740" width="90" height="16" rx="2" fill="#A5D6A7" stroke="#2E7D32" stroke-width="1"/>
+  <text x="325" y="752" text-anchor="middle" font-size="8" fill="#333">page[sec6]</text>
+  <rect x="380" y="740" width="90" height="16" rx="2" fill="#A5D6A7" stroke="#2E7D32" stroke-width="1"/>
+  <text x="425" y="752" text-anchor="middle" font-size="8" fill="#333">page[sec7]</text>
+  <rect x="480" y="740" width="70" height="16" rx="0" fill="#f5f5f5" stroke="#ccc" stroke-width="1" stroke-dasharray="2,1"/>
+  <text x="515" y="752" text-anchor="middle" font-size="7" fill="#ccc">no alloc</text>
+  <rect x="560" y="740" width="90" height="16" rx="2" fill="#A5D6A7" stroke="#2E7D32" stroke-width="1"/>
+  <text x="605" y="752" text-anchor="middle" font-size="8" fill="#333">page[sec32]</text>
+  <rect x="660" y="740" width="90" height="16" rx="2" fill="#A5D6A7" stroke="#2E7D32" stroke-width="1"/>
+  <text x="705" y="752" text-anchor="middle" font-size="8" fill="#333">page[sec33]</text>
+  <rect x="760" y="740" width="90" height="16" rx="2" fill="#A5D6A7" stroke="#2E7D32" stroke-width="1"/>
+  <text x="805" y="752" text-anchor="middle" font-size="8" fill="#333">page[sec34]</text>
+
+  <!-- Key point -->
+  <rect x="60" y="780" width="950" height="35" rx="3" fill="#fff" stroke="#A5D6A7" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="80" y="802" font-size="12" fill="#2E7D32" font-weight="bold">Key: Only present sections get struct page arrays allocated. Holes are skipped = no memory wasted.</text>
+
+  <!-- ===== Layer 3: zone_sizes_init() ===== -->
+  <rect x="30" y="850" width="1040" height="310" rx="6" fill="#FFF3E0" stroke="#FFCC80" stroke-width="1.5"/>
+  <text x="50" y="877" font-size="16" font-weight="bold" fill="#E65100">Layer 3: Zone Division &#x2014; zone_sizes_init()</text>
+  <text x="50" y="897" font-size="12" fill="#555">Question: "How to satisfy different DMA address constraints for different devices?"</text>
+
+  <!-- Zone bar for Node 0 -->
+  <text x="60" y="925" font-size="13" font-weight="bold" fill="#333">Node 0 physical address range divided into zones:</text>
+
+  <rect x="60" y="940" width="180" height="45" rx="3" fill="#FFCCBC" stroke="#BF360C" stroke-width="1.5"/>
+  <text x="150" y="958" text-anchor="middle" font-size="11" font-weight="bold" fill="#BF360C">ZONE_DMA</text>
+  <text x="150" y="975" text-anchor="middle" font-size="9" fill="#555">0 ~ 4GB (DMA capable)</text>
+
+  <rect x="250" y="940" width="180" height="45" rx="3" fill="#FFE0B2" stroke="#E65100" stroke-width="1.5"/>
+  <text x="340" y="958" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">ZONE_DMA32</text>
+  <text x="340" y="975" text-anchor="middle" font-size="9" fill="#555">0 ~ 4GB (32-bit DMA)</text>
+
+  <rect x="440" y="940" width="250" height="45" rx="3" fill="#FFF9C4" stroke="#F9A825" stroke-width="1.5"/>
+  <text x="565" y="958" text-anchor="middle" font-size="11" font-weight="bold" fill="#F57F17">ZONE_NORMAL</text>
+  <text x="565" y="975" text-anchor="middle" font-size="9" fill="#555">4GB ~ end (general purpose)</text>
+
+  <rect x="700" y="940" width="200" height="45" rx="3" fill="#E1BEE7" stroke="#6A1B9A" stroke-width="1.5"/>
+  <text x="800" y="958" text-anchor="middle" font-size="11" font-weight="bold" fill="#6A1B9A">ZONE_MOVABLE</text>
+  <text x="800" y="975" text-anchor="middle" font-size="9" fill="#555">hotplug/migration</text>
+
+  <!-- Zone struct inside -->
+  <text x="60" y="1015" font-size="13" font-weight="bold" fill="#333">Each zone contains:</text>
+
+  <rect x="60" y="1030" width="280" height="110" rx="4" fill="#fff" stroke="#FFCC80" stroke-width="1.5"/>
+  <text x="80" y="1050" font-size="11" font-weight="bold" fill="#E65100">struct zone</text>
+  <text x="80" y="1068" font-size="10" fill="#333">zone_start_pfn: starting page frame</text>
+  <text x="80" y="1083" font-size="10" fill="#333">spanned_pages: total PFNs in range</text>
+  <text x="80" y="1098" font-size="10" fill="#333">present_pages: actual pages (minus holes)</text>
+  <text x="80" y="1113" font-size="10" fill="#333">managed_pages: pages managed by buddy</text>
+  <text x="80" y="1128" font-size="10" fill="#C62828" font-weight="bold">free_area[MAX_PAGE_ORDER+1]</text>
+
+  <rect x="380" y="1030" width="280" height="110" rx="4" fill="#fff" stroke="#FFCC80" stroke-width="1.5"/>
+  <text x="400" y="1050" font-size="11" font-weight="bold" fill="#E65100">free_area[] (Buddy System)</text>
+  <text x="400" y="1068" font-size="10" fill="#333">free_area[0]:  order-0  (4KB pages)</text>
+  <text x="400" y="1083" font-size="10" fill="#333">free_area[1]:  order-1  (8KB pairs)</text>
+  <text x="400" y="1098" font-size="10" fill="#333">free_area[2]:  order-2  (16KB quads)</text>
+  <text x="400" y="1113" font-size="10" fill="#555">...</text>
+  <text x="400" y="1128" font-size="10" fill="#333">free_area[10]: order-10 (4MB blocks)</text>
+
+  <!-- ===== Layer 4: The final struct page ===== -->
+  <rect x="30" y="1180" width="1040" height="180" rx="6" fill="#F3E5F5" stroke="#CE93D8" stroke-width="1.5"/>
+  <text x="50" y="1207" font-size="16" font-weight="bold" fill="#6A1B9A">Layer 4: Per-Page Tracking &#x2014; struct page (the final goal)</text>
+  <text x="50" y="1227" font-size="12" fill="#555">Every 4KB physical page frame has a struct page describing its state.</text>
+
+  <rect x="60" y="1245" width="180" height="90" rx="4" fill="#E1BEE7" stroke="#6A1B9A" stroke-width="1.5"/>
+  <text x="80" y="1265" font-size="10" font-weight="bold" fill="#6A1B9A">struct page</text>
+  <text x="80" y="1280" font-size="9" fill="#333">flags: PG_reserved/locked/...</text>
+  <text x="80" y="1293" font-size="9" fill="#333">_refcount: usage count</text>
+  <text x="80" y="1306" font-size="9" fill="#333">_mapcount: user mappings</text>
+  <text x="80" y="1319" font-size="9" fill="#333">lru: page reclaim list</text>
+
+  <text x="280" y="1280" font-size="20" fill="#6A1B9A">&#x00D7;</text>
+
+  <rect x="310" y="1265" width="280" height="50" rx="4" fill="#fff" stroke="#CE93D8" stroke-width="1"/>
+  <text x="320" y="1285" font-size="11" fill="#333">One struct page per 4KB page frame</text>
+  <text x="320" y="1302" font-size="11" fill="#6A1B9A" font-weight="bold">= millions of struct pages for GBs of RAM</text>
+
+  <text x="630" y="1285" font-size="12" fill="#333">Accessed via:</text>
+  <text x="630" y="1305" font-size="11" fill="#6A1B9A" font-weight="bold">pfn_to_page(pfn) / page_to_pfn(page)</text>
+  <text x="630" y="1325" font-size="11" fill="#555">= simple VMEMMAP array indexing</text>
+
+  <!-- ===== Connecting arrows and flow ===== -->
+  <!-- Hardware -> NUMA -->
+  <line x1="210" y1="185" x2="210" y2="230" stroke="#1565C0" stroke-width="2" marker-end="url(#arr-blue)"/>
+  <line x1="550" y1="185" x2="550" y2="230" stroke="#1565C0" stroke-width="2" marker-end="url(#arr-blue)"/>
+
+  <!-- NUMA -> Sparse -->
+  <line x1="290" y1="465" x2="290" y2="510" stroke="#2E7D32" stroke-width="2" marker-end="url(#arr-green)"/>
+  <line x1="790" y1="465" x2="790" y2="510" stroke="#2E7D32" stroke-width="2" marker-end="url(#arr-green)"/>
+
+  <!-- Sparse -> Zone -->
+  <line x1="400" y1="815" x2="400" y2="850" stroke="#E65100" stroke-width="2" marker-end="url(#arr-orange)"/>
+
+  <!-- Zone -> struct page -->
+  <line x1="400" y1="1140" x2="400" y2="1180" stroke="#6A1B9A" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ===== Summary ===== -->
+  <rect x="30" y="1380" width="1040" height="400" rx="6" fill="#FFFDE7" stroke="#FFF176" stroke-width="1.5"/>
+  <text x="50" y="1410" font-size="18" font-weight="bold" fill="#F57F17">Design Philosophy: Why Three Layers?</text>
+
+  <!-- Layer explanations -->
+  <rect x="60" y="1430" width="480" height="80" rx="4" fill="#E3F2FD" stroke="#90CAF9" stroke-width="1"/>
+  <text x="80" y="1452" font-size="13" font-weight="bold" fill="#1565C0">arch_numa_init() &#x2014; Topology Awareness</text>
+  <text x="80" y="1470" font-size="11" fill="#333">Know which memory is "local" to each CPU.</text>
+  <text x="80" y="1486" font-size="11" fill="#333">Allocate from local node first = faster access.</text>
+  <text x="80" y="1502" font-size="11" fill="#555">Without this: all allocations are random = NUMA penalty.</text>
+
+  <rect x="570" y="1430" width="480" height="80" rx="4" fill="#E8F5E9" stroke="#A5D6A7" stroke-width="1"/>
+  <text x="590" y="1452" font-size="13" font-weight="bold" fill="#2E7D32">sparse_init() &#x2014; Space Efficiency</text>
+  <text x="590" y="1470" font-size="11" fill="#333">Only allocate struct page for present memory.</text>
+  <text x="590" y="1486" font-size="11" fill="#333">Skip holes in physical address space.</text>
+  <text x="590" y="1502" font-size="11" fill="#555">Without this: waste GBs of RAM on empty page arrays.</text>
+
+  <rect x="60" y="1525" width="480" height="80" rx="4" fill="#FFF3E0" stroke="#FFCC80" stroke-width="1"/>
+  <text x="80" y="1547" font-size="13" font-weight="bold" fill="#E65100">zone_sizes_init() &#x2014; Device Compatibility</text>
+  <text x="80" y="1565" font-size="11" fill="#333">Separate memory by DMA address constraints.</text>
+  <text x="80" y="1581" font-size="11" fill="#333">ZONE_DMA for legacy devices, ZONE_NORMAL for rest.</text>
+  <text x="80" y="1597" font-size="11" fill="#555">Without this: DMA-incapable allocs = device failures.</text>
+
+  <rect x="570" y="1525" width="480" height="80" rx="4" fill="#F3E5F5" stroke="#CE93D8" stroke-width="1"/>
+  <text x="590" y="1547" font-size="13" font-weight="bold" fill="#6A1B9A">struct page &#x2014; The Final Goal</text>
+  <text x="590" y="1565" font-size="11" fill="#333">Every page frame tracked: who owns it, its state.</text>
+  <text x="590" y="1581" font-size="11" fill="#333">Enables buddy allocator, page cache, LRU reclaim.</text>
+  <text x="590" y="1597" font-size="11" fill="#555">All three layers above exist to build this bookkeeping.</text>
+
+  <!-- Execution order -->
+  <rect x="60" y="1625" width="990" height="140" rx="4" fill="#fff" stroke="#FFF176" stroke-width="1"/>
+  <text x="80" y="1650" font-size="14" font-weight="bold" fill="#F57F17">Execution Order (bootmem_init):</text>
+
+  <rect x="80" y="1665" width="200" height="30" rx="3" fill="#BBDEFB" stroke="#1565C0" stroke-width="1.5"/>
+  <text x="180" y="1685" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565C0">1. arch_numa_init()</text>
+
+  <line x1="280" y1="1680" x2="330" y2="1680" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <rect x="340" y="1665" width="180" height="30" rx="3" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="430" y="1685" text-anchor="middle" font-size="11" font-weight="bold" fill="#2E7D32">2. sparse_init()</text>
+
+  <line x1="520" y1="1680" x2="570" y2="1680" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <rect x="580" y="1665" width="210" height="30" rx="3" fill="#FFE0B2" stroke="#E65100" stroke-width="1.5"/>
+  <text x="685" y="1685" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">3. zone_sizes_init()</text>
+
+  <line x1="790" y1="1680" x2="840" y2="1680" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <rect x="850" y="1665" width="180" height="30" rx="3" fill="#E1BEE7" stroke="#6A1B9A" stroke-width="1.5"/>
+  <text x="940" y="1685" text-anchor="middle" font-size="11" font-weight="bold" fill="#6A1B9A">struct page ready</text>
+
+  <text x="80" y="1720" font-size="11" fill="#555">Each step depends on the previous: NUMA topology &#x2192; section allocation &#x2192; zone partitioning &#x2192; page tracking</text>
+  <text x="80" y="1738" font-size="11" fill="#C62828" font-weight="bold">After memblock_free_all(): buddy system takes over, memblock retires. Memory management is fully operational.</text>
+</svg>

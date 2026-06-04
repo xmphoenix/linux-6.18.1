@@ -1,0 +1,309 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1820 1320" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+<defs>
+  <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.16"/></filter>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#f8fbff"/>
+    <stop offset="100%" stop-color="#f7fcf8"/>
+  </linearGradient>
+  <linearGradient id="hdrFix" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#0D47A1"/><stop offset="100%" stop-color="#42A5F5"/>
+  </linearGradient>
+  <linearGradient id="hdrBits" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#6A1B9A"/><stop offset="100%" stop-color="#AB47BC"/>
+  </linearGradient>
+  <linearGradient id="hdrWalk" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#00695C"/><stop offset="100%" stop-color="#26A69A"/>
+  </linearGradient>
+  <linearGradient id="hdrStatic" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#E65100"/><stop offset="100%" stop-color="#FFB74D"/>
+  </linearGradient>
+  <linearGradient id="hdrLeaf" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#AD1457"/><stop offset="100%" stop-color="#EC407A"/>
+  </linearGradient>
+  <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+    <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/>
+  </marker>
+  <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+    <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#EF6C00" stroke-width="1.5" stroke-linejoin="round"/>
+  </marker>
+  <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+    <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2E7D32" stroke-width="1.5" stroke-linejoin="round"/>
+  </marker>
+  <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+    <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#C62828" stroke-width="1.5" stroke-linejoin="round"/>
+  </marker>
+  <marker id="dG" markerWidth="12" markerHeight="8" refX="1" refY="4" orient="auto">
+    <path d="M1,4 L6,1 L11,4 L6,7 Z" fill="#fff" stroke="#2E7D32" stroke-width="1.5"/>
+  </marker>
+</defs>
+
+<rect x="0" y="0" width="1820" height="1320" fill="url(#bg)"/>
+
+<text x="910" y="30" text-anchor="middle" font-size="22" font-weight="bold" fill="#263238">arm64 fixmap early page-table wiring</text>
+<text x="910" y="52" text-anchor="middle" font-size="11" fill="#607D8B">参考你给的文章风格重画：主线不是函数流程，而是 fixmap 虚拟地址如何挂到 PGD -&gt; PTE 骨架</text>
+<text x="910" y="70" text-anchor="middle" font-size="11" fill="#607D8B">当前代码对应对象：FIXADDR_TOT_START/FIXADDR_TOP, bm_pud, bm_pmd, bm_pte[NR_BM_PTE_TABLES][PTRS_PER_PTE]</text>
+
+<g transform="translate(24,92)">
+  <rect width="272" height="120" rx="8" fill="white" fill-opacity="0.94" stroke="#CFD8DC" stroke-width="1"/>
+  <text x="12" y="20" font-size="11" font-weight="bold" fill="#455A64">图例</text>
+  <line x1="14" y1="40" x2="64" y2="40" stroke="#1565C0" stroke-width="2.4" marker-end="url(#aB)"/>
+  <text x="74" y="44" font-size="10" fill="#455A64">页表项指向下一级页表页</text>
+  <line x1="14" y1="64" x2="64" y2="64" stroke="#EF6C00" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aO)"/>
+  <text x="74" y="68" font-size="10" fill="#455A64">地址索引/遍历/定位</text>
+  <line x1="14" y1="88" x2="64" y2="88" stroke="#2E7D32" stroke-width="2.4" marker-start="url(#dG)" marker-end="url(#aG)"/>
+  <text x="74" y="92" font-size="10" fill="#455A64">静态 .bss 页表页</text>
+  <line x1="14" y1="112" x2="64" y2="112" stroke="#C62828" stroke-width="2.4" marker-end="url(#aR)"/>
+  <text x="74" y="116" font-size="10" fill="#455A64">叶子 PTE 指向目标物理页</text>
+</g>
+
+<g transform="translate(28,246)" filter="url(#sh)">
+  <rect width="304" height="584" rx="8" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <rect width="304" height="30" rx="8" fill="url(#hdrFix)"/>
+  <rect x="0" y="22" width="304" height="8" fill="url(#hdrFix)"/>
+  <text x="152" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Fixmap 虚拟地址窗口</text>
+  <text x="16" y="50" font-size="10" font-weight="bold" fill="#1565C0">位于 [FIXADDR_TOT_START, FIXADDR_TOP)</text>
+  <line x1="10" y1="58" x2="294" y2="58" stroke="#E3F2FD" stroke-width="0.8"/>
+
+  <rect x="60" y="88" width="184" height="688" rx="8" fill="#F8FBFF" stroke="#90CAF9" stroke-width="1.5"/>
+  <text x="152" y="108" text-anchor="middle" font-size="11" font-weight="bold" fill="#0D47A1">高地址</text>
+  <text x="152" y="126" text-anchor="middle" font-size="10" fill="#607D8B">FIXADDR_TOP</text>
+
+  <rect x="76" y="150" width="152" height="96" rx="6" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1.2"/>
+  <text x="152" y="172" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565C0">永久 fixmap 槽位</text>
+  <text x="152" y="192" text-anchor="middle" font-size="10" fill="#455A64">FIX_FDT / FIX_EARLYCON</text>
+  <text x="152" y="210" text-anchor="middle" font-size="10" fill="#455A64">FIX_TEXT_POKE0 ...</text>
+
+  <rect x="76" y="286" width="152" height="118" rx="6" fill="#E8F5E9" stroke="#81C784" stroke-width="1.2"/>
+  <text x="152" y="308" text-anchor="middle" font-size="11" font-weight="bold" fill="#2E7D32">临时 boot 映射</text>
+  <text x="152" y="328" text-anchor="middle" font-size="10" fill="#455A64">FIX_BTMAP_BEGIN</text>
+  <text x="152" y="346" text-anchor="middle" font-size="10" fill="#455A64">...</text>
+  <text x="152" y="364" text-anchor="middle" font-size="10" fill="#455A64">FIX_BTMAP_END</text>
+  <text x="152" y="386" text-anchor="middle" font-size="10" fill="#607D8B">early_ioremap 使用</text>
+
+  <rect x="76" y="448" width="152" height="148" rx="6" fill="#FFF3E0" stroke="#FFB74D" stroke-width="1.4"/>
+  <text x="152" y="470" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">页表构建专用槽位</text>
+  <text x="152" y="492" text-anchor="middle" font-size="10" fill="#455A64">FIX_PTE</text>
+  <text x="152" y="510" text-anchor="middle" font-size="10" fill="#455A64">FIX_PMD</text>
+  <text x="152" y="528" text-anchor="middle" font-size="10" fill="#455A64">FIX_PUD</text>
+  <text x="152" y="546" text-anchor="middle" font-size="10" fill="#455A64">FIX_P4D</text>
+  <text x="152" y="564" text-anchor="middle" font-size="10" fill="#455A64">FIX_PGD</text>
+
+  <rect x="36" y="620" width="232" height="72" rx="7" fill="#FFFDE7" stroke="#FBC02D" stroke-width="1.5"/>
+  <text x="152" y="642" text-anchor="middle" font-size="11" font-weight="bold" fill="#F57F17">选中的 fixmap 地址 addr</text>
+  <text x="152" y="662" text-anchor="middle" font-size="10" fill="#455A64">addr = FIXADDR_TOT_START + slot_offset</text>
+  <text x="152" y="680" text-anchor="middle" font-size="10" fill="#455A64">early_fixmap_init() 从这个区域挂页表骨架</text>
+
+  <text x="152" y="744" text-anchor="middle" font-size="10" fill="#607D8B">低地址</text>
+  <text x="152" y="762" text-anchor="middle" font-size="10" fill="#607D8B">FIXADDR_TOT_START</text>
+</g>
+
+<g transform="translate(372,112)" filter="url(#sh)">
+  <rect width="1410" height="156" rx="8" fill="#fff" stroke="#7B1FA2" stroke-width="2"/>
+  <rect width="1410" height="30" rx="8" fill="url(#hdrBits)"/>
+  <rect x="0" y="22" width="1410" height="8" fill="url(#hdrBits)"/>
+  <text x="705" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">同一个虚拟地址 addr 的位段拆分</text>
+  <text x="16" y="50" font-size="10" font-weight="bold" fill="#7B1FA2">每一级只负责从当前页表页里挑出“那个地址对应的一个 entry”</text>
+  <line x1="10" y1="58" x2="1400" y2="58" stroke="#F3E5F5" stroke-width="0.8"/>
+
+  <g transform="translate(18,84)">
+    <rect width="212" height="36" rx="5" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1.2"/>
+    <text x="106" y="23" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565C0">PGD index</text>
+  </g>
+  <g transform="translate(234,84)">
+    <rect width="162" height="36" rx="5" fill="#E8F5E9" stroke="#81C784" stroke-width="1.2"/>
+    <text x="81" y="23" text-anchor="middle" font-size="11" font-weight="bold" fill="#2E7D32">P4D index</text>
+  </g>
+  <g transform="translate(400,84)">
+    <rect width="162" height="36" rx="5" fill="#FFF3E0" stroke="#FFB74D" stroke-width="1.2"/>
+    <text x="81" y="23" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">PUD index</text>
+  </g>
+  <g transform="translate(566,84)">
+    <rect width="162" height="36" rx="5" fill="#FCE4EC" stroke="#F48FB1" stroke-width="1.2"/>
+    <text x="81" y="23" text-anchor="middle" font-size="11" font-weight="bold" fill="#AD1457">PMD index</text>
+  </g>
+  <g transform="translate(732,84)">
+    <rect width="162" height="36" rx="5" fill="#E0F2F1" stroke="#80CBC4" stroke-width="1.2"/>
+    <text x="81" y="23" text-anchor="middle" font-size="11" font-weight="bold" fill="#00695C">PTE index</text>
+  </g>
+  <g transform="translate(898,84)">
+    <rect width="204" height="36" rx="5" fill="#ECEFF1" stroke="#B0BEC5" stroke-width="1.2"/>
+    <text x="102" y="23" text-anchor="middle" font-size="11" font-weight="bold" fill="#455A64">page offset</text>
+  </g>
+
+  <text x="18" y="144" font-size="10" fill="#607D8B">当前 arm64 代码路径：pgd_offset_k(addr) -&gt; p4d_offset_kimg(pgdp, addr) -&gt; pud_offset_kimg(p4dp, addr) -&gt; pmd_offset_kimg(pudp, addr) -&gt; pte_index(addr)。</text>
+  <text x="18" y="160" font-size="10" fill="#607D8B">如果 P4D 运行时折叠，它不额外分配独立表页，但讲解上仍按 PGD -&gt; P4D -&gt; PUD -&gt; PMD -&gt; PTE 理解最清楚。</text>
+</g>
+
+<g transform="translate(372,296)" filter="url(#sh)">
+  <rect width="1410" height="640" rx="8" fill="#fff" stroke="#009688" stroke-width="2"/>
+  <rect width="1410" height="30" rx="8" fill="url(#hdrWalk)"/>
+  <rect x="0" y="22" width="1410" height="8" fill="url(#hdrWalk)"/>
+  <text x="705" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">early_fixmap_init() 的实质：把 fixmap 这段虚拟地址挂到一棵可用的页表子树上</text>
+  <text x="16" y="50" font-size="10" font-weight="bold" fill="#00796B">不是马上完成 VA -&gt; PA 映射，而是先把上级页表页准备好，确保以后能快速定位到 leaf PTE</text>
+  <line x1="10" y1="58" x2="1400" y2="58" stroke="#E0F2F1" stroke-width="0.8"/>
+
+  <g transform="translate(24,118)">
+    <rect width="186" height="124" rx="7" fill="#F5FBFF" stroke="#64B5F6" stroke-width="1.5"/>
+    <text x="93" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#1565C0">PGD</text>
+    <line x1="10" y1="30" x2="176" y2="30" stroke="#E3F2FD" stroke-width="0.8"/>
+    <text x="14" y="52" font-size="10" font-family="monospace">(1) pgdp = pgd_offset_k(addr)</text>
+    <text x="14" y="74" font-size="10" font-family="monospace">选中顶层 entry[g]</text>
+    <text x="14" y="96" font-size="10" font-family="monospace">这是 kernel 现有顶层页表</text>
+  </g>
+
+  <g transform="translate(252,118)">
+    <rect width="200" height="124" rx="7" fill="#F4FBF8" stroke="#81C784" stroke-width="1.5"/>
+    <text x="100" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#2E7D32">P4D 视图</text>
+    <line x1="10" y1="30" x2="190" y2="30" stroke="#E8F5E9" stroke-width="0.8"/>
+    <text x="14" y="52" font-size="10" font-family="monospace">(2) p4dp = p4d_offset_kimg(pgdp, addr)</text>
+    <text x="14" y="74" font-size="10" font-family="monospace">选中 entry[p4]</text>
+    <text x="14" y="96" font-size="10" font-family="monospace">折叠时它只是 PGD 页里的视图</text>
+  </g>
+
+  <g transform="translate(506,102)">
+    <rect width="232" height="162" rx="7" fill="#FFF7EF" stroke="#FFB74D" stroke-width="1.6"/>
+    <text x="116" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#E65100">bm_pud</text>
+    <line x1="10" y1="30" x2="222" y2="30" stroke="#FFF3E0" stroke-width="0.8"/>
+    <text x="14" y="52" font-size="10" font-family="monospace">static pud_t bm_pud[PTRS_PER_PUD]</text>
+    <text x="14" y="74" font-size="10" font-family="monospace">(3) if (p4d_none(*p4dp))</text>
+    <text x="14" y="92" font-size="10" font-family="monospace">    __p4d_populate(p4dp, __pa_symbol(bm_pud), ...)</text>
+    <text x="14" y="114" font-size="10" font-family="monospace">之后 pudp = pud_offset_kimg(p4dp, addr)</text>
+    <text x="14" y="136" font-size="10" font-family="monospace">接着选中 PUD entry[u]</text>
+  </g>
+
+  <g transform="translate(790,96)">
+    <rect width="248" height="180" rx="7" fill="#FFF7EF" stroke="#FFB74D" stroke-width="1.6"/>
+    <text x="124" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#E65100">bm_pmd</text>
+    <line x1="10" y1="30" x2="238" y2="30" stroke="#FFF3E0" stroke-width="0.8"/>
+    <text x="14" y="52" font-size="10" font-family="monospace">static pmd_t bm_pmd[PTRS_PER_PMD]</text>
+    <text x="14" y="74" font-size="10" font-family="monospace">(4) if (pud_none(*pudp))</text>
+    <text x="14" y="92" font-size="10" font-family="monospace">    __pud_populate(pudp, __pa_symbol(bm_pmd), ...)</text>
+    <text x="14" y="114" font-size="10" font-family="monospace">pmdp = pmd_offset_kimg(pudp, addr)</text>
+    <text x="14" y="136" font-size="10" font-family="monospace">do { next = pmd_addr_end(addr, end);</text>
+    <text x="14" y="154" font-size="10" font-family="monospace">     early_fixmap_init_pte(pmdp, addr); }</text>
+  </g>
+
+  <g transform="translate(1090,82)">
+    <rect width="294" height="228" rx="7" fill="#FFF7EF" stroke="#FFB74D" stroke-width="1.6"/>
+    <text x="147" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#E65100">bm_pte[i]</text>
+    <line x1="10" y1="30" x2="284" y2="30" stroke="#FFF3E0" stroke-width="0.8"/>
+    <text x="14" y="52" font-size="10" font-family="monospace">static pte_t bm_pte[NR_BM_PTE_TABLES][PTRS_PER_PTE]</text>
+    <text x="14" y="74" font-size="10" font-family="monospace">(5) ptep = bm_pte[BM_PTE_TABLE_IDX(addr)]</text>
+    <text x="14" y="92" font-size="10" font-family="monospace">    if (pmd_none(*pmdp))</text>
+    <text x="14" y="110" font-size="10" font-family="monospace">      __pmd_populate(pmdp, __pa_symbol(ptep), ...)</text>
+    <text x="14" y="132" font-size="10" font-family="monospace">每个 i 覆盖一个 PMD 范围内的所有 PTE</text>
+    <text x="14" y="154" font-size="10" font-family="monospace">最终 leaf PTE 用 pte_index(addr) 选中</text>
+
+    <g transform="translate(20,178)">
+      <rect width="88" height="26" rx="4" fill="#FFF3E0" stroke="#FB8C00" stroke-width="1"/>
+      <text x="44" y="17" text-anchor="middle" font-size="10" font-family="monospace">pte[0]</text>
+    </g>
+    <g transform="translate(116,178)">
+      <rect width="52" height="26" rx="4" fill="#FFF3E0" stroke="#FB8C00" stroke-width="1"/>
+      <text x="26" y="17" text-anchor="middle" font-size="10" font-family="monospace">...</text>
+    </g>
+    <g transform="translate(176,178)">
+      <rect width="88" height="26" rx="4" fill="#FFF3E0" stroke="#FB8C00" stroke-width="1"/>
+      <text x="44" y="17" text-anchor="middle" font-size="10" font-family="monospace">pte[j]</text>
+    </g>
+  </g>
+
+  <path d="M210,180 L252,180" fill="none" stroke="#1565C0" stroke-width="2.5" marker-end="url(#aB)"/>
+  <rect x="194" y="146" width="74" height="24" rx="4" fill="white" fill-opacity="0.96"/>
+  <text x="231" y="162" text-anchor="middle" font-size="10" fill="#1565C0">entry[g]</text>
+
+  <path d="M452,180 L506,180" fill="none" stroke="#1565C0" stroke-width="2.5" marker-end="url(#aB)"/>
+  <rect x="450" y="146" width="58" height="24" rx="4" fill="white" fill-opacity="0.96"/>
+  <text x="479" y="162" text-anchor="middle" font-size="10" fill="#1565C0">entry[p4]</text>
+
+  <path d="M738,180 L790,180" fill="none" stroke="#1565C0" stroke-width="2.5" marker-end="url(#aB)"/>
+  <rect x="734" y="146" width="60" height="24" rx="4" fill="white" fill-opacity="0.96"/>
+  <text x="764" y="162" text-anchor="middle" font-size="10" fill="#1565C0">entry[u]</text>
+
+  <path d="M1038,180 L1090,180" fill="none" stroke="#1565C0" stroke-width="2.5" marker-end="url(#aB)"/>
+  <rect x="1034" y="146" width="62" height="24" rx="4" fill="white" fill-opacity="0.96"/>
+  <text x="1065" y="162" text-anchor="middle" font-size="10" fill="#1565C0">entry[m]</text>
+
+  <path d="M1236,310 L1236,350" fill="none" stroke="#EF6C00" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aO)"/>
+  <rect x="1160" y="318" width="152" height="24" rx="4" fill="white" fill-opacity="0.96"/>
+  <text x="1236" y="334" text-anchor="middle" font-size="10" fill="#EF6C00">BM_PTE_TABLE_IDX(addr)</text>
+
+  <path d="M1236,388 L1320,388" fill="none" stroke="#EF6C00" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aO)"/>
+  <rect x="1232" y="400" width="100" height="24" rx="4" fill="white" fill-opacity="0.96"/>
+  <text x="1282" y="416" text-anchor="middle" font-size="10" fill="#EF6C00">pte_index(addr)</text>
+
+  <g transform="translate(54,404)">
+    <rect width="1288" height="188" rx="8" fill="#FAFFFC" stroke="#A5D6A7" stroke-width="1.4" stroke-dasharray="6,4"/>
+    <text x="16" y="24" font-size="11" font-weight="bold" fill="#2E7D32">图中真正发生的事情</text>
+    <text x="16" y="52" font-size="11" fill="#455A64">1. 从选中的 fixmap 虚拟地址 addr 出发，逐级找到 PGD/P4D/PUD/PMD 中对应的 entry。</text>
+    <text x="16" y="78" font-size="11" fill="#455A64">2. 如果该级 entry 还没有下级页表页，就把 bm_pud、bm_pmd、bm_pte[i] 的物理地址写进去。</text>
+    <text x="16" y="104" font-size="11" fill="#455A64">3. 到这里仅仅建立了“leaf PTE 在哪里”；leaf PTE 里还没有填具体的目标物理页。</text>
+    <text x="16" y="130" font-size="11" fill="#455A64">4. 所以 early_fixmap_init() 是页表骨架初始化，不是最终映射建立函数。</text>
+    <text x="16" y="156" font-size="11" fill="#455A64">5. 这正是你给的参考文里那句“只是建立了映射框架，具体 PTE 由使用者后续填充”的当前版本对应实现。</text>
+  </g>
+</g>
+
+<g transform="translate(372,968)" filter="url(#sh)">
+  <rect width="1040" height="218" rx="8" fill="#fff" stroke="#AD1457" stroke-width="2"/>
+  <rect width="1040" height="30" rx="8" fill="url(#hdrLeaf)"/>
+  <rect x="0" y="22" width="1040" height="8" fill="url(#hdrLeaf)"/>
+  <text x="520" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">后续真正完成映射的阶段</text>
+  <text x="16" y="50" font-size="10" font-weight="bold" fill="#C2185B">例如 __set_fixmap() / fixmap_remap_fdt() 这类使用者，会把目标物理页写到选中的 leaf PTE 里</text>
+  <line x1="10" y1="58" x2="1030" y2="58" stroke="#FCE4EC" stroke-width="0.8"/>
+
+  <g transform="translate(24,92)">
+    <rect width="288" height="88" rx="7" fill="#FFF3E0" stroke="#FB8C00" stroke-width="1.4"/>
+    <text x="144" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#E65100">fixmap_pte(addr)</text>
+    <text x="14" y="52" font-size="10" font-family="monospace">&amp;bm_pte[BM_PTE_TABLE_IDX(addr)]</text>
+    <text x="14" y="70" font-size="10" font-family="monospace">[pte_index(addr)]</text>
+  </g>
+
+  <g transform="translate(364,92)">
+    <rect width="350" height="88" rx="7" fill="#FCE4EC" stroke="#F48FB1" stroke-width="1.4"/>
+    <text x="175" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#AD1457">__set_fixmap(idx, phys, flags)</text>
+    <text x="14" y="52" font-size="10" font-family="monospace">addr = __fix_to_virt(idx)</text>
+    <text x="14" y="70" font-size="10" font-family="monospace">__set_pte(ptep, pfn_pte(phys &gt;&gt; PAGE_SHIFT, flags))</text>
+  </g>
+
+  <g transform="translate(766,92)">
+    <rect width="246" height="88" rx="7" fill="#E8F5E9" stroke="#81C784" stroke-width="1.4"/>
+    <text x="123" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#2E7D32">leaf PTE[j]</text>
+    <text x="14" y="52" font-size="10" font-family="monospace">PTE_VALID | attr | target phys</text>
+    <text x="14" y="70" font-size="10" font-family="monospace">VA -&gt; PA 映射此时才成立</text>
+  </g>
+
+  <path d="M312,136 L364,136" fill="none" stroke="#EF6C00" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aO)"/>
+  <path d="M714,136 L766,136" fill="none" stroke="#C62828" stroke-width="2.4" marker-end="url(#aR)"/>
+
+  <text x="24" y="204" font-size="11" fill="#455A64">这一步的典型例子就是 fixmap_remap_fdt()：先确定 FIX_FDT 的虚拟地址，再把 dt_phys 对应的物理页填进 leaf PTE。</text>
+</g>
+
+<g transform="translate(1440,968)" filter="url(#sh)">
+  <rect width="342" height="238" rx="8" fill="#fff" stroke="#6A1B9A" stroke-width="2"/>
+  <rect width="342" height="30" rx="8" fill="url(#hdrBits)"/>
+  <rect x="0" y="22" width="342" height="8" fill="url(#hdrBits)"/>
+  <text x="171" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">__pa_symbol(bm_*) 的作用</text>
+  <text x="16" y="50" font-size="10" font-weight="bold" fill="#7B1FA2">bm_pud / bm_pmd / bm_pte 都是内核镜像里的静态 .bss 符号</text>
+  <line x1="10" y1="58" x2="332" y2="58" stroke="#F3E5F5" stroke-width="0.8"/>
+  <text x="16" y="84" font-size="10" font-family="monospace">__pa_symbol(sym) = (virt of sym) - kimage_voffset</text>
+  <text x="16" y="104" font-size="10" font-family="monospace">所以 early_fixmap_init() 能在很早阶段直接拿到 bm_* 的物理地址</text>
+  <text x="16" y="124" font-size="10" font-family="monospace">再写入上一级页表 entry，完成页表骨架挂接</text>
+  <text x="16" y="154" font-size="10" fill="#607D8B">这正好对应 fixmap.c 注释里“too early to use lm_alias / virt_to_phys”的那层含义。</text>
+  <text x="16" y="186" font-size="10" fill="#607D8B">也就是说：bm_* 是页表页本身，不是被映射的业务数据页。</text>
+</g>
+
+<path d="M332,566 L372,566" fill="none" stroke="#EF6C00" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aO)"/>
+<rect x="334" y="532" width="142" height="24" rx="4" fill="white" fill-opacity="0.96"/>
+<text x="405" y="548" text-anchor="middle" font-size="10" fill="#EF6C00">选中的 fixmap addr</text>
+
+<path d="M152,692 L152,830" fill="none" stroke="#EF6C00" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aO)"/>
+<rect x="34" y="736" width="236" height="24" rx="4" fill="white" fill-opacity="0.96"/>
+<text x="152" y="752" text-anchor="middle" font-size="10" fill="#EF6C00">以后就靠这个地址定位到 leaf PTE</text>
+
+<path d="M732,336 L732,296" fill="none" stroke="#2E7D32" stroke-width="2.4" marker-start="url(#dG)" marker-end="url(#aG)"/>
+<rect x="652" y="314" width="160" height="24" rx="4" fill="white" fill-opacity="0.96"/>
+<text x="732" y="330" text-anchor="middle" font-size="10" fill="#2E7D32">这些页表页都来自静态 .bss</text>
+
+<text x="372" y="1240" font-size="12" font-weight="bold" fill="#37474F">一句话总结</text>
+<text x="372" y="1262" font-size="11" fill="#607D8B">early_fixmap_init() 的工作是：从 fixmap 虚拟地址反推页表索引，逐级把 bm_pud、bm_pmd、bm_pte[i] 挂到 PGD/P4D/PUD/PMD 下面，让 fixmap 这段地址以后能迅速定位到某个 leaf PTE；真正映射哪个物理页，要等后续写 leaf PTE 时才确定。</text>
+</svg>

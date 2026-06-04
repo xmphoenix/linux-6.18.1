@@ -647,7 +647,451 @@ try_to_wake_up(p)
 
 > Linux 6.18 中有 6 个调度类（含 sched_ext），通过链接器 section 排列形成优先级链。每个类实现 `struct sched_class` 虚函数表。
 >
-> 见 `images/sched_class_chain.svg` — 调度类优先级链与 Per-CPU rq 架构图
+> 调度类优先级链与 Per-CPU rq 架构图
+
+![调度类优先级链与 Per-CPU rq 架构图](images/sched_class_chain.svg)
+
+### 五大调度类的实现意义与应用场景总览
+
+#### 优先级链的设计本质
+
+内核在 `sched_init()` 中用 `BUG_ON()` 硬性校验优先级链（`kernel/sched/core.c:8649`）：
+
+```c
+/* sched_init() — 启动时校验链接器排列正确 */
+BUG_ON(!sched_class_above(&stop_sched_class, &dl_sched_class));
+BUG_ON(!sched_class_above(&dl_sched_class,   &rt_sched_class));
+BUG_ON(!sched_class_above(&rt_sched_class,   &fair_sched_class));
+BUG_ON(!sched_class_above(&fair_sched_class,  &idle_sched_class));
+```
+
+这个优先级链不是随意设计的，而是反映了**不同类别任务对确定性的需求层级**：
+
+```
+优先级          调度类          核心需求              典型延迟要求
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+最高 ──→  stop         绝对独占，不可打断         0（立即执行）
+  │       deadline     硬实时，截止时间保证        µs ~ ms 级
+  │       rt           软实时，固定优先级          ms 级
+  │       fair(EEVDF)  公平共享，交互响应          ms ~ 数十ms
+最低 ──→  idle         无任务时的占位符            无要求
+```
+
+**为什么是这个顺序？**
+
+| 排序理由 | 解释 |
+|----------|------|
+| stop 必须最高 | 它服务于内核自身的基础设施（CPU 热插拔、代码热修补），如果被抢占会导致系统不一致 |
+| deadline 高于 rt | DL 有准入控制（admission control），**数学可证明不会过载**；RT 没有准入控制，可能无限抢占 |
+| rt 高于 fair | 实时任务的确定性需求高于普通任务的公平性需求 |
+| fair 高于 idle | 只要有任何一个普通任务就绪，idle 就不应该运行 |
+
+#### 每个调度类的实现意义和场景深入分析
+
+**（一）stop 调度类 — 内核的"原子操作执行器"**
+
+**核心实现意义**：stop 类是内核用来执行**需要独占 CPU 的不可打断操作**的机制。每个 CPU 上有且仅有一个 stop 任务（即 `migration/N` 内核线程），它通过 `stop_machine()` 和 `cpu_stopper` 框架被激活。
+
+**为什么需要它？** 某些内核操作必须在目标 CPU 上执行，并且执行期间**不能有任何其他任务被调度**。比如把一个正在运行的任务从 CPU 上迁走——你不能从远程 CPU 直接操作正在运行的任务的栈和寄存器。
+
+**关键设计约束**（全部通过 `BUG()` 强制）：
+
+```c
+yield_task_stop()    → BUG()  // 不允许让出 CPU — 必须执行完
+switched_to_stop()   → BUG()  // 不允许运行时切换到 stop 类
+prio_changed_stop()  → BUG()  // 没有优先级概念
+select_task_rq_stop() → return task_cpu(p)  // 永不迁移
+```
+
+**实际场景清单**（基于 `core.c` 中对 `stop_one_cpu()` 的调用）：
+
+| 场景 | 调用路径 | 为什么必须用 stop？ |
+|------|----------|---------------------|
+| **active balance 任务迁移** | `migration_cpu_stop()` | 需要停住源 CPU 才能安全 dequeue 正在运行的任务 |
+| **set_cpus_allowed 亲和性修改** | `__set_cpus_allowed_ptr()` → `stop_one_cpu()` | 目标任务可能正在运行，需要在其 CPU 上原子修改 |
+| **CPU 热插拔下线** | `__balance_push_cpu_stop()` | 必须把该 CPU 上所有可运行任务清空 |
+| **ftrace 动态代码修补** | `stop_machine()` | 修改正在执行的代码需要所有 CPU 暂停 |
+| **内核模块卸载** | `stop_machine()` | 确保模块代码不在任何 CPU 的执行路径上 |
+| **CPU 微码更新** | `stop_machine()` | 更新 CPU 固件需要原子化 |
+
+> **面试要点**：`migration/N` 线程不是用来做负载均衡的（负载均衡在 softirq 中完成），而是用来执行"需要在目标 CPU 上原子完成"的操作。
+
+---
+
+**（二）deadline 调度类 — 唯一有准入控制的实时调度类**
+
+**核心实现意义**：DL 类基于 EDF（最早截止时间优先）+ CBS（恒定带宽服务器）算法，是 Linux 中**唯一能提供数学可证明的调度保证**的调度类。与 RT 类的关键区别：**DL 有准入控制（admission control），RT 没有。**
+
+**准入控制的实现**（`kernel/sched/deadline.c:213`）：
+
+```c
+static inline bool
+__dl_overflow(struct dl_bw *dl_b, unsigned long cap, u64 old_bw, u64 new_bw)
+{
+    return dl_b->bw != -1 &&
+           cap_scale(dl_b->bw, cap) < dl_b->total_bw - old_bw + new_bw;
+}
+/* 如果 ΣU = Σ(runtime/period) > CPU 总容量 → 返回 -EBUSY 拒绝 */
+```
+
+**为什么准入控制这么重要？**
+- RT 类：你可以创建 100 个优先级为 99 的 SCHED_FIFO 任务，它们会互相饿死，系统也会挂
+- DL 类：如果新任务的带宽需求加上已有任务超出 CPU 容量，`sched_setattr()` 直接返回 `-EBUSY`
+- 因此 DL 在理论上**保证所有已接受的任务都能在 deadline 前完成**
+
+**三参数模型**（用户通过 `sched_setattr()` 设置）：
+
+```
+┌───────────────────── period (周期) ─────────────────────┐
+│                                                          │
+│  ┌── runtime ──┐              ┌── runtime ──┐           │
+│  │  执行预算    │              │  下个周期    │           │
+│  └─────────────┘              └─────────────┘           │
+│  ↑                            ↑                          │
+│  release                      deadline                   │
+│                               (必须在此前完成)            │
+└──────────────────────────────────────────────────────────┘
+
+利用率 U = runtime / period (例如 5ms / 20ms = 25%)
+```
+
+**CBS 带宽补充机制**（防止任务占用超额带宽）：
+
+```c
+/* dl_task_timer() — hrtimer 回调 */
+/* 当 runtime 耗尽时，任务被 throttle（暂停） */
+/* 定时器到期后：补充 runtime、推迟 deadline 到下个周期、重新入队 */
+dl_se->runtime = dl_se->dl_runtime;
+dl_se->deadline += dl_se->dl_period;
+```
+
+**dl_server：6.x 的重大创新 — DL 为 CFS 提供带宽保证**
+
+Linux 6.x 引入了 `dl_server` 机制（`kernel/sched/fair.c:8965`），让 DL 类作为 CFS 任务的"带宽服务器"：
+
+```c
+/* fair.c:8965 — 初始化 fair_server */
+void fair_server_init(struct rq *rq)
+{
+    struct sched_dl_entity *dl_se = &rq->fair_server;
+    init_dl_entity(dl_se);
+    dl_server_init(dl_se, rq, fair_server_pick_task);
+}
+```
+
+**为什么需要 dl_server？** 当系统中有大量 RT 任务（优先级高于 CFS）时，CFS 任务可能被完全饿死。`dl_server` 在 DL 层级为 CFS 预留了一块带宽，即使 RT 任务很多，CFS 也能获得最低保障执行时间。
+
+```
+update_curr() 中的关键逻辑：
+    if (dl_server_active(&rq->fair_server))
+        dl_server_update(&rq->fair_server, delta_exec);
+/* CFS 任务的执行时间会记账到 fair_server 的 DL 预算中 */
+```
+
+**实际场景清单**：
+
+| 场景 | 三参数设置示例 | 说明 |
+|------|----------------|------|
+| **工业控制环路** | runtime=1ms, period=10ms, deadline=10ms | 100Hz 控制频率，10% CPU |
+| **视频编码帧处理** | runtime=5ms, period=33ms, deadline=30ms | 30fps，每帧有 30ms 截止 |
+| **5G 基站 TTI 处理** | runtime=0.5ms, period=1ms, deadline=1ms | 1ms TTI，50% CPU |
+| **汽车 ADAS 传感器融合** | runtime=3ms, period=20ms, deadline=15ms | 50Hz 传感器，15% CPU |
+| **音频 DSP 处理** | runtime=2ms, period=5ms, deadline=5ms | 200Hz，40% CPU |
+| **dl_server 保底** | runtime=5ms, period=100ms | 保证 CFS 任务至少获得 5% CPU |
+
+> **面试要点**：面试官问"RT 和 DL 有什么区别"，最核心的回答是**准入控制**。RT 给你绝对优先级但不管过载；DL 在接受时就确保不过载，所以能提供数学保证。
+
+---
+
+**（三）rt 调度类 — 固定优先级的软实时调度**
+
+**核心实现意义**：RT 类提供 100 个固定优先级等级（0-99），实现 `SCHED_FIFO`（先来先服务，不主动让出就一直运行）和 `SCHED_RR`（轮转，相同优先级之间时间片轮转）。它的算法极其简单——**永远选最高优先级的就绪任务**。
+
+**O(1) 选择的硬件级实现**（`kernel/sched/rt.c:1665`）：
+
+```c
+static struct sched_rt_entity *pick_next_rt_entity(struct rt_rq *rt_rq)
+{
+    idx = sched_find_first_bit(array->bitmap);  /* ARM64: CLZ 指令，1 个时钟周期 */
+    /* 100 位的位图 → 找到最高优先级的非空队列 */
+    return list_entry(array->queue[idx].next, ...);  /* 取队列头 */
+}
+```
+
+**RT 带宽限流 — 防止 RT 任务饿死系统**
+
+RT 类最大的问题是**没有准入控制**——任何人都可以用 `sched_setscheduler()` 把任务设为 SCHED_FIFO:99。如果这个任务是死循环，整个 CPU 就被锁死了。内核通过带宽限流来缓解：
+
+```
+默认配置：
+  sched_rt_period_us  = 1000000 (1 秒)
+  sched_rt_runtime_us = 950000  (0.95 秒)
+
+含义：每 1 秒内，RT 任务最多运行 0.95 秒，剩余 0.05 秒强制让给 CFS
+     → 即使 RT 任务死循环，系统至少有 5% CPU 可用于 shell/ssh 排障
+```
+
+**FIFO vs RR 的实现差异**：
+
+```c
+/* task_tick_rt() — tick 到来时的处理 */
+static void task_tick_rt(struct rq *rq, struct task_struct *p, int queued)
+{
+    if (p->policy != SCHED_RR)
+        return;    /* FIFO：tick 不做任何事，任务永远运行 */
+
+    if (--p->rt.time_slice)
+        return;    /* RR：时间片未耗尽，继续 */
+
+    /* RR 时间片耗尽 → 重填 + 放到同优先级队列尾部 */
+    p->rt.time_slice = sched_rr_timeslice;  /* 默认 100ms */
+    list_move_tail(&p->rt.run_list, ...);   /* 队尾 */
+    resched_curr(rq);                        /* 触发重调度 */
+}
+```
+
+**Push/Pull 多核均衡**：
+
+```
+场景：CPU0 有 prio=99 和 prio=50 两个 RT 任务，CPU1 空闲
+  → push_rt_task(): 将 prio=50 推送到 CPU1
+  → 利用 cpupri 位图 O(1) 找到"当前运行优先级最低"的 CPU
+
+场景：CPU0 的 prio=99 任务结束，CPU1 有 prio=80 任务等待
+  → pull_rt_task(): 从 CPU1 拉取 prio=80 到 CPU0
+```
+
+**实际场景清单**：
+
+| 场景 | 策略/优先级 | 说明 |
+|------|-------------|------|
+| **IRQ 线程化** | SCHED_FIFO:50 | 中断下半部在内核线程中执行（`PREEMPT_RT` 补丁集） |
+| **cyclictest 延迟测试** | SCHED_FIFO:80 | 测量系统最坏调度延迟 |
+| **音频服务 (PulseAudio/PipeWire)** | SCHED_FIFO:50-60 | 防止音频卡顿（buffer underrun） |
+| **数据库 WAL 写入线程** | SCHED_FIFO:40 | 保证事务日志及时刷盘 |
+| **实时视频采集** | SCHED_RR:70 | 多个摄像头线程轮转共享 CPU |
+| **看门狗 (watchdog/N)** | SCHED_FIFO:99 | 内核软锁检测，最高 RT 优先级 |
+| **RCU callback 处理** | SCHED_FIFO:1 | 低优先级但必须及时处理 |
+
+> **面试要点**：RT 类的带宽限流是**安全网而非设计目标**。正确使用 RT 应该设计好优先级层次，而不是依赖 5% 的保底。如果需要严格保证，应该用 SCHED_DEADLINE。
+
+---
+
+**（四）fair 调度类 — EEVDF 公平调度，Linux 的"默认人格"**
+
+**核心实现意义**：fair 类处理系统中 99% 的任务。从 Linux 6.6 开始，算法从经典 CFS（vruntime 最小者优先）演进为 EEVDF（最早合格虚拟截止时间优先），在公平性之上增加了**延迟保证**。
+
+**EEVDF 相比 CFS 解决了什么问题？**
+
+经典 CFS 的缺陷：
+- 只看 vruntime 最小的任务 → 新唤醒的交互式任务可能等很久
+- 没有"截止时间"概念 → 无法区分"紧急"和"不紧急"的公平需求
+- sleeper bonus 等启发式补偿容易被游戏/exploit
+
+EEVDF 的解决方案：
+- 每个任务有一个虚拟截止时间（`se->deadline = se->vruntime + slice/weight`）
+- 只调度**合格**（eligible）的任务：`entity_eligible()` 检查 `lag ≥ 0`
+- 合格任务中选**虚拟截止时间最早**的 → 兼顾公平性和延迟
+
+```c
+/* entity_eligible() 的数学含义 (fair.c:738) */
+/* lag_i = S - s_i = w_i * (V - v_i)
+ *   V = 加权平均 vruntime（队列整体进度）
+ *   v_i = 任务 i 的 vruntime（个体进度）
+ *   lag ≥ 0 → 任务落后于整体 → 有权获得 CPU → 合格 (eligible)
+ *   lag < 0 → 任务超前于整体 → 无权获得 CPU → 不合格
+ */
+int entity_eligible(struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+    return vruntime_eligible(cfs_rq, se->vruntime);
+}
+
+/* update_deadline() 的核心公式 (fair.c:1041) */
+/* EEVDF: vd_i = ve_i + r_i / w_i
+ *   ve_i = 当前 vruntime
+ *   r_i  = slice (默认 0.7ms × (1+ilog(ncpus)))
+ *   w_i  = weight (由 nice 值决定)
+ */
+se->deadline = se->vruntime + calc_delta_fair(se->slice, se);
+```
+
+**增广红黑树搜索 — O(log n) 找到最佳任务**：
+
+```
+__pick_eevdf() 在红黑树中搜索：
+  1. 先看最左节点（vruntime 最小），如果 eligible → 直接选它 (O(1) 命中)
+  2. 否则利用增广信息（每个节点的 min_vruntime）剪枝搜索
+  3. 找到 "eligible 且 deadline 最早" 的实体
+
+增广信息的剪枝效果：
+  如果某子树的 min_vruntime > V → 整个子树没有 eligible 实体 → 跳过
+  实测大部分情况下 1-3 步即完成，远好于 O(log n) 最坏情况
+```
+
+**三种用户态调度策略在 fair 类中的差异**：
+
+| 策略 | nice 范围 | 特殊行为 | 场景 |
+|------|-----------|----------|------|
+| `SCHED_NORMAL` | -20 ~ +19 | 标准 EEVDF，tick 抢占检查 | 99% 的普通进程 |
+| `SCHED_BATCH` | -20 ~ +19 | 禁止唤醒抢占（`wakeup_preempt` 不设置 `TIF_NEED_RESCHED`） | 编译、数据处理、批量任务 |
+| `SCHED_IDLE` (策略) | — | weight 极低（3，对比 nice 0 的 1024） | 后台索引、备份、低优先级守护进程 |
+
+> 注意：`SCHED_IDLE` **策略**在 fair 类中执行（用极低权重），和 **idle 调度类**完全不同。
+
+**能量感知调度（EAS）— 大小核异构系统的功耗优化**：
+
+```c
+/* find_energy_efficient_cpu() — 在 big.LITTLE / P-core+E-core 系统中 */
+/* 选择 "完成任务所需能量最低" 的 CPU:
+ *   - 小核功耗低但计算慢
+ *   - 大核功耗高但计算快
+ *   - EAS 综合考虑 capacity、utilization 和 energy model
+ *   - 只在异构系统 (rd->pd != NULL) 且未过载时启用
+ */
+```
+
+**NUMA 均衡集成**：
+
+```
+CFS 内建 NUMA 感知任务放置（仅限 CONFIG_NUMA_BALANCING=y）:
+  1. 周期性扫描任务的内存页，标记为 PROT_NONE
+  2. 当任务访问被标记的页 → 触发 page fault → 记录 NUMA 节点亲和性
+  3. 如果任务大部分内存在远端节点 → 尝试迁移任务到该节点
+  4. 扫描频率自适应：共享页多 → 降低频率；私有页多 → 增加频率
+```
+
+**实际场景清单**：
+
+| 场景 | 策略 | 关键特性 | 说明 |
+|------|------|----------|------|
+| **Web 服务器请求处理** | SCHED_NORMAL | EEVDF 低延迟 | 每个请求快速获得 CPU |
+| **桌面应用交互** | SCHED_NORMAL, nice 0 | 唤醒抢占 + slice 保护 | 鼠标/键盘事件立即响应 |
+| **内核编译 make -j** | SCHED_NORMAL, nice +10 | 公平分享 | 多个 gcc 进程均匀分配 CPU |
+| **CI/CD 构建任务** | SCHED_BATCH | 禁止唤醒抢占 | 减少上下文切换，提高吞吐 |
+| **后台文件索引** | SCHED_IDLE 策略 | weight=3 | 只在 CPU 完全空闲时才运行 |
+| **容器 CPU 配额** | SCHED_NORMAL + cgroup | CFS bandwidth control | `cpu.max` 限制 100ms 周期内最多用 N ms |
+| **手机前台 App** | SCHED_NORMAL + EAS | 能量感知 CPU 选择 | 在大小核间智能分配，平衡功耗和性能 |
+| **数据库 OLTP** | SCHED_NORMAL, nice -5 | NUMA 均衡 | 自动将线程迁移到数据所在的 NUMA 节点 |
+
+> **面试要点**：EEVDF 的核心优势是**同时满足公平性和延迟保证**。CFS 只保证公平，但一个刚唤醒的任务可能等很久；EEVDF 通过 eligible + deadline 机制，确保"欠了 CPU 时间的任务"能在有限时间内被调度。
+
+---
+
+**（五）idle 调度类 — 系统"无事可做"时的电力管家**
+
+**核心实现意义**：idle 类**不调度任何用户任务**。它只运行每 CPU 的 idle 线程（`swapper/N`），负责在没有就绪任务时让 CPU 进入低功耗状态。它是调度器和 cpuidle 子系统的桥梁。
+
+**do_idle() 主循环**（`kernel/sched/idle.c:257`）：
+
+```c
+static void do_idle(void)
+{
+    __current_set_polling();      /* 标记 idle 在 polling → 设置 need_resched 立即生效 */
+    tick_nohz_idle_enter();       /* 通知 NO_HZ：可能要停 tick 省电 */
+
+    while (!need_resched()) {
+        local_irq_disable();
+
+        if (cpu_is_offline(cpu))
+            arch_cpu_idle_dead();  /* CPU 被热移除 → 永不返回 */
+
+        arch_cpu_idle_enter();
+        rcu_nocb_flush_deferred_wakeup();  /* 清理 RCU 延迟唤醒 */
+
+        if (cpu_idle_force_poll || tick_check_broadcast_expired()) {
+            cpu_idle_poll();       /* 忙等待模式（低延迟场景） */
+        } else {
+            cpuidle_idle_call();   /* 正常路径：进入 C-state 省电 */
+        }
+
+        arch_cpu_idle_exit();
+    }
+
+    tick_nohz_idle_exit();        /* 恢复 tick */
+    __current_clr_polling();      /* 清除 polling 标记 */
+}
+```
+
+**cpuidle C-state 选择**：
+
+```
+idle.c → cpuidle_idle_call() → cpuidle governor 选择 C-state:
+
+C-state    功耗     唤醒延迟     场景
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+C0 (poll)  最高     ~0           低延迟服务器（idle=poll 内核参数）
+C1 (halt)  中等     ~1-10µs      通用服务器
+C2 (stop)  低       ~100µs       笔记本、桌面
+C3+ (deep) 极低     ~1ms+        移动设备、省电优先
+```
+
+**为什么 idle 类几乎所有回调都是空函数？**
+
+```c
+wakeup_preempt_idle()    → 空（任何任务都能抢占 idle）
+task_tick_idle()         → 空（idle 不需要 tick 检查）
+update_curr_idle()       → 空（idle 不累计 vruntime）
+select_task_rq_idle()    → return task_cpu(p)（不迁移）
+```
+
+因为 idle 不参与任何调度决策——它只是"所有真正调度类都说没有任务"时的兜底。
+
+**`SCHED_IDLE` 策略 vs idle 调度类 — 关键区分**：
+
+| 对比项 | `SCHED_IDLE` 策略 | idle 调度类 |
+|--------|-------------------|-------------|
+| **所属调度类** | **fair**（CFS/EEVDF） | **idle** |
+| **运行条件** | CFS 中 weight=3 的任务，只要 eligible 就能运行 | 只有所有调度类都无就绪任务才运行 |
+| **用户可设** | 是（`sched_setscheduler()`） | 否（内核内部使用） |
+| **任务类型** | 用户进程/线程 | `swapper/N` 内核线程 |
+| **能否被普通任务抢占** | 可以（weight 极低，很快就不 eligible） | 任何就绪任务立即抢占 |
+| **典型使用** | `SCHED_IDLE` 策略的后台任务 | 无任务时 CPU 省电 |
+
+**实际场景清单**：
+
+| 场景 | 特性 | 说明 |
+|------|------|------|
+| **服务器节能** | C1/C2 state | 空闲核心自动降频/休眠，降低数据中心电费 |
+| **移动设备待机** | 深度 C-state | 手机屏幕关闭后 CPU 进入深度睡眠 |
+| **低延迟交易系统** | `idle=poll` | 禁止进入 C-state，CPU 忙等待，微秒级唤醒 |
+| **NOHZ_FULL 隔离核** | 停 tick + idle | 被隔离的 CPU 无任务时进入 idle 并停止周期性 tick |
+| **CPU 热插拔** | `arch_cpu_idle_dead()` | CPU 下线后 idle 线程调用此函数永不返回 |
+
+---
+
+#### 五大调度类的协作关系
+
+```
+用户态进程
+    │
+    ├── sched_setattr(SCHED_DEADLINE, ...) ──→ deadline 类 (EDF+CBS)
+    │                                              │
+    │                                              ├── dl_server → 为 fair 类预留带宽
+    │                                              │
+    ├── sched_setscheduler(SCHED_FIFO/RR, prio) ──→ rt 类 (优先级位图)
+    │                                              │
+    │                                              ├── rt_bandwidth → 防饿死 CFS
+    │                                              │
+    ├── fork() / SCHED_NORMAL / SCHED_BATCH ──→ fair 类 (EEVDF)
+    │   └── SCHED_IDLE 策略也在这里 ────────┘      │
+    │                                              ├── EAS → 大小核功耗优化
+    │                                              ├── NUMA → 跨节点数据亲和
+    │                                              ├── cgroup → 容器 CPU 配额
+    │                                              │
+    │   ┌──── 所有类都没有就绪任务 ──────────────→ idle 类 → cpuidle → C-state 省电
+    │   │
+内核 │  └── stop_machine() / 任务迁移 ──────────→ stop 类 → migration/N 线程
+```
+
+**跨类保护机制总结**：
+
+| 保护机制 | 实现方式 | 保护目标 |
+|----------|----------|----------|
+| DL 准入控制 | `__dl_overflow()` 返回 `-EBUSY` | 防止 DL 任务过载导致 deadline miss |
+| RT 带宽限流 | `sched_rt_runtime_us / sched_rt_period_us` | 防止 RT 任务饿死 CFS |
+| dl_server | fair 类获得 DL 级别的带宽保留 | 防止 CFS 被 RT 完全饿死 |
+| CFS bandwidth | `cpu.max` cgroup 控制 | 防止容器/用户组占用过多 CPU |
+| idle 强制保底 | stop > dl > rt > fair > idle 严格优先级 | 保证有任务就不会空转 |
 
 ### 3.1 stop_task.c — stop 调度类（最高优先级）
 
@@ -1231,7 +1675,9 @@ enum scx_exit_kind {
 
 ## 5. 负载追踪与 CPU 时间统计
 
-> 见 `images/sched_pelt_signal_flow.svg` — PELT 三维信号衰减机制与消费者管线
+> PELT 三维信号衰减机制与消费者管线
+
+![PELT 三维信号衰减机制与消费者管线](images/sched_pelt_signal_flow.svg)
 
 ### 5.1 pelt.c — Per-Entity Load Tracking
 
@@ -1632,7 +2078,9 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, ...)
 
 ## 7. 拓扑与负载均衡域
 
-> 见 `images/sched_domain_hierarchy.svg` — 调度域 4 层层级与负载均衡流程图
+> 调度域 4 层层级与负载均衡流程图
+
+![调度域 4 层层级与负载均衡流程图](images/sched_domain_hierarchy.svg)
 
 ### 7.1 topology.c — 调度域层级构建
 
@@ -2092,11 +2540,78 @@ void complete_all(struct completion *x)
 **变体**:
 | 函数 | 特性 |
 |------|------|
-| `wait_for_completion()` | 不可中断，永久等待 |
+| `wait_for_completion()` | 不可中断，无超时等待 |
 | `wait_for_completion_interruptible()` | 可被信号中断 |
 | `wait_for_completion_timeout()` | 超时返回 |
 | `wait_for_completion_killable()` | 只能被 SIGKILL 中断 |
 | `wait_for_completion_io()` | IO 等待（统计为 iowait） |
+
+**`wait_for_completion()` 为什么说是"不可中断，无超时等待"？**
+
+从当前 6.18 源码看，它本质上只是一个薄封装：
+
+```c
+void __sched wait_for_completion(struct completion *x)
+{
+    wait_for_common(x, MAX_SCHEDULE_TIMEOUT, TASK_UNINTERRUPTIBLE);
+}
+```
+
+这里有两个关键信息：
+
+| 参数 | 含义 | 结果 |
+|------|------|------|
+| `TASK_UNINTERRUPTIBLE` | 进入不可中断睡眠态 | 普通信号不会把它提前打醒 |
+| `MAX_SCHEDULE_TIMEOUT` | 传入一个几乎无限大的 timeout | 内核不会因为超时自动返回 |
+
+所以它的准确语义不是"一定永远不返回"，而是：
+
+1. **只接受 completion 事件唤醒**：正常路径必须等到其他上下文调用 `complete()` 或 `complete_all()`。
+2. **不会被普通信号打断**：即使线程收到了信号，也不会像 `interruptible` 版本那样返回 `-ERESTARTSYS`。
+3. **不会自己超时退出**：没有超时保护，调用方也拿不到失败返回值。
+
+**为什么很多资料会把它写成"永久等待"？**
+
+因为如果 `complete()` 这一侧由于 bug、竞态、硬件异常或者错误路径遗漏而**永远不发生**，那等待者就会一直挂在等待队列上，任务状态通常表现为 `D` 状态（不可中断睡眠），外部很难把它拉回来。
+
+可以把它理解成：
+
+```text
+wait_for_completion()
+    = 不可中断 + 无超时 + 必须等别人 complete
+
+如果 complete 永远不来
+    = 调用者就会一直睡下去
+```
+
+**它为什么要设计成不可中断？**
+
+这种接口适合那些"中途撤销会破坏状态机一致性"的场景。例如：
+
+| 场景 | 为什么不适合中断 |
+|------|------------------|
+| 硬件复位流程等待 | 设备已经进入 reset 中间态，半路退出会让驱动和硬件状态不一致 |
+| DMA/固件握手完成 | 请求已经提交给设备，软件不能假装没发生过 |
+| 内核线程启动同步 | 资源发布顺序固定，必须等对端完成初始化 |
+| suspend/resume 某一步骤完成 | 电源管理状态机要求严格的完成顺序 |
+
+在这些场景里，"收到一个信号就提前返回"往往不是帮忙，而是把上层状态机搞坏。
+
+**什么时候不该用 `wait_for_completion()`？**
+
+如果你满足下面任意一条，通常都应该换成别的变体：
+
+| 需求 | 更合适的接口 |
+|------|----------------|
+| 用户可取消（如 `rmmod`、进程退出、信号终止） | `wait_for_completion_interruptible()` / `killable()` |
+| 硬件可能失联，必须有兜底 | `wait_for_completion_timeout()` |
+| 等待的是块 IO 完成，希望记入 iowait | `wait_for_completion_io()` |
+
+**调试角度要特别注意**：
+
+- 如果任务卡在 `wait_for_completion()`，通常说明不是这个 API 自己出错，而是**发出 `complete()` 的那条路径没有走到**。
+- 排查重点应放在：中断是否到达、回调是否注册、错误分支是否漏掉 `complete()`、对象生命周期是否在等待期间被破坏。
+- 这类问题常见现象就是进程长期处于 `D` 状态，`sysrq-w` 或 hung task 报告里能看到阻塞栈停在 completion 等待路径。
 
 **典型使用场景**: 驱动初始化等待、DMA 完成通知、线程同步。
 
@@ -2166,6 +2681,316 @@ static int __wake_up_common(struct wait_queue_head *wq_head,
 | `wake_up_all()` | 唤醒所有（含独占） |
 | `wake_up_interruptible()` | 只唤醒 TASK_INTERRUPTIBLE 状态 |
 | `wake_up_sync()` | 同步唤醒（不触发抢占，减少切换） |
+
+**一个资源有很多任务在等时，内核到底怎么决定唤醒谁、放到哪个 CPU、最后跑谁？**
+
+这个问题要拆成 **3 层决策**，不能把它们混成一个步骤：
+
+1. **等待队列层**：这次事件准备通知哪些等待者
+2. **唤醒路径层**：每个被通知的任务放到哪个 CPU 的 rq 上
+3. **真正调度层**：目标 CPU 上当前和新唤醒任务谁先跑
+
+也就是说，**等待队列只负责“叫人起来”**，但**不负责最终把资源判给谁**。
+
+#### 第一层：等待队列先决定“这次叫醒几个、叫醒队列里的哪些人”
+
+`wait.c` 里的核心逻辑是遍历 `wait_queue_head.head` 链表，逐个调用等待者自己的唤醒回调：
+
+```c
+list_for_each_entry_safe_from(curr, next, &wq_head->head, entry) {
+    unsigned flags = curr->flags;
+    int ret;
+
+    ret = curr->func(curr, mode, wake_flags, key);
+    if (ret < 0)
+        break;
+    if (ret && (flags & WQ_FLAG_EXCLUSIVE) && !--nr_exclusive)
+        break;
+}
+```
+
+这里有 3 个关键点：
+
+| 决策点 | 由谁决定 | 含义 |
+|--------|----------|------|
+| 唤醒几个 | 资源类型/调用者 | 例如 `wake_up()`、`wake_up_all()`、`complete()`、`complete_all()` |
+| 遍历顺序 | 等待队列链表顺序 | 谁先挂进去、是否是优先/独占等待者 |
+| 是否继续唤醒后续等待者 | `nr_exclusive` + 回调返回值 | 常见情况是唤醒所有非独占者，再唤醒 1 个独占者 |
+
+**这一步还没有“资源归属”**。它只是说：发生了一个事件，现在哪些睡眠任务有资格起来重新竞争。
+
+例如一个 socket 有多个 `accept()` 线程在等：
+- 如果它们是独占等待者，典型只唤醒一个，避免惊群
+- 如果是 `wake_up_all()`，那所有等待者都可能被唤醒
+
+#### 第二层：每个被唤醒的任务，再走 `try_to_wake_up()` 决定放到哪个 CPU
+
+等待队列里的默认唤醒回调最后通常会走到 `try_to_wake_up()`。这时调度器才开始介入：
+
+```c
+int try_to_wake_up(struct task_struct *p, unsigned int state, int wake_flags)
+{
+    ...
+    cpu = select_task_rq(p, p->wake_cpu, &wake_flags);
+    ttwu_queue(p, cpu, wake_flags);
+}
+```
+
+`select_task_rq()` 不是统一策略，而是**按调度类分派**：
+
+```c
+if (p->nr_cpus_allowed > 1 && !is_migration_disabled(p))
+    cpu = p->sched_class->select_task_rq(p, cpu, *wake_flags);
+else
+    cpu = cpumask_any(p->cpus_ptr);
+```
+
+所以“放哪个 CPU”其实取决于任务属于哪个调度类：
+
+| 调度类 | CPU 选择原则 |
+|--------|--------------|
+| `fair` | 优先当前 CPU / wake affine / 空闲 sibling / EAS 能效 CPU / 负载均衡 |
+| `rt` | 尽量留在当前 affine CPU；若会压垮该 CPU 或容量不匹配，则 `find_lowest_rq()` 找更合适 CPU |
+| `deadline` | 倾向满足 deadline 和带宽约束的 CPU，必要时 push/pull |
+| `stop` / `idle` | 基本固定，不做普通迁移选择 |
+
+例如 `fair` 的唤醒放置逻辑：
+
+```c
+if ((wake_flags & WF_CURRENT_CPU) && cpumask_test_cpu(cpu, p->cpus_ptr))
+    return cpu;
+
+if (!is_rd_overutilized(this_rq()->rd)) {
+    new_cpu = find_energy_efficient_cpu(p, prev_cpu);
+    if (new_cpu >= 0)
+        return new_cpu;
+}
+
+new_cpu = select_idle_sibling(p, prev_cpu, new_cpu);
+```
+
+这说明：
+- 先看能不能留在当前 CPU，减少 cache miss
+- 再看异构系统上有没有更省电/更合适的 CPU
+- 再看有没有空闲 sibling CPU 能更快运行
+
+而 `rt` 更强调优先级和不压垮 runqueue：
+
+```c
+if (test || !rt_task_fits_capacity(p, cpu)) {
+    int target = find_lowest_rq(p);
+    if (target != -1 && p->prio < cpu_rq(target)->rt.highest_prio.curr)
+        cpu = target;
+}
+```
+
+也就是说，**CPU 选择不是看“哪个等待队列类型”，而是看“这个被唤醒任务是什么调度类、允许跑在哪些 CPU、当前系统拓扑和负载如何”。**
+
+#### 第三层：任务入队以后，目标 CPU 再决定“现在就抢占，还是稍后再跑”
+
+任务被放进目标 `rq` 以后，并不等于它立刻运行。`ttwu_do_activate()` 里真正做的是：
+
+```c
+activate_task(rq, p, en_flags);
+wakeup_preempt(rq, p, wake_flags);
+ttwu_do_wakeup(p);
+```
+
+这里的 `wakeup_preempt()` 再次是**按调度类不同而不同**：
+
+| 调度类 | 抢占判定 |
+|--------|----------|
+| `rt` | 新任务优先级更高就 `resched_curr()` |
+| `deadline` | 新任务 deadline 更早就 `resched_curr()` |
+| `fair` | EEVDF 判断新任务是否已成为最 eligible、deadline 最早的实体 |
+
+例如：
+
+```c
+/* RT */
+if (p->prio < donor->prio)
+    resched_curr(rq);
+
+/* DL */
+if (dl_entity_preempt(&p->dl, &rq->donor->dl))
+    resched_curr(rq);
+
+/* FAIR */
+if (__pick_eevdf(cfs_rq, !do_preempt_short) == pse)
+    goto preempt;
+```
+
+所以最后“先跑谁”取决于：
+- 这个任务所属调度类
+- 目标 CPU 当前正在跑谁
+- 是否满足立即抢占条件
+- 即使不立即抢占，也会在下一次调度点由 `pick_next_task()` 重新比较
+
+#### 最关键的本质：真正拿到资源的，不一定是第一个被唤醒的任务
+
+很多人最容易混淆这一点。
+
+等待队列唤醒的是**等待事件**，不是直接分配**资源所有权**。真正的资源归属通常还要靠上层对象自己的锁/条件再次确认：
+
+```c
+for (;;) {
+    prepare_to_wait(&wq, &wait, TASK_INTERRUPTIBLE);
+    if (resource_available())
+        break;
+    schedule();
+}
+finish_wait(&wq, &wait);
+```
+
+被唤醒以后，任务通常还要重新检查：
+- 条件是否真的满足
+- 锁是否已经被别人抢先拿走
+- 数据是否已经被其他 CPU 上更快的任务消费掉
+
+如果它醒来后发现条件又不成立，就会再次睡回去。
+
+也就是说：
+
+```text
+等待队列决定“谁有资格起来”
+调度器决定“它先去哪颗 CPU”
+调度类决定“它能不能马上抢占”
+资源本身的锁/条件决定“最终是谁真正拿到资源”
+```
+
+#### 一个典型例子：多个线程等同一把锁/同一个 socket 事件
+
+假设 CPU0 上有 8 个线程在等同一个 socket 可读事件：
+
+1. 网卡中断到来，协议栈把数据放进 socket 接收队列
+2. socket 的等待队列执行 `wake_up()`
+3. 如果等待者是独占的，通常只唤醒 1 个，避免 8 个线程全起来抢
+4. 这个被唤醒线程进入 `try_to_wake_up()`
+5. `select_task_rq_fair()` 可能把它放到当前 CPU，也可能放到空闲 sibling CPU
+6. 目标 CPU 上如果当前任务优先级/EEVDF 上不占优，它未必立刻运行
+7. 真正运行后，它再去拿 socket 锁、取数据
+8. 如果数据已被别人先取走，它会重新检查条件并再次睡眠
+
+所以，**等待队列解决的是通知与去惊群，调度器解决的是 CPU 放置与运行先后，资源对象自己解决的是最终归属。**
+
+**系统里到底有多少个等待队列？**
+
+严格说，**没有一个固定总数**，也没有一个"全局等待队列表"可以直接枚举。
+
+原因从实现上就能看出来：
+
+```c
+struct wait_queue_head {
+    spinlock_t      lock;
+    struct list_head head;
+};
+
+#define DECLARE_WAIT_QUEUE_HEAD(name) \
+    struct wait_queue_head name = __WAIT_QUEUE_HEAD_INITIALIZER(name)
+
+#define init_waitqueue_head(wq_head) \
+    __init_waitqueue_head((wq_head), #wq_head, &__key)
+```
+
+`wait_queue_head` 只是一个被各个子系统**嵌入自己对象里的通用容器**：
+- socket 有自己的等待队列
+- pipe / eventfd / epoll 有自己的等待队列
+- 块层、TTY、驱动私有对象也常嵌入等待队列
+- 某些对象是静态定义的，某些是运行时动态分配的
+
+而 `wait.c` 做的事情只是：
+- 往某个 `wait_queue_head` 上挂 `wait_queue_entry`
+- 遍历这个链表执行唤醒
+
+它**并不会把所有等待队列注册到一个中央目录**里，所以内核没有办法直接回答"系统现在一共有多少个等待队列"。
+
+> 从这个内核源码树里粗略搜索 `DECLARE_WAIT_QUEUE_HEAD` / `struct wait_queue_head` / `wait_queue_head_t`，就能找到约 1817 处相关声明或使用点。这只能说明等待队列分布极广，但**不是运行时实例总数**；真正的实例数还会随着 socket、pipe、文件、驱动对象的创建销毁动态变化。
+
+**哪些等待队列是固定数量的？哪些不是？**
+
+| 类型 | 数量特征 | 例子 |
+|------|----------|------|
+| 普通 `wait_queue_head` | 不固定，随对象动态变化 | socket、pipe、eventfd、驱动私有对象 |
+| `wait_bit` 哈希等待队列 | **固定** | `wait_bit.c` 里 256 个 bucket |
+| `completion` 等待队列 | 不固定，但它用的是 `swait_queue_head`，不是这里的 `wait_queue_head` | 驱动完成通知、线程同步 |
+| `swait` 简单等待队列 | 不固定 | completion、RT-safe 场景 |
+
+**怎么查看系统当前的等待队列？**
+
+分两层理解：
+
+1. **任务视角**：哪些任务正在等待
+2. **对象视角**：它们具体挂在哪个 `wait_queue_head` 上
+
+通常排障先看任务视角，因为这是最容易直接看到的。
+
+#### 1. 查看当前哪些任务正在等待
+
+最常用的方法是看任务状态、`wchan` 和内核栈：
+
+```bash
+ps -e -o pid,ppid,stat,wchan:32,comm
+```
+
+重点看：
+- `STAT=D`：不可中断睡眠，往往是在等待 IO、页锁、completion、设备响应等
+- `STAT=S`：可中断睡眠，可能挂在某个 wait queue 上，也可能在其他睡眠点
+- `WCHAN`：当前阻塞的大致函数，例如 `wait_for_completion`、`pipe_read`、`futex_wait_queue_me`
+
+查看某个进程更细的阻塞位置：
+
+```bash
+cat /proc/<pid>/wchan
+cat /proc/<pid>/stack
+```
+
+其中：
+- `/proc/<pid>/wchan` 只给一个当前睡眠函数名
+- `/proc/<pid>/stack` 能看到完整内核调用栈，通常能直接看出是在 `prepare_to_wait_event()`、`schedule()`、`wait_for_completion()`、`io_schedule()` 哪条路径里睡下去的
+
+如果系统里有很多卡住的任务，可以直接抓全局阻塞栈：
+
+```bash
+echo w > /proc/sysrq-trigger
+dmesg -T | tail -200
+```
+
+这会把所有处于不可运行状态的任务栈打印到内核日志，定位 hung task 很常用。
+
+#### 2. 查看某个具体等待队列上挂了谁
+
+这个就没有通用 `/proc` 文件了，因为内核没有维护全局等待队列目录。你必须**先知道具体对象**，再去看它内部的 `wait_queue_head`。
+
+典型方法：
+
+| 方法 | 适用场景 | 说明 |
+|------|----------|------|
+| `crash` / `drgn` | 线上死机、vmcore、live kernel 调试 | 直接遍历指定对象里的 `wait_queue_head.head` 链表 |
+| `gdb + /proc/kcore` | 调试内核映像 | 能看结构体，但没有 `crash/drgn` 顺手 |
+| 自定义内核模块 / BPF / tracepoint | 定向排查某类对象 | 需要自己写代码打印等待者 |
+
+比如你已经知道某个对象里有 `wait_queue_head_t wait;`，在 `crash/drgn` 里就可以：
+
+1. 先找到这个对象地址
+2. 取出 `wait` 字段地址
+3. 遍历 `wait.head` 链表里的 `wait_queue_entry`
+4. 再从 `wait_queue_entry.private` 取到对应的 `task_struct`
+
+也就是说，**等待队列的查看通常是“已知对象 → 看这个对象的 wait queue”，而不是“系统给你一张所有等待队列的列表”。**
+
+#### 3. 排障时最实用的观察顺序
+
+如果你怀疑系统里有大量等待队列/等待者，建议按这个顺序看：
+
+1. `ps -e -o pid,stat,wchan:32,comm` 看有哪些任务在睡
+2. `cat /proc/<pid>/stack` 看它睡在哪条等待路径
+3. 顺着栈回到具体对象，例如 pipe、socket、completion、页锁、bit waitqueue
+4. 如果需要精确知道同一等待队列上还有谁，再用 `crash/drgn` 看那个对象内部的 `wait_queue_head`
+
+**一句话总结**：
+
+- **系统等待队列有多少？** 没有固定值，也没有统一总表；数量取决于运行时创建了多少内核对象。
+- **怎么查看当前等待队列？** 通常先看"当前哪些任务在等待"，再按对象定点查看它的 `wait_queue_head`；内核没有现成接口一次性列出全系统所有等待队列。
 
 ### 10.3 wait_bit.c — 位等待队列
 
@@ -3090,7 +3915,9 @@ struct sched_entity {
 
 ### 15.1 调度子系统整体架构图
 
-> 见 `images/sched_architecture.svg`
+> 调度子系统整体架构图
+
+![调度子系统整体架构图](images/sched_architecture.svg)
 
 调度子系统的分层架构：
 
@@ -3654,7 +4481,9 @@ struct sched_group {
 
 ### 16.7 数据结构关系总图（SVG）
 
-> 见 `images/sched_data_structures.svg`
+> 数据结构关系总图
+
+![数据结构关系总图](images/sched_data_structures.svg)
 
 ---
 
@@ -4430,7 +5259,9 @@ $$vruntime += \frac{delta\_exec \times W_0}{weight_i}$$
 
 ### 19.3 EEVDF 最早合格虚拟截止时间优先算法
 
-> 见 `images/sched_eevdf_algorithm.svg`
+> EEVDF 算法示意图
+
+![EEVDF 算法示意图](images/sched_eevdf_algorithm.svg)
 
 **论文**: Ion Stoica & Hussein Abdel-Wahab, 1995 — "Earliest Eligible Virtual Deadline First"
 

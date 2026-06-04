@@ -1,0 +1,313 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1360" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="hdrGlobal" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#5E35B1"/><stop offset="100%" stop-color="#4527A0"/>
+    </linearGradient>
+    <linearGradient id="hdrCache" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3949AB"/><stop offset="100%" stop-color="#1A237E"/>
+    </linearGradient>
+    <linearGradient id="hdrCPU" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0288D1"/><stop offset="100%" stop-color="#01579B"/>
+    </linearGradient>
+    <linearGradient id="hdrSlab" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#1B5E20"/>
+    </linearGradient>
+    <linearGradient id="hdrNode" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#C62828"/><stop offset="100%" stop-color="#8E0000"/>
+    </linearGradient>
+    <linearGradient id="hdrBuddy" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#EF6C00"/><stop offset="100%" stop-color="#BF360C"/>
+    </linearGradient>
+    <linearGradient id="hdrFlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00695C"/><stop offset="100%" stop-color="#004D40"/>
+    </linearGradient>
+
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#4527A0" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#01579B" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1B5E20" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#8E0000" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#BF360C" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aT" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#004D40" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <text x="840" y="32" text-anchor="middle" font-size="20" font-weight="bold" fill="#212121">Linux SLUB 多核 CPU 对象组织与分配模型总览</text>
+  <text x="840" y="55" text-anchor="middle" font-size="12" fill="#666">关键代码: mm/slab.h, mm/slub.c::slab_alloc_node(), __slab_alloc_node(), ___slab_alloc(), allocate_slab()</text>
+
+  <!-- Legend -->
+  <g transform="translate(30,72)">
+    <rect width="345" height="124" rx="6" fill="#FFFFFF" fill-opacity="0.94" stroke="#BDBDBD"/>
+    <text x="12" y="20" font-size="11" font-weight="bold" fill="#424242">图例</text>
+    <path d="M18,40 L82,40" fill="none" stroke="#01579B" stroke-width="2" marker-end="url(#aB)"/>
+    <text x="95" y="44" font-size="10" fill="#424242">per-cpu 指针 / CPU 本地路径</text>
+    <path d="M18,62 L82,62" fill="none" stroke="#8E0000" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aR)"/>
+    <text x="95" y="66" font-size="10" fill="#424242">共享 node partial 路径, 需要 list_lock</text>
+    <path d="M18,84 L82,84" fill="none" stroke="#BF360C" stroke-width="2" marker-end="url(#aO)"/>
+    <text x="95" y="88" font-size="10" fill="#424242">Buddy 新页路径</text>
+    <path d="M18,106 L82,106" fill="none" stroke="#1B5E20" stroke-width="2" marker-end="url(#aG)"/>
+    <text x="95" y="110" font-size="10" fill="#424242">slab 内对象 freelist</text>
+  </g>
+
+  <!-- Global slab_caches -->
+  <g transform="translate(430,78)" filter="url(#sh)">
+    <rect width="820" height="92" rx="8" fill="#fff" stroke="#4527A0" stroke-width="2"/>
+    <rect width="820" height="30" rx="8" fill="url(#hdrGlobal)"/>
+    <rect x="0" y="22" width="820" height="8" fill="#4527A0"/>
+    <text x="410" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">全局目录: slab_caches</text>
+    <text x="18" y="50" font-size="11" fill="#424242">挂载对象: 每一种 cache 类型的 struct kmem_cache, 不是所有具体 object</text>
+    <text x="18" y="70" font-size="10" fill="#616161">示例: kmalloc-64, kmalloc-128, kmalloc-256, dentry, inode_cache, task_struct, module 自定义 cache ...</text>
+  </g>
+
+  <!-- kmem_cache -->
+  <g transform="translate(430,220)" filter="url(#sh)">
+    <rect width="820" height="210" rx="8" fill="#fff" stroke="#1A237E" stroke-width="2"/>
+    <rect width="820" height="32" rx="8" fill="url(#hdrCache)"/>
+    <rect x="0" y="24" width="820" height="8" fill="#1A237E"/>
+    <text x="410" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">struct kmem_cache: 一种对象类别的总控制器 (例: kmalloc-256)</text>
+
+    <text x="18" y="56" font-size="10" font-family="monospace" fill="#01579B">cpu_slab     __percpu *     → 每个 CPU 一个 kmem_cache_cpu</text>
+    <text x="18" y="76" font-size="10" font-family="monospace" fill="#8E0000">node[]       kmem_cache_node* → 每个 NUMA node 一个共享 partial 池</text>
+    <text x="18" y="96" font-size="10" font-family="monospace" fill="#1B5E20">size         256             → 每个对象步长; freelist 指针在 offset 处</text>
+    <text x="18" y="116" font-size="10" font-family="monospace" fill="#424242">oo           order=0, objects=16 → 4KB slab / 16 个对象</text>
+    <text x="18" y="136" font-size="10" font-family="monospace" fill="#424242">min_partial  保持 node partial 的最低水位</text>
+    <text x="18" y="156" font-size="10" font-family="monospace" fill="#424242">cpu_partial  CPU 本地 partial 的上限, 减少全局锁竞争</text>
+    <text x="18" y="176" font-size="10" font-family="monospace" fill="#424242">allocflags   向 buddy 申请 slab 页时叠加的 GFP flags</text>
+
+    <rect x="560" y="50" width="230" height="126" rx="6" fill="#E8EAF6" stroke="#5C6BC0"/>
+    <text x="675" y="72" text-anchor="middle" font-size="11" font-weight="bold" fill="#1A237E">设计思想</text>
+    <text x="575" y="94" font-size="10" fill="#424242">1. 对象按大小/类型分 cache</text>
+    <text x="575" y="114" font-size="10" fill="#424242">2. CPU 优先本地拿对象</text>
+    <text x="575" y="134" font-size="10" fill="#424242">3. 只有本地耗尽才访问共享池</text>
+    <text x="575" y="154" font-size="10" fill="#424242">4. 共享池也空才找 buddy 要页</text>
+  </g>
+
+  <path d="M840,170 L840,220" fill="none" stroke="#4527A0" stroke-width="2" marker-end="url(#aP)"/>
+  <rect x="764" y="188" width="152" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="840" y="201" text-anchor="middle" font-size="9" fill="#4527A0">s-&gt;list 挂到 slab_caches</text>
+
+  <!-- CPU boxes -->
+  <g transform="translate(30,500)" filter="url(#sh)">
+    <rect width="360" height="245" rx="8" fill="#fff" stroke="#01579B" stroke-width="2"/>
+    <rect width="360" height="30" rx="8" fill="url(#hdrCPU)"/>
+    <rect x="0" y="22" width="360" height="8" fill="#01579B"/>
+    <text x="180" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">CPU0: struct kmem_cache_cpu</text>
+    <text x="16" y="54" font-size="10" font-family="monospace" fill="#1B5E20">freelist = obj3 → obj4 → obj5</text>
+    <text x="16" y="76" font-size="10" font-family="monospace" fill="#424242">tid      = 更新序号, 和 freelist 一起防 ABA</text>
+    <text x="16" y="98" font-size="10" font-family="monospace" fill="#2E7D32">slab     = slab_A (frozen=1, CPU0 独占)</text>
+    <text x="16" y="120" font-size="10" font-family="monospace" fill="#01579B">partial  = slab_B → slab_C</text>
+
+    <rect x="18" y="144" width="324" height="76" rx="6" fill="#E1F5FE" stroke="#4FC3F7"/>
+    <text x="30" y="164" font-size="10" font-weight="bold" fill="#01579B">CPU 本地预留库存</text>
+    <text x="30" y="184" font-size="10" fill="#424242">当前 slab: 直接分配, 快路径无共享锁</text>
+    <text x="30" y="204" font-size="10" fill="#424242">CPU partial: 几张未满 slab 页, 用完当前页后接着用</text>
+  </g>
+
+  <g transform="translate(430,500)" filter="url(#sh)">
+    <rect width="360" height="180" rx="8" fill="#fff" stroke="#01579B" stroke-width="2"/>
+    <rect width="360" height="30" rx="8" fill="url(#hdrCPU)"/>
+    <rect x="0" y="22" width="360" height="8" fill="#01579B"/>
+    <text x="180" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">CPU1: 独立 kmem_cache_cpu</text>
+    <text x="16" y="54" font-size="10" font-family="monospace" fill="#1B5E20">freelist = obj9 → obj10</text>
+    <text x="16" y="76" font-size="10" font-family="monospace" fill="#424242">tid      = CPU1 自己的事务序号</text>
+    <text x="16" y="98" font-size="10" font-family="monospace" fill="#2E7D32">slab     = slab_D (frozen=1)</text>
+    <text x="16" y="120" font-size="10" font-family="monospace" fill="#01579B">partial  = slab_E</text>
+    <text x="16" y="150" font-size="10" fill="#616161">CPU 之间不直接偷对方的 freelist</text>
+  </g>
+
+  <g transform="translate(830,500)" filter="url(#sh)">
+    <rect width="360" height="180" rx="8" fill="#fff" stroke="#01579B" stroke-width="2"/>
+    <rect width="360" height="30" rx="8" fill="url(#hdrCPU)"/>
+    <rect x="0" y="22" width="360" height="8" fill="#01579B"/>
+    <text x="180" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">CPU2: 独立 kmem_cache_cpu</text>
+    <text x="16" y="54" font-size="10" font-family="monospace" fill="#1B5E20">freelist = NULL</text>
+    <text x="16" y="76" font-size="10" font-family="monospace" fill="#424242">tid      = CPU2 自己更新</text>
+    <text x="16" y="98" font-size="10" font-family="monospace" fill="#2E7D32">slab     = NULL 或耗尽</text>
+    <text x="16" y="120" font-size="10" font-family="monospace" fill="#01579B">partial  = slab_F → ...</text>
+    <text x="16" y="150" font-size="10" fill="#616161">本地空了才逐级退到 node/buddy</text>
+  </g>
+
+  <g transform="translate(1230,500)" filter="url(#sh)">
+    <rect width="420" height="180" rx="8" fill="#fff" stroke="#01579B" stroke-width="2"/>
+    <rect width="420" height="30" rx="8" fill="url(#hdrCPU)"/>
+    <rect x="0" y="22" width="420" height="8" fill="#01579B"/>
+    <text x="210" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">CPU3: 独立 kmem_cache_cpu</text>
+    <text x="16" y="54" font-size="10" font-family="monospace" fill="#1B5E20">freelist = obj1 → obj2 → ...</text>
+    <text x="16" y="76" font-size="10" font-family="monospace" fill="#424242">tid      = 与本 CPU freelist 原子配对</text>
+    <text x="16" y="98" font-size="10" font-family="monospace" fill="#2E7D32">slab     = slab_G</text>
+    <text x="16" y="120" font-size="10" font-family="monospace" fill="#01579B">partial  = NULL</text>
+    <text x="16" y="150" font-size="10" fill="#616161">每 CPU 都是同一种 cache 的本地视图</text>
+  </g>
+
+  <!-- kmem_cache to cpu_slab arrows -->
+  <path d="M580,430 L210,500" fill="none" stroke="#01579B" stroke-width="2" marker-end="url(#aB)"/>
+  <path d="M760,430 L610,500" fill="none" stroke="#01579B" stroke-width="2" marker-end="url(#aB)"/>
+  <path d="M935,430 L1010,500" fill="none" stroke="#01579B" stroke-width="2" marker-end="url(#aB)"/>
+  <path d="M1100,430 L1440,500" fill="none" stroke="#01579B" stroke-width="2" marker-end="url(#aB)"/>
+  <rect x="715" y="452" width="248" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="839" y="465" text-anchor="middle" font-size="9" fill="#01579B">s-&gt;cpu_slab: alloc_percpu(kmem_cache_cpu)</text>
+
+  <!-- Current slab page detail -->
+  <g transform="translate(30,805)" filter="url(#sh)">
+    <rect width="760" height="260" rx="8" fill="#fff" stroke="#1B5E20" stroke-width="2"/>
+    <rect width="760" height="30" rx="8" fill="url(#hdrSlab)"/>
+    <rect x="0" y="22" width="760" height="8" fill="#1B5E20"/>
+    <text x="380" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">当前 slab_A: struct slab 复用 struct page, 内部切成多个 object</text>
+
+    <text x="18" y="54" font-size="10" font-family="monospace" fill="#3949AB">slab_cache → kmem_cache("kmalloc-256")</text>
+    <text x="18" y="74" font-size="10" font-family="monospace" fill="#1B5E20">freelist   → obj3 (当 slab 不在 CPU 快路径时使用)</text>
+    <text x="18" y="94" font-size="10" font-family="monospace" fill="#424242">inuse/objects/frozen = 已用数 / 总数 / 是否被 CPU 独占</text>
+    <text x="18" y="114" font-size="10" font-family="monospace" fill="#424242">slab_size = PAGE_SIZE &lt;&lt; order; 例: 4KB &lt;&lt; 0 = 4KB</text>
+
+    <!-- object row -->
+    <g transform="translate(18,140)">
+      <rect x="0" y="0" width="86" height="58" rx="4" fill="#E8F5E9" stroke="#66BB6A"/>
+      <text x="43" y="20" text-anchor="middle" font-size="9" font-weight="bold" fill="#1B5E20">obj0</text>
+      <text x="43" y="40" text-anchor="middle" font-size="8" fill="#616161">已分配</text>
+      <rect x="92" y="0" width="86" height="58" rx="4" fill="#E8F5E9" stroke="#66BB6A"/>
+      <text x="135" y="20" text-anchor="middle" font-size="9" font-weight="bold" fill="#1B5E20">obj1</text>
+      <text x="135" y="40" text-anchor="middle" font-size="8" fill="#616161">已分配</text>
+      <rect x="184" y="0" width="86" height="58" rx="4" fill="#E8F5E9" stroke="#66BB6A"/>
+      <text x="227" y="20" text-anchor="middle" font-size="9" font-weight="bold" fill="#1B5E20">obj2</text>
+      <text x="227" y="40" text-anchor="middle" font-size="8" fill="#616161">已分配</text>
+      <rect x="276" y="0" width="86" height="58" rx="4" fill="#FFFDE7" stroke="#FBC02D" stroke-width="2"/>
+      <text x="319" y="20" text-anchor="middle" font-size="9" font-weight="bold" fill="#F57F17">obj3</text>
+      <text x="319" y="40" text-anchor="middle" font-size="8" fill="#F57F17">下次返回</text>
+      <rect x="368" y="0" width="86" height="58" rx="4" fill="#E0F2F1" stroke="#26A69A"/>
+      <text x="411" y="20" text-anchor="middle" font-size="9" font-weight="bold" fill="#00695C">obj4</text>
+      <text x="411" y="40" text-anchor="middle" font-size="8" fill="#00695C">FP→obj5</text>
+      <rect x="460" y="0" width="86" height="58" rx="4" fill="#E0F2F1" stroke="#26A69A"/>
+      <text x="503" y="20" text-anchor="middle" font-size="9" font-weight="bold" fill="#00695C">obj5</text>
+      <text x="503" y="40" text-anchor="middle" font-size="8" fill="#00695C">FP→...</text>
+      <text x="564" y="34" font-size="16" fill="#9E9E9E">...</text>
+      <rect x="604" y="0" width="86" height="58" rx="4" fill="#E0F2F1" stroke="#26A69A"/>
+      <text x="647" y="20" text-anchor="middle" font-size="9" font-weight="bold" fill="#00695C">obj15</text>
+      <text x="647" y="40" text-anchor="middle" font-size="8" fill="#00695C">FP→NULL</text>
+    </g>
+    <path d="M337,198 L421,198 L421,198 L512,198 L512,198 L665,198" fill="none" stroke="#1B5E20" stroke-width="2" marker-end="url(#aG)"/>
+    <rect x="270" y="216" width="292" height="20" rx="4" fill="#FFFFFF" fill-opacity="0.95" stroke="#A5D6A7"/>
+    <text x="416" y="230" text-anchor="middle" font-size="9" fill="#1B5E20">对象 freelist: CPU 快路径每次摘掉链头</text>
+  </g>
+
+  <path d="M210,745 L210,805" fill="none" stroke="#1B5E20" stroke-width="2" marker-end="url(#aG)"/>
+  <rect x="136" y="768" width="148" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="210" y="781" text-anchor="middle" font-size="9" fill="#1B5E20">c-&gt;slab 指向当前页</text>
+
+  <!-- CPU partial slab chain -->
+  <g transform="translate(850,760)" filter="url(#sh)">
+    <rect width="360" height="190" rx="8" fill="#fff" stroke="#01579B" stroke-width="2"/>
+    <rect width="360" height="30" rx="8" fill="url(#hdrCPU)"/>
+    <rect x="0" y="22" width="360" height="8" fill="#01579B"/>
+    <text x="180" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">CPU 本地 partial slab 链</text>
+    <text x="18" y="54" font-size="10" fill="#424242">c-&gt;partial 指向一串未满 slab 页</text>
+    <text x="18" y="74" font-size="10" fill="#424242">链通过 struct slab::next 串起来</text>
+
+    <rect x="26" y="102" width="78" height="48" rx="5" fill="#E1F5FE" stroke="#0288D1"/>
+    <text x="65" y="122" text-anchor="middle" font-size="9" font-weight="bold" fill="#01579B">slab_B</text>
+    <text x="65" y="140" text-anchor="middle" font-size="8" fill="#424242">partial</text>
+    <rect x="144" y="102" width="78" height="48" rx="5" fill="#E1F5FE" stroke="#0288D1"/>
+    <text x="183" y="122" text-anchor="middle" font-size="9" font-weight="bold" fill="#01579B">slab_C</text>
+    <text x="183" y="140" text-anchor="middle" font-size="8" fill="#424242">partial</text>
+    <rect x="262" y="102" width="60" height="48" rx="5" fill="#F5F5F5" stroke="#BDBDBD"/>
+    <text x="292" y="131" text-anchor="middle" font-size="13" fill="#9E9E9E">NULL</text>
+    <path d="M104,126 L144,126" fill="none" stroke="#01579B" stroke-width="2" marker-end="url(#aB)"/>
+    <path d="M222,126 L262,126" fill="none" stroke="#01579B" stroke-width="2" marker-end="url(#aB)"/>
+  </g>
+
+  <path d="M330,620 L850,835" fill="none" stroke="#01579B" stroke-width="2" marker-end="url(#aB)"/>
+  <rect x="522" y="710" width="220" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="632" y="723" text-anchor="middle" font-size="9" fill="#01579B">c-&gt;partial: 本 CPU 备用 slab 页</text>
+
+  <!-- Node partial -->
+  <g transform="translate(850,990)" filter="url(#sh)">
+    <rect width="360" height="235" rx="8" fill="#fff" stroke="#8E0000" stroke-width="2"/>
+    <rect width="360" height="30" rx="8" fill="url(#hdrNode)"/>
+    <rect x="0" y="22" width="360" height="8" fill="#8E0000"/>
+    <text x="180" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Node0: struct kmem_cache_node</text>
+    <text x="18" y="54" font-size="10" font-family="monospace" fill="#8E0000">list_lock 保护共享 partial 链</text>
+    <text x="18" y="76" font-size="10" font-family="monospace" fill="#424242">nr_partial = 3</text>
+    <text x="18" y="98" font-size="10" font-family="monospace" fill="#8E0000">partial: slab_H &lt;-&gt; slab_I &lt;-&gt; slab_J</text>
+
+    <rect x="24" y="126" width="78" height="48" rx="5" fill="#FFEBEE" stroke="#D32F2F"/>
+    <text x="63" y="146" text-anchor="middle" font-size="9" font-weight="bold" fill="#8E0000">slab_H</text>
+    <text x="63" y="164" text-anchor="middle" font-size="8" fill="#424242">partial</text>
+    <rect x="142" y="126" width="78" height="48" rx="5" fill="#FFEBEE" stroke="#D32F2F"/>
+    <text x="181" y="146" text-anchor="middle" font-size="9" font-weight="bold" fill="#8E0000">slab_I</text>
+    <text x="181" y="164" text-anchor="middle" font-size="8" fill="#424242">partial</text>
+    <rect x="260" y="126" width="78" height="48" rx="5" fill="#FFEBEE" stroke="#D32F2F"/>
+    <text x="299" y="146" text-anchor="middle" font-size="9" font-weight="bold" fill="#8E0000">slab_J</text>
+    <text x="299" y="164" text-anchor="middle" font-size="8" fill="#424242">partial</text>
+    <path d="M102,150 L142,150" fill="none" stroke="#8E0000" stroke-width="2" marker-end="url(#aR)"/>
+    <path d="M220,150 L260,150" fill="none" stroke="#8E0000" stroke-width="2" marker-end="url(#aR)"/>
+    <text x="18" y="206" font-size="10" fill="#616161">所有 CPU 本地耗尽后, 才来这里取 slab</text>
+  </g>
+
+  <path d="M1030,950 L1030,990" fill="none" stroke="#8E0000" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aR)"/>
+  <rect x="948" y="960" width="164" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="1030" y="973" text-anchor="middle" font-size="9" fill="#8E0000">CPU partial 空 → node partial</text>
+
+  <!-- Buddy -->
+  <g transform="translate(1290,875)" filter="url(#sh)">
+    <rect width="330" height="270" rx="8" fill="#fff" stroke="#BF360C" stroke-width="2"/>
+    <rect width="330" height="30" rx="8" fill="url(#hdrBuddy)"/>
+    <rect x="0" y="22" width="330" height="8" fill="#BF360C"/>
+    <text x="165" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Buddy 分配器</text>
+    <text x="18" y="56" font-size="10" fill="#424242">node partial 也没有可用 slab 时:</text>
+    <text x="18" y="78" font-size="10" font-family="monospace" fill="#BF360C">new_slab()</text>
+    <text x="18" y="98" font-size="10" font-family="monospace" fill="#BF360C">  → allocate_slab()</text>
+    <text x="18" y="118" font-size="10" font-family="monospace" fill="#BF360C">  → alloc_slab_page()</text>
+    <text x="18" y="138" font-size="10" fill="#424242">获得 PAGE_SIZE &lt;&lt; order 连续页</text>
+    <text x="18" y="160" font-size="10" fill="#424242">初始化 struct slab:</text>
+    <text x="34" y="180" font-size="10" fill="#424242">objects = oo_objects(s-&gt;oo)</text>
+    <text x="34" y="200" font-size="10" fill="#424242">inuse = 0, frozen = 0</text>
+    <text x="34" y="220" font-size="10" fill="#424242">按 s-&gt;size 切对象并写 FP 链</text>
+    <text x="18" y="246" font-size="10" font-weight="bold" fill="#BF360C">例: 4KB slab → 16 个 256B object</text>
+  </g>
+
+  <path d="M1210,1108 L1290,1010" fill="none" stroke="#BF360C" stroke-width="2" marker-end="url(#aO)"/>
+  <rect x="1202" y="1042" width="108" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="1256" y="1055" text-anchor="middle" font-size="9" fill="#BF360C">共享池空</text>
+
+  <!-- Allocation order -->
+  <g transform="translate(30,1110)" filter="url(#sh)">
+    <rect width="760" height="215" rx="8" fill="#fff" stroke="#004D40" stroke-width="2"/>
+    <rect width="760" height="30" rx="8" fill="url(#hdrFlow)"/>
+    <rect x="0" y="22" width="760" height="8" fill="#004D40"/>
+    <text x="380" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">对象分配顺序: 从本地到共享, 从 object 链到 page 分配</text>
+
+    <g transform="translate(22,52)">
+      <circle cx="12" cy="12" r="11" fill="#004D40"/><text x="12" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">1</text>
+      <text x="34" y="16" font-size="10" fill="#424242">slab_alloc_node(): pre hook / KFENCE / sheaf 可选路径</text>
+      <circle cx="12" cy="42" r="11" fill="#004D40"/><text x="12" y="46" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">2</text>
+      <text x="34" y="46" font-size="10" fill="#424242">__slab_alloc_node(): 读取 this_cpu c-&gt;freelist + c-&gt;slab + tid</text>
+      <circle cx="12" cy="72" r="11" fill="#004D40"/><text x="12" y="76" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">3</text>
+      <text x="34" y="76" font-size="10" fill="#424242">fastpath: c-&gt;freelist 非空, cmpxchg 更新链头, 返回 object</text>
+      <circle cx="12" cy="102" r="11" fill="#00695C"/><text x="12" y="106" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">4</text>
+      <text x="34" y="106" font-size="10" fill="#424242">slowpath: 当前 slab 空, 先取 c-&gt;partial, freeze 后装入 c-&gt;slab</text>
+      <circle cx="12" cy="132" r="11" fill="#8E0000"/><text x="12" y="136" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">5</text>
+      <text x="34" y="136" font-size="10" fill="#424242">本地 partial 空, get_partial() 从 node-&gt;partial 取 slab, 需要 list_lock</text>
+      <circle cx="12" cy="162" r="11" fill="#BF360C"/><text x="12" y="166" text-anchor="middle" font-size="10" font-weight="bold" fill="#fff">6</text>
+      <text x="34" y="166" font-size="10" fill="#424242">node partial 空, new_slab() 向 buddy 申请页, 切对象并建立 freelist</text>
+    </g>
+  </g>
+
+  <!-- Important notes -->
+  <g transform="translate(850,1260)">
+    <rect width="770" height="66" rx="8" fill="#FFFDE7" stroke="#FBC02D"/>
+    <text x="18" y="24" font-size="11" font-weight="bold" fill="#F57F17">重点结论</text>
+    <text x="18" y="46" font-size="10" fill="#424242">SLUB 多核组织不是“所有对象放进一个全局链表”, 而是 kmem_cache 统一描述类型, 每 CPU 保存当前 slab + 对象 freelist + 本地 partial slab, node partial 作为共享后备池, Buddy 作为最终页来源。</text>
+  </g>
+</svg>

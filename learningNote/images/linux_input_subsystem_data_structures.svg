@@ -1,0 +1,281 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1400" font-family="Consolas, 'Courier New', monospace" font-size="13">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#555"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/>
+    </filter>
+    <linearGradient id="grad-dev" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#dbeafe"/>
+      <stop offset="100%" style="stop-color:#bfdbfe"/>
+    </linearGradient>
+    <linearGradient id="grad-handler" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fce7f3"/>
+      <stop offset="100%" style="stop-color:#fbcfe8"/>
+    </linearGradient>
+    <linearGradient id="grad-handle" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#d1fae5"/>
+      <stop offset="100%" style="stop-color:#a7f3d0"/>
+    </linearGradient>
+    <linearGradient id="grad-evdev" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fef3c7"/>
+      <stop offset="100%" style="stop-color:#fde68a"/>
+    </linearGradient>
+    <linearGradient id="grad-event" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ede9fe"/>
+      <stop offset="100%" style="stop-color:#ddd6fe"/>
+    </linearGradient>
+    <linearGradient id="grad-list" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f1f5f9"/>
+      <stop offset="100%" style="stop-color:#e2e8f0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1440" height="1400" fill="#fafbfc" rx="8"/>
+
+  <!-- Title -->
+  <text x="720" y="35" text-anchor="middle" font-size="20" font-weight="bold" fill="#1e293b">Linux Input 子系统 — 关键数据结构关系图</text>
+  <text x="720" y="55" text-anchor="middle" font-size="12" fill="#64748b">drivers/input/input.c | include/linux/input.h | drivers/input/evdev.c</text>
+
+  <!-- ============================================================ -->
+  <!-- Global Lists (top area)                                       -->
+  <!-- ============================================================ -->
+  <rect x="30" y="75" width="1380" height="55" rx="6" fill="url(#grad-list)" stroke="#94a3b8" stroke-width="1" filter="url(#shadow)"/>
+  <text x="50" y="98" font-size="13" font-weight="bold" fill="#475569">全局链表 (drivers/input/input.c)</text>
+  <text x="50" y="118" font-size="12" fill="#64748b">static LIST_HEAD(input_dev_list);            static LIST_HEAD(input_handler_list);            static DEFINE_MUTEX(input_mutex);</text>
+
+  <!-- ============================================================ -->
+  <!-- ROW 1: Three core structs — 140px horizontal gaps             -->
+  <!-- ============================================================ -->
+
+  <!-- struct input_dev — x:30..410, y:155..600 -->
+  <rect x="30" y="155" width="380" height="445" rx="8" fill="url(#grad-dev)" stroke="#3b82f6" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="30" y="155" width="380" height="32" rx="8" fill="#3b82f6"/>
+  <rect x="30" y="175" width="380" height="12" fill="#3b82f6"/>
+  <text x="220" y="176" text-anchor="middle" font-size="14" font-weight="bold" fill="white">struct input_dev</text>
+  <text x="220" y="207" text-anchor="middle" font-size="11" fill="#3b82f6">include/linux/input.h — 输入设备</text>
+
+  <text x="45" y="232" font-size="12" fill="#1e40af" font-weight="bold">标识:</text>
+  <text x="50" y="248" font-size="11" fill="#334155">name, phys, uniq</text>
+  <text x="50" y="264" font-size="11" fill="#334155">struct input_id id  {bus,vendor,product,ver}</text>
+  <text x="45" y="288" font-size="12" fill="#1e40af" font-weight="bold">能力位图:</text>
+  <text x="50" y="304" font-size="11" fill="#334155">evbit[]  keybit[]  relbit[]  absbit[]</text>
+  <text x="50" y="320" font-size="11" fill="#334155">mscbit[] ledbit[]  sndbit[]  ffbit[]  swbit[]</text>
+  <text x="45" y="344" font-size="12" fill="#1e40af" font-weight="bold">状态:</text>
+  <text x="50" y="360" font-size="11" fill="#334155">key[]  led[]  snd[]  sw[]  (当前设备状态)</text>
+  <text x="45" y="384" font-size="12" fill="#1e40af" font-weight="bold">事件缓冲:</text>
+  <text x="50" y="400" font-size="11" fill="#334155">struct input_value *vals   (事件暂存队列)</text>
+  <text x="50" y="416" font-size="11" fill="#334155">num_vals / max_vals</text>
+  <text x="45" y="440" font-size="12" fill="#1e40af" font-weight="bold">操作回调:</text>
+  <text x="50" y="456" font-size="11" fill="#334155">open()  close()  flush()  event()</text>
+  <text x="45" y="480" font-size="12" fill="#1e40af" font-weight="bold">同步 &amp; 连接:</text>
+  <text x="50" y="496" font-size="11" fill="#334155">spinlock_t event_lock   (保护事件处理)</text>
+  <text x="50" y="512" font-size="11" fill="#334155">struct mutex mutex</text>
+  <text x="50" y="530" font-size="11" fill="#dc2626" font-weight="bold">struct list_head h_list  → input_handle 链</text>
+  <text x="50" y="548" font-size="11" fill="#334155">struct list_head node   → input_dev_list</text>
+  <text x="50" y="566" font-size="11" fill="#334155">struct input_handle __rcu *grab (独占)</text>
+
+  <!-- struct input_handle — x:550..890, y:220..470 -->
+  <rect x="550" y="220" width="340" height="250" rx="8" fill="url(#grad-handle)" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="550" y="220" width="340" height="32" rx="8" fill="#16a34a"/>
+  <rect x="550" y="240" width="340" height="12" fill="#16a34a"/>
+  <text x="720" y="241" text-anchor="middle" font-size="14" font-weight="bold" fill="white">struct input_handle</text>
+  <text x="720" y="272" text-anchor="middle" font-size="11" fill="#16a34a">include/linux/input.h — 桥梁/纽带</text>
+
+  <text x="565" y="298" font-size="11" fill="#334155">void *private           (handler 私有数据)</text>
+  <text x="565" y="316" font-size="11" fill="#334155">int open                (引用计数)</text>
+  <text x="565" y="334" font-size="11" fill="#334155">const char *name        (如 "event0")</text>
+  <text x="565" y="356" font-size="11" fill="#2563eb" font-weight="bold">struct input_dev *dev       → 指向设备</text>
+  <text x="565" y="374" font-size="11" fill="#ec4899" font-weight="bold">struct input_handler *handler → 指向处理器</text>
+  <text x="565" y="396" font-size="11" fill="#334155">uint (*handle_events)(handle, vals, count)</text>
+  <text x="565" y="418" font-size="11" fill="#dc2626" font-weight="bold">struct list_head d_node → dev->h_list</text>
+  <text x="565" y="436" font-size="11" fill="#dc2626" font-weight="bold">struct list_head h_node → handler->h_list</text>
+
+  <!-- struct input_handler — x:1030..1390, y:155..530 -->
+  <rect x="1030" y="155" width="360" height="375" rx="8" fill="url(#grad-handler)" stroke="#ec4899" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="1030" y="155" width="360" height="32" rx="8" fill="#ec4899"/>
+  <rect x="1030" y="175" width="360" height="12" fill="#ec4899"/>
+  <text x="1210" y="176" text-anchor="middle" font-size="14" font-weight="bold" fill="white">struct input_handler</text>
+  <text x="1210" y="207" text-anchor="middle" font-size="11" fill="#ec4899">include/linux/input.h — 事件处理器</text>
+
+  <text x="1045" y="232" font-size="12" fill="#9d174d" font-weight="bold">事件方法 (三选一):</text>
+  <text x="1050" y="248" font-size="11" fill="#334155">void (*event)(handle, type, code, val)</text>
+  <text x="1050" y="264" font-size="11" fill="#334155">uint (*events)(handle, vals, count)</text>
+  <text x="1050" y="280" font-size="11" fill="#334155">bool (*filter)(handle, type, code, val)</text>
+  <text x="1045" y="304" font-size="12" fill="#9d174d" font-weight="bold">匹配 &amp; 连接:</text>
+  <text x="1050" y="320" font-size="11" fill="#334155">bool (*match)(handler, dev)</text>
+  <text x="1050" y="336" font-size="11" fill="#334155">const struct input_device_id *id_table</text>
+  <text x="1050" y="352" font-size="11" fill="#334155">int (*connect)(handler, dev, id)</text>
+  <text x="1050" y="368" font-size="11" fill="#334155">void (*disconnect)(handle)</text>
+  <text x="1050" y="384" font-size="11" fill="#334155">void (*start)(handle)</text>
+  <text x="1045" y="408" font-size="12" fill="#9d174d" font-weight="bold">属性:</text>
+  <text x="1050" y="424" font-size="11" fill="#334155">const char *name      (如 "evdev")</text>
+  <text x="1050" y="440" font-size="11" fill="#334155">bool passive_observer</text>
+  <text x="1050" y="458" font-size="11" fill="#dc2626" font-weight="bold">struct list_head h_list → input_handle 链</text>
+  <text x="1050" y="476" font-size="11" fill="#334155">struct list_head node  → input_handler_list</text>
+
+  <!-- ============================================================ -->
+  <!-- Row 1 connection arrows — labels centered in 140px gaps       -->
+  <!-- ============================================================ -->
+
+  <!-- LEFT GAP (410..550): dev.h_list ↔ handle.d_node -->
+  <path d="M 410 530 L 480 530 L 480 418 L 550 418" stroke="#dc2626" stroke-width="2.5" fill="none" marker-end="url(#arrow-red)" stroke-dasharray="6,3"/>
+  <rect x="440" y="468" width="118" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="499" y="481" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="bold">h_list ↔ d_node</text>
+
+  <!-- LEFT GAP: handle.*dev → input_dev -->
+  <path d="M 550 356 L 412 356" stroke="#2563eb" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/>
+  <rect x="448" y="336" width="72" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="484" y="348" text-anchor="middle" font-size="9" fill="#2563eb" font-weight="bold">*dev 指针</text>
+
+  <!-- RIGHT GAP (890..1030): handler.h_list ↔ handle.h_node -->
+  <path d="M 1030 458 L 960 458 L 960 436 L 890 436" stroke="#dc2626" stroke-width="2.5" fill="none" marker-end="url(#arrow-red)" stroke-dasharray="6,3"/>
+  <rect x="920" y="468" width="118" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="979" y="481" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="bold">h_list ↔ h_node</text>
+
+  <!-- RIGHT GAP: handle.*handler → input_handler -->
+  <path d="M 890 374 L 1028 374" stroke="#ec4899" stroke-width="2" fill="none" marker-end="url(#arrow-red)"/>
+  <rect x="920" y="354" width="92" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="966" y="366" text-anchor="middle" font-size="9" fill="#ec4899" font-weight="bold">*handler 指针</text>
+
+  <!-- ============================================================ -->
+  <!-- ROW 2: evdev layer — 160px vertical gap                       -->
+  <!-- ============================================================ -->
+
+  <!-- struct evdev — x:30..400, y:760..1038 -->
+  <rect x="30" y="760" width="370" height="278" rx="8" fill="url(#grad-evdev)" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="30" y="760" width="370" height="32" rx="8" fill="#ea580c"/>
+  <rect x="30" y="780" width="370" height="12" fill="#ea580c"/>
+  <text x="215" y="781" text-anchor="middle" font-size="14" font-weight="bold" fill="white">struct evdev</text>
+  <text x="215" y="812" text-anchor="middle" font-size="11" fill="#ea580c">drivers/input/evdev.c — evdev 设备实例</text>
+
+  <text x="45" y="838" font-size="11" fill="#334155">int open                        (打开计数)</text>
+  <text x="45" y="856" font-size="11" fill="#16a34a" font-weight="bold">struct input_handle handle       (内嵌 handle)</text>
+  <text x="45" y="874" font-size="11" fill="#334155">struct evdev_client __rcu *grab  (独占客户端)</text>
+  <text x="45" y="894" font-size="11" fill="#ea580c" font-weight="bold">struct list_head client_list     → 客户端链表</text>
+  <text x="45" y="912" font-size="11" fill="#334155">spinlock_t client_lock</text>
+  <text x="45" y="930" font-size="11" fill="#334155">struct mutex mutex</text>
+  <text x="45" y="948" font-size="11" fill="#334155">struct device dev                (字符设备)</text>
+  <text x="45" y="966" font-size="11" fill="#334155">struct cdev cdev                 (cdev 结构)</text>
+  <text x="45" y="984" font-size="11" fill="#334155">bool exist</text>
+  <text x="45" y="1006" font-size="11" fill="#64748b">→ 对应 /dev/input/eventX 设备节点</text>
+
+  <!-- VERTICAL GAP: evdev.handle 内嵌 input_handle -->
+  <path d="M 215 760 L 215 680 L 620 680 L 620 472" stroke="#16a34a" stroke-width="2.5" fill="none" marker-end="url(#arrow-green)"/>
+  <rect x="310" y="668" width="120" height="20" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="370" y="682" text-anchor="middle" font-size="11" fill="#16a34a" font-weight="bold">内嵌 (embed)</text>
+
+  <!-- struct evdev_client — x:540..910, y:760..1060 -->
+  <rect x="540" y="760" width="370" height="300" rx="8" fill="url(#grad-evdev)" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="540" y="760" width="370" height="32" rx="8" fill="#d97706"/>
+  <rect x="540" y="780" width="370" height="12" fill="#d97706"/>
+  <text x="725" y="781" text-anchor="middle" font-size="14" font-weight="bold" fill="white">struct evdev_client</text>
+  <text x="725" y="812" text-anchor="middle" font-size="11" fill="#d97706">drivers/input/evdev.c — 用户连接实例</text>
+
+  <text x="555" y="838" font-size="11" fill="#334155">unsigned int head              (写位置)</text>
+  <text x="555" y="856" font-size="11" fill="#334155">unsigned int tail              (读位置)</text>
+  <text x="555" y="874" font-size="11" fill="#334155">unsigned int packet_head       (包边界)</text>
+  <text x="555" y="892" font-size="11" fill="#334155">spinlock_t buffer_lock</text>
+  <text x="555" y="910" font-size="11" fill="#334155">wait_queue_head_t wait         (阻塞读)</text>
+  <text x="555" y="928" font-size="11" fill="#334155">struct fasync_struct *fasync    (异步通知)</text>
+  <text x="555" y="948" font-size="11" fill="#ea580c" font-weight="bold">struct evdev *evdev              → 父 evdev</text>
+  <text x="555" y="966" font-size="11" fill="#ea580c" font-weight="bold">struct list_head node            → client_list</text>
+  <text x="555" y="984" font-size="11" fill="#334155">enum input_clock_type clk_type</text>
+  <text x="555" y="1002" font-size="11" fill="#334155">unsigned long *evmasks[EV_CNT]  (事件掩码)</text>
+  <text x="555" y="1020" font-size="11" fill="#7c3aed" font-weight="bold">struct input_event buffer[]      (环形缓冲)</text>
+  <text x="555" y="1038" font-size="11" fill="#64748b">→ 每个 open("/dev/input/eventX") 创建一个</text>
+
+  <!-- GAP between evdev and evdev_client (400..540) -->
+  <!-- evdev_client.*evdev → evdev -->
+  <path d="M 540 948 L 402 948" stroke="#ea580c" stroke-width="2" fill="none" marker-end="url(#arrow-orange)"/>
+  <rect x="440" y="930" width="78" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="479" y="942" text-anchor="middle" font-size="9" fill="#ea580c" font-weight="bold">*evdev 指针</text>
+
+  <!-- evdev_client.node ↔ evdev.client_list -->
+  <path d="M 540 966 L 470 966 L 470 894 L 402 894" stroke="#ea580c" stroke-width="2" fill="none" marker-end="url(#arrow-orange)" stroke-dasharray="6,3"/>
+  <rect x="432" y="900" width="100" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="482" y="912" text-anchor="middle" font-size="9" fill="#ea580c" font-weight="bold">node↔client_list</text>
+
+  <!-- ============================================================ -->
+  <!-- struct input_event — x:1050..1390, y:760..928 -->
+  <!-- ============================================================ -->
+  <rect x="1050" y="760" width="340" height="168" rx="8" fill="url(#grad-event)" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="1050" y="760" width="340" height="32" rx="8" fill="#7c3aed"/>
+  <rect x="1050" y="780" width="340" height="12" fill="#7c3aed"/>
+  <text x="1220" y="781" text-anchor="middle" font-size="14" font-weight="bold" fill="white">struct input_event</text>
+  <text x="1220" y="812" text-anchor="middle" font-size="11" fill="#7c3aed">include/uapi/linux/input.h — 用户空间事件</text>
+
+  <text x="1065" y="838" font-size="11" fill="#334155">__kernel_ulong_t __sec     (时间戳 秒)</text>
+  <text x="1065" y="856" font-size="11" fill="#334155">__kernel_ulong_t __usec    (时间戳 微秒)</text>
+  <text x="1065" y="874" font-size="11" fill="#334155">__u16 type                 (EV_KEY/EV_ABS/...)</text>
+  <text x="1065" y="892" font-size="11" fill="#334155">__u16 code                 (KEY_A/ABS_X/...)</text>
+  <text x="1065" y="910" font-size="11" fill="#334155">__s32 value                (1=按下/0=释放/坐标值)</text>
+
+  <!-- struct input_value — x:1050..1390, y:948..1088 -->
+  <rect x="1050" y="948" width="340" height="140" rx="8" fill="url(#grad-event)" stroke="#7c3aed" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="1050" y="948" width="340" height="32" rx="8" fill="#8b5cf6"/>
+  <rect x="1050" y="968" width="340" height="12" fill="#8b5cf6"/>
+  <text x="1220" y="969" text-anchor="middle" font-size="14" font-weight="bold" fill="white">struct input_value</text>
+  <text x="1220" y="1000" text-anchor="middle" font-size="11" fill="#8b5cf6">include/linux/input.h — 内核内部事件</text>
+
+  <text x="1065" y="1026" font-size="11" fill="#334155">__u16 type    (事件类型)</text>
+  <text x="1065" y="1044" font-size="11" fill="#334155">__u16 code    (事件代码)</text>
+  <text x="1065" y="1062" font-size="11" fill="#334155">__s32 value   (事件值，无时间戳)</text>
+
+  <!-- GAP between evdev_client and right column (910..1050) -->
+  <!-- evdev_client.buffer → input_event -->
+  <path d="M 910 1020 L 980 1020 L 980 870 L 1048 870" stroke="#7c3aed" stroke-width="1.5" fill="none" marker-end="url(#arrow)" stroke-dasharray="4,3"/>
+  <rect x="942" y="938" width="70" height="18" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="977" y="951" text-anchor="middle" font-size="10" fill="#7c3aed" font-weight="bold">buffer[]</text>
+
+  <!-- input_dev.vals → input_value -->
+  <path d="M 410 400 L 480 400 L 480 620 L 1020 620 L 1020 1010 L 1048 1010" stroke="#7c3aed" stroke-width="1.5" fill="none" marker-end="url(#arrow)" stroke-dasharray="4,3"/>
+  <rect x="440" y="500" width="125" height="20" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="502" y="514" text-anchor="middle" font-size="10" fill="#7c3aed" font-weight="bold">dev->vals[] 指向</text>
+
+  <!-- ============================================================ -->
+  <!-- struct input_id — x:1050..1390, y:1108..1188 -->
+  <!-- ============================================================ -->
+  <rect x="1050" y="1108" width="340" height="80" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" filter="url(#shadow)"/>
+  <rect x="1050" y="1108" width="340" height="28" rx="8" fill="#64748b"/>
+  <rect x="1050" y="1124" width="340" height="12" fill="#64748b"/>
+  <text x="1220" y="1128" text-anchor="middle" font-size="13" font-weight="bold" fill="white">struct input_id</text>
+  <text x="1065" y="1156" font-size="11" fill="#334155">__u16 bustype  vendor  product  version</text>
+  <text x="1065" y="1174" font-size="11" fill="#64748b">→ input_dev.id 内嵌此结构</text>
+
+  <!-- ============================================================ -->
+  <!-- Legend & Summary — y=1240                                     -->
+  <!-- ============================================================ -->
+  <rect x="30" y="1240" width="380" height="130" rx="8" fill="white" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="45" y="1262" font-size="13" font-weight="bold" fill="#1e293b">图例</text>
+  <line x1="45" y1="1280" x2="80" y2="1280" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6,3"/>
+  <text x="90" y="1284" font-size="11" fill="#334155">双向链表连接 (list_head)</text>
+  <line x1="45" y1="1300" x2="80" y2="1300" stroke="#2563eb" stroke-width="2"/>
+  <text x="90" y="1304" font-size="11" fill="#334155">结构体指针 (struct *)</text>
+  <line x1="45" y1="1320" x2="80" y2="1320" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="90" y="1324" font-size="11" fill="#334155">内嵌关系 (embed)</text>
+  <line x1="45" y1="1340" x2="80" y2="1340" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="90" y="1344" font-size="11" fill="#334155">数据缓冲引用 (buffer/vals)</text>
+
+  <rect x="540" y="1240" width="370" height="130" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1"/>
+  <text x="555" y="1262" font-size="13" font-weight="bold" fill="#166534">核心关系总结</text>
+  <text x="555" y="1282" font-size="11" fill="#334155">1. input_handle 是 input_dev 与 input_handler 的桥梁</text>
+  <text x="555" y="1300" font-size="11" fill="#334155">2. input_dev.h_list 通过 handle.d_node 串联所有 handle</text>
+  <text x="555" y="1318" font-size="11" fill="#334155">3. input_handler.h_list 通过 handle.h_node 串联所有 handle</text>
+  <text x="555" y="1336" font-size="11" fill="#334155">4. evdev 内嵌 input_handle; evdev_client 引用 evdev</text>
+  <text x="555" y="1354" font-size="11" fill="#334155">5. 事件: input_value(内核) → input_event(用户空间+时间戳)</text>
+</svg>

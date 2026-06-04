@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1680" font-family="Consolas, monospace">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#333"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#C62828"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2E7D32"/>
+    </marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FAFAFA"/>
+      <stop offset="100%" stop-color="#F0F0F0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="960" height="1680" fill="url(#bg)" rx="8"/>
+
+  <!-- ======== Title ======== -->
+  <text x="480" y="40" text-anchor="middle" font-size="22" font-weight="bold" fill="#1A237E">vm_area_add_early() Linked List Insertion</text>
+  <text x="480" y="62" text-anchor="middle" font-size="13" fill="#666">Sorted singly-linked list using pointer-to-pointer (**p) technique</text>
+
+  <!-- ======== PHASE 0: Initial State ======== -->
+  <rect x="20" y="85" width="920" height="105" rx="6" fill="#E3F2FD" stroke="#90CAF9" stroke-width="1.5"/>
+  <text x="40" y="112" font-size="16" font-weight="bold" fill="#1565C0">Phase 0: Initial State (vmlist = NULL)</text>
+
+  <rect x="120" y="130" width="120" height="36" rx="4" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <text x="180" y="153" text-anchor="middle" font-size="14" fill="#1565C0" font-weight="bold">vmlist</text>
+  <text x="260" y="153" font-size="14" fill="#999">= NULL</text>
+
+  <text x="120" y="180" font-size="12" fill="#C62828" font-weight="bold">p = &amp;vmlist (points here)</text>
+
+  <!-- ======== PHASE 1: Insert vm_A ======== -->
+  <rect x="20" y="210" width="920" height="230" rx="6" fill="#E8F5E9" stroke="#A5D6A7" stroke-width="1.5"/>
+  <text x="40" y="237" font-size="16" font-weight="bold" fill="#2E7D32">Phase 1: Insert vm_A (addr=0x1000, size=0x500) &#x2014; Become Head</text>
+  <text x="40" y="258" font-size="12" fill="#555">tmp = *p = NULL &#x2192; loop does NOT enter &#x2192; execute: vm-&gt;next = *p; *p = vm;</text>
+
+  <!-- Before -->
+  <text x="60" y="290" font-size="14" font-weight="bold" fill="#666">Before:</text>
+  <rect x="150" y="275" width="110" height="30" rx="4" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <text x="205" y="295" text-anchor="middle" font-size="12" fill="#1565C0">vmlist = NULL</text>
+  <text x="150" y="322" font-size="11" fill="#C62828">p = &amp;vmlist</text>
+
+  <!-- Arrow -->
+  <text x="310" y="296" font-size="24" fill="#2E7D32">&#x27A1;</text>
+
+  <!-- After -->
+  <text x="360" y="290" font-size="14" font-weight="bold" fill="#666">After (*p = vm):</text>
+  <rect x="360" y="300" width="100" height="30" rx="4" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <text x="410" y="320" text-anchor="middle" font-size="12" fill="#1565C0">vmlist</text>
+
+  <line x1="460" y1="315" x2="520" y2="315" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="535" y="300" width="220" height="30" rx="4" fill="#C8E6C9" stroke="#2E7D32" stroke-width="2"/>
+  <text x="570" y="320" font-size="13" font-weight="bold" fill="#2E7D32">vm_A</text>
+  <line x1="610" y1="303" x2="610" y2="327" stroke="#bbb" stroke-width="1"/>
+  <text x="625" y="313" font-size="10" fill="#333">addr=0x1000</text>
+  <text x="625" y="326" font-size="10" fill="#999">next = NULL</text>
+
+  <!-- Summary -->
+  <rect x="60" y="355" width="860" height="70" rx="4" fill="#fff" stroke="#A5D6A7" stroke-width="1" stroke-dasharray="4,2"/>
+  <text x="80" y="378" font-size="13" font-weight="bold" fill="#2E7D32">Key Insight:</text>
+  <text x="80" y="398" font-size="12" fill="#555">p == &amp;vmlist, so *p = vm is equivalent to vmlist = vm_A.</text>
+  <text x="80" y="414" font-size="12" fill="#555">vm_A becomes the head. No special "empty list" handling needed.</text>
+
+  <!-- ======== PHASE 2: Insert vm_B (tail) ======== -->
+  <rect x="20" y="455" width="920" height="340" rx="6" fill="#FFF3E0" stroke="#FFCC80" stroke-width="1.5"/>
+  <text x="40" y="482" font-size="16" font-weight="bold" fill="#E65100">Phase 2: Insert vm_B (addr=0x2000, size=0x300) &#x2014; Append to Tail</text>
+
+  <!-- Loop steps -->
+  <text x="60" y="512" font-size="13" font-weight="bold" fill="#555">Loop Round 1:</text>
+  <text x="80" y="530" font-size="12" fill="#555">tmp = vm_A, tmp-&gt;addr(0x1000) &lt; vm-&gt;addr(0x2000) &#x2192; else branch</text>
+  <text x="80" y="546" font-size="12" fill="#555">BUG_ON: 0x1000 + 0x500 = 0x1500 &gt; 0x2000? No &#x2192; OK, no overlap</text>
+  <text x="80" y="562" font-size="12" fill="#C62828" font-weight="bold">p = &amp;tmp-&gt;next = &amp;vm_A.next</text>
+
+  <text x="60" y="588" font-size="13" font-weight="bold" fill="#555">Loop Round 2:</text>
+  <text x="80" y="606" font-size="12" fill="#555">tmp = *p = vm_A.next = NULL &#x2192; loop ends</text>
+
+  <!-- Result diagram -->
+  <text x="60" y="640" font-size="14" font-weight="bold" fill="#666">Result:</text>
+
+  <!-- vmlist box -->
+  <rect x="80" y="655" width="90" height="32" rx="4" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <text x="125" y="676" text-anchor="middle" font-size="12" fill="#1565C0">vmlist</text>
+
+  <!-- arrow vmlist -> vm_A -->
+  <line x1="170" y1="671" x2="230" y2="671" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- vm_A box -->
+  <rect x="245" y="655" width="220" height="32" rx="4" fill="#C8E6C9" stroke="#2E7D32" stroke-width="2"/>
+  <text x="275" y="676" font-size="12" font-weight="bold" fill="#2E7D32">vm_A</text>
+  <line x1="310" y1="658" x2="310" y2="684" stroke="#bbb" stroke-width="1"/>
+  <text x="325" y="669" font-size="10" fill="#333">0x1000</text>
+  <text x="390" y="669" font-size="10" fill="#333">next</text>
+  <text x="325" y="682" font-size="10" fill="#999">size=0x500</text>
+
+  <!-- arrow vm_A -> vm_B -->
+  <line x1="465" y1="671" x2="535" y2="671" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- vm_B box -->
+  <rect x="550" y="655" width="220" height="32" rx="4" fill="#FFE0B2" stroke="#E65100" stroke-width="2"/>
+  <text x="580" y="676" font-size="12" font-weight="bold" fill="#E65100">vm_B</text>
+  <line x1="615" y1="658" x2="615" y2="684" stroke="#bbb" stroke-width="1"/>
+  <text x="630" y="669" font-size="10" fill="#333">0x2000</text>
+  <text x="700" y="669" font-size="10" fill="#999">next=NULL</text>
+  <text x="630" y="682" font-size="10" fill="#999">size=0x300</text>
+
+  <!-- p annotation (below, well separated) -->
+  <text x="350" y="715" font-size="12" fill="#C62828" font-weight="bold">p = &amp;vm_A.next (stopped here)</text>
+  <line x1="395" y1="703" x2="395" y2="690" stroke="#C62828" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-red)"/>
+
+  <!-- Summary -->
+  <text x="80" y="752" font-size="12" fill="#E65100" font-weight="bold">Key: p == &amp;vm_A.next, so *p = vm means vm_A.next = vm_B (appended to tail)</text>
+
+  <!-- ======== PHASE 3: Insert vm_C (middle) ======== -->
+  <rect x="20" y="775" width="920" height="530" rx="6" fill="#F3E5F5" stroke="#CE93D8" stroke-width="1.5"/>
+  <text x="40" y="802" font-size="16" font-weight="bold" fill="#6A1B9A">Phase 3: Insert vm_C (addr=0x1800, size=0x200) &#x2014; Insert in Middle</text>
+
+  <!-- Loop steps -->
+  <text x="60" y="832" font-size="13" font-weight="bold" fill="#555">Loop Round 1:</text>
+  <text x="80" y="850" font-size="12" fill="#555">tmp = vm_A, tmp-&gt;addr(0x1000) &lt; vm-&gt;addr(0x1800) &#x2192; else branch</text>
+  <text x="80" y="866" font-size="12" fill="#555">BUG_ON: 0x1000 + 0x500 = 0x1500 &gt; 0x1800? No &#x2192; OK</text>
+  <text x="80" y="882" font-size="12" fill="#555">p = &amp;vm_A.next</text>
+
+  <text x="60" y="910" font-size="13" font-weight="bold" fill="#555">Loop Round 2:</text>
+  <text x="80" y="928" font-size="12" fill="#555">tmp = vm_B, tmp-&gt;addr(0x2000) &gt;= vm-&gt;addr(0x1800) &#x2192; if branch, found position!</text>
+  <text x="80" y="944" font-size="12" fill="#555">BUG_ON: 0x2000 &lt; 0x1800 + 0x200 = 0x1A00? No &#x2192; OK</text>
+  <text x="80" y="960" font-size="12" fill="#C62828" font-weight="bold">break! p stays at &amp;vm_A.next, *p still points to vm_B</text>
+
+  <!-- Before diagram -->
+  <text x="60" y="995" font-size="14" font-weight="bold" fill="#666">Before insertion:</text>
+
+  <rect x="80" y="1010" width="90" height="32" rx="4" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <text x="125" y="1031" text-anchor="middle" font-size="12" fill="#1565C0">vmlist</text>
+
+  <line x1="170" y1="1026" x2="230" y2="1026" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="245" y="1010" width="180" height="32" rx="4" fill="#C8E6C9" stroke="#2E7D32" stroke-width="2"/>
+  <text x="275" y="1031" font-size="12" font-weight="bold" fill="#2E7D32">vm_A</text>
+  <line x1="310" y1="1013" x2="310" y2="1039" stroke="#bbb" stroke-width="1"/>
+  <text x="325" y="1025" font-size="10" fill="#333">0x1000</text>
+  <text x="385" y="1025" font-size="10" fill="#333">next</text>
+
+  <line x1="425" y1="1026" x2="530" y2="1026" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="545" y="1010" width="180" height="32" rx="4" fill="#FFE0B2" stroke="#E65100" stroke-width="2"/>
+  <text x="575" y="1031" font-size="12" font-weight="bold" fill="#E65100">vm_B</text>
+  <line x1="610" y1="1013" x2="610" y2="1039" stroke="#bbb" stroke-width="1"/>
+  <text x="625" y="1025" font-size="10" fill="#333">0x2000</text>
+  <text x="690" y="1025" font-size="10" fill="#999">&#x2192; NULL</text>
+
+  <!-- p annotation (below, well separated) -->
+  <text x="310" y="1072" font-size="12" fill="#C62828" font-weight="bold">p = &amp;vm_A.next</text>
+  <line x1="365" y1="1058" x2="365" y2="1045" stroke="#C62828" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-red)"/>
+
+  <!-- Transition arrow -->
+  <text x="350" y="1110" font-size="16" fill="#6A1B9A" font-weight="bold">&#x2B07; Execute: vm_C.next = *p (vm_B);  *p = vm_C;</text>
+
+  <!-- After diagram -->
+  <text x="60" y="1145" font-size="14" font-weight="bold" fill="#666">After insertion:</text>
+
+  <rect x="50" y="1160" width="90" height="32" rx="4" fill="#fff" stroke="#1565C0" stroke-width="2"/>
+  <text x="95" y="1181" text-anchor="middle" font-size="12" fill="#1565C0">vmlist</text>
+
+  <line x1="140" y1="1176" x2="190" y2="1176" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="205" y="1160" width="160" height="32" rx="4" fill="#C8E6C9" stroke="#2E7D32" stroke-width="2"/>
+  <text x="230" y="1181" font-size="12" font-weight="bold" fill="#2E7D32">vm_A</text>
+  <line x1="265" y1="1163" x2="265" y2="1189" stroke="#bbb" stroke-width="1"/>
+  <text x="280" y="1179" font-size="10" fill="#333">0x1000</text>
+
+  <line x1="365" y1="1176" x2="425" y2="1176" stroke="#2E7D32" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+
+  <rect x="440" y="1160" width="160" height="32" rx="4" fill="#E1BEE7" stroke="#6A1B9A" stroke-width="2.5"/>
+  <text x="465" y="1181" font-size="12" font-weight="bold" fill="#6A1B9A">vm_C</text>
+  <line x1="500" y1="1163" x2="500" y2="1189" stroke="#bbb" stroke-width="1"/>
+  <text x="515" y="1179" font-size="10" fill="#333">0x1800</text>
+
+  <line x1="600" y1="1176" x2="660" y2="1176" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="675" y="1160" width="160" height="32" rx="4" fill="#FFE0B2" stroke="#E65100" stroke-width="2"/>
+  <text x="700" y="1181" font-size="12" font-weight="bold" fill="#E65100">vm_B</text>
+  <line x1="735" y1="1163" x2="735" y2="1189" stroke="#bbb" stroke-width="1"/>
+  <text x="750" y="1179" font-size="10" fill="#333">0x2000</text>
+  <text x="810" y="1179" font-size="10" fill="#999">&#x2192;NULL</text>
+
+  <!-- Summary -->
+  <text x="80" y="1220" font-size="12" fill="#6A1B9A" font-weight="bold">vm_C spliced between vm_A and vm_B. List remains sorted by address.</text>
+
+  <!-- Green arrow annotation -->
+  <line x1="395" y1="1205" x2="395" y2="1195" stroke="#2E7D32" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-green)"/>
+  <text x="350" y="1218" font-size="10" fill="#2E7D32">*p = vm_C</text>
+
+  <line x1="570" y1="1205" x2="570" y2="1195" stroke="#6A1B9A" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="535" y="1218" font-size="10" fill="#6A1B9A">vm_C.next = vm_B</text>
+
+  <!-- ======== Address Space ======== -->
+  <rect x="20" y="1250" width="920" height="135" rx="6" fill="#ECEFF1" stroke="#B0BEC5" stroke-width="1.5"/>
+  <text x="40" y="1277" font-size="16" font-weight="bold" fill="#37474F">Final Address Space (sorted by virtual address)</text>
+
+  <rect x="80" y="1300" width="180" height="35" rx="3" fill="#C8E6C9" stroke="#2E7D32" stroke-width="2"/>
+  <text x="170" y="1322" text-anchor="middle" font-size="12" font-weight="bold" fill="#2E7D32">vm_A</text>
+  <text x="85" y="1352" font-size="10" fill="#333">0x1000</text>
+  <text x="225" y="1352" font-size="10" fill="#333">0x1500</text>
+
+  <rect x="260" y="1300" width="110" height="35" rx="0" fill="#fff" stroke="#ccc" stroke-width="1" stroke-dasharray="4,2"/>
+  <text x="315" y="1322" text-anchor="middle" font-size="10" fill="#aaa">gap</text>
+
+  <rect x="370" y="1300" width="140" height="35" rx="3" fill="#E1BEE7" stroke="#6A1B9A" stroke-width="2"/>
+  <text x="440" y="1322" text-anchor="middle" font-size="12" font-weight="bold" fill="#6A1B9A">vm_C</text>
+  <text x="375" y="1352" font-size="10" fill="#333">0x1800</text>
+  <text x="475" y="1352" font-size="10" fill="#333">0x1A00</text>
+
+  <rect x="510" y="1300" width="110" height="35" rx="0" fill="#fff" stroke="#ccc" stroke-width="1" stroke-dasharray="4,2"/>
+  <text x="565" y="1322" text-anchor="middle" font-size="10" fill="#aaa">gap</text>
+
+  <rect x="620" y="1300" width="180" height="35" rx="3" fill="#FFE0B2" stroke="#E65100" stroke-width="2"/>
+  <text x="710" y="1322" text-anchor="middle" font-size="12" font-weight="bold" fill="#E65100">vm_B</text>
+  <text x="625" y="1352" font-size="10" fill="#333">0x2000</text>
+  <text x="768" y="1352" font-size="10" fill="#333">0x2300</text>
+
+  <!-- ======== Summary ======== -->
+  <rect x="20" y="1405" width="920" height="260" rx="6" fill="#FFFDE7" stroke="#FFF176" stroke-width="1.5"/>
+  <text x="40" y="1432" font-size="16" font-weight="bold" fill="#F57F17">Summary: Pointer-to-Pointer (**p) Technique</text>
+
+  <text x="60" y="1462" font-size="13" fill="#333">1. p is struct vm_struct ** (pointer to pointer), it is NEVER NULL.</text>
+  <text x="60" y="1486" font-size="13" fill="#333">2. p starts at &amp;vmlist (address of the head pointer variable itself).</text>
+  <text x="60" y="1510" font-size="13" fill="#333">3. p walks forward via p = &amp;tmp-&gt;next (address of each node's next field).</text>
+  <text x="60" y="1534" font-size="13" fill="#333">4. *p = vm: when p == &amp;vmlist, it modifies the head pointer;</text>
+  <text x="60" y="1554" font-size="13" fill="#333">   when p == &amp;node-&gt;next, it modifies that node's next link.</text>
+
+  <line x1="60" y1="1570" x2="900" y2="1570" stroke="#FFF176" stroke-width="1"/>
+
+  <text x="60" y="1594" font-size="14" fill="#C62828" font-weight="bold">&#x2714; Same 2 lines handle head / middle / tail insertion uniformly:</text>
+  <text x="100" y="1618" font-size="14" fill="#333" font-weight="bold">vm-&gt;next = *p;</text>
+  <text x="100" y="1640" font-size="14" fill="#333" font-weight="bold">*p = vm;</text>
+  <text x="60" y="1664" font-size="13" fill="#1565C0" font-weight="bold">&#x2714; Two BUG_ON checks guarantee: no two regions may overlap even 1 byte.</text>
+</svg>

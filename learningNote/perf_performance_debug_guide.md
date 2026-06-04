@@ -1268,7 +1268,7 @@ armv8pmu_handle_irq()          ← drivers/perf/arm_pmuv3.c
 
 #### 5.7.1 PMU 采样中断路径时序图
 
-![ARM64 PMU 采样中断路径时序图](arm64_pmu_sampling_irq_sequence.svg)
+![ARM64 PMU 采样中断路径时序图](images/arm64_pmu_sampling_irq_sequence.svg)
 
 > SVG 文件路径：`arm64_pmu_sampling_irq_sequence.svg`
 
@@ -1335,7 +1335,7 @@ struct arm_pmu {
 };
 ```
 
-![ARM64 PMU 关键数据结构关系图](arm64_pmu_key_data_structures.svg)
+![ARM64 PMU 关键数据结构关系图](images/arm64_pmu_key_data_structures.svg)
 
 > 分段讲解（6.1 聚焦）：这一段只看图中 `struct arm_pmu`、`struct pmu` 和 `struct pmu_hw_events` 三块。要点是 `arm_pmu` 通过嵌入 `pmu` 把自己挂进 perf core，再通过 `hw_events` 把每 CPU 的硬件槽位表串起来，所以它既是 perf 的 PMU 接口实现，又是 ARM64 硬件能力和寄存器操作的总入口。
 
@@ -1369,7 +1369,7 @@ struct pmu_hw_events {
 };
 ```
 
-![ARM64 PMU 关键数据结构关系图](arm64_pmu_key_data_structures.svg)
+![ARM64 PMU 关键数据结构关系图](images/arm64_pmu_key_data_structures.svg)
 
 > 分段讲解（6.2 聚焦）：这一段主要看图右下侧 `struct pmu_hw_events` 与中心 `struct perf_event` 的连线。`events[idx] = event` 表示某个硬件计数器槽位当前被哪个事件占用，`used_mask` 则是分配算法扫描的位图；它是“事件真正上 CPU 硬件槽位”的第一现场。
 
@@ -1399,7 +1399,7 @@ struct hw_perf_event {
 };
 ```
 
-![ARM64 PMU 关键数据结构关系图](arm64_pmu_key_data_structures.svg)
+![ARM64 PMU 关键数据结构关系图](images/arm64_pmu_key_data_structures.svg)
 
 > 分段讲解（6.3 聚焦）：这里重点看图中央 `struct perf_event` 到右上 `struct hw_perf_event` 的嵌入关系。`hw_perf_event` 不是独立分配的对象，而是 `perf_event` 内部那块“面向 PMU 寄存器编程”的状态区，里面的 `idx`、`config_base`、`prev_count`、`period_left` 会直接被 `armpmu_add()`、`armpmu_event_update()` 和 `armpmu_event_set_period()` 读写。
 
@@ -1496,7 +1496,7 @@ device_initcall(armv8_pmu_driver_init)          ← arm_pmuv3.c 末尾
 
 #### 7.1.1 PMU 初始化 / 注册路径时序图
 
-![ARM64 PMU 初始化 / 注册路径时序图](arm64_pmu_init_registration_sequence.svg)
+![ARM64 PMU 初始化 / 注册路径时序图](images/arm64_pmu_init_registration_sequence.svg)
 
 > SVG 文件路径：`arm64_pmu_init_registration_sequence.svg`
 
@@ -1510,7 +1510,7 @@ device_initcall(armv8_pmu_driver_init)          ← arm_pmuv3.c 末尾
 #### 7.1.2 DT 路径 vs ACPI 路径差异对照图
 
 <p align="center">
-  <img src="arm64_pmu_dt_vs_acpi_comparison.svg" alt="ARM64 PMU DT 路径 vs ACPI 路径差异对照图" width="100%" />
+  <img src="images/arm64_pmu_dt_vs_acpi_comparison.svg" alt="ARM64 PMU DT 路径 vs ACPI 路径差异对照图" width="100%" />
 </p>
 
 > SVG 文件路径：`arm64_pmu_dt_vs_acpi_comparison.svg`
@@ -1604,7 +1604,7 @@ armpmu_del(event, flags)
 #### 7.2.4 从创建到上 PMU 的生命周期图
 
 <p align="center">
-  <img src="perf_event_to_pmu_lifecycle.svg" alt="perf_event 从创建到上 PMU 的生命周期图" width="100%" />
+  <img src="images/perf_event_to_pmu_lifecycle.svg" alt="perf_event 从创建到上 PMU 的生命周期图" width="100%" />
 </p>
 
 > SVG 文件路径：`perf_event_to_pmu_lifecycle.svg`
@@ -1843,7 +1843,7 @@ armv8pmu_handle_irq(cpu_pmu):
 ## 9. ARM64 PMU 驱动软件框架图
 
 <p align="center">
-  <img src="arm64_pmu_driver_framework.svg" alt="ARM64 PMU 驱动软件框架" width="100%" />
+  <img src="images/arm64_pmu_driver_framework.svg" alt="ARM64 PMU 驱动软件框架" width="100%" />
 </p>
 
 > SVG 文件路径：`arm64_pmu_driver_framework.svg`
@@ -3493,7 +3493,7 @@ perf list metric
 
 ##### 11.6.1.1 perf list 与 sysfs event_source 关联图
 
-![perf list 与 sysfs event_source 目录关联图](perf_list_to_sysfs_event_source.svg)
+![perf list 与 sysfs event_source 目录关联图](images/perf_list_to_sysfs_event_source.svg)
 
 这张图要说明的关键点只有一个：`perf list` 是一个聚合视图，但 **PMU 事件** 这一支，确实是从 `/sys/bus/event_source/devices/` 下面的目录和属性文件“翻译”出来的。
 

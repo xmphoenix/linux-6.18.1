@@ -1125,7 +1125,7 @@ FQS 扫描时的 EQS 检测:
 
 ### 1.1 RCU 软件架构
 
-![RCU Tree 软件架构](rcu_tree_architecture.svg)
+![RCU Tree 软件架构](images/rcu_tree_architecture.svg)
 
 #### 1.1.1 层级树结构
 
@@ -1330,7 +1330,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 
 ### 1.2 RCU 关键数据结构
 
-![RCU 关键数据结构关系图](rcu_data_structures.svg)
+![RCU 关键数据结构关系图](images/rcu_data_structures.svg)
 
 #### 1.2.1 struct rcu_state — 全局 RCU 状态
 
@@ -2928,7 +2928,7 @@ rcu_dereference_protected(ptr, lockdep_is_held(&lock))
 
 ### 2.1 Watchdog 软件架构
 
-![Watchdog 子系统软件架构](watchdog_architecture.svg)
+![Watchdog 子系统软件架构](images/watchdog_architecture.svg)
 
 #### 2.1.1 三层锁检测框架总览
 
@@ -3168,7 +3168,7 @@ bool __init arch_perf_nmi_is_available(void)
 
 ### 2.3 关键数据结构
 
-![Watchdog 关键数据结构关系图](watchdog_data_structures.svg)
+![Watchdog 关键数据结构关系图](images/watchdog_data_structures.svg)
 
 **全局控制变量**（`kernel/watchdog.c`）：
 
@@ -4455,7 +4455,7 @@ lockdep_assert_none_held_once();      /* 断言当前未持有任何锁 */
 
 ### 3.2 DeadLock 软件架构
 
-![Lockdep 软件架构](lockdep_architecture.svg)
+![Lockdep 软件架构](images/lockdep_architecture.svg)
 
 #### 3.2.1 Lockdep 架构总览
 
@@ -4755,7 +4755,7 @@ lock_stat version 0.4
 
 ### 3.3 DeadLock 关键数据结构
 
-![Lockdep 关键数据结构关系图](lockdep_data_structures.svg)
+![Lockdep 关键数据结构关系图](images/lockdep_data_structures.svg)
 
 #### 3.3.1 struct lock_class — 锁类
 
@@ -6945,7 +6945,7 @@ kmemleak_scan_thread (nice=10, 低优先级)
 
 #### 4.3.1 架构总览
 
-![kmemleak 软件架构](kmemleak_architecture.svg)
+![kmemleak 软件架构](images/kmemleak_architecture.svg)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -7020,7 +7020,7 @@ kmemleak_scan_thread (nice=10, 低优先级)
 
 #### 4.3.2 关键数据结构
 
-![kmemleak 关键数据结构关系图](kmemleak_data_structures.svg)
+![kmemleak 关键数据结构关系图](images/kmemleak_data_structures.svg)
 
 ##### `struct kmemleak_object` — 核心追踪元数据
 

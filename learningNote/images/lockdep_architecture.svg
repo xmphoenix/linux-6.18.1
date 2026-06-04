@@ -1,0 +1,397 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1260 980" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <linearGradient id="hApp" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#607D8B"/><stop offset="100%" stop-color="#78909C"/></linearGradient>
+    <linearGradient id="hHook" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1976D2"/><stop offset="100%" stop-color="#42A5F5"/></linearGradient>
+    <linearGradient id="hCore" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C62828"/><stop offset="100%" stop-color="#E53935"/></linearGradient>
+    <linearGradient id="hValid" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#E65100"/><stop offset="100%" stop-color="#FB8C00"/></linearGradient>
+    <linearGradient id="hCache" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#43A047"/></linearGradient>
+    <linearGradient id="hStore" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6A1B9A"/><stop offset="100%" stop-color="#AB47BC"/></linearGradient>
+    <linearGradient id="hProc" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00695C"/><stop offset="100%" stop-color="#26A69A"/></linearGradient>
+    <marker id="aBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1976D2" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aRed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#C62828" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aOrange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#E65100" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2E7D32" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aPurple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6A1B9A" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aTeal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#00695C" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aGray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#607D8B" stroke-width="1.5" stroke-linejoin="round"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="630" y="32" text-anchor="middle" font-size="20" font-weight="bold" fill="#263238">Lockdep 软件架构总览</text>
+  <text x="630" y="52" text-anchor="middle" font-size="11" fill="#607D8B">kernel/locking/lockdep.c · include/linux/lockdep.h · kernel/locking/lockdep_proc.c</text>
+
+  <!-- ===================== Layer 1: Application Layer (锁原语) ===================== -->
+  <g transform="translate(30, 75)">
+    <rect width="1200" height="85" rx="8" fill="#ECEFF1" stroke="#607D8B" stroke-width="1.5" filter="url(#sh)"/>
+    <rect width="1200" height="30" rx="8" fill="url(#hApp)"/>
+    <rect x="0" y="22" width="1200" height="8" fill="#78909C"/>
+    <text x="600" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">锁原语层 — 用户 API</text>
+
+    <!-- Lock primitives as small boxes -->
+    <g transform="translate(30, 40)">
+      <rect width="130" height="34" rx="5" fill="#fff" stroke="#607D8B" stroke-width="1"/>
+      <text x="65" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#37474F">mutex_lock()</text>
+      <text x="65" y="28" text-anchor="middle" font-size="8" fill="#78909C">kernel/locking/mutex.c</text>
+    </g>
+    <g transform="translate(180, 40)">
+      <rect width="130" height="34" rx="5" fill="#fff" stroke="#607D8B" stroke-width="1"/>
+      <text x="65" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#37474F">spin_lock()</text>
+      <text x="65" y="28" text-anchor="middle" font-size="8" fill="#78909C">kernel/locking/spinlock.c</text>
+    </g>
+    <g transform="translate(330, 40)">
+      <rect width="130" height="34" rx="5" fill="#fff" stroke="#607D8B" stroke-width="1"/>
+      <text x="65" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#37474F">down_read()</text>
+      <text x="65" y="28" text-anchor="middle" font-size="8" fill="#78909C">kernel/locking/rwsem.c</text>
+    </g>
+    <g transform="translate(480, 40)">
+      <rect width="130" height="34" rx="5" fill="#fff" stroke="#607D8B" stroke-width="1"/>
+      <text x="65" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#37474F">down_write()</text>
+      <text x="65" y="28" text-anchor="middle" font-size="8" fill="#78909C">kernel/locking/rwsem.c</text>
+    </g>
+    <g transform="translate(630, 40)">
+      <rect width="130" height="34" rx="5" fill="#fff" stroke="#607D8B" stroke-width="1"/>
+      <text x="65" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#37474F">spin_lock_irq()</text>
+      <text x="65" y="28" text-anchor="middle" font-size="8" fill="#78909C">include/linux/spinlock.h</text>
+    </g>
+    <g transform="translate(780, 40)">
+      <rect width="130" height="34" rx="5" fill="#fff" stroke="#607D8B" stroke-width="1"/>
+      <text x="65" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#37474F">rt_mutex_lock()</text>
+      <text x="65" y="28" text-anchor="middle" font-size="8" fill="#78909C">kernel/locking/rtmutex.c</text>
+    </g>
+    <g transform="translate(930, 40)">
+      <rect width="240" height="34" rx="5" fill="#fff" stroke="#607D8B" stroke-width="1"/>
+      <text x="120" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#37474F">lock_acquire() / lock_release()</text>
+      <text x="120" y="28" text-anchor="middle" font-size="8" fill="#78909C">统一入口 — lockdep.c:5825/5875</text>
+    </g>
+  </g>
+
+  <!-- Arrow: Layer 1 → Layer 2 -->
+  <path d="M630,160 L630,188" fill="none" stroke="#1976D2" stroke-width="2" marker-end="url(#aBlue)"/>
+  <rect x="543" y="164" width="174" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="630" y="177" text-anchor="middle" font-size="9" fill="#1976D2" font-weight="bold">lock_acquire(&amp;dep_map,...)</text>
+
+  <!-- ===================== Layer 2: Lockdep Core Engine ===================== -->
+  <g transform="translate(30, 190)">
+    <rect width="1200" height="260" rx="8" fill="#FFF3E0" stroke="#C62828" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1200" height="30" rx="8" fill="url(#hCore)"/>
+    <rect x="0" y="22" width="1200" height="8" fill="#E53935"/>
+    <text x="600" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Lockdep 核心引擎 — __lock_acquire() · lockdep.c:5077</text>
+
+    <!-- Step 1: Register -->
+    <g transform="translate(20, 42)">
+      <rect width="220" height="90" rx="6" fill="#fff" stroke="#1976D2" stroke-width="1.5"/>
+      <text x="110" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#1976D2">① 查找/注册 Lock Class</text>
+      <line x1="5" y1="22" x2="215" y2="22" stroke="#E3F2FD" stroke-width="0.8"/>
+      <text x="10" y="36" font-size="9" fill="#37474F">class_cache[subclass] 快速命中</text>
+      <text x="10" y="50" font-size="9" fill="#37474F">↓ 未命中</text>
+      <text x="10" y="64" font-size="9" fill="#37474F">register_lock_class()</text>
+      <text x="10" y="78" font-size="9" fill="#78909C">classhash_table[4096] 哈希查找</text>
+    </g>
+
+    <!-- Step 2: held_lock -->
+    <g transform="translate(260, 42)">
+      <rect width="200" height="90" rx="6" fill="#fff" stroke="#1976D2" stroke-width="1.5"/>
+      <text x="100" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#1976D2">② 填充 held_lock</text>
+      <line x1="5" y1="22" x2="195" y2="22" stroke="#E3F2FD" stroke-width="0.8"/>
+      <text x="10" y="36" font-size="9" fill="#37474F">curr-&gt;held_locks[depth]</text>
+      <text x="10" y="50" font-size="9" fill="#37474F">设置 class_idx, irq_context</text>
+      <text x="10" y="64" font-size="9" fill="#37474F">设置 read, check, trylock</text>
+      <text x="10" y="78" font-size="9" fill="#78909C">最大深度: MAX_LOCK_DEPTH=48</text>
+    </g>
+
+    <!-- Step 3: mark_usage -->
+    <g transform="translate(480, 42)">
+      <rect width="200" height="90" rx="6" fill="#fff" stroke="#E65100" stroke-width="1.5"/>
+      <text x="100" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#E65100">③ 标记 Usage</text>
+      <line x1="5" y1="22" x2="195" y2="22" stroke="#FFF3E0" stroke-width="0.8"/>
+      <text x="10" y="36" font-size="9" fill="#37474F">mark_usage() 更新 usage_mask</text>
+      <text x="10" y="50" font-size="9" fill="#37474F">LOCK_USED_IN_HARDIRQ</text>
+      <text x="10" y="64" font-size="9" fill="#37474F">LOCK_USED_IN_SOFTIRQ</text>
+      <text x="10" y="78" font-size="9" fill="#37474F">LOCK_ENABLED_HARDIRQ ...</text>
+    </g>
+
+    <!-- Step 4: chain_key -->
+    <g transform="translate(700, 42)">
+      <rect width="220" height="90" rx="6" fill="#fff" stroke="#2E7D32" stroke-width="1.5"/>
+      <text x="110" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">④ 计算 Chain Key</text>
+      <line x1="5" y1="22" x2="215" y2="22" stroke="#E8F5E9" stroke-width="0.8"/>
+      <text x="10" y="36" font-size="9" fill="#37474F">iterate_chain_key(prev, id)</text>
+      <text x="10" y="50" font-size="9" fill="#37474F">Jenkins Hash: __jhash_mix()</text>
+      <text x="10" y="64" font-size="9" fill="#37474F">hlock_id = class_idx &lt;&lt; 1 | read</text>
+      <text x="10" y="78" font-size="9" fill="#78909C">64-bit rolling hash 标识锁链</text>
+    </g>
+
+    <!-- Step 5: validate_chain -->
+    <g transform="translate(940, 42)">
+      <rect width="240" height="90" rx="6" fill="#fff" stroke="#C62828" stroke-width="1.5"/>
+      <text x="120" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#C62828">⑤ validate_chain()</text>
+      <line x1="5" y1="22" x2="235" y2="22" stroke="#FFEBEE" stroke-width="0.8"/>
+      <text x="10" y="36" font-size="9" fill="#37474F">lookup_chain_cache() 快速路径</text>
+      <text x="10" y="50" font-size="9" fill="#37474F">↓ 未命中：graph_lock()</text>
+      <text x="10" y="64" font-size="9" fill="#37474F">check_deadlock() 重复锁检查</text>
+      <text x="10" y="78" font-size="9" fill="#37474F">check_prevs_add() 添加边+验证</text>
+    </g>
+
+    <!-- Arrows between steps -->
+    <path d="M240,87 L260,87" fill="none" stroke="#1976D2" stroke-width="1.5" marker-end="url(#aBlue)"/>
+    <path d="M460,87 L480,87" fill="none" stroke="#1976D2" stroke-width="1.5" marker-end="url(#aBlue)"/>
+    <path d="M680,87 L700,87" fill="none" stroke="#2E7D32" stroke-width="1.5" marker-end="url(#aGreen)"/>
+    <path d="M920,87 L940,87" fill="none" stroke="#C62828" stroke-width="1.5" marker-end="url(#aRed)"/>
+
+    <!-- Validation sub-flow -->
+    <g transform="translate(20, 150)">
+      <rect width="540" height="96" rx="6" fill="#FBE9E7" stroke="#E65100" stroke-width="1.5"/>
+      <text x="270" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#E65100">check_prev_add(prev, next) — 依赖图验证</text>
+      <line x1="5" y1="22" x2="535" y2="22" stroke="#FFCCBC" stroke-width="0.8"/>
+
+      <!-- Sub-steps -->
+      <g transform="translate(8, 30)">
+        <rect width="165" height="56" rx="4" fill="#fff" stroke="#E65100" stroke-width="1"/>
+        <text x="82" y="15" text-anchor="middle" font-size="9" font-weight="bold" fill="#E65100">check_noncircular()</text>
+        <text x="8" y="30" font-size="8" fill="#37474F">BFS 环路检测</text>
+        <text x="8" y="42" font-size="8" fill="#37474F">从 next→...→prev 找环</text>
+        <text x="8" y="53" font-size="8" fill="#78909C">队列: 4096 项</text>
+      </g>
+      <g transform="translate(185, 30)">
+        <rect width="165" height="56" rx="4" fill="#fff" stroke="#E65100" stroke-width="1"/>
+        <text x="82" y="15" text-anchor="middle" font-size="9" font-weight="bold" fill="#E65100">check_irq_usage()</text>
+        <text x="8" y="30" font-size="8" fill="#37474F">IRQ 安全性验证</text>
+        <text x="8" y="42" font-size="8" fill="#37474F">hardirq/softirq 上下文冲突</text>
+        <text x="8" y="53" font-size="8" fill="#78909C">4 步双向 BFS 算法</text>
+      </g>
+      <g transform="translate(362, 30)">
+        <rect width="165" height="56" rx="4" fill="#fff" stroke="#2E7D32" stroke-width="1"/>
+        <text x="82" y="15" text-anchor="middle" font-size="9" font-weight="bold" fill="#2E7D32">add_lock_dep()</text>
+        <text x="8" y="30" font-size="8" fill="#37474F">添加 prev→next 依赖边</text>
+        <text x="8" y="42" font-size="8" fill="#37474F">locks_after / locks_before</text>
+        <text x="8" y="53" font-size="8" fill="#78909C">list_entries[16384]</text>
+      </g>
+
+      <!-- Sub-arrows -->
+      <path d="M173,58 L185,58" fill="none" stroke="#E65100" stroke-width="1" marker-end="url(#aOrange)"/>
+      <path d="M350,58 L362,58" fill="none" stroke="#2E7D32" stroke-width="1" marker-end="url(#aGreen)"/>
+    </g>
+
+    <!-- Cache sub-flow -->
+    <g transform="translate(580, 150)">
+      <rect width="600" height="96" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.5"/>
+      <text x="300" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">Chain Cache — 快速路径加速</text>
+      <line x1="5" y1="22" x2="595" y2="22" stroke="#C8E6C9" stroke-width="0.8"/>
+
+      <g transform="translate(8, 30)">
+        <rect width="180" height="56" rx="4" fill="#fff" stroke="#2E7D32" stroke-width="1"/>
+        <text x="90" y="15" text-anchor="middle" font-size="9" font-weight="bold" fill="#2E7D32">lookup_chain_cache()</text>
+        <text x="8" y="30" font-size="8" fill="#37474F">chainhash_table[16384]</text>
+        <text x="8" y="42" font-size="8" fill="#37474F">hash_long(chain_key, 14)</text>
+        <text x="8" y="53" font-size="8" fill="#78909C">RCU-safe 无锁查找</text>
+      </g>
+      <g transform="translate(200, 30)">
+        <rect width="185" height="56" rx="4" fill="#fff" stroke="#2E7D32" stroke-width="1"/>
+        <text x="92" y="15" text-anchor="middle" font-size="9" font-weight="bold" fill="#2E7D32">命中 → 跳过验证</text>
+        <text x="8" y="30" font-size="8" fill="#37474F">check_no_collision()</text>
+        <text x="8" y="42" font-size="8" fill="#37474F">返回 0：无需再验证</text>
+        <text x="8" y="53" font-size="8" fill="#2E7D32" font-weight="bold">~95%+ 命中率</text>
+      </g>
+      <g transform="translate(397, 30)">
+        <rect width="190" height="56" rx="4" fill="#fff" stroke="#E65100" stroke-width="1"/>
+        <text x="95" y="15" text-anchor="middle" font-size="9" font-weight="bold" fill="#E65100">未命中 → 完整验证</text>
+        <text x="8" y="30" font-size="8" fill="#37474F">graph_lock() 获取全局锁</text>
+        <text x="8" y="42" font-size="8" fill="#37474F">check_prevs_add() 验证</text>
+        <text x="8" y="53" font-size="8" fill="#37474F">add_chain_cache() 缓存结果</text>
+      </g>
+
+      <path d="M188,58 L200,58" fill="none" stroke="#2E7D32" stroke-width="1" marker-end="url(#aGreen)"/>
+      <path d="M385,58 L397,58" fill="none" stroke="#E65100" stroke-width="1" marker-end="url(#aOrange)"/>
+    </g>
+  </g>
+
+  <!-- Arrow: Layer 2 → Layer 3 (violation path) -->
+  <path d="M300,450 L300,480" fill="none" stroke="#C62828" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#aRed)"/>
+  <rect x="212" y="453" width="176" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="300" y="466" text-anchor="middle" font-size="9" fill="#C62828" font-weight="bold">检测到违规 → 输出报告</text>
+
+  <!-- Arrow: Layer 2 → Layer 3 (storage path) -->
+  <path d="M930,450 L930,480" fill="none" stroke="#6A1B9A" stroke-width="2" marker-end="url(#aPurple)"/>
+  <rect x="855" y="453" width="150" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="930" y="466" text-anchor="middle" font-size="9" fill="#6A1B9A" font-weight="bold">更新全局数据结构</text>
+
+  <!-- ===================== Layer 3: Storage & Reporting ===================== -->
+  <!-- Reporting -->
+  <g transform="translate(30, 485)">
+    <rect width="540" height="140" rx="8" fill="#FFEBEE" stroke="#C62828" stroke-width="1.5" filter="url(#sh)"/>
+    <rect width="540" height="30" rx="8" fill="url(#hValid)"/>
+    <rect x="0" y="22" width="540" height="8" fill="#FB8C00"/>
+    <text x="270" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">违规报告输出</text>
+
+    <g transform="translate(15, 40)">
+      <rect width="155" height="88" rx="5" fill="#fff" stroke="#E65100" stroke-width="1"/>
+      <text x="78" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#E65100">print_circular_bug()</text>
+      <line x1="5" y1="22" x2="150" y2="22" stroke="#FFCCBC" stroke-width="0.6"/>
+      <text x="8" y="36" font-size="8" fill="#37474F">环路死锁告警</text>
+      <text x="8" y="48" font-size="8" fill="#37474F">打印完整依赖链路</text>
+      <text x="8" y="60" font-size="8" fill="#37474F">A→B→C→...→A</text>
+      <text x="8" y="76" font-size="8" fill="#C62828" font-weight="bold">BUG: lock ordering</text>
+    </g>
+    <g transform="translate(185, 40)">
+      <rect width="170" height="88" rx="5" fill="#fff" stroke="#E65100" stroke-width="1"/>
+      <text x="85" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#E65100">print_bad_irq_dependency()</text>
+      <line x1="5" y1="22" x2="165" y2="22" stroke="#FFCCBC" stroke-width="0.6"/>
+      <text x="8" y="36" font-size="8" fill="#37474F">IRQ 安全违规告警</text>
+      <text x="8" y="48" font-size="8" fill="#37474F">hardirq-safe ↔ unsafe</text>
+      <text x="8" y="60" font-size="8" fill="#37474F">softirq-safe ↔ unsafe</text>
+      <text x="8" y="76" font-size="8" fill="#C62828" font-weight="bold">BUG: inconsistent</text>
+    </g>
+    <g transform="translate(370, 40)">
+      <rect width="155" height="88" rx="5" fill="#fff" stroke="#E65100" stroke-width="1"/>
+      <text x="78" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#E65100">print_deadlock_bug()</text>
+      <line x1="5" y1="22" x2="150" y2="22" stroke="#FFCCBC" stroke-width="0.6"/>
+      <text x="8" y="36" font-size="8" fill="#37474F">递归/重复获取告警</text>
+      <text x="8" y="48" font-size="8" fill="#37474F">同一锁类的重入</text>
+      <text x="8" y="60" font-size="8" fill="#37474F">AA 型死锁</text>
+      <text x="8" y="76" font-size="8" fill="#C62828" font-weight="bold">BUG: deadlock</text>
+    </g>
+  </g>
+
+  <!-- Storage -->
+  <g transform="translate(600, 485)">
+    <rect width="630" height="140" rx="8" fill="#F3E5F5" stroke="#6A1B9A" stroke-width="1.5" filter="url(#sh)"/>
+    <rect width="630" height="30" rx="8" fill="url(#hStore)"/>
+    <rect x="0" y="22" width="630" height="8" fill="#AB47BC"/>
+    <text x="315" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">全局静态数据结构</text>
+
+    <g transform="translate(10, 40)">
+      <rect width="145" height="88" rx="5" fill="#fff" stroke="#6A1B9A" stroke-width="1"/>
+      <text x="72" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#6A1B9A">lock_classes[]</text>
+      <line x1="5" y1="22" x2="140" y2="22" stroke="#E1BEE7" stroke-width="0.6"/>
+      <text x="8" y="36" font-size="8" fill="#37474F">数组: 8192 项</text>
+      <text x="8" y="48" font-size="8" fill="#37474F">所有已注册锁类</text>
+      <text x="8" y="60" font-size="8" fill="#37474F">locks_after 链表</text>
+      <text x="8" y="72" font-size="8" fill="#37474F">locks_before 链表</text>
+      <text x="8" y="84" font-size="8" fill="#78909C">usage_mask 16bit</text>
+    </g>
+    <g transform="translate(165, 40)">
+      <rect width="145" height="88" rx="5" fill="#fff" stroke="#6A1B9A" stroke-width="1"/>
+      <text x="72" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#6A1B9A">list_entries[]</text>
+      <line x1="5" y1="22" x2="140" y2="22" stroke="#E1BEE7" stroke-width="0.6"/>
+      <text x="8" y="36" font-size="8" fill="#37474F">数组: 16384 项</text>
+      <text x="8" y="48" font-size="8" fill="#37474F">依赖图的边</text>
+      <text x="8" y="60" font-size="8" fill="#37474F">lock_list 结构</text>
+      <text x="8" y="72" font-size="8" fill="#37474F">class + links_to</text>
+      <text x="8" y="84" font-size="8" fill="#78909C">BFS 遍历节点</text>
+    </g>
+    <g transform="translate(320, 40)">
+      <rect width="145" height="88" rx="5" fill="#fff" stroke="#2E7D32" stroke-width="1"/>
+      <text x="72" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#2E7D32">lock_chains[]</text>
+      <line x1="5" y1="22" x2="140" y2="22" stroke="#C8E6C9" stroke-width="0.6"/>
+      <text x="8" y="36" font-size="8" fill="#37474F">数组: 32768 项</text>
+      <text x="8" y="48" font-size="8" fill="#37474F">锁链缓存条目</text>
+      <text x="8" y="60" font-size="8" fill="#37474F">64-bit chain_key</text>
+      <text x="8" y="72" font-size="8" fill="#37474F">depth + base 索引</text>
+      <text x="8" y="84" font-size="8" fill="#78909C">chain_hlocks[] 引用</text>
+    </g>
+    <g transform="translate(475, 40)">
+      <rect width="145" height="88" rx="5" fill="#fff" stroke="#2E7D32" stroke-width="1"/>
+      <text x="72" y="16" text-anchor="middle" font-size="9" font-weight="bold" fill="#2E7D32">chain_hlocks[]</text>
+      <line x1="5" y1="22" x2="140" y2="22" stroke="#C8E6C9" stroke-width="0.6"/>
+      <text x="8" y="36" font-size="8" fill="#37474F">数组: 163840 项</text>
+      <text x="8" y="48" font-size="8" fill="#37474F">压缩的 hlock_id</text>
+      <text x="8" y="60" font-size="8" fill="#37474F">lock_chain.base 引用</text>
+      <text x="8" y="72" font-size="8" fill="#37474F">class_idx &lt;&lt; 1 | read</text>
+      <text x="8" y="84" font-size="8" fill="#78909C">碰撞检测依据</text>
+    </g>
+  </g>
+
+  <!-- Arrow: Storage → /proc -->
+  <path d="M915,625 L915,660" fill="none" stroke="#00695C" stroke-width="2" marker-end="url(#aTeal)"/>
+  <rect x="842" y="631" width="146" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="915" y="644" text-anchor="middle" font-size="9" fill="#00695C" font-weight="bold">导出到 /proc 接口</text>
+
+  <!-- ===================== Layer 4: /proc Interface ===================== -->
+  <g transform="translate(30, 665)">
+    <rect width="1200" height="85" rx="8" fill="#E0F2F1" stroke="#00695C" stroke-width="1.5" filter="url(#sh)"/>
+    <rect width="1200" height="30" rx="8" fill="url(#hProc)"/>
+    <rect x="0" y="22" width="1200" height="8" fill="#26A69A"/>
+    <text x="600" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">/proc 接口层 — lockdep_proc.c</text>
+
+    <g transform="translate(30, 40)">
+      <rect width="200" height="34" rx="5" fill="#fff" stroke="#00695C" stroke-width="1"/>
+      <text x="100" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#00695C">/proc/lockdep</text>
+      <text x="100" y="28" text-anchor="middle" font-size="8" fill="#78909C">所有 lock_class 及其依赖</text>
+    </g>
+    <g transform="translate(260, 40)">
+      <rect width="200" height="34" rx="5" fill="#fff" stroke="#00695C" stroke-width="1"/>
+      <text x="100" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#00695C">/proc/lockdep_chains</text>
+      <text x="100" y="28" text-anchor="middle" font-size="8" fill="#78909C">已缓存的锁链列表</text>
+    </g>
+    <g transform="translate(490, 40)">
+      <rect width="200" height="34" rx="5" fill="#fff" stroke="#00695C" stroke-width="1"/>
+      <text x="100" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#00695C">/proc/lockdep_stats</text>
+      <text x="100" y="28" text-anchor="middle" font-size="8" fill="#78909C">统计: 类/边/链/命中率</text>
+    </g>
+    <g transform="translate(720, 40)">
+      <rect width="200" height="34" rx="5" fill="#fff" stroke="#00695C" stroke-width="1"/>
+      <text x="100" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#00695C">/proc/lock_stat</text>
+      <text x="100" y="28" text-anchor="middle" font-size="8" fill="#78909C">竞争统计 (CONFIG_LOCK_STAT)</text>
+    </g>
+    <g transform="translate(950, 40)">
+      <rect width="220" height="34" rx="5" fill="#fff" stroke="#00695C" stroke-width="1"/>
+      <text x="110" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#00695C">/proc/sys/kernel/prove_locking</text>
+      <text x="110" y="28" text-anchor="middle" font-size="8" fill="#78909C">运行时开关</text>
+    </g>
+  </g>
+
+  <!-- ===================== Per-Task Layer ===================== -->
+  <g transform="translate(30, 775)">
+    <rect width="1200" height="85" rx="8" fill="#E8EAF6" stroke="#3F51B5" stroke-width="1.5" filter="url(#sh)"/>
+    <rect width="1200" height="30" rx="8" fill="#3F51B5"/>
+    <rect x="0" y="22" width="1200" height="8" fill="#5C6BC0"/>
+    <text x="600" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Per-Task 运行时状态 — task_struct</text>
+
+    <g transform="translate(30, 40)">
+      <rect width="200" height="34" rx="5" fill="#fff" stroke="#3F51B5" stroke-width="1"/>
+      <text x="100" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#3F51B5">held_locks[48]</text>
+      <text x="100" y="28" text-anchor="middle" font-size="8" fill="#78909C">当前任务持有的锁栈</text>
+    </g>
+    <g transform="translate(260, 40)">
+      <rect width="200" height="34" rx="5" fill="#fff" stroke="#3F51B5" stroke-width="1"/>
+      <text x="100" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#3F51B5">lockdep_depth</text>
+      <text x="100" y="28" text-anchor="middle" font-size="8" fill="#78909C">当前持锁深度 (0~48)</text>
+    </g>
+    <g transform="translate(490, 40)">
+      <rect width="200" height="34" rx="5" fill="#fff" stroke="#3F51B5" stroke-width="1"/>
+      <text x="100" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#3F51B5">curr_chain_key</text>
+      <text x="100" y="28" text-anchor="middle" font-size="8" fill="#78909C">64-bit 滚动哈希</text>
+    </g>
+    <g transform="translate(720, 40)">
+      <rect width="200" height="34" rx="5" fill="#fff" stroke="#3F51B5" stroke-width="1"/>
+      <text x="100" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#3F51B5">lockdep_recursion</text>
+      <text x="100" y="28" text-anchor="middle" font-size="8" fill="#78909C">防止 lockdep 自身递归</text>
+    </g>
+    <g transform="translate(950, 40)">
+      <rect width="220" height="34" rx="5" fill="#fff" stroke="#3F51B5" stroke-width="1"/>
+      <text x="110" y="15" text-anchor="middle" font-size="10" font-weight="bold" fill="#3F51B5">softirqs_enabled</text>
+      <text x="110" y="28" text-anchor="middle" font-size="8" fill="#78909C">IRQ 上下文标记</text>
+    </g>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(30, 885)">
+    <rect width="1200" height="80" rx="6" fill="#FAFAFA" stroke="#BDBDBD" stroke-width="0.8" fill-opacity="0.95"/>
+    <text x="15" y="18" font-size="10" font-weight="bold" fill="#616161">图例</text>
+    <line x1="60" y1="36" x2="120" y2="36" stroke="#1976D2" stroke-width="2"/>
+    <text x="125" y="40" font-size="9" fill="#37474F">锁获取入口流</text>
+    <line x1="240" y1="36" x2="300" y2="36" stroke="#C62828" stroke-width="2" stroke-dasharray="5,3"/>
+    <text x="305" y="40" font-size="9" fill="#37474F">违规报告路径</text>
+    <line x1="420" y1="36" x2="480" y2="36" stroke="#2E7D32" stroke-width="2"/>
+    <text x="485" y="40" font-size="9" fill="#37474F">缓存快速路径</text>
+    <line x1="600" y1="36" x2="660" y2="36" stroke="#6A1B9A" stroke-width="2"/>
+    <text x="665" y="40" font-size="9" fill="#37474F">数据存储路径</text>
+    <line x1="780" y1="36" x2="840" y2="36" stroke="#E65100" stroke-width="2"/>
+    <text x="845" y="40" font-size="9" fill="#37474F">验证流程</text>
+    <line x1="940" y1="36" x2="1000" y2="36" stroke="#00695C" stroke-width="2"/>
+    <text x="1005" y="40" font-size="9" fill="#37474F">/proc 导出</text>
+
+    <text x="15" y="65" font-size="9" fill="#78909C">核心路径: lock_acquire() → __lock_acquire() → validate_chain() → lookup_chain_cache() → [HIT: skip] / [MISS: check_prev_add() → check_noncircular() + check_irq_usage()]</text>
+  </g>
+</svg>

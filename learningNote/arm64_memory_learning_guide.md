@@ -62,14 +62,14 @@
 </details>
 
 <details>
-<summary><a href="#第3课arm64-四级页表5天核心">第3课：ARM64 四级页表（5天，核心！）</a></summary>
+<summary><a href="#第3课arm64-页表层级当前配置为5级5天核心">第3课：ARM64 页表层级（当前配置为5级，5天，核心！）</a></summary>
 
 - [3.1 学习目标](#31-学习目标)
-- [3.2 原理图：虚拟地址拆分（VA_BITS=48，4KB页）](#32-原理图虚拟地址拆分va_bits484kb页)
-- [3.3 原理图：四级翻译流程](#33-原理图四级翻译流程)
+- [3.2 原理图：虚拟地址拆分（VA_BITS=52，4KB页）](#32-原理图虚拟地址拆分va_bits524kb页)
+- [3.3 原理图：五级翻译流程（主内核映射）](#33-原理图五级翻译流程主内核映射)
 - [3.4 PTE 格式（ARM64 Stage 1，4KB 页，关键）](#34-pte-格式arm64-stage-14kb-页关键)
 - [3.5 代码阅读顺序](#35-代码阅读顺序)
-- [3.6 QEMU 实验 3.1：GDB 手动遍历四级页表](#36-qemu-实验-31gdb-手动遍历四级页表)
+- [3.6 QEMU 实验 3.1：GDB 手动遍历当前配置页表](#36-qemu-实验-31gdb-手动遍历当前配置页表)
 - [3.7 QEMU 实验 3.2：观察 AP 权限位](#37-qemu-实验-32观察-ap-权限位)
 - [3.8 检查清单](#38-检查清单)
 
@@ -176,7 +176,7 @@
 graph TD
     Z["第0课: head.S→start_kernel<br/>早期内存映射<br/>⏰ 3天"] --> A["第1课: ARM64 硬件基础<br/>MMU + Cache + TLB<br/>⏰ 3天"]
     A --> B["第2课: 物理内存发现<br/>DTB → memblock<br/>⏰ 2天"]
-    B --> C["第3课: ARM64 四级页表<br/>PGD→PUD→PMD→PTE<br/>⏰ 5天"]
+    B --> C["第3课: ARM64 页表层级<br/>5级: PGD→P4D→PUD→PMD→PTE<br/>⏰ 5天"]
     C --> D["第4课: 虚拟地址空间<br/>用户态 + 内核态布局<br/>⏰ 3天"]
     D --> E["第5课: struct page/folio<br/>物理页元数据<br/>⏰ 3天"]
     E --> F["第6课: Buddy 伙伴系统<br/>页分配器<br/>⏰ 5天"]
@@ -305,6 +305,24 @@ graph TD
  │                    │ 仅映射 .idmap.text 段  │ CPU hotplug/suspend 时 TTBR0 使用   │
  └────────────────────┴───────────────────────┴──────────────────────────────────────┘
 ```
+
+补充理解：这一节除了记住“谁在什么时候用”，还要记住“它到底是几级页表、叶子条目是 block 还是 page”。
+
+- **主内核地址空间是 5 级页表**：`PAGE_SIZE=4KB`、`VA_BITS=52`、`CONFIG_PGTABLE_LEVELS=5`，Linux 命名层次是 `PGD → P4D → PUD → PMD → PTE`
+- **每级单个条目的典型覆盖范围**：`PGD=256TB`，`P4D=512GB`，`PUD=1GB`，`PMD=2MB`，`PTE=4KB`
+- **本文口语里的“段映射”在 ARM64 里更准确叫 block mapping**：对 4KB granule，常见 block leaf 是 `PUD` 的 `1GB block` 和 `PMD` 的 `2MB block`；真正的页映射是 `PTE` 的 `4KB page`
+- **`idmap` 不是 52-bit 五级，而是固定 48-bit 四级**：源码里 `IDMAP_VA_BITS=48`，`IDMAP_ROOT_LEVEL = 4 - 4 = 0`，因此 `init_idmap_pg_dir` / `idmap_pg_dir` 的根表位于 **level 0（即 P4D 层）**，遍历路径为 `P4D→PUD→PMD→PTE`，不需要顶层 `PGD（level -1）`
+- **启动早期的 `create_init_idmap()` / `map_kernel()`** 走的是 `arch/arm64/kernel/pi/map_range.c` 这套 PI 建表器：`idmap` 侧从 level 0 开始（四级），内核主映射侧从 level -1 开始（五级）；PI 建表器的叶子只在 **level 2 放 PMD 2MB block** 或 **level 3 放 PTE 4KB page**（`level < 2` 时一律递归，因此 PI 建表器不会产生 PUD 1GB block）
+- **最终 `paging_init()` 的 `swapper_pg_dir`** 走通用建表器 `__create_pgd_mapping()`：在 4KB 页配置下会优先尝试 `PUD 1GB block` 或 `PMD 2MB block`，只有需要更细粒度权限、边界切分或后续拆分时才下沉到 `PTE 4KB page`
+- **`reserved_pg_dir` 只是空根表**，只负责占位，不承载实际叶子映射
+
+| 页表目录 | 生命周期阶段 | 级数骨架 | 实际叶子映射模式 |
+| --- | --- | --- | --- |
+| `init_idmap_pg_dir` | `head.S` 早期恒等映射 | 4 级 (root 在 level 0 即 `P4D→PUD→PMD→PTE`；无 `PGD`) | 以 `PMD 2MB block` 为主，必要时降到 `PTE 4KB page` |
+| `reserved_pg_dir` | MMU 刚打开时给 `TTBR1` 占位 | 只有根表占位 | 无实际映射 |
+| `init_pg_dir` | `early_map_kernel()` 早期内核镜像映射 | 5 级 | 以 `PMD 2MB block` 为主，段边界/权限切分处用 `PTE 4KB page` |
+| `swapper_pg_dir` | `early_map_kernel()` 初始化，`paging_init()` 完善 | 5 级 | 最终内核页表，优先 `PUD 1GB block` / `PMD 2MB block`，必要时 `PTE 4KB page` |
+| `idmap_pg_dir` | `paging_init()` 后的最终 idmap | 4 级 (`IDMAP_ROOT_LEVEL=0`，即 `P4D→PUD→PMD→PTE`，无 `PGD`) | 只覆盖 `.idmap.text` 一小段，通常是 `PMD block`，不够对齐时退化为 `PTE page` |
 
 ### 0.5 代码逐行解析：primary_entry（arch/arm64/kernel/head.S:85）
 
@@ -586,7 +604,9 @@ graph TD
  void map_range(phys_addr_t *pte, u64 start, u64 end, phys_addr_t pa,
                 pgprot_t prot, int level, pte_t *tbl, ...)
  {
-     // level: 0=PGD, 1=PUD, 2=PMD, 3=PTE
+    // level 表示硬件翻译层
+    // 当前配置的主内核映射通常从 level=-1 开始（可理解为 PGD）
+    // 48-bit idmap 从 level=0 开始，因此不经过 P4D
      // lshift = (3 - level) * TABLE_SHIFT
 
      while (start < end) {
@@ -713,49 +733,7 @@ graph TD
 
 ### 1.2 原理图：CPU 访问内存的硬件路径
 
-```
-                    CPU Core
-                       │
-                  ┌────▼────┐
-                  │  发出VA  │  虚拟地址（Virtual Address）
-                  └────┬────┘
-                       │
-          ┌────────────▼────────────┐
-          │         TLB             │  Translation Lookaside Buffer
-          │  VA → PA 缓存（快表）    │  ← 命中率 > 99%
-          │                        │
-          │  TLB Hit?              │
-          ├────Yes──┐   ┌──No──────┤
-          │         │   │          │
-          │         │   │  ┌───────▼───────┐
-          │         │   │  │  Table Walker  │  硬件自动遍历页表
-          │         │   │  │  读TTBR→PGD→   │  （不需要软件参与）
-          │         │   │  │  PUD→PMD→PTE   │
-          │         │   │  └───────┬───────┘
-          │         │   │          │ PTE→PA
-          │         │   │  ┌───────▼───────┐
-          │         │   │  │  填充TLB缓存   │
-          │         │   │  └───────┬───────┘
-          │         ▼   ▼          │
-          │     ┌───PA───┐◄────────┘
-          └─────┤        │
-                └───┬────┘
-                    │
-          ┌─────────▼─────────┐
-          │    L1 Cache       │  64字节 cache line
-          │    命中？          │
-          ├──Yes──┐  ┌─No────┤
-          │       │  │       │
-          │       │  ▼       │
-          │    L2 Cache      │
-          │       │  │       │
-          │       │  ▼       │
-          │    L3 Cache      │  （如果有）
-          │       │  │       │
-          │       │  ▼       │
-          │    物理内存(DDR)   │
-          └───────┴──┴───────┘
-```
+<img src="images/arm64_cpu_memory_access_path.svg" alt="CPU 访问内存的硬件路径" width="100%" />
 
 ### 1.3 ARM64 关键系统寄存器
 
@@ -787,12 +765,99 @@ graph TD
 ### 1.5 QEMU 实验 1.2：查看 cache 参数
 
 ```bash
-# QEMU 内运行：
-cat /sys/devices/system/cpu/cpu0/cache/index0/size            # L1 D-Cache
-cat /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size  # = 64
+# 先看内核到底导出了哪些 cache leaf：
+ls -al /sys/devices/system/cpu/cpu0/cache/
+ls -al /sys/devices/system/cpu/cpu0/cache/index0/
+
+# 在很多 ARM64 QEMU / OpenWrt 镜像里，通常只能稳定看到这些基础属性：
+cat /sys/devices/system/cpu/cpu0/cache/index0/level
+cat /sys/devices/system/cpu/cpu0/cache/index0/type
+cat /sys/devices/system/cpu/cpu0/cache/index0/shared_cpu_list
+
+# 如果底层 firmware/DT/ACPI 把 cache 细节补全了，下面这些节点才会出现：
+test -f /sys/devices/system/cpu/cpu0/cache/index0/size && \
+cat /sys/devices/system/cpu/cpu0/cache/index0/size
+test -f /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size && \
+cat /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size
+test -f /sys/devices/system/cpu/cpu0/cache/index0/ways_of_associativity && \
 cat /sys/devices/system/cpu/cpu0/cache/index0/ways_of_associativity
+test -f /sys/devices/system/cpu/cpu0/cache/index0/number_of_sets && \
 cat /sys/devices/system/cpu/cpu0/cache/index0/number_of_sets
 ```
+
+如果你像在 OpenWrt/QEMU 里那样，只看到 `level/type/shared_cpu_*`，而看不到 `size`、`coherency_line_size`、`ways_of_associativity`、`number_of_sets`，这**不是路径写错**，而是 Linux 的 cacheinfo sysfs 设计本来就是“**只有字段有值才导出属性**”。也就是说：
+
+- 内核已经识别出“这里有一个 cache leaf”，所以建出了 `index0`
+- 但底层没有把大小、line size、sets、ways 填给 cacheinfo，相关文件就不会出现
+- 在 ARM64 上，这些信息通常来自 **设备树 cache 节点** 或 **ACPI PPTT**；QEMU/OpenWrt 经常只给出最基础的层级信息
+
+如果 sysfs 没导出 line size，可以退一步从 `CTR_EL0` 理解 ARM64 的最小 D-cache line 大小：
+
+```bash
+# 在 GDB 中观察（更稳）：
+(gdb) p/x $ctr = $CTR_EL0
+
+# DminLine = CTR_EL0[19:16]
+# line_size_bytes = 4 << DminLine
+# 例如 DminLine=4，则 line size = 4 << 4 = 64 字节
+```
+
+**OpenWrt/QEMU 补充实验：检查 DT 里的 cache 节点是否真的存在**
+
+很多 OpenWrt 镜像默认没有 `dtc` / `fdtdump`，但仍然可以直接查看内核展开后的设备树：
+
+```bash
+# 1) 先确认设备树文件系统是否存在
+ls -al /sys/firmware/devicetree/base
+
+# 2) 查看 CPU 节点
+ls -al /sys/firmware/devicetree/base/cpus
+ls -al /sys/firmware/devicetree/base/cpus/cpu@0
+
+# 3) 搜索和 cache 相关的属性/节点
+find /sys/firmware/devicetree/base/cpus -maxdepth 3 | grep -E 'cpu@|cache'
+
+# 4) 重点看 cpu@0 下是否存在这些常见属性
+ls /sys/firmware/devicetree/base/cpus/cpu@0 | grep -E 'cache|next-level'
+```
+
+ARM64 上你通常会关心这些 DT 属性：
+
+- `i-cache-size`
+- `d-cache-size`
+- `i-cache-line-size`
+- `d-cache-line-size`
+- `cache-unified`
+- `next-level-cache`
+
+其中，整数属性在 sysfs 里是**原始二进制 DT 属性**，不是纯文本，建议用 `od` 查看：
+
+```bash
+# 读取 32-bit big-endian 数值属性
+od -An -tx4 /sys/firmware/devicetree/base/cpus/cpu@0/d-cache-size
+od -An -tx4 /sys/firmware/devicetree/base/cpus/cpu@0/d-cache-line-size
+
+# 看 next-level-cache 这个 phandle 属性是否存在
+od -An -tx4 /sys/firmware/devicetree/base/cpus/cpu@0/next-level-cache
+```
+
+如果系统里装了 `dtc`，还能直接把当前 live DT 反编译出来看：
+
+```bash
+dtc -I fs -O dts /sys/firmware/devicetree/base | less
+```
+
+你要观察的结论非常直接：
+
+1. 如果 `cpu@0` 下根本没有 `d-cache-size`、`d-cache-line-size`、`next-level-cache`，那 sysfs 少这些 cache 细节就是正常现象
+2. 如果 `cpu@0` 有 `next-level-cache`，还要继续顺着这个引用检查对应的 L2/L3 cache 节点是否真的带有 `cache-size` 或 `cache-unified`
+3. 如果 DT 里只有 CPU 层级信息，没有完整 cache 描述，那么 `/sys/devices/system/cpu/cpu0/cache/index0/` 往往就只剩 `level/type/shared_cpu_*`
+
+因此，这个实验的重点不是“所有机器都一定能读到完整 cache 参数”，而是：
+
+1. 学会从 `/sys/devices/system/cpu/cpu0/cache/index*` 判断内核导出了哪些 cache 层级
+2. 知道详细参数缺失时，往往是 firmware/DT/ACPI 没提供完整 cache 描述
+3. 知道 ARM64 的 cache line 大小本质上还可以从 `CTR_EL0` 推导
 
 ### 1.6 关键概念检查清单
 
@@ -887,69 +952,76 @@ dmesg | grep -i memblock | head -40
 
 ---
 
-## 第3课：ARM64 四级页表（5天，核心！）
+## 第3课：ARM64 页表层级（当前配置为5级，5天，核心！）
 
 ### 3.1 学习目标
 
-彻底理解 ARM64 四级页表结构，能手动从 VA 推算出 PA。
+彻底理解 ARM64 在当前配置下的页表层级，能手动从 VA 推算出 PA，并区分主内核映射的 5 级页表与早期 idmap 的 48-bit 4 级页表。
 
-### 3.2 原理图：虚拟地址拆分（VA_BITS=48，4KB页）
-
-```
- 63    48 47    39 38    30 29    21 20    12 11      0
-┌────────┬────────┬────────┬────────┬────────┬──────────┐
-│ 未使用  │ PGD索引 │ PUD索引 │ PMD索引 │ PTE索引 │  页内偏移  │
-│ (TTBR  │  9 bit  │  9 bit │  9 bit │  9 bit │  12 bit  │
-│  选择)  │ 0-511  │ 0-511  │ 0-511  │ 0-511  │ 0-4095  │
-└────────┴────────┴────────┴────────┴────────┴──────────┘
-    ↓         ↓        ↓        ↓        ↓         ↓
-  bit63=0   每级512   每级512   每级512   每级512   4KB页
-  →TTBR0    个条目    个条目    个条目    个条目    内偏移
-  →用户态
-  bit63=1
-  →TTBR1
-  →内核态
-```
-
-### 3.3 原理图：四级翻译流程
+### 3.2 原理图：虚拟地址拆分（VA_BITS=52，4KB页）
 
 ```
-                TTBR0_EL1（存 PGD 物理基址）
-                      │
-                      ▼
-            ┌─────────────────────┐
-            │  PGD（Page Global   │  512个条目 × 8字节 = 4KB（正好一页）
-            │   Directory）       │
-            │  [pgd_index(VA)]    │
-            └─────────┬───────────┘
-                      │ 取出 PUD 物理基址
-                      ▼
-            ┌─────────────────────┐
-            │  PUD（Page Upper    │  512个条目 × 8字节 = 4KB
-            │   Directory）       │
-            │  [pud_index(VA)]    │  ← ★ 可以是 1GB 块映射（pud_huge）
-            └─────────┬───────────┘
-                      │ 取出 PMD 物理基址
-                      ▼
-            ┌─────────────────────┐
-            │  PMD（Page Middle   │  512个条目 × 8字节 = 4KB
-            │   Directory）       │
-            │  [pmd_index(VA)]    │  ← ★ 可以是 2MB 块映射（THP/HugePage）
-            └─────────┬───────────┘
-                      │ 取出 PTE 物理基址
-                      ▼
-            ┌─────────────────────┐
-            │  PTE（Page Table    │  512个条目 × 8字节 = 4KB
-            │   Entry）           │
-            │  [pte_index(VA)]    │
-            └─────────┬───────────┘
-                      │ 取出物理页帧地址
-                      ▼
-            ┌─────────────────────┐
-            │  物理页（4KB）       │
-            │  + 页内偏移          │  → 最终物理地址 PA
-            └─────────────────────┘
+ 63        52 51   48 47    39 38    30 29    21 20    12 11      0
+┌────────────┬───────┬────────┬────────┬────────┬────────┬──────────┐
+│ 高位扩展/   │ PGD   │ P4D    │ PUD    │ PMD    │ PTE    │ 页内偏移 │
+│ TTBR 选择   │ 索引   │ 索引   │ 索引   │ 索引   │ 索引   │          │
+│ 12 bit      │ 4 bit │ 9 bit  │ 9 bit  │ 9 bit  │ 9 bit  │ 12 bit   │
+└────────────┴───────┴────────┴────────┴────────┴────────┴──────────┘
+             ↓         ↓        ↓        ↓        ↓        ↓         ↓
+     高位区分      16个     512个     512个     512个     512个      4KB
+     TTBR0/1       条目     条目      条目      条目      条目       页内偏移
 ```
+
+说明：上图对应本文开头给出的当前主内核映射配置。早期 `idmap` 因为 `IDMAP_VA_BITS=48`，所以不需要 `P4D` 这一层。
+
+### 3.3 原理图：五级翻译流程（主内核映射）
+
+```
+            TTBRx_EL1（存顶级页表基址）
+                │
+                ▼
+        ┌─────────────────────┐
+        │  PGD（Page Global   │  16个条目 × 8字节 = 128B
+        │   Directory）       │  （软件上仍按一页分配/管理）
+        │  [pgd_index(VA)]    │
+        └─────────┬───────────┘
+                │ 取出 P4D 物理基址
+                ▼
+        ┌─────────────────────┐
+        │  P4D（Page 4th      │  512个条目 × 8字节 = 4KB
+        │   Directory）       │
+        │  [p4d_index(VA)]    │
+        └─────────┬───────────┘
+                │ 取出 PUD 物理基址
+                ▼
+        ┌─────────────────────┐
+        │  PUD（Page Upper    │  512个条目 × 8字节 = 4KB
+        │   Directory）       │
+        │  [pud_index(VA)]    │  ← ★ 可以是 1GB block leaf
+        └─────────┬───────────┘
+                │ 取出 PMD 物理基址
+                ▼
+        ┌─────────────────────┐
+        │  PMD（Page Middle   │  512个条目 × 8字节 = 4KB
+        │   Directory）       │
+        │  [pmd_index(VA)]    │  ← ★ 可以是 2MB block leaf
+        └─────────┬───────────┘
+                │ 取出 PTE 物理基址
+                ▼
+        ┌─────────────────────┐
+        │  PTE（Page Table    │  512个条目 × 8字节 = 4KB
+        │   Entry）           │
+        │  [pte_index(VA)]    │  ← 4KB page leaf
+        └─────────┬───────────┘
+                │ 取出物理页帧地址
+                ▼
+        ┌─────────────────────┐
+        │  物理页（4KB）       │
+        │  + 页内偏移          │  → 最终物理地址 PA
+        └─────────────────────┘
+```
+
+补充：如果看的是 `init_idmap_pg_dir` / `idmap_pg_dir`，由于它们只覆盖 48-bit 地址空间，遍历时通常会直接看到 `PGD → PUD → PMD → PTE` 这类 4 级效果。
 
 ### 3.4 PTE 格式（ARM64 Stage 1，4KB 页，关键）
 
@@ -986,7 +1058,7 @@ dmesg | grep -i memblock | head -40
 5. arch/arm64/include/asm/tlbflush.h        ← TLB flush 操作
 ```
 
-### 3.6 QEMU 实验 3.1：GDB 手动遍历四级页表
+### 3.6 QEMU 实验 3.1：GDB 手动遍历当前配置页表
 
 ```bash
 # 假设目标用户态地址 addr = 0x400000（进程的 .text 段）
@@ -1854,7 +1926,7 @@ done
 | 周次 | 课程 | 重点 | 实验数量 |
 |------|------|------|----------|
 | **第1周** | 第1-2课 | 硬件基础 + memblock | 4个 |
-| **第2周** | 第3课 | 四级页表（最核心的硬基础） | 3个 |
+| **第2周** | 第3课 | 页表层级（主映射5级，idmap 4级） | 3个 |
 | **第3周** | 第4-5课 | 虚拟地址空间 + struct page | 4个 |
 | **第4周** | 第6-7课 | Buddy + SLUB（分配器双雄） | 4个 |
 | **第5周** | 第8-9课 | VMA + 缺页异常（虚实连接） | 5个 |

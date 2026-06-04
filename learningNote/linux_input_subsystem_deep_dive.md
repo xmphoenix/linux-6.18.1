@@ -186,7 +186,7 @@ Linux Input 子系统采用**三层架构**，将输入设备驱动与用户空�
 
 下图展示了 Input 子系统核心数据结构之间的引用、内嵌和链表连接关系：
 
-![Linux Input 子系统关键数据结构关系图](linux_input_subsystem_data_structures.svg)
+![Linux Input 子系统关键数据结构关系图](images/linux_input_subsystem_data_structures.svg)
 
 **关系要点：**
 - `input_handle` 是 `input_dev` 与 `input_handler` 之间的**桥梁**，通过双向链表 (`d_node` / `h_node`) 分别挂在设备和处理器上
@@ -563,7 +563,7 @@ struct input_device_id {
 
 下图展示了 Input 子系统从硬件到用户空间的五层软件架构，以及层间的核心 API 调用关系：
 
-![Linux Input 子系统软件架构总览](linux_input_subsystem_software_arch.svg)
+![Linux Input 子系统软件架构总览](images/linux_input_subsystem_software_arch.svg)
 
 ### 3.1 设备注册流程
 

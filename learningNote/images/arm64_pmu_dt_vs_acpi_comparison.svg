@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2240 1660" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.16"/>
+    </filter>
+
+    <linearGradient id="hdrDt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <linearGradient id="hdrAcpi" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="hdrCommon" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#16a34a"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="hdrDiff" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+
+    <marker id="aDt" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#0369a1" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aAcpi" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6d28d9" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aCommon" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#15803d" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aGray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#475569" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="2240" height="1660" fill="#f8fafc"/>
+
+  <text x="1120" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#0f172a">ARM64 PMU DT 路径 vs ACPI 路径差异对照图</text>
+  <text x="1120" y="66" text-anchor="middle" font-size="12" fill="#64748b">对照点：设备枚举来源、IRQ 注册方式、CPU 归属建立、名称生成、最终收敛到 `struct arm_pmu` / `perf_pmu_register()`</text>
+
+  <g transform="translate(38,92)">
+    <rect width="500" height="100" rx="10" fill="#ffffff" fill-opacity="0.94" stroke="#cbd5e1" stroke-width="1.2" filter="url(#sh)"/>
+    <text x="16" y="22" font-size="12" font-weight="700" fill="#0f172a">图例</text>
+    <path d="M18,44 H110" fill="none" stroke="#0369a1" stroke-width="1.8" marker-end="url(#aDt)"/>
+    <text x="124" y="48" font-size="11" fill="#334155">DT 专属路径</text>
+    <path d="M18,70 H110" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#aAcpi)"/>
+    <text x="124" y="74" font-size="11" fill="#334155">ACPI 专属路径</text>
+    <path d="M18,96 H110" fill="none" stroke="#15803d" stroke-width="2.2" stroke-dasharray="6,3" marker-end="url(#aCommon)"/>
+    <text x="124" y="100" font-size="11" fill="#334155">两条路径共享的收敛阶段</text>
+  </g>
+
+  <g transform="translate(80,230)">
+    <rect width="880" height="1080" rx="12" fill="#ffffff" stroke="#bae6fd" stroke-width="1.8" filter="url(#sh)"/>
+    <rect width="880" height="34" rx="12" fill="url(#hdrDt)"/>
+    <rect x="0" y="26" width="880" height="8" fill="url(#hdrDt)"/>
+    <text x="440" y="23" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">DT 路径</text>
+    <text x="20" y="58" font-size="11" font-weight="700" fill="#0369a1">主文件：drivers/perf/arm_pmuv3.c + drivers/perf/arm_pmu_platform.c</text>
+
+    <g transform="translate(26,90)">
+      <rect width="828" height="114" rx="8" fill="#eff6ff" stroke="#0284c7" stroke-width="1.4"/>
+      <text x="18" y="24" font-size="11" font-weight="700" fill="#075985">1. 设备枚举来源</text>
+      <text x="18" y="48" font-size="10" fill="#0c4a6e">来自设备树节点与 `of_device_id` 匹配</text>
+      <text x="18" y="68" font-size="10" fill="#0c4a6e">入口：`armv8_pmu_driver_init()` → `platform_driver_register()`</text>
+      <text x="18" y="88" font-size="10" fill="#0c4a6e">随后 `.probe = armv8_pmu_device_probe()` 被平台总线调用</text>
+    </g>
+
+    <path d="M440,206 V254" fill="none" stroke="#0369a1" stroke-width="1.8" marker-end="url(#aDt)"/>
+
+    <g transform="translate(26,268)">
+      <rect width="828" height="128" rx="8" fill="#eff6ff" stroke="#0284c7" stroke-width="1.4"/>
+      <text x="18" y="24" font-size="11" font-weight="700" fill="#075985">2. 设备探测入口</text>
+      <text x="18" y="48" font-size="10" fill="#0c4a6e">`armv8_pmu_device_probe(pdev)`</text>
+      <text x="18" y="68" font-size="10" fill="#0c4a6e">直接转发到 `arm_pmu_device_probe(pdev, armv8_pmu_of_device_ids, NULL)`</text>
+      <text x="18" y="88" font-size="10" fill="#0c4a6e">此时已经有真实 `platform_device` 和 `pdev->dev.of_node`</text>
+      <text x="18" y="108" font-size="10" fill="#0c4a6e">`pmu->plat_device = pdev`，`pmu->pmu.parent = &amp;pdev->dev`</text>
+    </g>
+
+    <path d="M440,396 V444" fill="none" stroke="#0369a1" stroke-width="1.8" marker-end="url(#aDt)"/>
+
+    <g transform="translate(26,458)">
+      <rect width="828" height="146" rx="8" fill="#eff6ff" stroke="#0284c7" stroke-width="1.4"/>
+      <text x="18" y="24" font-size="11" font-weight="700" fill="#075985">3. IRQ 解析方式</text>
+      <text x="18" y="48" font-size="10" fill="#0c4a6e">调用 `pmu_parse_irqs(pmu)` 读取设备树中断资源</text>
+      <text x="18" y="68" font-size="10" fill="#0c4a6e">支持 percpu IRQ 和 SPI + `interrupt-affinity`</text>
+      <text x="18" y="88" font-size="10" fill="#0c4a6e">IRQ 资源跟随设备树节点天然存在，不需要从 MADT/GICC 反推</text>
+      <text x="18" y="108" font-size="10" fill="#0c4a6e">之后显式调用 `armpmu_request_irqs(pmu)` 申请中断</text>
+      <text x="18" y="128" font-size="10" fill="#0c4a6e">这是 DT 路径和 ACPI 路径最直观的分叉之一</text>
+    </g>
+
+    <path d="M440,604 V652" fill="none" stroke="#0369a1" stroke-width="1.8" marker-end="url(#aDt)"/>
+
+    <g transform="translate(26,666)">
+      <rect width="828" height="128" rx="8" fill="#eff6ff" stroke="#0284c7" stroke-width="1.4"/>
+      <text x="18" y="24" font-size="11" font-weight="700" fill="#075985">4. PMUv3 初始化入口</text>
+      <text x="18" y="48" font-size="10" fill="#0c4a6e">通过 `of_device_get_match_data(dev)` 得到 `init_fn`</text>
+      <text x="18" y="68" font-size="10" fill="#0c4a6e">随后调用 `init_fn(pmu)`，即 `armv8_pmuv3_pmu_init()`</text>
+      <text x="18" y="88" font-size="10" fill="#0c4a6e">会进一步进入 `armv8_pmu_init()` / `armv8pmu_probe_pmu()` 做能力探测</text>
+      <text x="18" y="108" font-size="10" fill="#0c4a6e">此阶段已经知道该设备树节点对应的是哪类 PMU 型号</text>
+    </g>
+
+    <path d="M440,794 V842" fill="none" stroke="#0369a1" stroke-width="1.8" marker-end="url(#aDt)"/>
+
+    <g transform="translate(26,856)">
+      <rect width="828" height="182" rx="8" fill="#eff6ff" stroke="#0284c7" stroke-width="1.4"/>
+      <text x="18" y="24" font-size="11" font-weight="700" fill="#075985">5. CPU 归属与命名特征</text>
+      <text x="18" y="48" font-size="10" fill="#0c4a6e">CPU 归属主要来自 `interrupt-affinity`、percpu IRQ、设备树拓扑信息</text>
+      <text x="18" y="68" font-size="10" fill="#0c4a6e">通常保留驱动定义名，如 `armv8_pmuv3` 或厂商 PMU 名称</text>
+      <text x="18" y="88" font-size="10" fill="#0c4a6e">如果是异构系统，不同节点可以天然对应不同 PMU 实例</text>
+      <text x="18" y="108" font-size="10" fill="#0c4a6e">没有 ACPI 那种按 `cpuid` 扫描在线 CPU 再 `name_%d` 编号的过程</text>
+      <text x="18" y="136" font-size="10" font-weight="700" fill="#075985">一句话：</text>
+      <text x="18" y="154" font-size="10" fill="#0c4a6e">DT 路径是“先有设备，再解析它的 CPU/IRQ 关系”</text>
+    </g>
+  </g>
+
+  <g transform="translate(1280,230)">
+    <rect width="880" height="1080" rx="12" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.8" filter="url(#sh)"/>
+    <rect width="880" height="34" rx="12" fill="url(#hdrAcpi)"/>
+    <rect x="0" y="26" width="880" height="8" fill="url(#hdrAcpi)"/>
+    <text x="440" y="23" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">ACPI 路径</text>
+    <text x="20" y="58" font-size="11" font-weight="700" fill="#6d28d9">主文件：drivers/perf/arm_pmu_acpi.c</text>
+
+    <g transform="translate(26,90)">
+      <rect width="828" height="114" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4"/>
+      <text x="18" y="24" font-size="11" font-weight="700" fill="#5b21b6">1. 设备枚举来源</text>
+      <text x="18" y="48" font-size="10" fill="#6d28d9">来自 ACPI MADT / GICC 表项，而不是 platform device 节点</text>
+      <text x="18" y="68" font-size="10" fill="#6d28d9">入口：`arm_pmu_acpi_probe(armv8_pmuv3_pmu_init)`</text>
+      <text x="18" y="88" font-size="10" fill="#6d28d9">要先从固件表推导 CPU、IRQ 和 PMU 对应关系</text>
+    </g>
+
+    <path d="M440,206 V254" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#aAcpi)"/>
+
+    <g transform="translate(26,268)">
+      <rect width="828" height="146" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4"/>
+      <text x="18" y="24" font-size="11" font-weight="700" fill="#5b21b6">2. IRQ 解析方式</text>
+      <text x="18" y="48" font-size="10" fill="#6d28d9">先执行 `arm_pmu_acpi_parse_irqs()` 遍历每个 possible CPU</text>
+      <text x="18" y="68" font-size="10" fill="#6d28d9">通过 `acpi_cpu_get_madt_gicc(cpu)` 取 `performance_interrupt`</text>
+      <text x="18" y="88" font-size="10" fill="#6d28d9">调用 `acpi_register_gsi()` 把 GSI 变成 Linux IRQ</text>
+      <text x="18" y="108" font-size="10" fill="#6d28d9">随后立即 `armpmu_request_irq(irq, cpu)`，把 IRQ 预先挂到各 CPU</text>
+      <text x="18" y="128" font-size="10" fill="#6d28d9">这一步先于 PMU 实例正式完成 probe</text>
+    </g>
+
+    <path d="M440,414 V462" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#aAcpi)"/>
+
+    <g transform="translate(26,476)">
+      <rect width="828" height="152" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4"/>
+      <text x="18" y="24" font-size="11" font-weight="700" fill="#5b21b6">3. CPU 归属建立方式</text>
+      <text x="18" y="48" font-size="10" fill="#6d28d9">先安装 `cpuhp_setup_state_nocalls(CPUHP_AP_PERF_ARM_ACPI_STARTING, ...)`</text>
+      <text x="18" y="68" font-size="10" fill="#6d28d9">然后按在线 CPU 扫描 `per_cpu(cpu_data, cpu).reg_midr`</text>
+      <text x="18" y="88" font-size="10" fill="#6d28d9">`arm_pmu_acpi_probe_matching_cpus(pmu, cpuid)` 把同 MIDR 的 CPU 归到一个 PMU</text>
+      <text x="18" y="108" font-size="10" fill="#6d28d9">热插拔时再通过 `arm_pmu_acpi_cpu_starting()` 做后续关联</text>
+      <text x="18" y="128" font-size="10" fill="#6d28d9">这是 ACPI 路径最核心的“先按 CPU 特征分组，再认 PMU”的思路</text>
+    </g>
+
+    <path d="M440,628 V676" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#aAcpi)"/>
+
+    <g transform="translate(26,690)">
+      <rect width="828" height="126" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4"/>
+      <text x="18" y="24" font-size="11" font-weight="700" fill="#5b21b6">4. PMUv3 初始化入口</text>
+      <text x="18" y="48" font-size="10" fill="#6d28d9">对每个还未 probe 的在线 CPU：`pmu = armpmu_alloc()`</text>
+      <text x="18" y="68" font-size="10" fill="#6d28d9">`pmu->acpi_cpuid = cpuid` 后调用 `init_fn(pmu)`</text>
+      <text x="18" y="88" font-size="10" fill="#6d28d9">即同样进入 `armv8_pmuv3_pmu_init()` → `armv8_pmu_init()`</text>
+      <text x="18" y="108" font-size="10" fill="#6d28d9">说明 hardware personality 仍和 DT 路径完全共享</text>
+    </g>
+
+    <path d="M440,816 V864" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#aAcpi)"/>
+
+    <g transform="translate(26,878)">
+      <rect width="828" height="160" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4"/>
+      <text x="18" y="24" font-size="11" font-weight="700" fill="#5b21b6">5. 名称与实例特征</text>
+      <text x="18" y="48" font-size="10" fill="#6d28d9">`base_name = pmu->name; pmu->name = kasprintf("%s_%d", base_name, pmu_idx++)`</text>
+      <text x="18" y="68" font-size="10" fill="#6d28d9">因此 ACPI 路径常见 `armv8_pmuv3_0`、`armv8_pmuv3_1` 这类实例名</text>
+      <text x="18" y="88" font-size="10" fill="#6d28d9">名字编号是因为固件表枚举的是 PMU 组，而不是天然的设备树节点名</text>
+      <text x="18" y="116" font-size="10" font-weight="700" fill="#5b21b6">一句话：</text>
+      <text x="18" y="134" font-size="10" fill="#6d28d9">ACPI 路径是“先按 CPU/MADT 信息拼出 PMU，再补上名字和注册”</text>
+    </g>
+  </g>
+
+  <g transform="translate(520,1360)">
+    <rect width="1200" height="236" rx="12" fill="#ffffff" stroke="#bbf7d0" stroke-width="1.8" filter="url(#sh)"/>
+    <rect width="1200" height="34" rx="12" fill="url(#hdrCommon)"/>
+    <rect x="0" y="26" width="1200" height="8" fill="url(#hdrCommon)"/>
+    <text x="600" y="23" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">两条路径的共同收敛阶段</text>
+    <text x="20" y="62" font-size="11" font-weight="700" fill="#166534">无论来自 DT 还是 ACPI，最后都要完成下面几件事</text>
+    <text x="20" y="90" font-size="10" fill="#166534">1. 调用 `armv8_pmuv3_pmu_init()` / `armv8_pmu_init()`，把 PMUv3 的寄存器能力和回调函数写入 `struct arm_pmu`</text>
+    <text x="20" y="112" font-size="10" fill="#166534">2. 准备好 `struct pmu_hw_events __percpu *hw_events`、`cntr_mask`、`pmceid_bitmap`、`supported_cpus`</text>
+    <text x="20" y="134" font-size="10" fill="#166534">3. 调用 `armpmu_register(pmu)`，进入 `cpu_pmu_init()` 和 `perf_pmu_register()`</text>
+    <text x="20" y="156" font-size="10" fill="#166534">4. 在 `/sys/bus/event_source/devices/&lt;name&gt;/` 暴露 sysfs 目录，供 `perf list` 和 `perf_event_open()` 使用</text>
+    <text x="20" y="178" font-size="10" fill="#166534">5. 之后才轮到事件生命周期：`armpmu_event_init()` → `armpmu_add()` → `armv8pmu_enable_event()`</text>
+  </g>
+
+  <path d="M520,1268 V1320 H1120 V1360" fill="none" stroke="#15803d" stroke-width="2.2" stroke-dasharray="6,3" marker-end="url(#aCommon)"/>
+  <path d="M1720,1268 V1320 H1120 V1360" fill="none" stroke="#15803d" stroke-width="2.2" stroke-dasharray="6,3" marker-end="url(#aCommon)"/>
+  <rect x="960" y="1307" width="320" height="22" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="1120" y="1322" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">converge to arm_pmu + perf_pmu_register()</text>
+
+  <g transform="translate(820,230)">
+    <rect width="600" height="70" rx="10" fill="#fff7ed" stroke="#f59e0b" stroke-width="1.4" filter="url(#sh)"/>
+    <text x="18" y="24" font-size="11" font-weight="700" fill="#b45309">最值得记住的区别</text>
+    <text x="18" y="46" font-size="10" fill="#92400e">DT：先有设备节点，再解析它的 CPU/IRQ 关系。ACPI：先有 CPU/MADT 信息，再反向拼出 PMU 实例和名字。</text>
+  </g>
+
+  <text x="1120" y="1630" text-anchor="middle" font-size="12" fill="#475569">读图方法：先看左右两栏的“枚举来源”和“IRQ 解析方式”，再看底部公共收敛区。这样就能区分固件发现差异和 PMUv3 驱动本体的共用部分。</text>
+</svg>

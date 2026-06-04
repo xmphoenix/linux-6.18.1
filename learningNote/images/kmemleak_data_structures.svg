@@ -1,0 +1,465 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1460 1220" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <!-- Struct header gradients -->
+    <linearGradient id="hObj" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1565C0"/><stop offset="100%" stop-color="#42A5F5"/></linearGradient>
+    <linearGradient id="hArea" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#66BB6A"/></linearGradient>
+    <linearGradient id="hRb" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6A1B9A"/><stop offset="100%" stop-color="#AB47BC"/></linearGradient>
+    <linearGradient id="hList" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#E65100"/><stop offset="100%" stop-color="#FB8C00"/></linearGradient>
+    <linearGradient id="hPool" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#37474F"/><stop offset="100%" stop-color="#78909C"/></linearGradient>
+    <linearGradient id="hCache" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#AD1457"/><stop offset="100%" stop-color="#EC407A"/></linearGradient>
+    <linearGradient id="hLock" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4E342E"/><stop offset="100%" stop-color="#8D6E63"/></linearGradient>
+    <linearGradient id="hDepot" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00695C"/><stop offset="100%" stop-color="#26A69A"/></linearGradient>
+    <!-- Arrow markers (stroke only, no fill) -->
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2E7D32" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6A1B9A" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#E65100" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aD" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#37474F" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aM" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#AD1457" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aT" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#00695C" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#C62828" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <!-- Diamond markers (composition) -->
+    <marker id="dB" markerWidth="12" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M1,4 L6,1 L11,4 L6,7 Z" fill="#fff" stroke="#1565C0" stroke-width="1.2"/></marker>
+    <marker id="dO" markerWidth="12" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M1,4 L6,1 L11,4 L6,7 Z" fill="#fff" stroke="#E65100" stroke-width="1.2"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="730" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#263238">kmemleak 关键数据结构关系图</text>
+  <text x="730" y="50" text-anchor="middle" font-size="11" fill="#607D8B">mm/kmemleak.c — struct kmemleak_object 为核心的数据组织</text>
+
+  <!-- ===== Legend ===== -->
+  <g transform="translate(20, 65)">
+    <rect width="300" height="115" rx="6" fill="white" fill-opacity="0.92" stroke="#B0BEC5" stroke-width="1"/>
+    <text x="15" y="18" font-size="11" font-weight="bold" fill="#37474F">图例 Legend</text>
+    <line x1="15" y1="36" x2="60" y2="36" stroke="#1565C0" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <text x="68" y="40" font-size="9" fill="#37474F">RCU 链表指针 (list_head)</text>
+    <line x1="15" y1="54" x2="60" y2="54" stroke="#6A1B9A" stroke-width="2"/>
+    <text x="68" y="58" font-size="9" fill="#37474F">RB Tree 嵌入 (rb_node)</text>
+    <line x1="15" y1="72" x2="60" y2="72" stroke="#2E7D32" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="68" y="76" font-size="9" fill="#37474F">hlist 链接 (scan_area → object)</text>
+    <path d="M15,90 L25,87 L35,90 L25,93 Z" fill="#fff" stroke="#1565C0" stroke-width="1.2"/>
+    <line x1="35" y1="90" x2="60" y2="90" stroke="#1565C0" stroke-width="2"/>
+    <text x="68" y="94" font-size="9" fill="#37474F">组合/拥有关系</text>
+    <line x1="15" y1="108" x2="60" y2="108" stroke="#00695C" stroke-width="1.5"/>
+    <text x="68" y="112" font-size="9" fill="#37474F">引用 / 外部关联</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- CORE: struct kmemleak_object (center-top, main struct)           -->
+  <!-- ================================================================ -->
+  <g transform="translate(400, 90)">
+    <rect width="420" height="460" rx="8" fill="#fff" stroke="#1565C0" stroke-width="2" filter="url(#sh)"/>
+    <rect width="420" height="30" rx="8" fill="url(#hObj)"/>
+    <rect x="0" y="22" width="420" height="8" fill="#42A5F5"/>
+    <text x="210" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="white">struct kmemleak_object</text>
+    <!-- Purpose comment -->
+    <text x="15" y="48" font-size="10" font-weight="bold" fill="#1565C0">/* 每个被追踪内存块的核心元数据 */</text>
+    <line x1="10" y1="55" x2="410" y2="55" stroke="#BBDEFB" stroke-width="0.8"/>
+    <!-- Fields -->
+    <text x="15" y="72" font-size="11" font-family="monospace" fill="#333">raw_spinlock_t lock</text>
+    <text x="280" y="72" font-size="9" fill="#78909C">对象级保护锁</text>
+    <line x1="10" y1="80" x2="410" y2="80" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="96" font-size="11" font-family="monospace" fill="#E65100">struct list_head object_list</text>
+    <text x="310" y="96" font-size="9" fill="#E65100">→ 全局链表</text>
+    <line x1="10" y1="104" x2="410" y2="104" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="120" font-size="11" font-family="monospace" fill="#E65100">struct list_head gray_list</text>
+    <text x="310" y="120" font-size="9" fill="#E65100">→ 灰色链表</text>
+    <line x1="10" y1="128" x2="410" y2="128" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="144" font-size="11" font-family="monospace" fill="#6A1B9A">struct rb_node rb_node</text>
+    <text x="280" y="144" font-size="9" fill="#6A1B9A">→ RB Tree 节点</text>
+    <line x1="10" y1="152" x2="410" y2="152" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="168" font-size="11" font-family="monospace" fill="#333">struct rcu_head rcu</text>
+    <text x="280" y="168" font-size="9" fill="#78909C">RCU 延迟释放</text>
+    <line x1="10" y1="176" x2="410" y2="176" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="192" font-size="11" font-family="monospace" fill="#333">atomic_t use_count</text>
+    <text x="280" y="192" font-size="9" fill="#78909C">引用计数</text>
+    <line x1="10" y1="200" x2="410" y2="200" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="216" font-size="11" font-family="monospace" fill="#333">unsigned int flags</text>
+    <text x="280" y="216" font-size="9" fill="#78909C">ALLOCATED|REPORTED|…</text>
+    <line x1="10" y1="224" x2="410" y2="224" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="240" font-size="11" font-family="monospace" fill="#333">unsigned int del_state</text>
+    <text x="280" y="240" font-size="9" fill="#78909C">REMOVED|NO_DELETE</text>
+    <line x1="10" y1="248" x2="410" y2="248" stroke="#BBDEFB" stroke-width="0.8"/>
+
+    <!-- Memory tracking section -->
+    <text x="15" y="266" font-size="10" font-weight="bold" fill="#1565C0">/* 内存追踪 */</text>
+    <line x1="10" y1="273" x2="410" y2="273" stroke="#BBDEFB" stroke-width="0.8"/>
+
+    <text x="15" y="290" font-size="11" font-family="monospace" fill="#C62828">unsigned long pointer</text>
+    <text x="280" y="290" font-size="9" fill="#C62828">被追踪块地址</text>
+    <line x1="10" y1="298" x2="410" y2="298" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="314" font-size="11" font-family="monospace" fill="#333">size_t size</text>
+    <text x="280" y="314" font-size="9" fill="#78909C">块大小</text>
+    <line x1="10" y1="322" x2="410" y2="322" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="338" font-size="11" font-family="monospace" fill="#333">unsigned long excess_ref</text>
+    <text x="280" y="338" font-size="9" fill="#78909C">多余引用(vmalloc)</text>
+    <line x1="10" y1="346" x2="410" y2="346" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="362" font-size="11" font-family="monospace" fill="#333">int min_count</text>
+    <text x="280" y="362" font-size="9" fill="#78909C">白/灰判定阈值</text>
+    <line x1="10" y1="370" x2="410" y2="370" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="386" font-size="11" font-family="monospace" fill="#333">int count</text>
+    <text x="280" y="386" font-size="9" fill="#78909C">扫描发现引用数</text>
+    <line x1="10" y1="394" x2="410" y2="394" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="410" font-size="11" font-family="monospace" fill="#333">u32 checksum</text>
+    <text x="280" y="410" font-size="9" fill="#78909C">CRC32 变化检测</text>
+    <line x1="10" y1="418" x2="410" y2="418" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="434" font-size="11" font-family="monospace" fill="#00695C">depot_stack_handle_t trace_handle</text>
+    <text x="320" y="434" font-size="9" fill="#00695C">→ stack depot</text>
+    <line x1="10" y1="442" x2="410" y2="442" stroke="#E3F2FD" stroke-width="0.5"/>
+
+    <text x="15" y="458" font-size="11" font-family="monospace" fill="#2E7D32">struct hlist_head area_list</text>
+    <text x="300" y="458" font-size="9" fill="#2E7D32">→ scan_area 链</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- struct kmemleak_scan_area (right side)                           -->
+  <!-- ================================================================ -->
+  <g transform="translate(1020, 360)">
+    <rect width="280" height="140" rx="8" fill="#fff" stroke="#2E7D32" stroke-width="2" filter="url(#sh)"/>
+    <rect width="280" height="30" rx="8" fill="url(#hArea)"/>
+    <rect x="0" y="22" width="280" height="8" fill="#66BB6A"/>
+    <text x="140" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">struct kmemleak_scan_area</text>
+    <text x="15" y="48" font-size="10" font-weight="bold" fill="#2E7D32">/* 限定扫描子区域 */</text>
+    <line x1="10" y1="55" x2="270" y2="55" stroke="#C8E6C9" stroke-width="0.8"/>
+    <text x="15" y="74" font-size="11" font-family="monospace" fill="#333">struct hlist_node node</text>
+    <text x="220" y="74" font-size="9" fill="#78909C">链表节点</text>
+    <line x1="10" y1="82" x2="270" y2="82" stroke="#E8F5E9" stroke-width="0.5"/>
+    <text x="15" y="100" font-size="11" font-family="monospace" fill="#333">unsigned long start</text>
+    <text x="220" y="100" font-size="9" fill="#78909C">扫描起始</text>
+    <line x1="10" y1="108" x2="270" y2="108" stroke="#E8F5E9" stroke-width="0.5"/>
+    <text x="15" y="126" font-size="11" font-family="monospace" fill="#333">size_t size</text>
+    <text x="220" y="126" font-size="9" fill="#78909C">扫描范围</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- Global Lists: object_list + gray_list (left side)                -->
+  <!-- ================================================================ -->
+  <g transform="translate(20, 240)">
+    <rect width="260" height="160" rx="8" fill="#fff" stroke="#E65100" stroke-width="2" filter="url(#sh)"/>
+    <rect width="260" height="30" rx="8" fill="url(#hList)"/>
+    <rect x="0" y="22" width="260" height="8" fill="#FB8C00"/>
+    <text x="130" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">全局链表 (Global Lists)</text>
+    <text x="15" y="48" font-size="10" font-weight="bold" fill="#E65100">/* 遍历所有对象 */</text>
+    <line x1="10" y1="55" x2="250" y2="55" stroke="#FFE0B2" stroke-width="0.8"/>
+    <text x="15" y="74" font-size="11" font-family="monospace" fill="#E65100">LIST_HEAD(object_list)</text>
+    <text x="15" y="90" font-size="9" fill="#78909C">所有已追踪对象 (RCU 保护遍历)</text>
+    <line x1="10" y1="100" x2="250" y2="100" stroke="#FFF3E0" stroke-width="0.5"/>
+    <text x="15" y="118" font-size="11" font-family="monospace" fill="#E65100">LIST_HEAD(gray_list)</text>
+    <text x="15" y="134" font-size="9" fill="#78909C">扫描期间有引用的灰色对象</text>
+    <text x="15" y="150" font-size="9" fill="#78909C">(scan_mutex 保护)</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- RB Trees ×3 (left-bottom)                                        -->
+  <!-- ================================================================ -->
+  <g transform="translate(20, 590)">
+    <rect width="320" height="210" rx="8" fill="#fff" stroke="#6A1B9A" stroke-width="2" filter="url(#sh)"/>
+    <rect width="320" height="30" rx="8" fill="url(#hRb)"/>
+    <rect x="0" y="22" width="320" height="8" fill="#AB47BC"/>
+    <text x="160" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">RB Trees — 地址快速查找</text>
+    <text x="15" y="48" font-size="10" font-weight="bold" fill="#6A1B9A">/* O(log n) 按地址查找 kmemleak_object */</text>
+    <line x1="10" y1="55" x2="310" y2="55" stroke="#E1BEE7" stroke-width="0.8"/>
+    <text x="15" y="76" font-size="11" font-family="monospace" fill="#6A1B9A">object_tree_root</text>
+    <text x="220" y="76" font-size="9" fill="#78909C">虚拟地址对象</text>
+    <line x1="10" y1="84" x2="310" y2="84" stroke="#F3E5F5" stroke-width="0.5"/>
+    <text x="15" y="104" font-size="11" font-family="monospace" fill="#6A1B9A">object_phys_tree_root</text>
+    <text x="220" y="104" font-size="9" fill="#78909C">物理地址对象</text>
+    <text x="220" y="118" font-size="8" fill="#9E9E9E">(OBJECT_PHYS 标志)</text>
+    <line x1="10" y1="126" x2="310" y2="126" stroke="#F3E5F5" stroke-width="0.5"/>
+    <text x="15" y="146" font-size="11" font-family="monospace" fill="#6A1B9A">object_percpu_tree_root</text>
+    <text x="220" y="146" font-size="9" fill="#78909C">Per-CPU 对象</text>
+    <text x="220" y="160" font-size="8" fill="#9E9E9E">(OBJECT_PERCPU 标志)</text>
+    <line x1="10" y1="170" x2="310" y2="170" stroke="#E1BEE7" stroke-width="0.8"/>
+    <text x="15" y="190" font-size="9" fill="#78909C">查找函数：__lookup_object()</text>
+    <text x="15" y="204" font-size="9" fill="#78909C">key = pointer 地址, 按地址范围匹配</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- Synchronization Primitives (bottom-center)                       -->
+  <!-- ================================================================ -->
+  <g transform="translate(400, 610)">
+    <rect width="290" height="190" rx="8" fill="#fff" stroke="#4E342E" stroke-width="2" filter="url(#sh)"/>
+    <rect width="290" height="30" rx="8" fill="url(#hLock)"/>
+    <rect x="0" y="22" width="290" height="8" fill="#8D6E63"/>
+    <text x="145" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">同步原语 (Synchronization)</text>
+    <text x="15" y="48" font-size="10" font-weight="bold" fill="#4E342E">/* 并发保护层次 */</text>
+    <line x1="10" y1="55" x2="280" y2="55" stroke="#D7CCC8" stroke-width="0.8"/>
+    <text x="15" y="76" font-size="11" font-family="monospace" fill="#4E342E">kmemleak_lock</text>
+    <text x="160" y="76" font-size="9" fill="#78909C">raw_spinlock_t</text>
+    <text x="15" y="92" font-size="9" fill="#78909C">保护: object_list, rb_trees, del_state</text>
+    <line x1="10" y1="102" x2="280" y2="102" stroke="#EFEBE9" stroke-width="0.5"/>
+    <text x="15" y="122" font-size="11" font-family="monospace" fill="#4E342E">scan_mutex</text>
+    <text x="160" y="122" font-size="9" fill="#78909C">mutex</text>
+    <text x="15" y="138" font-size="9" fill="#78909C">保护: gray_list, 扫描流程</text>
+    <line x1="10" y1="148" x2="280" y2="148" stroke="#EFEBE9" stroke-width="0.5"/>
+    <text x="15" y="168" font-size="11" font-family="monospace" fill="#4E342E">object-&gt;lock</text>
+    <text x="160" y="168" font-size="9" fill="#78909C">raw_spinlock_t (per-object)</text>
+    <text x="15" y="184" font-size="9" fill="#78909C">保护: flags, count, checksum 等字段</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- Memory Pool + Slab Caches (bottom-right)                         -->
+  <!-- ================================================================ -->
+  <g transform="translate(750, 610)">
+    <rect width="320" height="110" rx="8" fill="#fff" stroke="#37474F" stroke-width="2" filter="url(#sh)"/>
+    <rect width="320" height="30" rx="8" fill="url(#hPool)"/>
+    <rect x="0" y="22" width="320" height="8" fill="#78909C"/>
+    <text x="160" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">mem_pool[] — 静态内存池</text>
+    <text x="15" y="48" font-size="10" font-weight="bold" fill="#37474F">/* 早期启动 &amp; slab 失败回退 */</text>
+    <line x1="10" y1="55" x2="310" y2="55" stroke="#CFD8DC" stroke-width="0.8"/>
+    <text x="15" y="74" font-size="11" font-family="monospace" fill="#333">kmemleak_object mem_pool[16000]</text>
+    <text x="15" y="90" font-size="9" fill="#78909C">mem_pool_free_count / mem_pool_free_list</text>
+    <text x="15" y="104" font-size="9" fill="#78909C">对象归还时判断地址范围决定回池 or 回 slab</text>
+  </g>
+
+  <g transform="translate(750, 760)">
+    <rect width="320" height="110" rx="8" fill="#fff" stroke="#AD1457" stroke-width="2" filter="url(#sh)"/>
+    <rect width="320" height="30" rx="8" fill="url(#hCache)"/>
+    <rect x="0" y="22" width="320" height="8" fill="#EC407A"/>
+    <text x="160" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Slab Caches — 运行期分配</text>
+    <text x="15" y="48" font-size="10" font-weight="bold" fill="#AD1457">/* SLAB_NOLEAKTRACE 避免自追踪递归 */</text>
+    <line x1="10" y1="55" x2="310" y2="55" stroke="#F8BBD0" stroke-width="0.8"/>
+    <text x="15" y="74" font-size="11" font-family="monospace" fill="#AD1457">object_cache</text>
+    <text x="170" y="74" font-size="9" fill="#78909C">kmem_cache for kmemleak_object</text>
+    <line x1="10" y1="82" x2="310" y2="82" stroke="#FCE4EC" stroke-width="0.5"/>
+    <text x="15" y="100" font-size="11" font-family="monospace" fill="#AD1457">scan_area_cache</text>
+    <text x="170" y="100" font-size="9" fill="#78909C">kmem_cache for kmemleak_scan_area</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- Stack Depot (far right)                                           -->
+  <!-- ================================================================ -->
+  <g transform="translate(1120, 610)">
+    <rect width="260" height="110" rx="8" fill="#fff" stroke="#00695C" stroke-width="2" filter="url(#sh)"/>
+    <rect width="260" height="30" rx="8" fill="url(#hDepot)"/>
+    <rect x="0" y="22" width="260" height="8" fill="#26A69A"/>
+    <text x="130" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Stack Depot</text>
+    <text x="15" y="48" font-size="10" font-weight="bold" fill="#00695C">/* 去重存储分配调用栈 */</text>
+    <line x1="10" y1="55" x2="250" y2="55" stroke="#B2DFDB" stroke-width="0.8"/>
+    <text x="15" y="74" font-size="11" font-family="monospace" fill="#333">stack_depot_save()</text>
+    <text x="15" y="90" font-size="9" fill="#78909C">返回 depot_stack_handle_t</text>
+    <text x="15" y="104" font-size="9" fill="#78909C">→ object-&gt;trace_handle 存储</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- Tracked Memory Block (top-right, conceptual)                     -->
+  <!-- ================================================================ -->
+  <g transform="translate(1020, 120)">
+    <rect width="280" height="120" rx="8" fill="#FFEBEE" stroke="#C62828" stroke-width="2" stroke-dasharray="6,3" filter="url(#sh)"/>
+    <text x="140" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#C62828">被追踪内存块 (kmalloc等)</text>
+    <text x="15" y="48" font-size="10" fill="#C62828">用户通过 kmalloc/vmalloc 分配的内存</text>
+    <line x1="10" y1="56" x2="270" y2="56" stroke="#FFCDD2" stroke-width="0.8"/>
+    <text x="15" y="76" font-size="10" fill="#78909C">地址 = object-&gt;pointer</text>
+    <text x="15" y="92" font-size="10" fill="#78909C">大小 = object-&gt;size</text>
+    <text x="15" y="108" font-size="10" fill="#78909C">内容的 CRC32 = object-&gt;checksum</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!-- FLAGS detail box (below tracked memory)                           -->
+  <!-- ================================================================ -->
+  <g transform="translate(1020, 530)">
+    <rect width="280" height="60" rx="6" fill="#E8EAF6" stroke="#3949AB" stroke-width="1.2"/>
+    <text x="140" y="18" text-anchor="middle" font-size="10" font-weight="bold" fill="#3949AB">三色语义 (count vs min_count)</text>
+    <text x="15" y="36" font-size="9" fill="#333">白(WHITE): count &lt; min_count → 可能泄漏</text>
+    <text x="15" y="50" font-size="9" fill="#333">灰(GRAY): count ≥ min_count → 有引用</text>
+  </g>
+
+  <!-- ================================================================ -->
+  <!--               CONNECTION PATHS                                    -->
+  <!-- ================================================================ -->
+
+  <!-- object_list → kmemleak_object.object_list field -->
+  <!-- From right edge of Global Lists box to left edge of kmemleak_object -->
+  <path d="M280,326 L340,326 L340,186 L400,186" fill="none" stroke="#E65100" stroke-width="2.5" stroke-dasharray="6,3" marker-end="url(#aO)"/>
+  <!-- Label -->
+  <rect x="298" y="238" width="80" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="338" y="251" text-anchor="middle" font-size="9" fill="#E65100">object_list</text>
+
+  <!-- gray_list → kmemleak_object.gray_list field -->
+  <path d="M280,358 L360,358 L360,210 L400,210" fill="none" stroke="#E65100" stroke-width="2.5" stroke-dasharray="6,3" marker-end="url(#aO)"/>
+  <!-- Label -->
+  <rect x="308" y="282" width="70" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="343" y="295" text-anchor="middle" font-size="9" fill="#E65100">gray_list</text>
+
+  <!-- RB Trees → kmemleak_object.rb_node field -->
+  <!-- From top of RB Trees box to left-bottom of kmemleak_object -->
+  <path d="M180,590 L180,560 L370,560 L370,234 L400,234" fill="none" stroke="#6A1B9A" stroke-width="2" marker-end="url(#aP)"/>
+  <!-- Label -->
+  <rect x="313" y="548" width="60" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="343" y="561" text-anchor="middle" font-size="9" fill="#6A1B9A">rb_node</text>
+
+  <!-- kmemleak_object.area_list → kmemleak_scan_area -->
+  <!-- From right edge of object box to left edge of scan_area box -->
+  <path d="M820,548 L870,548 L870,440 L1020,440" fill="none" stroke="#2E7D32" stroke-width="1.8" stroke-dasharray="4,2" marker-start="url(#dB)" marker-end="url(#aG)"/>
+  <!-- Label -->
+  <rect x="872" y="420" width="112" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="928" y="433" text-anchor="middle" font-size="9" fill="#2E7D32">area_list (hlist)</text>
+
+  <!-- kmemleak_object.pointer → Tracked Memory Block -->
+  <path d="M820,380 L870,380 L870,180 L1020,180" fill="none" stroke="#C62828" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#aR)"/>
+  <!-- Label -->
+  <rect x="880" y="269" width="90" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="925" y="282" text-anchor="middle" font-size="9" fill="#C62828">pointer / size</text>
+
+  <!-- kmemleak_object.trace_handle → Stack Depot -->
+  <path d="M820,524 L860,524 L860,570 L1250,570 L1250,610" fill="none" stroke="#00695C" stroke-width="1.5" marker-end="url(#aT)"/>
+  <!-- Label -->
+  <rect x="1010" y="558" width="90" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="1055" y="571" text-anchor="middle" font-size="9" fill="#00695C">trace_handle</text>
+
+  <!-- Slab Cache → kmemleak_object (allocation source) -->
+  <path d="M910,760 L910,580 L820,580 L820,550" fill="none" stroke="#AD1457" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aM)"/>
+  <!-- Label -->
+  <rect x="830" y="652" width="100" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="880" y="665" text-anchor="middle" font-size="9" fill="#AD1457">分配 object 实例</text>
+
+  <!-- Slab Cache → kmemleak_scan_area (allocation source) -->
+  <path d="M990,810 L1040,810 L1040,500 L1020,500" fill="none" stroke="#AD1457" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aM)"/>
+  <!-- Label (moved outside boxes, in gap area) -->
+  <rect x="1042" y="640" width="110" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="1097" y="653" text-anchor="middle" font-size="9" fill="#AD1457">分配 scan_area 实例</text>
+
+  <!-- mem_pool → kmemleak_object (fallback allocation) -->
+  <path d="M750,665 L730,665 L730,580 L820,580" fill="none" stroke="#37474F" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aD)"/>
+  <!-- Label -->
+  <rect x="680" y="608" width="80" height="18" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="720" y="621" text-anchor="middle" font-size="9" fill="#37474F">回退分配</text>
+
+  <!-- ================================================================ -->
+  <!-- Allocation Flow Annotation (bottom area)                          -->
+  <!-- ================================================================ -->
+  <g transform="translate(20, 860)">
+    <rect width="1400" height="340" rx="8" fill="#FAFAFA" stroke="#B0BEC5" stroke-width="1"/>
+    <text x="700" y="24" text-anchor="middle" font-size="14" font-weight="bold" fill="#263238">数据流：对象从创建到扫描到释放的完整生命周期</text>
+    <line x1="20" y1="34" x2="1380" y2="34" stroke="#E0E0E0" stroke-width="1"/>
+
+    <!-- Step 1: create_object -->
+    <g transform="translate(20, 50)">
+      <rect width="180" height="80" rx="6" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.2"/>
+      <text x="90" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565C0">① create_object()</text>
+      <text x="90" y="36" text-anchor="middle" font-size="9" fill="#333">__alloc_object()</text>
+      <text x="90" y="50" text-anchor="middle" font-size="9" fill="#333">stack_depot_save()</text>
+      <text x="90" y="64" text-anchor="middle" font-size="9" fill="#333">__link_object()</text>
+      <text x="90" y="76" text-anchor="middle" font-size="8" fill="#78909C">→ rb_tree + object_list</text>
+    </g>
+
+    <!-- Arrow 1→2 -->
+    <path d="M200,90 L240,90" fill="none" stroke="#546E7A" stroke-width="1.5" marker-end="url(#aD)"/>
+
+    <!-- Step 2: scan whitening -->
+    <g transform="translate(245, 50)">
+      <rect width="180" height="80" rx="6" fill="#FFF3E0" stroke="#E65100" stroke-width="1.2"/>
+      <text x="90" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#E65100">② kmemleak_scan()</text>
+      <text x="90" y="36" text-anchor="middle" font-size="9" fill="#333">遍历 object_list</text>
+      <text x="90" y="50" text-anchor="middle" font-size="9" fill="#333">count = 0 (白化)</text>
+      <text x="90" y="64" text-anchor="middle" font-size="9" fill="#333">扫描 .data/.bss/stacks</text>
+      <text x="90" y="76" text-anchor="middle" font-size="8" fill="#78909C">→ 逐指针检查 pointer_update</text>
+    </g>
+
+    <!-- Arrow 2→3 -->
+    <path d="M425,90 L465,90" fill="none" stroke="#546E7A" stroke-width="1.5" marker-end="url(#aD)"/>
+
+    <!-- Step 3: pointer_update_refs -->
+    <g transform="translate(470, 50)">
+      <rect width="180" height="80" rx="6" fill="#F3E5F5" stroke="#6A1B9A" stroke-width="1.2"/>
+      <text x="90" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#6A1B9A">③ update_refs()</text>
+      <text x="90" y="36" text-anchor="middle" font-size="9" fill="#333">指针值 → rb_tree 查找</text>
+      <text x="90" y="50" text-anchor="middle" font-size="9" fill="#333">命中 → object-&gt;count++</text>
+      <text x="90" y="64" text-anchor="middle" font-size="9" fill="#333">count ≥ min_count → 染灰</text>
+      <text x="90" y="76" text-anchor="middle" font-size="8" fill="#78909C">→ 加入 gray_list</text>
+    </g>
+
+    <!-- Arrow 3→4 -->
+    <path d="M650,90 L690,90" fill="none" stroke="#546E7A" stroke-width="1.5" marker-end="url(#aD)"/>
+
+    <!-- Step 4: scan_gray_list -->
+    <g transform="translate(695, 50)">
+      <rect width="180" height="80" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.2"/>
+      <text x="90" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#2E7D32">④ scan_gray_list()</text>
+      <text x="90" y="36" text-anchor="middle" font-size="9" fill="#333">遍历 gray_list</text>
+      <text x="90" y="50" text-anchor="middle" font-size="9" fill="#333">扫描灰色对象内存内容</text>
+      <text x="90" y="64" text-anchor="middle" font-size="9" fill="#333">发现更多指针 → 递归</text>
+      <text x="90" y="76" text-anchor="middle" font-size="8" fill="#78909C">→ 灰色传播扩散</text>
+    </g>
+
+    <!-- Arrow 4→5 -->
+    <path d="M875,90 L915,90" fill="none" stroke="#546E7A" stroke-width="1.5" marker-end="url(#aD)"/>
+
+    <!-- Step 5: report leaks -->
+    <g transform="translate(920, 50)">
+      <rect width="180" height="80" rx="6" fill="#FFEBEE" stroke="#C62828" stroke-width="1.2"/>
+      <text x="90" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#C62828">⑤ 泄漏判定</text>
+      <text x="90" y="36" text-anchor="middle" font-size="9" fill="#333">仍为白色的对象</text>
+      <text x="90" y="50" text-anchor="middle" font-size="9" fill="#333">count &lt; min_count</text>
+      <text x="90" y="64" text-anchor="middle" font-size="9" fill="#333">设置 OBJECT_REPORTED</text>
+      <text x="90" y="76" text-anchor="middle" font-size="8" fill="#78909C">→ debugfs 输出报告</text>
+    </g>
+
+    <!-- Arrow 5→6 -->
+    <path d="M1100,90 L1140,90" fill="none" stroke="#546E7A" stroke-width="1.5" marker-end="url(#aD)"/>
+
+    <!-- Step 6: delete -->
+    <g transform="translate(1145, 50)">
+      <rect width="180" height="80" rx="6" fill="#ECEFF1" stroke="#37474F" stroke-width="1.2"/>
+      <text x="90" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#37474F">⑥ delete_object()</text>
+      <text x="90" y="36" text-anchor="middle" font-size="9" fill="#333">kfree 时触发</text>
+      <text x="90" y="50" text-anchor="middle" font-size="9" fill="#333">清 ALLOCATED, put_object</text>
+      <text x="90" y="64" text-anchor="middle" font-size="9" fill="#333">use_count→0 → call_rcu</text>
+      <text x="90" y="76" text-anchor="middle" font-size="8" fill="#78909C">→ free scan_areas, 归还池</text>
+    </g>
+
+    <!-- Feedback arrow: gray_list scan may find more → back to update_refs -->
+    <path d="M785,130 L785,150 L560,150 L560,130" fill="none" stroke="#2E7D32" stroke-width="1.2" stroke-dasharray="4,2" marker-end="url(#aG)"/>
+    <rect x="615" y="141" width="115" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+    <text x="672" y="153" text-anchor="middle" font-size="8" fill="#2E7D32">发现新引用 → 递归染灰</text>
+
+    <!-- Annotations row -->
+    <line x1="20" y1="180" x2="1380" y2="180" stroke="#E0E0E0" stroke-width="1"/>
+    <text x="40" y="200" font-size="11" font-weight="bold" fill="#263238">关键数据结构参与：</text>
+
+    <rect x="40" y="210" width="100" height="22" rx="4" fill="#E3F2FD" stroke="#1565C0" stroke-width="1"/>
+    <text x="90" y="226" text-anchor="middle" font-size="9" font-weight="bold" fill="#1565C0">kmemleak_object</text>
+    <text x="155" y="226" font-size="9" fill="#333">→ 贯穿整个生命周期的核心元数据</text>
+
+    <rect x="40" y="238" width="100" height="22" rx="4" fill="#F3E5F5" stroke="#6A1B9A" stroke-width="1"/>
+    <text x="90" y="254" text-anchor="middle" font-size="9" font-weight="bold" fill="#6A1B9A">RB Tree ×3</text>
+    <text x="155" y="254" font-size="9" fill="#333">→ ①创建时插入, ③扫描时查找, ⑥删除时移除</text>
+
+    <rect x="520" y="210" width="100" height="22" rx="4" fill="#FFF3E0" stroke="#E65100" stroke-width="1"/>
+    <text x="570" y="226" text-anchor="middle" font-size="9" font-weight="bold" fill="#E65100">object_list</text>
+    <text x="635" y="226" font-size="9" fill="#333">→ ①插入, ②遍历白化, ⑥移除</text>
+
+    <rect x="520" y="238" width="100" height="22" rx="4" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
+    <text x="570" y="254" text-anchor="middle" font-size="9" font-weight="bold" fill="#2E7D32">gray_list</text>
+    <text x="635" y="254" font-size="9" fill="#333">→ ③染灰加入, ④遍历扫描, 扫描后清空</text>
+
+    <rect x="950" y="210" width="110" height="22" rx="4" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1"/>
+    <text x="1005" y="226" text-anchor="middle" font-size="9" font-weight="bold" fill="#2E7D32">kmemleak_scan_area</text>
+    <text x="1075" y="226" font-size="9" fill="#333">→ ④限定扫描范围（可选）</text>
+
+    <rect x="950" y="238" width="110" height="22" rx="4" fill="#E0F2F1" stroke="#00695C" stroke-width="1"/>
+    <text x="1005" y="254" text-anchor="middle" font-size="9" font-weight="bold" fill="#00695C">stack_depot</text>
+    <text x="1075" y="254" font-size="9" fill="#333">→ ①保存调用栈, ⑤输出 backtrace</text>
+
+    <!-- min_count semantics row -->
+    <line x1="20" y1="268" x2="1380" y2="268" stroke="#E0E0E0" stroke-width="1"/>
+    <text x="40" y="290" font-size="11" font-weight="bold" fill="#263238">min_count 语义决定对象颜色：</text>
+    <text x="340" y="290" font-size="10" fill="#333">-1 = 黑色(忽略),  0 = 灰色(永不泄漏),  1 = 默认(kmalloc),  2 = vmalloc(内部引用)</text>
+    <text x="40" y="310" font-size="10" fill="#78909C">扫描后 count &lt; min_count 的对象为 "白色" — 即无引用的孤儿内存 — 报告为疑似泄漏</text>
+    <text x="40" y="328" font-size="10" fill="#78909C">每轮扫描前 count 重置为 0，重新计算引用关系，确保动态检测</text>
+  </g>
+</svg>

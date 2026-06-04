@@ -117,6 +117,21 @@
 </details>
 
 <details>
+<summary><a href="#11-core-kernel-objects">11. Core Kernel Objects</a></summary>
+
+- [Reading Strategy](#reading-strategy)
+- [Process Context](#process-context)
+- [Address Space](#address-space)
+- [Page Cache](#page-cache)
+- [VFS Object Model](#vfs-object-model)
+- [Device, Security, and Cgroups](#device-security-and-cgroups)
+- [Networking Data Path](#networking-data-path)
+- [Block I/O Data Path](#block-io-data-path)
+- [Core Object Graph](#core-object-graph)
+
+</details>
+
+<details>
 <summary><a href="#summary-comparison-table">Summary Comparison Table</a></summary>
 
 </details>
@@ -303,7 +318,284 @@ struct hlist_node {
 *(node->pprev) = node->next;  // 不管前面是 head 还是 node，都能正确修改
 ```
 
+**举例 1：删除头节点**
+
+假设有这样一个 hlist：
+
+```text
+head
+ └── first ──→ A ──→ B ──→ NULL
+```
+
+此时各字段关系是：
+
+```text
+head.first = &A
+A.next     = &B
+A.pprev    = &head.first
+B.next     = NULL
+B.pprev    = &A.next
+```
+
+注意这里最关键的一点：
+
+```text
+A.pprev 不是“前驱节点地址”
+A.pprev 是 “那个保存了 A 地址的指针变量的地址”
+       = &head.first
+```
+
+所以删除 `A` 时：
+
+```c
+*(A.pprev) = A.next;
+```
+
+展开后其实就是：
+
+```c
+head.first = B;
+```
+
+然后还要修正 `B.pprev`：
+
+```c
+B.pprev = &head.first;
+```
+
+删除后链表就变成：
+
+```text
+head
+ └── first ──→ B ──→ NULL
+```
+
+这说明：**即使删除的是首节点，也不需要专门判断“前面是 head 还是普通节点”**，因为 `A.pprev` 已经帮你记住了该改哪一个指针。
+
+**举例 2：删除中间节点**
+
+假设链表是：
+
+```text
+head
+ └── first ──→ A ──→ B ──→ C ──→ NULL
+```
+
+此时关键字段是：
+
+```text
+head.first = &A
+A.next     = &B
+A.pprev    = &head.first
+
+B.next     = &C
+B.pprev    = &A.next
+
+C.next     = NULL
+C.pprev    = &B.next
+```
+
+注意 `B.pprev = &A.next`，意思是：
+
+```text
+“当前保存 B 地址的那个指针，是 A.next”
+```
+
+所以删除 `B` 时：
+
+```c
+*(B.pprev) = B.next;
+```
+
+展开后就是：
+
+```c
+A.next = C;
+```
+
+然后修正 `C.pprev`：
+
+```c
+C.pprev = &A.next;
+```
+
+删除后就变成：
+
+```text
+head
+ └── first ──→ A ──→ C ──→ NULL
+```
+
+**把这两个例子放在一起看，就能理解 `pprev` 的真正含义**：
+
+| 当前节点 | `pprev` 指向谁 | 删除时改写成什么 |
+|---|---|---|
+| 头节点 `A` | `&head.first` | `head.first = A.next` |
+| 中间节点 `B` | `&A.next` | `A.next = B.next` |
+
+所以 `pprev` 的价值不是“保存前驱节点”，而是：
+
+```text
+直接保存“应该改写哪个指针槽位”
+```
+
+这就是为什么它必须是二级指针：
+
+- 一级指针 `prev` 只能告诉你“前驱是谁”
+- 二级指针 `pprev` 直接告诉你“要改哪块内存”
+
+从实现上看，内核的 `__hlist_del()` 就是这么做的：
+
+```c
+struct hlist_node *next = n->next;
+struct hlist_node **pprev = n->pprev;
+
+WRITE_ONCE(*pprev, next);
+if (next)
+    WRITE_ONCE(next->pprev, pprev);
+```
+
+可以看出，它完全不关心前面是 `head` 还是普通节点；只要 `pprev` 是对的，删除逻辑就是统一的。
+
 这让哈希表的每个桶头只占 8 字节而非 16 字节。百万级桶的哈希表能省 ~8MB 内存。
+
+**这个链表的应用场景是什么？**
+
+`hlist_node` 几乎不是为了“通用链表”设计的，而是为了下面这类场景：
+
+| 场景 | 为什么适合 `hlist` |
+|---|---|
+| **哈希表 bucket 链** | bucket 头很多，`hlist_head` 只有 1 个指针，能明显省内存 |
+| **对象挂入协议查找表** | 只需要从 bucket 头向后遍历，不需要频繁从尾部反向遍历 |
+| **一个对象可能同时属于多个哈希索引** | 对象里可嵌多个 `hlist_node`，分别挂到不同 hash bucket |
+| **需要 O(1) 删除，但不想让 head 也占双指针** | `pprev` 让删除不必先找到前驱节点 |
+
+它的定位可以概括成一句话：
+
+```text
+hlist = “为哈希桶优化过的、节省 head 空间的可 O(1) 删除链表”
+```
+
+#### 为什么哈希表特别喜欢用 `hlist`
+
+哈希表通常是：
+
+```c
+bucket array --> [hlist_head, hlist_head, hlist_head, ...]
+                              |
+                              v
+                         node -> node -> node
+```
+
+这里有两个特点：
+
+1. **bucket 数量可能非常大**
+2. **每个 bucket 只需要从头往后扫**
+
+如果用 `list_head` 做 bucket 头，每个桶头要 16 字节；`hlist_head` 只要 8 字节。在几十万、几百万个 bucket 的场景下，这个差异会很可观。
+
+所以 Linux 的通用哈希表接口 `hashtable.h` 本质上就是：
+
+```c
+/* A hash table is simply an array of hlist_heads */
+DEFINE_HASHTABLE(name, bits);
+```
+
+也就是说，**`hlist` 最典型的应用场景就是 hash bucket collision chain。**
+
+#### `pprev` 解决了什么实际问题
+
+普通单链表删除节点，通常要先找到前驱：
+
+```text
+prev -> cur -> next
+```
+
+如果没有 `prev`，删除 `cur` 就得从头再找一遍，复杂度退化为 O(n)。
+
+`hlist_node` 里的 `pprev` 直接指向“那个指向我自己的指针”：
+
+- 如果我是首节点，`pprev = &head->first`
+- 如果我在中间，`pprev = &prev->next`
+
+所以删除时只要：
+
+```c
+WRITE_ONCE(*pprev, next);
+if (next)
+    WRITE_ONCE(next->pprev, pprev);
+```
+
+这就是为什么 `hlist` 既保留了**单指针 head 的省内存优势**，又保留了**已知节点时 O(1) 删除**的能力。
+
+#### 内核里的真实使用方式
+
+**1. 通用哈希表**
+
+最常见的形式就是：对象里嵌一个 `hlist_node`，然后用 `hash_add()` 挂入某个桶：
+
+```c
+hash_add(slots->id_hash, &new->id_node[idx], new->id);
+```
+
+这种写法的本质是：
+- `slots->id_hash` 是 `hlist_head` 数组
+- `id_node[idx]` 是对象内嵌的 `hlist_node`
+- 同一个对象可以有多个 `hlist_node`，挂到不同索引体系里
+
+**2. 网络协议查找表 / bind hash**
+
+`struct sock_common` 里直接嵌了多个 `hlist_node`：
+
+```c
+struct sock_common {
+    ...
+    union {
+        struct hlist_node skc_bind_node;
+        struct hlist_node skc_portaddr_node;
+    };
+    ...
+    union {
+        struct hlist_node skc_node;
+        struct hlist_nulls_node skc_nulls_node;
+    };
+    ...
+};
+```
+
+这说明 socket 对象会被挂进不同的协议查找表：
+- bind bucket
+- port/address bucket
+- 主协议哈希表
+
+这正是 `hlist_node` 的强项：**对象本身是主体，链节点只是它在某个哈希索引里的“挂点”。**
+
+**3. 一个对象有多个“身份索引”**
+
+如果一个对象既能按 `id` 查，又能按 `(addr,port)` 查，还能按别的 key 查，那么它常常会内嵌多个 `hlist_node`。
+
+这比单独分配外部链表节点更好，因为：
+- 少一次内存分配
+- 少一次间接访问
+- 删除时直接通过对象内的 node O(1) 脱链
+
+#### 什么时候不用 `hlist`
+
+如果你的场景更偏向下面这些需求，就不该优先选 `hlist`：
+
+| 需求 | 更适合的结构 |
+|---|---|
+| 需要双向遍历、频繁从尾部操作 | `list_head` |
+| 需要按 key 有序 | `rbtree` / `xarray` |
+| 需要 lockless 哈希遍历并区分末尾 | `hlist_nulls` |
+| 需要按范围查询 | `maple tree` / `rbtree` |
+
+所以 `hlist_node` 不是“list_head 的缩水版”，而是一个非常明确的工程取舍：
+
+```text
+我不要循环双向链表的完整能力；
+我只要：桶头更省、从头遍历、已知节点可 O(1) 删除。
+```
 
 ### Time Complexity
 
@@ -344,6 +636,147 @@ struct rb_root_cached {
 #define RB_ROOT      (struct rb_root) { NULL, }
 #define RB_ROOT_CACHED (struct rb_root_cached) { {NULL, }, NULL }
 ```
+
+**为什么 `struct rb_node` 还没“定义完”，内部就能写 `struct rb_node *rb_left`？**
+
+这里最容易混淆的是：
+
+```c
+struct rb_node *rb_left;
+```
+
+这不是“在结构体里嵌入一个 `struct rb_node` 对象”，而是“在结构体里放一个**指向 `struct rb_node` 的指针**”。
+
+这两种写法的含义完全不同：
+
+```c
+/* 合法：成员是指针，指针大小固定，编译器现在就知道大小 */
+struct rb_node {
+        struct rb_node *rb_left;
+};
+
+/* 非法：成员是对象本体，会导致大小无限递归 */
+struct bad_node {
+        struct bad_node child;   // 错误
+};
+```
+
+#### 为什么指针可以，但对象本体不可以？
+
+因为编译器计算结构体大小时：
+
+- `struct rb_node *` 的大小是固定的，64 位机器上通常就是 8 字节
+- 但 `struct rb_node` 本体的大小，必须等整个结构定义结束后才能知道
+
+所以对编译器来说：
+
+```text
+struct rb_node *rb_left;
+```
+
+只是在说：
+
+```text
+“这里放一个地址，这个地址将来会指向某个 rb_node”
+```
+
+而不是说：
+
+```text
+“这里再完整塞一个 rb_node 进去”
+```
+
+#### 如果真嵌对象本体，会发生什么？
+
+假设允许下面这种写法：
+
+```c
+struct bad_node {
+        int key;
+        struct bad_node left;
+        struct bad_node right;
+};
+```
+
+那编译器在算 `sizeof(struct bad_node)` 时会陷入无限递归：
+
+```text
+sizeof(bad_node)
+ = sizeof(int)
+ + sizeof(bad_node)
+ + sizeof(bad_node)
+```
+
+这个大小永远算不出来，所以 C 语言禁止“结构体中直接包含自身类型的对象本体”。
+
+#### 为什么“指向自己类型的指针”是合法的？
+
+因为指针大小与被指向对象的完整内容无关。
+
+在 64 位系统里，可以把 `rb_node` 粗略理解成：
+
+```text
+struct rb_node
+┌──────────────────────────────┐
+│ __rb_parent_color : 8 bytes  │
+├──────────────────────────────┤
+│ rb_right          : 8 bytes  │
+├──────────────────────────────┤
+│ rb_left           : 8 bytes  │
+└──────────────────────────────┘
+```
+
+这里 `rb_left` / `rb_right` 里放的只是“另一个节点的地址”，并不是把整个左子树、右子树对象嵌进来。
+
+所以一棵树在内存里的真实关系更像：
+
+```text
+node_A
+    rb_left  ----> node_B
+    rb_right ----> node_C
+
+node_B
+    rb_left  ----> NULL
+    rb_right ----> NULL
+```
+
+也就是说，树结构是靠**地址引用关系**连起来的，不是靠“对象一层套一层”物理嵌套出来的。
+
+#### 这和“不完整类型（incomplete type）”有什么关系？
+
+在 `struct rb_node` 定义尚未结束时，`struct rb_node` 对当前作用域来说属于一种**不完整类型**：
+
+- 你可以声明 `struct rb_node *p;`
+- 你可以把它作为函数参数指针类型
+- 但你**不能**在此时做 `sizeof(struct rb_node)`
+- 也**不能**定义 `struct rb_node obj;` 作为成员本体
+
+因为：
+
+```text
+不完整类型可以“被引用”
+不完整类型不能“按值展开”
+```
+
+#### 用链表举一个完全一样的例子
+
+这并不是红黑树特例，链表也是同样原理：
+
+```c
+struct list_head {
+        struct list_head *next, *prev;
+};
+```
+
+`next`/`prev` 也都是“指向同类型节点的指针”，所以合法。
+
+红黑树只是把这种“自引用指针结构”换成了：
+
+- 左孩子指针 `rb_left`
+- 右孩子指针 `rb_right`
+- 父节点指针（打包在 `__rb_parent_color` 里）
+
+本质上完全一样。
 
 **Design trick**: `__rb_parent_color` stores both the parent pointer AND the red/black color in the least significant bit. This works because `rb_node` is aligned to `sizeof(long)`, so the bottom bits of any valid pointer are always 0. The macro `rb_parent(r)` extracts the parent via `(r)->__rb_parent_color & ~3`.
 
@@ -1484,6 +1917,457 @@ void memcg_reparent_list_lrus(struct mem_cgroup *memcg, struct mem_cgroup *paren
 | `list_lru_del` | O(1) |
 | `list_lru_count_one` | O(1) (cached counter) |
 | `list_lru_walk_one` | O(n) where n = `nr_to_walk` |
+
+---
+
+## 11. Core Kernel Objects
+
+The previous chapters focused on **generic containers and indexing primitives**. In real kernel execution paths, those containers are embedded inside a smaller set of **core payload objects**: task descriptors, address spaces, folios, VFS nodes, network packets, block I/O requests, and device-model objects.
+
+This section collects the objects that show up repeatedly in Linux `6.18.1`, and ties them back to the container chapters above. Read these structs as an **object graph** rather than as isolated definitions.
+
+### Reading Strategy
+
+- `task_struct` is the top-level execution object; from it you can reach memory (`mm`), credentials (`cred`), files (`files`), namespaces (`nsproxy`), and cgroups (`cgroups`).
+- `mm_struct`, `vm_area_struct`, `folio`, and `address_space` are the current VM/page-cache backbone. In `6.18.1`, `mm_struct.mm_mt` is the primary VMA index.
+- VFS hot paths usually traverse `file -> dentry -> inode -> address_space -> folio`.
+- Network and block layers use the same pattern: one object carries the **payload** (`sk_buff`, `bio`), another carries the **scheduler/dispatch state** (`net_device`, `request`, `request_queue`).
+- The container chapters above explain *how* lookup/queues work; the structs below explain *what* the kernel is actually moving around.
+
+### Process Context
+
+**Files**: `include/linux/sched.h`, `include/linux/cred.h`, `include/linux/cgroup-defs.h`
+
+#### `task_struct` — the per-thread execution anchor ([sched.h](include/linux/sched.h#L819))
+
+```c
+/* selected fields from include/linux/sched.h */
+struct task_struct {
+    struct thread_info        thread_info;
+    void                      *stack;
+    refcount_t                usage;
+    unsigned int              flags;
+    int                       prio, static_prio, normal_prio;
+    struct sched_entity       se;
+    struct sched_rt_entity    rt;
+    struct sched_dl_entity    dl;
+    struct list_head          tasks;
+    struct mm_struct          *mm;
+    struct mm_struct          *active_mm;
+    const struct cred __rcu   *real_cred;
+    const struct cred __rcu   *cred;
+    struct fs_struct          *fs;
+    struct files_struct       *files;
+    struct nsproxy            *nsproxy;
+    struct signal_struct      *signal;
+    struct css_set __rcu      *cgroups;
+};
+```
+
+| Field | Why it matters |
+|---|---|
+| `se` / `rt` / `dl` | Same thread, different scheduler-class embeddings. CFS/RT/DL all hang state directly off `task_struct`. |
+| `tasks` | Global process list linkage via `list_head`. This is one of the most visible real users of the list API from Chapter 1. |
+| `mm` / `active_mm` | `mm` is the userspace address space; kernel threads borrow an `active_mm` even when `mm == NULL`. |
+| `real_cred` / `cred` | Security identity is COW-managed and RCU-visible. Permission checks and file opens flow through these pointers. |
+| `files`, `fs`, `nsproxy` | The task binds together open FDs, cwd/root, and namespace membership. |
+| `signal`, `cgroups` | Signal delivery and cgroup resource accounting both attach at the task level. |
+
+**Why this struct is foundational**: when a tracepoint, crash dump, or scheduler event says “current task”, this is the object being inspected. Almost every subsystem-specific object is reachable from here in one or two pointer hops.
+
+### Address Space
+
+**Files**: `include/linux/mm_types.h`
+
+#### `mm_struct` — process virtual address space ([mm_types.h](include/linux/mm_types.h#L944))
+
+```c
+/* selected fields from include/linux/mm_types.h */
+struct mm_struct {
+    atomic_t                 mm_count;
+    struct maple_tree        mm_mt;
+    unsigned long            mmap_base;
+    unsigned long            task_size;
+    pgd_t                    *pgd;
+    atomic_t                 mm_users;
+    atomic_long_t            pgtables_bytes;
+    int                      map_count;
+    spinlock_t               page_table_lock;
+    struct rw_semaphore      mmap_lock;
+    struct list_head         mmlist;
+    unsigned long            total_vm;
+    unsigned long            data_vm;
+    unsigned long            exec_vm;
+    unsigned long            stack_vm;
+};
+```
+
+#### `vm_area_struct` — one contiguous VMA range ([mm_types.h](include/linux/mm_types.h#L813))
+
+```c
+/* selected fields from include/linux/mm_types.h */
+struct vm_area_struct {
+    unsigned long            vm_start;
+    unsigned long            vm_end;
+    struct mm_struct         *vm_mm;
+    pgprot_t                 vm_page_prot;
+    const vm_flags_t         vm_flags;
+    struct list_head         anon_vma_chain;
+    struct anon_vma          *anon_vma;
+    const struct vm_operations_struct *vm_ops;
+    unsigned long            vm_pgoff;
+    struct file              *vm_file;
+    struct {
+        struct rb_node       rb;
+        unsigned long        rb_subtree_last;
+    } shared;
+};
+```
+
+| Object | Key relationship |
+|---|---|
+| `mm_struct.mm_mt` | The maple tree is now the primary VMA index. This is the concrete, high-value user of Chapter 7. |
+| `mm_struct.pgd` | Root of the hardware page tables for the address space. |
+| `mm_struct.mmap_lock` | Serializes VMA topology changes and many fault-path operations. |
+| `vm_area_struct.vm_file` | File-backed VMAs bridge memory management and VFS. |
+| `vm_area_struct.anon_vma_chain` | Anonymous memory, COW, and reverse-mapping paths hang off this linkage. |
+| `vm_area_struct.shared.rb` | File-backed mappings still participate in per-file interval-tree bookkeeping. |
+
+**Current-kernel takeaway**: in `6.18.1`, VMA lookup is no longer conceptually “find rb_node in mm”; it is “search `mm_mt`, then reason about a `vm_area_struct`”.
+
+### Page Cache
+
+**Files**: `include/linux/mm_types.h`, `include/linux/fs.h`
+
+#### `folio` — the page-cache and physical-page workhorse ([mm_types.h](include/linux/mm_types.h#L375))
+
+```c
+/* selected fields from include/linux/mm_types.h */
+struct folio {
+    memdesc_flags_t          flags;
+    struct list_head         lru;
+    struct address_space     *mapping;
+    pgoff_t                  index;
+    void                     *private;
+    atomic_t                 _mapcount;
+    atomic_t                 _refcount;
+    unsigned long            memcg_data;
+};
+```
+
+#### `address_space` — page-cache index for an inode/object ([fs.h](include/linux/fs.h#L506))
+
+```c
+/* selected fields from include/linux/fs.h */
+struct address_space {
+    struct inode             *host;
+    struct xarray            i_pages;
+    struct rw_semaphore      invalidate_lock;
+    atomic_t                 i_mmap_writable;
+    struct rb_root_cached    i_mmap;
+    unsigned long            nrpages;
+    pgoff_t                  writeback_index;
+    const struct address_space_operations *a_ops;
+    errseq_t                 wb_err;
+    spinlock_t               i_private_lock;
+    struct list_head         i_private_list;
+    struct rw_semaphore      i_mmap_rwsem;
+};
+```
+
+| Field | Why it matters |
+|---|---|
+| `folio.mapping` + `folio.index` | Identify the folio's owner and slot inside page cache. This pair is the concrete handle for cache lookup and writeback. |
+| `folio.lru` | Hooks the folio into reclaim policy. This is where VM meets the LRU chapter above. |
+| `address_space.i_pages` | The page cache itself, implemented as an `xarray`. This is the primary real-world user of Chapter 3. |
+| `address_space.i_mmap` | Tracks VMAs mapping the file, which matters for truncation, invalidation, and coherent writeback. |
+| `address_space.a_ops` | Filesystem/device-specific callbacks for writeback, readahead, dirtying, and migration. |
+
+**Mental model**: `inode` owns an `address_space`; `address_space` indexes `folio`s; `folio`s eventually reach disk, swap, anonymous memory, or reclaim logic.
+
+### VFS Object Model
+
+**Files**: `include/linux/fs.h`, `include/linux/dcache.h`
+
+| Object | Definition | Selected fields | Role |
+|---|---|---|---|
+| `struct inode` | [fs.h](include/linux/fs.h#L793) | `i_op`, `i_sb`, `i_mapping`, `i_ino`, `i_size`, `i_state`, `i_rwsem`, `i_lru`, `i_dentry`, `i_count`, `i_data` | Persistent file object: metadata, locking, page cache anchor, and filesystem operations. |
+| `struct dentry` | [dcache.h](include/linux/dcache.h#L92) | `d_hash`, `d_parent`, `d_name`, `d_inode`, `d_op`, `d_sb`, `d_lockref`, `d_lru`, `d_children`, `d_alias` | Pathname cache node. It represents a name in a directory, not the file contents themselves. |
+| `struct file` | [fs.h](include/linux/fs.h#L1211) | `f_op`, `f_mapping`, `f_inode`, `f_flags`, `f_cred`, `f_path`, `f_pos`, `private_data`, `f_ref` | One open instance of a file descriptor. Per-open state lives here. |
+| `struct super_block` | [fs.h](include/linux/fs.h#L1445) | `s_type`, `s_op`, `s_root`, `s_mounts`, `s_bdev`, `s_bdi`, `s_fs_info`, `s_shrink`, `s_remove_count` | One mounted filesystem instance with its root, writeback, shrinker, and fs-private state. |
+
+```text
+pathname walk:   dentry -> inode
+open file:       file -> f_path.dentry -> dentry
+file contents:   file/inode -> address_space -> i_pages (XArray) -> folio
+filesystem root: super_block -> s_root -> dentry
+```
+
+**Two common confusions**:
+
+- `dentry` is about **names and topology**; `inode` is about **object identity and metadata**.
+- `file` is not the same thing as `inode`: multiple open `file` objects can point at the same `inode`, each with its own `f_pos`, flags, and credentials snapshot.
+
+### Device, Security, and Cgroups
+
+**Files**: `include/linux/device.h`, `include/linux/cred.h`, `include/linux/cgroup-defs.h`
+
+#### `device` — the unified device-model node ([device.h](include/linux/device.h#L582))
+
+```c
+/* selected fields from include/linux/device.h */
+struct device {
+    struct kobject          kobj;
+    struct device           *parent;
+    const struct bus_type   *bus;
+    struct device_driver    *driver;
+    void                    *platform_data;
+    void                    *driver_data;
+    struct mutex            mutex;
+    struct dev_pm_info      power;
+    const struct dma_map_ops *dma_ops;
+    u64                     *dma_mask;
+    struct device_node      *of_node;
+    struct fwnode_handle    *fwnode;
+    dev_t                   devt;
+    const struct class      *class;
+    void                    (*release)(struct device *dev);
+    struct iommu_group      *iommu_group;
+};
+```
+
+#### `cred` — security identity snapshot ([cred.h](include/linux/cred.h#L111))
+
+```c
+/* selected fields from include/linux/cred.h */
+struct cred {
+    atomic_long_t           usage;
+    kuid_t                  uid, suid, euid, fsuid;
+    kgid_t                  gid, sgid, egid, fsgid;
+    unsigned                securebits;
+    kernel_cap_t            cap_inheritable;
+    kernel_cap_t            cap_permitted;
+    kernel_cap_t            cap_effective;
+    kernel_cap_t            cap_bset;
+    kernel_cap_t            cap_ambient;
+    void                    *security;
+    struct user_namespace   *user_ns;
+    struct group_info       *group_info;
+};
+```
+
+#### `cgroup_subsys_state` + `css_set` — per-task resource-control attachment ([cgroup-defs.h](include/linux/cgroup-defs.h#L179), [cgroup-defs.h](include/linux/cgroup-defs.h#L272))
+
+```c
+/* selected fields from include/linux/cgroup-defs.h */
+struct cgroup_subsys_state {
+    struct cgroup                   *cgroup;
+    struct cgroup_subsys            *ss;
+    struct percpu_ref               refcnt;
+    struct list_head                sibling;
+    struct list_head                children;
+    int                             id;
+    struct work_struct              destroy_work;
+    struct cgroup_subsys_state      *parent;
+};
+
+struct css_set {
+    struct cgroup_subsys_state      *subsys[CGROUP_SUBSYS_COUNT];
+    refcount_t                      refcount;
+    struct css_set                  *dom_cset;
+    struct cgroup                   *dfl_cgrp;
+    int                             nr_tasks;
+    struct list_head                tasks;
+    struct list_head                mg_tasks;
+    struct hlist_node               hlist;
+    struct list_head                cgrp_links;
+};
+```
+
+| Object | What to remember |
+|---|---|
+| `device` | Hardware and pseudo-devices are surfaced uniformly through a `kobject`, bus, class, power-management state, DMA constraints, and firmware nodes. |
+| `cred` | Permission checks are pointer-based, refcounted, COW-style snapshots. `task_struct->cred` and `file->f_cred` are the common observation points. |
+| `css_set` | Tasks do not store one pointer per controller in `task_struct`; instead they share a deduplicated `css_set`, which points to one `cgroup_subsys_state` per controller. |
+
+### Networking Data Path
+
+**Files**: `include/linux/skbuff.h`, `include/linux/netdevice.h`
+
+#### `sk_buff` — packet buffer and metadata envelope ([skbuff.h](include/linux/skbuff.h#L885))
+
+```c
+/* selected fields from include/linux/skbuff.h */
+struct sk_buff {
+    struct sk_buff          *next;
+    struct sk_buff          *prev;
+    struct net_device       *dev;
+    struct sock             *sk;
+    char                    cb[48] __aligned(8);
+    void                    (*destructor)(struct sk_buff *skb);
+    unsigned int            len, data_len;
+    __u16                   queue_mapping;
+    __u8                    cloned:1;
+    __u32                   priority;
+    int                     skb_iif;
+    __u32                   hash;
+    __be16                  protocol;
+    sk_buff_data_t          tail;
+    sk_buff_data_t          end;
+    unsigned char           *head, *data;
+};
+```
+
+#### `net_device` — per-interface networking state ([netdevice.h](include/linux/netdevice.h#L2089))
+
+```c
+/* selected fields from include/linux/netdevice.h */
+struct net_device {
+    const struct net_device_ops *netdev_ops;
+    const struct header_ops  *header_ops;
+    struct netdev_queue      *_tx;
+    unsigned int             real_num_tx_queues;
+    unsigned int             mtu;
+    struct bpf_prog __rcu    *xdp_prog;
+    struct list_head         ptype_specific;
+    int                      ifindex;
+    unsigned int             real_num_rx_queues;
+    struct netdev_rx_queue   *_rx;
+    rx_handler_func_t __rcu  *rx_handler;
+    char                     name[IFNAMSIZ];
+    struct list_head         dev_list;
+    struct list_head         napi_list;
+    netdev_features_t        features;
+    struct net_device_stats  stats;
+};
+```
+
+| Field | Why it matters |
+|---|---|
+| `sk_buff.dev` / `sk_buff.sk` | Tie packet data to the ingress/egress interface and, when applicable, to the socket/protocol stack. |
+| `sk_buff.cb[48]` | One of the most reused scratch buffers in the kernel; every network layer borrows it for per-hop metadata. |
+| `net_device.netdev_ops` | Driver-facing transmit/open/stop/control methods. |
+| `net_device._tx`, `_rx`, `napi_list` | Queueing and polling state for the datapath. |
+| `net_device.xdp_prog` | Shows how modern packet processing attaches eBPF/XDP directly to the device fast path. |
+
+### Block I/O Data Path
+
+**Files**: `include/linux/blk_types.h`, `include/linux/blk-mq.h`, `include/linux/blkdev.h`
+
+#### `bio` — block I/O payload ([blk_types.h](include/linux/blk_types.h#L210))
+
+```c
+/* selected fields from include/linux/blk_types.h */
+struct bio {
+    struct bio              *bi_next;
+    struct block_device     *bi_bdev;
+    blk_opf_t               bi_opf;
+    unsigned short          bi_flags;
+    blk_status_t            bi_status;
+    struct bvec_iter        bi_iter;
+    bio_end_io_t            *bi_end_io;
+    void                    *bi_private;
+    struct blkcg_gq         *bi_blkg;
+    unsigned short          bi_vcnt;
+    struct bio_vec          *bi_io_vec;
+};
+```
+
+#### `request` — scheduler-visible merged request ([blk-mq.h](include/linux/blk-mq.h#L103))
+
+```c
+/* selected fields from include/linux/blk-mq.h */
+struct request {
+    struct request_queue    *q;
+    struct blk_mq_ctx       *mq_ctx;
+    struct blk_mq_hw_ctx    *mq_hctx;
+    blk_opf_t               cmd_flags;
+    req_flags_t             rq_flags;
+    struct bio              *bio;
+    struct bio              *biotail;
+    struct list_head        queuelist;
+    struct block_device     *part;
+    u64                     start_time_ns;
+    union { struct hlist_node hash; struct llist_node ipi_list; };
+    union { struct rb_node rb_node; struct bio_vec special_vec; };
+    rq_end_io_fn            *end_io;
+};
+```
+
+#### `request_queue` — block-layer dispatch and policy hub ([blkdev.h](include/linux/blkdev.h#L469))
+
+```c
+/* selected fields from include/linux/blkdev.h */
+struct request_queue {
+    void                    *queuedata;
+    struct elevator_queue   *elevator;
+    const struct blk_mq_ops *mq_ops;
+    struct blk_mq_ctx __percpu *queue_ctx;
+    unsigned long           queue_flags;
+    unsigned int            rq_timeout;
+    unsigned int            queue_depth;
+    unsigned int            nr_hw_queues;
+    struct xarray           hctx_table;
+    spinlock_t              queue_lock;
+    struct gendisk          *disk;
+    struct queue_limits     limits;
+    struct rq_qos           *rq_qos;
+    struct list_head        icq_list;
+    struct list_head        requeue_list;
+    struct blk_mq_tag_set   *tag_set;
+};
+```
+
+```text
+filesystem / swap / raw block user
+    -> bio
+    -> request (merge, sort, schedule)
+    -> request_queue (blk-mq queues, scheduler, QoS, limits)
+    -> hardware dispatch / driver
+```
+
+**Relationship to previous chapters**:
+
+- `bio` is the payload carrier.
+- `request` embeds list, hash, and rbtree nodes because schedulers and dispatch paths need several simultaneous views of the same I/O.
+- `request_queue.hctx_table` is an `xarray`, so even the modern block layer reuses the generic indexing primitives from earlier chapters.
+
+### Core Object Graph
+
+```text
+task_struct
+ ├── mm ----------------------> mm_struct
+ │                               ├── mm_mt (Maple Tree) ---> vm_area_struct
+ │                               ├── pgd -----------------> page tables
+ │                               └── mmap_lock / page_table_lock
+ ├── cred --------------------> cred
+ ├── files -------------------> file
+ │                               ├── f_path -------------> dentry
+ │                               │                          ├── d_parent / d_children
+ │                               │                          └── d_inode -----------> inode
+ │                               │                                                   ├── i_sb ----> super_block
+ │                               │                                                   └── i_mapping -> address_space
+ │                               │                                                                     ├── i_pages (XArray)
+ │                               │                                                                     └── folio
+ ├── signal ------------------> signal_struct
+ ├── cgroups -----------------> css_set ---> cgroup_subsys_state[] ---> cgroup
+ └── nsproxy -----------------> namespaces
+
+net_device <---------------- sk_buff.dev
+   ├── _tx / _rx
+   ├── napi_list
+   └── netdev_ops
+
+bio ---> request ---> request_queue ---> blk-mq hardware queues
+
+device
+ ├── kobj / sysfs identity
+ ├── bus / driver
+ ├── of_node / fwnode
+ └── DMA / IOMMU state
+```
+
+**Practical debugging heuristic**: when you are dropped into a subsystem-specific callback, first identify which of the objects above you hold. That immediately tells you which container indices, locks, and refcounts are relevant.
 
 ---
 

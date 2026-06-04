@@ -381,7 +381,7 @@ I2C 的关键行为：
 
 下面的图是协议级概念波形图，重点用于说明帧结构和边沿语义，不表示精确纳秒级比例。
 
-![I2C protocol waveforms](i2c_protocol_waveforms.svg)
+![I2C protocol waveforms](images/i2c_protocol_waveforms.svg)
 
 图中重点观察：
 
@@ -395,7 +395,7 @@ I2C 的关键行为：
 
 为了对应规范里更容易被问到、也更容易在驱动实现里出问题的部分，再补 3 个进阶场景：10-bit 地址、clock stretching、multi-master arbitration。
 
-![I2C advanced protocol waveforms](i2c_advanced_waveforms.svg)
+![I2C advanced protocol waveforms](images/i2c_advanced_waveforms.svg)
 
 图中重点观察：
 
@@ -459,7 +459,7 @@ I3C 常见地址与命令概念：
 
 下面的图同样是协议级概念图，重点突出 I3C 相比 I2C 多出来的控制平面：CCC、DAA、IBI，以及 open-drain 到 push-pull 的阶段切换。
 
-![I3C protocol waveforms](i3c_protocol_waveforms.svg)
+![I3C protocol waveforms](images/i3c_protocol_waveforms.svg)
 
 图中重点观察：
 
@@ -473,7 +473,7 @@ I3C 常见地址与命令概念：
 
 I3C 更容易混淆的点不在普通读写，而在总线管理动作，因此进阶图重点补 3 类：CCC 读事务、Hot-Join、mixed-bus 的 open-drain 到 push-pull 切换。
 
-![I3C advanced protocol waveforms](i3c_advanced_waveforms.svg)
+![I3C advanced protocol waveforms](images/i3c_advanced_waveforms.svg)
 
 图中重点观察：
 

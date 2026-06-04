@@ -1,0 +1,293 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1340 1060" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/></filter>
+    <!-- Gradients for headers -->
+    <linearGradient id="hdrKey" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#795548"/><stop offset="100%" stop-color="#A1887F"/></linearGradient>
+    <linearGradient id="hdrMap" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#1565C0"/><stop offset="100%" stop-color="#42A5F5"/></linearGradient>
+    <linearGradient id="hdrClass" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#C62828"/><stop offset="100%" stop-color="#EF5350"/></linearGradient>
+    <linearGradient id="hdrHeld" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#66BB6A"/></linearGradient>
+    <linearGradient id="hdrList" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#E65100"/><stop offset="100%" stop-color="#FB8C00"/></linearGradient>
+    <linearGradient id="hdrChain" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6A1B9A"/><stop offset="100%" stop-color="#AB47BC"/></linearGradient>
+    <linearGradient id="hdrTask" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#00695C"/><stop offset="100%" stop-color="#26A69A"/></linearGradient>
+    <!-- Arrow markers (open, no fill) -->
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#C62828" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2E7D32" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#E65100" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#6A1B9A" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aT" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#00695C" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <marker id="aBr" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#795548" stroke-width="1.5" stroke-linejoin="round"/></marker>
+    <!-- Diamond markers (composition) -->
+    <marker id="dR" markerWidth="12" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M1,4 L6,1 L11,4 L6,7 Z" fill="#fff" stroke="#C62828" stroke-width="1.2"/></marker>
+    <marker id="dG" markerWidth="12" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M1,4 L6,1 L11,4 L6,7 Z" fill="#fff" stroke="#2E7D32" stroke-width="1.2"/></marker>
+    <marker id="dT" markerWidth="12" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M1,4 L6,1 L11,4 L6,7 Z" fill="#fff" stroke="#00695C" stroke-width="1.2"/></marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="670" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#263238">Lockdep 关键数据结构关系图</text>
+  <text x="670" y="50" text-anchor="middle" font-size="11" fill="#607D8B">include/linux/lockdep_types.h · include/linux/lockdep.h · kernel/locking/lockdep_internals.h</text>
+
+  <!-- ======== lock_class_key (top-left) ======== -->
+  <g transform="translate(30, 75)">
+    <rect width="260" height="120" rx="8" fill="#fff" stroke="#795548" stroke-width="2" filter="url(#sh)"/>
+    <rect width="260" height="30" rx="8" fill="url(#hdrKey)"/>
+    <rect x="0" y="22" width="260" height="8" fill="#A1887F"/>
+    <text x="130" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">lock_class_key</text>
+    <text x="12" y="46" font-size="9" font-weight="bold" fill="#795548">锁类的唯一静态标识 (编译期生成)</text>
+    <line x1="8" y1="52" x2="252" y2="52" stroke="#D7CCC8" stroke-width="0.8"/>
+    <text x="12" y="66" font-family="monospace" font-size="10" fill="#37474F">hash_entry</text>
+    <text x="175" y="66" font-size="9" fill="#9E9E9E">hlist_node</text>
+    <text x="12" y="82" font-family="monospace" font-size="10" fill="#37474F">subkeys[8]</text>
+    <text x="175" y="82" font-size="9" fill="#9E9E9E">lockdep_subclass_key</text>
+    <text x="12" y="100" font-size="9" fill="#78909C">union: hash_entry 和 subkeys 共用空间</text>
+    <text x="12" y="114" font-size="9" fill="#78909C">MAX_LOCKDEP_SUBCLASSES = 8</text>
+  </g>
+
+  <!-- ======== lockdep_map (top-center) ======== -->
+  <g transform="translate(440, 75)">
+    <rect width="280" height="200" rx="8" fill="#fff" stroke="#1565C0" stroke-width="2" filter="url(#sh)"/>
+    <rect width="280" height="30" rx="8" fill="url(#hdrMap)"/>
+    <rect x="0" y="22" width="280" height="8" fill="#42A5F5"/>
+    <text x="140" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">lockdep_map</text>
+    <text x="12" y="46" font-size="9" font-weight="bold" fill="#1565C0">嵌入每个锁实例, 映射到 lock_class</text>
+    <line x1="8" y1="52" x2="272" y2="52" stroke="#BBDEFB" stroke-width="0.8"/>
+    <text x="12" y="66" font-family="monospace" font-size="10" fill="#795548" font-weight="bold">*key</text>
+    <text x="160" y="66" font-size="9" fill="#9E9E9E">→ lock_class_key</text>
+    <text x="12" y="82" font-family="monospace" font-size="10" fill="#C62828" font-weight="bold">*class_cache[2]</text>
+    <text x="200" y="82" font-size="9" fill="#9E9E9E">→ lock_class</text>
+    <text x="12" y="98" font-family="monospace" font-size="10" fill="#37474F">*name</text>
+    <text x="160" y="98" font-size="9" fill="#9E9E9E">const char *</text>
+    <text x="12" y="114" font-family="monospace" font-size="10" fill="#37474F">wait_type_outer</text>
+    <text x="200" y="114" font-size="9" fill="#9E9E9E">u8</text>
+    <text x="12" y="130" font-family="monospace" font-size="10" fill="#37474F">wait_type_inner</text>
+    <text x="200" y="130" font-size="9" fill="#9E9E9E">u8</text>
+    <text x="12" y="146" font-family="monospace" font-size="10" fill="#37474F">lock_type</text>
+    <text x="200" y="146" font-size="9" fill="#9E9E9E">u8</text>
+    <line x1="8" y1="154" x2="272" y2="154" stroke="#BBDEFB" stroke-width="0.5" stroke-dasharray="3,2"/>
+    <text x="12" y="168" font-size="9" fill="#78909C"># CONFIG_LOCK_STAT</text>
+    <text x="12" y="182" font-family="monospace" font-size="10" fill="#37474F">cpu, ip</text>
+    <text x="160" y="182" font-size="9" fill="#9E9E9E">int, unsigned long</text>
+    <text x="12" y="196" font-size="8" fill="#78909C">嵌入: mutex, spinlock, rwsem 等锁对象中</text>
+  </g>
+
+  <!-- ======== lock_class (center, large) ======== -->
+  <g transform="translate(30, 340)">
+    <rect width="380" height="370" rx="8" fill="#fff" stroke="#C62828" stroke-width="2" filter="url(#sh)"/>
+    <rect width="380" height="30" rx="8" fill="url(#hdrClass)"/>
+    <rect x="0" y="22" width="380" height="8" fill="#EF5350"/>
+    <text x="190" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">lock_class</text>
+    <text x="12" y="46" font-size="9" font-weight="bold" fill="#C62828">锁类: 依赖图节点, 全局数组 lock_classes[8192]</text>
+    <line x1="8" y1="52" x2="372" y2="52" stroke="#FFCDD2" stroke-width="0.8"/>
+    <text x="12" y="68" font-family="monospace" font-size="10" fill="#37474F">hash_entry</text>
+    <text x="210" y="68" font-size="9" fill="#9E9E9E">hlist_node — classhash_table</text>
+    <text x="12" y="84" font-family="monospace" font-size="10" fill="#37474F">lock_entry</text>
+    <text x="210" y="84" font-size="9" fill="#9E9E9E">list_head — all_lock_classes</text>
+    <line x1="8" y1="92" x2="372" y2="92" stroke="#FFCDD2" stroke-width="0.5" stroke-dasharray="3,2"/>
+    <text x="12" y="106" font-size="9" fill="#C62828" font-weight="bold">/* 依赖图: 有向边 */</text>
+    <text x="12" y="122" font-family="monospace" font-size="10" fill="#E65100" font-weight="bold">locks_after</text>
+    <text x="210" y="122" font-size="9" fill="#9E9E9E">list_head → lock_list 链表</text>
+    <text x="12" y="138" font-family="monospace" font-size="10" fill="#E65100" font-weight="bold">locks_before</text>
+    <text x="210" y="138" font-size="9" fill="#9E9E9E">list_head → lock_list 链表</text>
+    <line x1="8" y1="146" x2="372" y2="146" stroke="#FFCDD2" stroke-width="0.5" stroke-dasharray="3,2"/>
+    <text x="12" y="162" font-family="monospace" font-size="10" fill="#795548" font-weight="bold">*key</text>
+    <text x="210" y="162" font-size="9" fill="#9E9E9E">→ lockdep_subclass_key</text>
+    <text x="12" y="178" font-family="monospace" font-size="10" fill="#37474F">cmp_fn, print_fn</text>
+    <text x="210" y="178" font-size="9" fill="#9E9E9E">函数指针</text>
+    <text x="12" y="194" font-family="monospace" font-size="10" fill="#37474F">subclass</text>
+    <text x="210" y="194" font-size="9" fill="#9E9E9E">unsigned int (0~7)</text>
+    <text x="12" y="210" font-family="monospace" font-size="10" fill="#37474F">dep_gen_id</text>
+    <text x="210" y="210" font-size="9" fill="#9E9E9E">BFS 遍历代号</text>
+    <line x1="8" y1="218" x2="372" y2="218" stroke="#FFCDD2" stroke-width="0.5" stroke-dasharray="3,2"/>
+    <text x="12" y="232" font-size="9" fill="#C62828" font-weight="bold">/* IRQ 使用追踪 */</text>
+    <text x="12" y="248" font-family="monospace" font-size="10" fill="#37474F">usage_mask</text>
+    <text x="210" y="248" font-size="9" fill="#9E9E9E">unsigned long (16 bits)</text>
+    <text x="12" y="264" font-family="monospace" font-size="10" fill="#37474F">usage_traces[STATES]</text>
+    <text x="210" y="264" font-size="9" fill="#9E9E9E">lock_trace * 数组</text>
+    <text x="12" y="280" font-family="monospace" font-size="10" fill="#37474F">*name</text>
+    <text x="210" y="280" font-size="9" fill="#9E9E9E">const char * — 锁名</text>
+    <text x="12" y="296" font-family="monospace" font-size="10" fill="#37474F">name_version</text>
+    <text x="210" y="296" font-size="9" fill="#9E9E9E">int — 图遍历代号</text>
+    <text x="12" y="312" font-family="monospace" font-size="10" fill="#37474F">wait_type_inner/outer</text>
+    <text x="210" y="312" font-size="9" fill="#9E9E9E">u8, u8</text>
+    <text x="12" y="328" font-family="monospace" font-size="10" fill="#37474F">lock_type</text>
+    <text x="210" y="328" font-size="9" fill="#9E9E9E">u8</text>
+    <line x1="8" y1="336" x2="372" y2="336" stroke="#FFCDD2" stroke-width="0.5" stroke-dasharray="3,2"/>
+    <text x="12" y="350" font-size="9" fill="#78909C"># CONFIG_LOCK_STAT</text>
+    <text x="12" y="364" font-family="monospace" font-size="10" fill="#37474F">contention_point[4]</text>
+    <text x="210" y="364" font-size="9" fill="#9E9E9E">unsigned long — 竞争 IP</text>
+  </g>
+
+  <!-- ======== held_lock (top-right) ======== -->
+  <g transform="translate(870, 75)">
+    <rect width="300" height="290" rx="8" fill="#fff" stroke="#2E7D32" stroke-width="2" filter="url(#sh)"/>
+    <rect width="300" height="30" rx="8" fill="url(#hdrHeld)"/>
+    <rect x="0" y="22" width="300" height="8" fill="#66BB6A"/>
+    <text x="150" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">held_lock</text>
+    <text x="12" y="46" font-size="9" font-weight="bold" fill="#2E7D32">Per-Task 持锁栈: curr-&gt;held_locks[48]</text>
+    <line x1="8" y1="52" x2="292" y2="52" stroke="#C8E6C9" stroke-width="0.8"/>
+    <text x="12" y="68" font-family="monospace" font-size="10" fill="#37474F">prev_chain_key</text>
+    <text x="200" y="68" font-size="9" fill="#9E9E9E">u64 — 前序哈希</text>
+    <text x="12" y="84" font-family="monospace" font-size="10" fill="#37474F">acquire_ip</text>
+    <text x="200" y="84" font-size="9" fill="#9E9E9E">unsigned long</text>
+    <text x="12" y="100" font-family="monospace" font-size="10" fill="#1565C0" font-weight="bold">*instance</text>
+    <text x="200" y="100" font-size="9" fill="#9E9E9E">→ lockdep_map</text>
+    <text x="12" y="116" font-family="monospace" font-size="10" fill="#1565C0" font-weight="bold">*nest_lock</text>
+    <text x="200" y="116" font-size="9" fill="#9E9E9E">→ lockdep_map</text>
+    <line x1="8" y1="124" x2="292" y2="124" stroke="#C8E6C9" stroke-width="0.5" stroke-dasharray="3,2"/>
+    <text x="12" y="138" font-size="9" fill="#2E7D32" font-weight="bold">/* 位域 — 32 bits total */</text>
+    <text x="12" y="154" font-family="monospace" font-size="10" fill="#C62828" font-weight="bold">class_idx :13</text>
+    <text x="200" y="154" font-size="9" fill="#9E9E9E">→ lock_classes[]</text>
+    <text x="12" y="170" font-family="monospace" font-size="10" fill="#37474F">irq_context :2</text>
+    <text x="200" y="170" font-size="9" fill="#9E9E9E">soft|hard</text>
+    <text x="12" y="186" font-family="monospace" font-size="10" fill="#37474F">trylock :1</text>
+    <text x="200" y="186" font-size="9" fill="#9E9E9E">try_lock 标记</text>
+    <text x="12" y="202" font-family="monospace" font-size="10" fill="#37474F">read :2</text>
+    <text x="200" y="202" font-size="9" fill="#9E9E9E">0=写,1=读,2=递归读</text>
+    <text x="12" y="218" font-family="monospace" font-size="10" fill="#37474F">check :1</text>
+    <text x="200" y="218" font-size="9" fill="#9E9E9E">是否验证</text>
+    <text x="12" y="234" font-family="monospace" font-size="10" fill="#37474F">hardirqs_off :1</text>
+    <text x="200" y="234" font-size="9" fill="#9E9E9E">IRQ 关闭标记</text>
+    <text x="12" y="250" font-family="monospace" font-size="10" fill="#37474F">references :11</text>
+    <text x="200" y="250" font-size="9" fill="#9E9E9E">递归引用计数</text>
+    <text x="12" y="266" font-family="monospace" font-size="10" fill="#37474F">pin_count</text>
+    <text x="200" y="266" font-size="9" fill="#9E9E9E">unsigned int</text>
+    <text x="12" y="284" font-size="8" fill="#78909C">hlock_id = (class_idx &lt;&lt; 1) | read</text>
+  </g>
+
+  <!-- ======== lock_list (center-right) ======== -->
+  <g transform="translate(530, 440)">
+    <rect width="290" height="220" rx="8" fill="#fff" stroke="#E65100" stroke-width="2" filter="url(#sh)"/>
+    <rect width="290" height="30" rx="8" fill="url(#hdrList)"/>
+    <rect x="0" y="22" width="290" height="8" fill="#FB8C00"/>
+    <text x="145" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">lock_list</text>
+    <text x="12" y="46" font-size="9" font-weight="bold" fill="#E65100">依赖图边, 全局数组 list_entries[16384]</text>
+    <line x1="8" y1="52" x2="282" y2="52" stroke="#FFE0B2" stroke-width="0.8"/>
+    <text x="12" y="68" font-family="monospace" font-size="10" fill="#37474F">entry</text>
+    <text x="160" y="68" font-size="9" fill="#9E9E9E">list_head — 链入 locks_after/before</text>
+    <text x="12" y="84" font-family="monospace" font-size="10" fill="#C62828" font-weight="bold">*class</text>
+    <text x="160" y="84" font-size="9" fill="#9E9E9E">→ lock_class (源节点)</text>
+    <text x="12" y="100" font-family="monospace" font-size="10" fill="#C62828" font-weight="bold">*links_to</text>
+    <text x="160" y="100" font-size="9" fill="#9E9E9E">→ lock_class (目标节点)</text>
+    <text x="12" y="116" font-family="monospace" font-size="10" fill="#37474F">*trace</text>
+    <text x="160" y="116" font-size="9" fill="#9E9E9E">lock_trace * — 创建栈</text>
+    <text x="12" y="132" font-family="monospace" font-size="10" fill="#37474F">distance</text>
+    <text x="160" y="132" font-size="9" fill="#9E9E9E">u16 — 距离</text>
+    <text x="12" y="148" font-family="monospace" font-size="10" fill="#37474F">dep</text>
+    <text x="160" y="148" font-size="9" fill="#9E9E9E">u8 — 依赖类型位图</text>
+    <text x="12" y="164" font-family="monospace" font-size="10" fill="#37474F">only_xr</text>
+    <text x="160" y="164" font-size="9" fill="#9E9E9E">u8 — BFS 只含读依赖</text>
+    <text x="12" y="180" font-family="monospace" font-size="10" fill="#37474F">*parent</text>
+    <text x="160" y="180" font-size="9" fill="#9E9E9E">lock_list * — BFS 回溯</text>
+    <line x1="8" y1="188" x2="282" y2="188" stroke="#FFE0B2" stroke-width="0.5" stroke-dasharray="3,2"/>
+    <text x="12" y="204" font-size="9" fill="#78909C">dep 位图: NN|NR|RN|RR (4 种依赖类型)</text>
+    <text x="12" y="216" font-size="8" fill="#78909C">parent bit0 复用为 BFS 已访问标记</text>
+  </g>
+
+  <!-- ======== lock_chain (bottom-right) ======== -->
+  <g transform="translate(930, 440)">
+    <rect width="280" height="200" rx="8" fill="#fff" stroke="#6A1B9A" stroke-width="2" filter="url(#sh)"/>
+    <rect width="280" height="30" rx="8" fill="url(#hdrChain)"/>
+    <rect x="0" y="22" width="280" height="8" fill="#AB47BC"/>
+    <text x="140" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">lock_chain</text>
+    <text x="12" y="46" font-size="9" font-weight="bold" fill="#6A1B9A">锁链缓存, 全局数组 lock_chains[32768]</text>
+    <line x1="8" y1="52" x2="272" y2="52" stroke="#E1BEE7" stroke-width="0.8"/>
+    <text x="12" y="68" font-size="9" fill="#6A1B9A" font-weight="bold">/* 位域打包 — 32 bits */</text>
+    <text x="12" y="84" font-family="monospace" font-size="10" fill="#37474F">irq_context :2</text>
+    <text x="180" y="84" font-size="9" fill="#9E9E9E">soft|hard</text>
+    <text x="12" y="100" font-family="monospace" font-size="10" fill="#37474F">depth :6</text>
+    <text x="180" y="100" font-size="9" fill="#9E9E9E">链长度 (1~63)</text>
+    <text x="12" y="116" font-family="monospace" font-size="10" fill="#37474F">base :24</text>
+    <text x="180" y="116" font-size="9" fill="#9E9E9E">→ chain_hlocks[] 索引</text>
+    <line x1="8" y1="124" x2="272" y2="124" stroke="#E1BEE7" stroke-width="0.5" stroke-dasharray="3,2"/>
+    <text x="12" y="140" font-family="monospace" font-size="10" fill="#37474F">entry</text>
+    <text x="180" y="140" font-size="9" fill="#9E9E9E">hlist_node — hash 桶</text>
+    <text x="12" y="156" font-family="monospace" font-size="10" fill="#6A1B9A" font-weight="bold">chain_key</text>
+    <text x="180" y="156" font-size="9" fill="#9E9E9E">u64 — 64-bit 哈希</text>
+    <line x1="8" y1="168" x2="272" y2="168" stroke="#E1BEE7" stroke-width="0.5" stroke-dasharray="3,2"/>
+    <text x="12" y="184" font-size="9" fill="#78909C">chainhash_table[16384] 哈希查找</text>
+    <text x="12" y="196" font-size="8" fill="#78909C">chain_hlocks[163840] 存储压缩 hlock_id</text>
+  </g>
+
+  <!-- ======== task_struct (bottom) ======== -->
+  <g transform="translate(30, 780)">
+    <rect width="380" height="145" rx="8" fill="#fff" stroke="#00695C" stroke-width="2" filter="url(#sh)"/>
+    <rect width="380" height="30" rx="8" fill="url(#hdrTask)"/>
+    <rect x="0" y="22" width="380" height="8" fill="#26A69A"/>
+    <text x="190" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="white">task_struct (lockdep 部分)</text>
+    <text x="12" y="46" font-size="9" font-weight="bold" fill="#00695C">每个任务的 lockdep 运行时状态</text>
+    <line x1="8" y1="52" x2="372" y2="52" stroke="#B2DFDB" stroke-width="0.8"/>
+    <text x="12" y="68" font-family="monospace" font-size="10" fill="#2E7D32" font-weight="bold">held_locks[48]</text>
+    <text x="210" y="68" font-size="9" fill="#9E9E9E">struct held_lock 数组</text>
+    <text x="12" y="84" font-family="monospace" font-size="10" fill="#37474F">lockdep_depth</text>
+    <text x="210" y="84" font-size="9" fill="#9E9E9E">unsigned int (0~48)</text>
+    <text x="12" y="100" font-family="monospace" font-size="10" fill="#6A1B9A" font-weight="bold">curr_chain_key</text>
+    <text x="210" y="100" font-size="9" fill="#9E9E9E">u64 — 滚动哈希</text>
+    <text x="12" y="116" font-family="monospace" font-size="10" fill="#37474F">lockdep_recursion</text>
+    <text x="210" y="116" font-size="9" fill="#9E9E9E">int — 防 lockdep 递归</text>
+    <text x="12" y="132" font-family="monospace" font-size="10" fill="#37474F">softirqs_enabled</text>
+    <text x="210" y="132" font-size="9" fill="#9E9E9E">int — IRQ 上下文标记</text>
+  </g>
+
+  <!-- ======== CONNECTIONS ======== -->
+
+  <!-- lockdep_map.key → lock_class_key -->
+  <path d="M440,140 L290,140" fill="none" stroke="#795548" stroke-width="2" marker-end="url(#aBr)"/>
+  <rect x="310" y="126" width="115" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="367" y="138" text-anchor="middle" font-size="8" fill="#795548" font-weight="bold">key → 静态标识</text>
+
+  <!-- lockdep_map.class_cache → lock_class -->
+  <path d="M530,275 L530,340" fill="none" stroke="#C62828" stroke-width="2.5" stroke-dasharray="6,3" marker-end="url(#aR)"/>
+  <rect x="455" y="289" width="150" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="530" y="301" text-anchor="middle" font-size="8" fill="#C62828" font-weight="bold">class_cache[0..1] 快速缓存</text>
+
+  <!-- held_lock.instance → lockdep_map -->
+  <path d="M870,155 L720,155" fill="none" stroke="#1565C0" stroke-width="2" marker-end="url(#aB)"/>
+  <rect x="745" y="141" width="108" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="799" y="153" text-anchor="middle" font-size="8" fill="#1565C0" font-weight="bold">instance 指针</text>
+
+  <!-- held_lock.class_idx → lock_class -->
+  <path d="M870,220 L870,340 L410,340" fill="none" stroke="#C62828" stroke-width="2" marker-end="url(#aR)"/>
+  <rect x="494" y="326" width="150" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="569" y="338" text-anchor="middle" font-size="8" fill="#C62828" font-weight="bold">class_idx → lock_classes[]</text>
+
+  <!-- lock_class.locks_after → lock_list (composition) -->
+  <path d="M410,462 L530,462" fill="none" stroke="#E65100" stroke-width="2.5" marker-start="url(#dR)" marker-end="url(#aO)"/>
+  <rect x="420" y="448" width="100" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="470" y="460" text-anchor="middle" font-size="8" fill="#E65100" font-weight="bold">locks_after 链表</text>
+
+  <!-- lock_class.locks_before → lock_list -->
+  <path d="M410,480 L475,480 L475,510 L530,510" fill="none" stroke="#E65100" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aO)"/>
+  <rect x="432" y="496" width="90" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="477" y="508" text-anchor="middle" font-size="8" fill="#E65100" font-weight="bold">locks_before</text>
+
+  <!-- lock_list.class → lock_class -->
+  <path d="M600,530 L600,600 L300,600 L300,710" fill="none" stroke="#C62828" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#aR)"/>
+  <rect x="353" y="586" width="130" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="418" y="598" text-anchor="middle" font-size="8" fill="#C62828" font-weight="bold">class / links_to 反引用</text>
+
+  <!-- task_struct.held_locks → held_lock -->
+  <path d="M410,848 L1020,848 L1020,365" fill="none" stroke="#2E7D32" stroke-width="2.5" marker-start="url(#dT)" marker-end="url(#aG)"/>
+  <rect x="978" y="597" width="85" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="1020" y="609" text-anchor="middle" font-size="8" fill="#2E7D32" font-weight="bold">held_locks[48]</text>
+
+  <!-- task_struct.curr_chain_key → lock_chain -->
+  <path d="M410,880 L1070,880 L1070,640" fill="none" stroke="#6A1B9A" stroke-width="2" marker-end="url(#aP)"/>
+  <rect x="1020" y="740" width="105" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="1072" y="752" text-anchor="middle" font-size="8" fill="#6A1B9A" font-weight="bold">curr_chain_key 匹配</text>
+
+  <!-- Legend -->
+  <g transform="translate(530, 720)">
+    <rect width="680" height="64" rx="6" fill="#FAFAFA" stroke="#BDBDBD" stroke-width="0.8" fill-opacity="0.95"/>
+    <text x="12" y="17" font-size="10" font-weight="bold" fill="#616161">图例</text>
+    <line x1="50" y1="36" x2="110" y2="36" stroke="#C62828" stroke-width="2.5" stroke-dasharray="6,3"/>
+    <text x="115" y="40" font-size="9" fill="#37474F">快速缓存引用</text>
+    <line x1="215" y1="36" x2="275" y2="36" stroke="#E65100" stroke-width="2.5"/>
+    <circle cx="218" cy="36" r="4" fill="#fff" stroke="#E65100" stroke-width="1.2"/>
+    <text x="280" y="40" font-size="9" fill="#37474F">组合/拥有 (locks_after)</text>
+    <line x1="410" y1="36" x2="470" y2="36" stroke="#1565C0" stroke-width="2"/>
+    <text x="475" y="40" font-size="9" fill="#37474F">指针引用</text>
+    <line x1="545" y1="36" x2="605" y2="36" stroke="#C62828" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="610" y="40" font-size="9" fill="#37474F">反向/间接引用</text>
+    <text x="12" y="56" font-size="8" fill="#78909C">核心关系: task_struct → held_locks[] → (class_idx) → lock_class → (locks_after) → lock_list → (links_to) → lock_class</text>
+  </g>
+</svg>

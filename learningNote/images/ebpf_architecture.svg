@@ -1,0 +1,438 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 980" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <!-- 阴影 -->
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/></filter>
+    <filter id="shLight"><feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.10"/></filter>
+    <!-- 层渐变 -->
+    <linearGradient id="gUser" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4A90D9"/><stop offset="100%" stop-color="#357ABD"/>
+    </linearGradient>
+    <linearGradient id="gSyscall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#27AE60"/><stop offset="100%" stop-color="#1E8449"/>
+    </linearGradient>
+    <linearGradient id="gVerify" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E67E22"/><stop offset="100%" stop-color="#D35400"/>
+    </linearGradient>
+    <linearGradient id="gExec" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E74C3C"/><stop offset="100%" stop-color="#C0392B"/>
+    </linearGradient>
+    <linearGradient id="gData" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8E44AD"/><stop offset="100%" stop-color="#7D3C98"/>
+    </linearGradient>
+    <linearGradient id="gAttach" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#16A085"/><stop offset="100%" stop-color="#0E6655"/>
+    </linearGradient>
+    <!-- 数据结构渐变 -->
+    <linearGradient id="gProg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2980B9"/><stop offset="100%" stop-color="#1F6FA3"/>
+    </linearGradient>
+    <linearGradient id="gMap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8E44AD"/><stop offset="100%" stop-color="#7D3C98"/>
+    </linearGradient>
+    <linearGradient id="gLink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#16A085"/><stop offset="100%" stop-color="#0E6655"/>
+    </linearGradient>
+    <linearGradient id="gTramp" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D35400"/><stop offset="100%" stop-color="#BA4A00"/>
+    </linearGradient>
+    <!-- 箭头 -->
+    <marker id="arrowDown" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
+      <path d="M1,1 L5,6 L9,1" fill="none" stroke="#555" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowRight" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#555" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2980B9" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#8E44AD" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowTeal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#16A085" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#D35400" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="1280" height="980" fill="#F8F9FA" rx="12"/>
+
+  <!-- 标题 -->
+  <text x="640" y="36" text-anchor="middle" font-size="20" font-weight="bold" fill="#2C3E50">Linux 6.18.1 eBPF 内核软件架构</text>
+  <text x="640" y="56" text-anchor="middle" font-size="11" fill="#7F8C8D">kernel/bpf/ · arch/arm64/net/ · include/linux/bpf.h · include/uapi/linux/bpf.h</text>
+
+  <!-- ==================== 左侧：分层架构 ==================== -->
+
+  <!-- Layer 1: 用户空间 -->
+  <g transform="translate(40, 75)" filter="url(#sh)">
+    <rect width="880" height="80" rx="8" fill="#EBF5FB" stroke="#4A90D9" stroke-width="2"/>
+    <rect width="880" height="32" rx="8" fill="url(#gUser)"/>
+    <rect y="24" width="880" height="8" fill="#357ABD"/>
+    <text x="440" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">用户空间 (User Space)</text>
+    <text x="30" y="52" font-size="11" fill="#2C3E50" font-weight="bold">libbpf</text>
+    <text x="110" y="52" font-size="11" fill="#2C3E50" font-weight="bold">bpftool</text>
+    <text x="195" y="52" font-size="11" fill="#2C3E50" font-weight="bold">BCC</text>
+    <text x="255" y="52" font-size="11" fill="#2C3E50" font-weight="bold">Cilium</text>
+    <text x="330" y="52" font-size="11" fill="#2C3E50" font-weight="bold">bpftrace</text>
+    <text x="425" y="52" font-size="11" fill="#2C3E50" font-weight="bold">自定义程序</text>
+    <text x="30" y="70" font-size="10" fill="#7F8C8D">bpf(2) syscall · fd 交互 · mmap · perf_event · BPF ringbuf</text>
+  </g>
+
+  <!-- 箭头: 用户空间 → Syscall -->
+  <path d="M480,155 L480,170" fill="none" stroke="#555" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <rect x="420" y="156" width="120" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="480" y="168" text-anchor="middle" font-size="9" fill="#555" font-weight="bold">bpf(2) syscall</text>
+
+  <!-- Layer 2: 系统调用层 -->
+  <g transform="translate(40, 175)" filter="url(#sh)">
+    <rect width="880" height="90" rx="8" fill="#E8F8F5" stroke="#27AE60" stroke-width="2"/>
+    <rect width="880" height="32" rx="8" fill="url(#gSyscall)"/>
+    <rect y="24" width="880" height="8" fill="#1E8449"/>
+    <text x="440" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">系统调用层 (Syscall Layer) — kernel/bpf/syscall.c</text>
+    <text x="30" y="50" font-size="11" fill="#1E8449" font-weight="bold">SYSCALL_DEFINE3(bpf) → __sys_bpf() → switch(cmd)</text>
+    <!-- 命令方块 -->
+    <rect x="30" y="58" width="100" height="22" rx="4" fill="#27AE60" fill-opacity="0.15" stroke="#27AE60" stroke-width="1"/>
+    <text x="80" y="73" text-anchor="middle" font-size="9" fill="#1E8449" font-weight="bold">MAP_CREATE</text>
+    <rect x="140" y="58" width="100" height="22" rx="4" fill="#27AE60" fill-opacity="0.15" stroke="#27AE60" stroke-width="1"/>
+    <text x="190" y="73" text-anchor="middle" font-size="9" fill="#1E8449" font-weight="bold">PROG_LOAD</text>
+    <rect x="250" y="58" width="100" height="22" rx="4" fill="#27AE60" fill-opacity="0.15" stroke="#27AE60" stroke-width="1"/>
+    <text x="300" y="73" text-anchor="middle" font-size="9" fill="#1E8449" font-weight="bold">PROG_ATTACH</text>
+    <rect x="360" y="58" width="100" height="22" rx="4" fill="#27AE60" fill-opacity="0.15" stroke="#27AE60" stroke-width="1"/>
+    <text x="410" y="73" text-anchor="middle" font-size="9" fill="#1E8449" font-weight="bold">LINK_CREATE</text>
+    <rect x="470" y="58" width="100" height="22" rx="4" fill="#27AE60" fill-opacity="0.15" stroke="#27AE60" stroke-width="1"/>
+    <text x="520" y="73" text-anchor="middle" font-size="9" fill="#1E8449" font-weight="bold">BTF_LOAD</text>
+    <rect x="580" y="58" width="100" height="22" rx="4" fill="#27AE60" fill-opacity="0.15" stroke="#27AE60" stroke-width="1"/>
+    <text x="630" y="73" text-anchor="middle" font-size="9" fill="#1E8449" font-weight="bold">MAP_*_ELEM</text>
+    <rect x="690" y="58" width="100" height="22" rx="4" fill="#27AE60" fill-opacity="0.15" stroke="#27AE60" stroke-width="1"/>
+    <text x="740" y="73" text-anchor="middle" font-size="9" fill="#1E8449" font-weight="bold">OBJ_PIN/GET</text>
+    <rect x="800" y="58" width="68" height="22" rx="4" fill="#27AE60" fill-opacity="0.15" stroke="#27AE60" stroke-width="1"/>
+    <text x="834" y="73" text-anchor="middle" font-size="9" fill="#1E8449" font-weight="bold">TOKEN_*</text>
+  </g>
+
+  <!-- 箭头: Syscall → Verify -->
+  <path d="M480,265 L480,280" fill="none" stroke="#555" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <rect x="415" y="266" width="130" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="480" y="278" text-anchor="middle" font-size="9" fill="#555" font-weight="bold">PROG_LOAD 路径</text>
+
+  <!-- Layer 3: 验证层 -->
+  <g transform="translate(40, 285)" filter="url(#sh)">
+    <rect width="880" height="100" rx="8" fill="#FDF2E9" stroke="#E67E22" stroke-width="2"/>
+    <rect width="880" height="32" rx="8" fill="url(#gVerify)"/>
+    <rect y="24" width="880" height="8" fill="#D35400"/>
+    <text x="440" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">验证层 (Verification Layer) — kernel/bpf/verifier.c (24787行)</text>
+    <text x="30" y="52" font-size="11" fill="#D35400" font-weight="bold">bpf_check() 主入口 → 多阶段静态分析</text>
+    <!-- 验证步骤 -->
+    <rect x="30" y="60" width="115" height="28" rx="4" fill="#E67E22" fill-opacity="0.12" stroke="#E67E22" stroke-width="1"/>
+    <text x="87" y="73" text-anchor="middle" font-size="9" fill="#D35400" font-weight="bold">CFG 校验</text>
+    <text x="87" y="83" text-anchor="middle" font-size="8" fill="#7F8C8D">DAG 检测/深度限制</text>
+    <rect x="155" y="60" width="115" height="28" rx="4" fill="#E67E22" fill-opacity="0.12" stroke="#E67E22" stroke-width="1"/>
+    <text x="212" y="73" text-anchor="middle" font-size="9" fill="#D35400" font-weight="bold">寄存器类型追踪</text>
+    <text x="212" y="83" text-anchor="middle" font-size="8" fill="#7F8C8D">bpf_reg_state</text>
+    <rect x="280" y="60" width="115" height="28" rx="4" fill="#E67E22" fill-opacity="0.12" stroke="#E67E22" stroke-width="1"/>
+    <text x="337" y="73" text-anchor="middle" font-size="9" fill="#D35400" font-weight="bold">内存访问检查</text>
+    <text x="337" y="83" text-anchor="middle" font-size="8" fill="#7F8C8D">PTR 边界/对齐</text>
+    <rect x="405" y="60" width="115" height="28" rx="4" fill="#E67E22" fill-opacity="0.12" stroke="#E67E22" stroke-width="1"/>
+    <text x="462" y="73" text-anchor="middle" font-size="9" fill="#D35400" font-weight="bold">值范围分析</text>
+    <text x="462" y="83" text-anchor="middle" font-size="8" fill="#7F8C8D">tnum 三态追踪</text>
+    <rect x="530" y="60" width="115" height="28" rx="4" fill="#E67E22" fill-opacity="0.12" stroke="#E67E22" stroke-width="1"/>
+    <text x="587" y="73" text-anchor="middle" font-size="9" fill="#D35400" font-weight="bold">Helper 参数校验</text>
+    <text x="587" y="83" text-anchor="middle" font-size="8" fill="#7F8C8D">func_proto 匹配</text>
+    <rect x="655" y="60" width="115" height="28" rx="4" fill="#E67E22" fill-opacity="0.12" stroke="#E67E22" stroke-width="1"/>
+    <text x="712" y="73" text-anchor="middle" font-size="9" fill="#D35400" font-weight="bold">资源泄漏检查</text>
+    <text x="712" y="83" text-anchor="middle" font-size="8" fill="#7F8C8D">引用计数追踪</text>
+    <rect x="780" y="60" width="88" height="28" rx="4" fill="#E67E22" fill-opacity="0.12" stroke="#E67E22" stroke-width="1"/>
+    <text x="824" y="73" text-anchor="middle" font-size="9" fill="#D35400" font-weight="bold">活跃度分析</text>
+    <text x="824" y="83" text-anchor="middle" font-size="8" fill="#7F8C8D">liveness.c</text>
+  </g>
+
+  <!-- 箭头: Verify → Exec -->
+  <path d="M480,385 L480,400" fill="none" stroke="#555" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <rect x="410" y="386" width="140" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="480" y="398" text-anchor="middle" font-size="9" fill="#555" font-weight="bold">验证通过 → 选择引擎</text>
+
+  <!-- Layer 4: 执行层 -->
+  <g transform="translate(40, 405)" filter="url(#sh)">
+    <rect width="880" height="110" rx="8" fill="#FDEDEC" stroke="#E74C3C" stroke-width="2"/>
+    <rect width="880" height="32" rx="8" fill="url(#gExec)"/>
+    <rect y="24" width="880" height="8" fill="#C0392B"/>
+    <text x="440" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">执行层 (Execution Layer)</text>
+    <!-- 解释器 -->
+    <rect x="30" y="40" width="260" height="60" rx="6" fill="#fff" stroke="#C0392B" stroke-width="1.5"/>
+    <rect x="30" y="40" width="260" height="22" rx="6" fill="#E74C3C" fill-opacity="0.15"/>
+    <rect x="30" y="56" width="260" height="6" fill="#E74C3C" fill-opacity="0.15"/>
+    <text x="160" y="56" text-anchor="middle" font-size="11" fill="#C0392B" font-weight="bold">解释器 (Interpreter)</text>
+    <text x="45" y="76" font-size="10" fill="#555">kernel/bpf/core.c</text>
+    <text x="45" y="90" font-size="9" fill="#7F8C8D">___bpf_prog_run() 跳转表驱动</text>
+    <!-- JIT -->
+    <rect x="310" y="40" width="280" height="60" rx="6" fill="#fff" stroke="#C0392B" stroke-width="1.5"/>
+    <rect x="310" y="40" width="280" height="22" rx="6" fill="#E74C3C" fill-opacity="0.15"/>
+    <rect x="310" y="56" width="280" height="6" fill="#E74C3C" fill-opacity="0.15"/>
+    <text x="450" y="56" text-anchor="middle" font-size="11" fill="#C0392B" font-weight="bold">JIT 编译器 (ARM64/x86)</text>
+    <text x="325" y="76" font-size="10" fill="#555">arch/arm64/net/bpf_jit_comp.c</text>
+    <text x="325" y="90" font-size="9" fill="#7F8C8D">BPF insn → 原生机器码 (3145行)</text>
+    <!-- Trampoline -->
+    <rect x="610" y="40" width="258" height="60" rx="6" fill="#fff" stroke="#C0392B" stroke-width="1.5"/>
+    <rect x="610" y="40" width="258" height="22" rx="6" fill="#E74C3C" fill-opacity="0.15"/>
+    <rect x="610" y="56" width="258" height="6" fill="#E74C3C" fill-opacity="0.15"/>
+    <text x="739" y="56" text-anchor="middle" font-size="11" fill="#C0392B" font-weight="bold">Trampoline / Dispatcher</text>
+    <text x="625" y="76" font-size="10" fill="#555">trampoline.c · dispatcher.c</text>
+    <text x="625" y="90" font-size="9" fill="#7F8C8D">fentry/fexit 蹦床 · XDP/TC 分发</text>
+  </g>
+
+  <!-- 箭头: Exec → Data (左侧) -->
+  <path d="M340,515 L340,530" fill="none" stroke="#555" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <rect x="290" y="516" width="100" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="340" y="528" text-anchor="middle" font-size="9" fill="#555" font-weight="bold">Helper 访问</text>
+
+  <!-- 箭头: Exec → Attach (右侧) -->
+  <path d="M620,515 L620,530" fill="none" stroke="#555" stroke-width="2" marker-end="url(#arrowDown)"/>
+  <rect x="570" y="516" width="100" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="620" y="528" text-anchor="middle" font-size="9" fill="#555" font-weight="bold">事件触发</text>
+
+  <!-- Layer 5: 数据层 (左半) -->
+  <g transform="translate(40, 535)" filter="url(#sh)">
+    <rect width="428" height="130" rx="8" fill="#F4ECF7" stroke="#8E44AD" stroke-width="2"/>
+    <rect width="428" height="32" rx="8" fill="url(#gData)"/>
+    <rect y="24" width="428" height="8" fill="#7D3C98"/>
+    <text x="214" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">数据层 (Data Layer) — Maps</text>
+    <!-- Map 类型 -->
+    <rect x="15" y="40" width="90" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="60" y="54" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">Hash Map</text>
+    <rect x="115" y="40" width="90" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="160" y="54" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">Array Map</text>
+    <rect x="215" y="40" width="90" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="260" y="54" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">Ring Buffer</text>
+    <rect x="315" y="40" width="98" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="364" y="54" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">LPM Trie</text>
+
+    <rect x="15" y="66" width="90" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="60" y="80" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">Queue/Stack</text>
+    <rect x="115" y="66" width="90" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="160" y="80" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">DevMap</text>
+    <rect x="215" y="66" width="90" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="260" y="80" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">CpuMap</text>
+    <rect x="315" y="66" width="98" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="364" y="80" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">SockMap</text>
+
+    <rect x="15" y="92" width="90" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="60" y="106" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">Bloom Filter</text>
+    <rect x="115" y="92" width="90" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="160" y="106" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">Arena</text>
+    <rect x="215" y="92" width="90" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="260" y="106" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">Prog Array</text>
+    <rect x="315" y="92" width="98" height="20" rx="3" fill="#8E44AD" fill-opacity="0.1" stroke="#8E44AD" stroke-width="0.8"/>
+    <text x="364" y="106" text-anchor="middle" font-size="9" fill="#7D3C98" font-weight="bold">Local Storage</text>
+    <text x="214" y="126" text-anchor="middle" font-size="9" fill="#7F8C8D">memalloc.c 专用内存分配器 · 22+ 种 Map 类型</text>
+  </g>
+
+  <!-- Layer 6: 挂载点层 (右半) -->
+  <g transform="translate(492, 535)" filter="url(#sh)">
+    <rect width="428" height="130" rx="8" fill="#E8F8F5" stroke="#16A085" stroke-width="2"/>
+    <rect width="428" height="32" rx="8" fill="url(#gAttach)"/>
+    <rect y="24" width="428" height="8" fill="#0E6655"/>
+    <text x="214" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">挂载点层 (Attach Points)</text>
+    <!-- 4 列 -->
+    <rect x="10" y="38" width="95" height="82" rx="5" fill="#16A085" fill-opacity="0.08" stroke="#16A085" stroke-width="0.8"/>
+    <text x="57" y="52" text-anchor="middle" font-size="10" fill="#0E6655" font-weight="bold">Networking</text>
+    <text x="57" y="65" text-anchor="middle" font-size="8" fill="#7F8C8D">XDP</text>
+    <text x="57" y="76" text-anchor="middle" font-size="8" fill="#7F8C8D">TC / TCX</text>
+    <text x="57" y="87" text-anchor="middle" font-size="8" fill="#7F8C8D">Socket</text>
+    <text x="57" y="98" text-anchor="middle" font-size="8" fill="#7F8C8D">Netfilter</text>
+    <text x="57" y="109" text-anchor="middle" font-size="8" fill="#7F8C8D">LWT</text>
+
+    <rect x="115" y="38" width="95" height="82" rx="5" fill="#16A085" fill-opacity="0.08" stroke="#16A085" stroke-width="0.8"/>
+    <text x="162" y="52" text-anchor="middle" font-size="10" fill="#0E6655" font-weight="bold">Tracing</text>
+    <text x="162" y="65" text-anchor="middle" font-size="8" fill="#7F8C8D">kprobe</text>
+    <text x="162" y="76" text-anchor="middle" font-size="8" fill="#7F8C8D">tracepoint</text>
+    <text x="162" y="87" text-anchor="middle" font-size="8" fill="#7F8C8D">fentry/fexit</text>
+    <text x="162" y="98" text-anchor="middle" font-size="8" fill="#7F8C8D">perf_event</text>
+    <text x="162" y="109" text-anchor="middle" font-size="8" fill="#7F8C8D">uprobe</text>
+
+    <rect x="220" y="38" width="95" height="82" rx="5" fill="#16A085" fill-opacity="0.08" stroke="#16A085" stroke-width="0.8"/>
+    <text x="267" y="52" text-anchor="middle" font-size="10" fill="#0E6655" font-weight="bold">Security</text>
+    <text x="267" y="65" text-anchor="middle" font-size="8" fill="#7F8C8D">LSM hooks</text>
+    <text x="267" y="76" text-anchor="middle" font-size="8" fill="#7F8C8D">bpf_lsm.c</text>
+    <text x="267" y="87" text-anchor="middle" font-size="8" fill="#7F8C8D">Cgroup</text>
+    <text x="267" y="98" text-anchor="middle" font-size="8" fill="#7F8C8D">cgroup.c</text>
+
+    <rect x="325" y="38" width="93" height="82" rx="5" fill="#16A085" fill-opacity="0.08" stroke="#16A085" stroke-width="0.8"/>
+    <text x="371" y="52" text-anchor="middle" font-size="10" fill="#0E6655" font-weight="bold">Scheduler</text>
+    <text x="371" y="65" text-anchor="middle" font-size="8" fill="#7F8C8D">struct_ops</text>
+    <text x="371" y="76" text-anchor="middle" font-size="8" fill="#7F8C8D">bpf_struct</text>
+    <text x="371" y="87" text-anchor="middle" font-size="8" fill="#7F8C8D">_ops.c</text>
+
+    <text x="214" y="128" text-anchor="middle" font-size="9" fill="#7F8C8D">32 种程序类型 · 14+ 种 Link 类型</text>
+  </g>
+
+  <!-- ==================== 右侧：核心数据结构 ==================== -->
+
+  <!-- bpf_prog -->
+  <g transform="translate(960, 75)" filter="url(#shLight)">
+    <rect width="290" height="170" rx="8" fill="#fff" stroke="#2980B9" stroke-width="2"/>
+    <rect width="290" height="30" rx="8" fill="url(#gProg)"/>
+    <rect y="22" width="290" height="8" fill="#1F6FA3"/>
+    <text x="145" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">bpf_prog</text>
+    <text x="15" y="46" font-size="10" fill="#2980B9" font-weight="bold">程序对象 — include/linux/filter.h</text>
+    <line x1="10" y1="52" x2="280" y2="52" stroke="#D6EAF8" stroke-width="0.8"/>
+    <text x="15" y="66" font-size="10" font-family="monospace" fill="#2C3E50">bpf_insn[]</text>
+    <text x="155" y="66" font-size="9" fill="#7F8C8D">BPF 指令数组</text>
+    <text x="15" y="82" font-size="10" font-family="monospace" fill="#2C3E50">bpf_func</text>
+    <text x="155" y="82" font-size="9" fill="#7F8C8D">执行入口 (JIT/解释器)</text>
+    <text x="15" y="98" font-size="10" font-family="monospace" fill="#2980B9">bpf_prog_aux</text>
+    <text x="155" y="98" font-size="9" fill="#7F8C8D">辅助信息指针</text>
+    <text x="15" y="114" font-size="10" font-family="monospace" fill="#8E44AD">used_maps[]</text>
+    <text x="155" y="114" font-size="9" fill="#7F8C8D">引用的 Map 列表</text>
+    <text x="15" y="130" font-size="10" font-family="monospace" fill="#D35400">dst_trampoline</text>
+    <text x="155" y="130" font-size="9" fill="#7F8C8D">蹦床指针</text>
+    <text x="15" y="146" font-size="10" font-family="monospace" fill="#2C3E50">bpf_prog_stats</text>
+    <text x="155" y="146" font-size="9" fill="#7F8C8D">per-CPU 统计</text>
+    <text x="15" y="162" font-size="10" font-family="monospace" fill="#2C3E50">bpf_token</text>
+    <text x="155" y="162" font-size="9" fill="#7F8C8D">权限令牌</text>
+  </g>
+
+  <!-- bpf_map -->
+  <g transform="translate(960, 270)" filter="url(#shLight)">
+    <rect width="290" height="150" rx="8" fill="#fff" stroke="#8E44AD" stroke-width="2"/>
+    <rect width="290" height="30" rx="8" fill="url(#gMap)"/>
+    <rect y="22" width="290" height="8" fill="#7D3C98"/>
+    <text x="145" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">bpf_map</text>
+    <text x="15" y="46" font-size="10" fill="#8E44AD" font-weight="bold">数据对象 — include/linux/bpf.h</text>
+    <line x1="10" y1="52" x2="280" y2="52" stroke="#E8DAEF" stroke-width="0.8"/>
+    <text x="15" y="66" font-size="10" font-family="monospace" fill="#2C3E50">bpf_map_ops *ops</text>
+    <text x="175" y="66" font-size="9" fill="#7F8C8D">类型操作表</text>
+    <text x="15" y="82" font-size="10" font-family="monospace" fill="#2C3E50">btf *btf</text>
+    <text x="175" y="82" font-size="9" fill="#7F8C8D">BTF 类型信息</text>
+    <text x="15" y="98" font-size="10" font-family="monospace" fill="#2C3E50">btf_record *record</text>
+    <text x="175" y="98" font-size="9" fill="#7F8C8D">字段记录</text>
+    <text x="15" y="114" font-size="10" font-family="monospace" fill="#2C3E50">map_type</text>
+    <text x="175" y="114" font-size="9" fill="#7F8C8D">Map 类型枚举</text>
+    <text x="15" y="130" font-size="10" font-family="monospace" fill="#2C3E50">key_size, value_size</text>
+    <text x="175" y="130" font-size="9" fill="#7F8C8D">键值尺寸</text>
+    <text x="15" y="146" font-size="10" font-family="monospace" fill="#2C3E50">max_entries</text>
+    <text x="175" y="146" font-size="9" fill="#7F8C8D">最大条目数</text>
+  </g>
+
+  <!-- bpf_link -->
+  <g transform="translate(960, 445)" filter="url(#shLight)">
+    <rect width="290" height="140" rx="8" fill="#fff" stroke="#16A085" stroke-width="2"/>
+    <rect width="290" height="30" rx="8" fill="url(#gLink)"/>
+    <rect y="22" width="290" height="8" fill="#0E6655"/>
+    <text x="145" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">bpf_link</text>
+    <text x="15" y="46" font-size="10" fill="#16A085" font-weight="bold">挂载对象 — include/linux/bpf.h</text>
+    <line x1="10" y1="52" x2="280" y2="52" stroke="#D1F2EB" stroke-width="0.8"/>
+    <text x="15" y="66" font-size="10" font-family="monospace" fill="#2C3E50">bpf_link_ops *ops</text>
+    <text x="175" y="66" font-size="9" fill="#7F8C8D">类型操作表</text>
+    <text x="15" y="82" font-size="10" font-family="monospace" fill="#2980B9">bpf_prog *prog</text>
+    <text x="175" y="82" font-size="9" fill="#7F8C8D">关联的程序</text>
+    <text x="15" y="98" font-size="10" font-family="monospace" fill="#2C3E50">type</text>
+    <text x="175" y="98" font-size="9" fill="#7F8C8D">链接类型</text>
+    <text x="15" y="114" font-size="10" font-family="monospace" fill="#2C3E50">attach_type</text>
+    <text x="175" y="114" font-size="9" fill="#7F8C8D">附加类型</text>
+    <text x="15" y="130" font-size="10" font-family="monospace" fill="#2C3E50">sleepable</text>
+    <text x="175" y="130" font-size="9" fill="#7F8C8D">可睡眠标记</text>
+  </g>
+
+  <!-- bpf_trampoline -->
+  <g transform="translate(960, 610)" filter="url(#shLight)">
+    <rect width="290" height="130" rx="8" fill="#fff" stroke="#D35400" stroke-width="2"/>
+    <rect width="290" height="30" rx="8" fill="url(#gTramp)"/>
+    <rect y="22" width="290" height="8" fill="#BA4A00"/>
+    <text x="145" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">bpf_trampoline</text>
+    <text x="15" y="46" font-size="10" fill="#D35400" font-weight="bold">蹦床对象 — trampoline.c</text>
+    <line x1="10" y1="52" x2="280" y2="52" stroke="#FDEBD0" stroke-width="0.8"/>
+    <text x="15" y="66" font-size="10" font-family="monospace" fill="#2C3E50">ftrace_ops *fops</text>
+    <text x="175" y="66" font-size="9" fill="#7F8C8D">ftrace 操作</text>
+    <text x="15" y="82" font-size="10" font-family="monospace" fill="#2C3E50">btf_func_model</text>
+    <text x="175" y="82" font-size="9" fill="#7F8C8D">目标函数模型</text>
+    <text x="15" y="98" font-size="10" font-family="monospace" fill="#2C3E50">progs_hlist[]</text>
+    <text x="175" y="98" font-size="9" fill="#7F8C8D">附加程序链</text>
+    <text x="15" y="114" font-size="10" font-family="monospace" fill="#2C3E50">bpf_tramp_image</text>
+    <text x="175" y="114" font-size="9" fill="#7F8C8D">可执行蹦床镜像</text>
+    <text x="15" y="127" font-size="9" fill="#7F8C8D" font-style="italic">fentry / fexit / fmod_ret</text>
+  </g>
+
+  <!-- ==================== 关系连线 ==================== -->
+
+  <!-- bpf_prog → bpf_map (used_maps) -->
+  <path d="M960,189 L940,189 L940,345 L960,345" fill="none" stroke="#8E44AD" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrowPurple)"/>
+  <rect x="926" y="258" width="70" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="934" y="269" font-size="8" fill="#8E44AD" font-weight="bold">used_maps</text>
+
+  <!-- bpf_link → bpf_prog (prog) -->
+  <path d="M960,527 L940,527 L940,195 L960,195" fill="none" stroke="#2980B9" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrowBlue)"/>
+  <rect x="926" y="355" width="50" height="16" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="934" y="366" font-size="8" fill="#2980B9" font-weight="bold">*prog</text>
+
+  <!-- bpf_prog → bpf_trampoline (dst_trampoline) -->
+  <path d="M1250,245 L1268,245 L1268,610" fill="none" stroke="#D35400" stroke-width="2" stroke-dasharray="6,3" marker-end="url(#arrowOrange)"/>
+  <rect x="1256" y="420" width="50" height="32" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="1264" y="433" font-size="7" fill="#D35400" font-weight="bold">dst_</text>
+  <text x="1264" y="445" font-size="7" fill="#D35400" font-weight="bold">trampoline</text>
+
+  <!-- bpf_link → 挂载点层 (虚线) -->
+  <path d="M960,568 L936,568 L936,605 L920,605" fill="none" stroke="#16A085" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arrowTeal)"/>
+  <rect x="920" y="575" width="55" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="928" y="585" font-size="7" fill="#16A085" font-weight="bold">attach to</text>
+
+  <!-- ==================== 图例 ==================== -->
+  <g transform="translate(40, 700)">
+    <rect width="1200" height="60" rx="8" fill="#fff" fill-opacity="0.8" stroke="#BDC3C7" stroke-width="1"/>
+    <text x="20" y="20" font-size="11" fill="#2C3E50" font-weight="bold">图例</text>
+    <!-- 层箭头 -->
+    <line x1="80" y1="16" x2="110" y2="16" stroke="#555" stroke-width="2" marker-end="url(#arrowRight)"/>
+    <text x="118" y="20" font-size="9" fill="#555">数据流 / 调用关系</text>
+    <!-- RCU 指针 -->
+    <line x1="240" y1="16" x2="270" y2="16" stroke="#8E44AD" stroke-width="2" stroke-dasharray="6,3"/>
+    <text x="278" y="20" font-size="9" fill="#555">结构体引用指针</text>
+    <!-- 组件框 -->
+    <rect x="400" y="7" width="16" height="16" rx="3" fill="#27AE60" fill-opacity="0.15" stroke="#27AE60" stroke-width="1"/>
+    <text x="424" y="20" font-size="9" fill="#555">功能子模块</text>
+    <!-- 数据结构框 -->
+    <rect x="530" y="7" width="16" height="16" rx="3" fill="#fff" stroke="#2980B9" stroke-width="1.5"/>
+    <text x="554" y="20" font-size="9" fill="#555">核心数据结构</text>
+
+    <text x="20" y="45" font-size="9" fill="#7F8C8D">颜色编码: </text>
+    <rect x="80" y="35" width="12" height="12" rx="2" fill="#4A90D9"/>
+    <text x="98" y="46" font-size="9" fill="#555">用户空间</text>
+    <rect x="155" y="35" width="12" height="12" rx="2" fill="#27AE60"/>
+    <text x="173" y="46" font-size="9" fill="#555">系统调用</text>
+    <rect x="230" y="35" width="12" height="12" rx="2" fill="#E67E22"/>
+    <text x="248" y="46" font-size="9" fill="#555">验证器</text>
+    <rect x="295" y="35" width="12" height="12" rx="2" fill="#E74C3C"/>
+    <text x="313" y="46" font-size="9" fill="#555">执行引擎</text>
+    <rect x="370" y="35" width="12" height="12" rx="2" fill="#8E44AD"/>
+    <text x="388" y="46" font-size="9" fill="#555">数据/Map</text>
+    <rect x="445" y="35" width="12" height="12" rx="2" fill="#16A085"/>
+    <text x="463" y="46" font-size="9" fill="#555">挂载点</text>
+    <rect x="520" y="35" width="12" height="12" rx="2" fill="#D35400"/>
+    <text x="538" y="46" font-size="9" fill="#555">Trampoline</text>
+  </g>
+
+  <!-- 底部文件路径提示 -->
+  <text x="640" y="800" text-anchor="middle" font-size="10" fill="#95A5A6">
+    核心源码: kernel/bpf/{syscall,verifier,core,helpers,btf,hashtab,trampoline}.c · arch/arm64/net/bpf_jit_comp.c
+  </text>
+
+  <!-- BTF 辅助框 (右下角) -->
+  <g transform="translate(960, 770)" filter="url(#shLight)">
+    <rect width="290" height="85" rx="8" fill="#fff" stroke="#95A5A6" stroke-width="1.5"/>
+    <rect width="290" height="26" rx="8" fill="#95A5A6" fill-opacity="0.3"/>
+    <rect y="20" width="290" height="6" fill="#95A5A6" fill-opacity="0.3"/>
+    <text x="145" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#555">辅助子系统</text>
+    <text x="15" y="42" font-size="10" fill="#555" font-weight="bold">BTF</text>
+    <text x="55" y="42" font-size="9" fill="#7F8C8D">btf.c — 类型信息、CO-RE 重定位</text>
+    <text x="15" y="58" font-size="10" fill="#555" font-weight="bold">bpffs</text>
+    <text x="55" y="58" font-size="9" fill="#7F8C8D">inode.c — BPF 文件系统 (pin/get)</text>
+    <text x="15" y="74" font-size="10" fill="#555" font-weight="bold">Token</text>
+    <text x="55" y="74" font-size="9" fill="#7F8C8D">token.c — 权限委托机制</text>
+  </g>
+
+  <!-- 数据流总览箭头（左侧纵向标注） -->
+  <g transform="translate(18, 75)">
+    <line x1="0" y1="0" x2="0" y2="590" stroke="#BDC3C7" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="-8" y="60" transform="rotate(-90, -8, 60)" font-size="9" fill="#BDC3C7" font-weight="bold">加载路径</text>
+    <text x="-8" y="420" transform="rotate(-90, -8, 420)" font-size="9" fill="#BDC3C7" font-weight="bold">执行路径</text>
+  </g>
+</svg>

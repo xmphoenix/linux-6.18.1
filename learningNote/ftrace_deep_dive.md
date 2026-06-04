@@ -339,7 +339,7 @@ static int ftrace_process_locs(struct module *mod,
 
 ### 4.1 软件架构总览
 
-![Ftrace 软件架构图](ftrace_architecture.svg)
+![Ftrace 软件架构图](images/ftrace_architecture.svg)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -362,7 +362,7 @@ static int ftrace_process_locs(struct module *mod,
 
 以下按自底向上的顺序介绍各层核心数据结构。
 
-![Ftrace 数据结构关系图](ftrace_data_structures.svg)
+![Ftrace 数据结构关系图](images/ftrace_data_structures.svg)
 
 ### 4.2 `struct ftrace_ops` — 追踪操作回调
 

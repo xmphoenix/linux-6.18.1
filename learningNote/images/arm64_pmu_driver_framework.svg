@@ -1,0 +1,310 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1300" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.15"/></filter>
+    <!-- 箭头 Markers -->
+    <marker id="aBlk" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#333" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aRed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aOrange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#ea580c" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aPurple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <!-- 渐变 -->
+    <linearGradient id="hdrUser" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="hdrCore" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="hdrPmu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#16a34a"/><stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="hdrDrv" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#b91c1c"/>
+    </linearGradient>
+    <linearGradient id="hdrHw" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ea580c"/><stop offset="100%" stop-color="#c2410c"/>
+    </linearGradient>
+    <linearGradient id="hdrPlat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 标题 -->
+  <text x="700" y="35" text-anchor="middle" font-size="22" font-weight="bold" fill="#1e293b">ARM64 PMUv3 驱动软件框架</text>
+  <text x="700" y="58" text-anchor="middle" font-size="12" fill="#64748b">Linux 6.18.1 — drivers/perf/arm_pmu.c + arm_pmuv3.c + include/linux/perf/arm_pmu.h</text>
+
+  <!-- ================================================================== -->
+  <!--  用户空间层  -->
+  <!-- ================================================================== -->
+  <g transform="translate(90,80)">
+    <rect width="1220" height="120" rx="10" fill="#fff" stroke="#6366f1" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1220" height="32" rx="10" fill="url(#hdrUser)"/>
+    <rect x="0" y="24" width="1220" height="8" fill="url(#hdrUser)"/>
+    <text x="610" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">用户空间 (User Space)</text>
+    <text x="15" y="52" fill="#6366f1" font-size="10" font-weight="bold">perf 工具通过 sys_perf_event_open() 系统调用与内核交互</text>
+
+    <!-- perf 子命令 -->
+    <rect x="30" y="62" width="150" height="40" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1"/>
+    <text x="105" y="82" text-anchor="middle" font-size="12" font-weight="bold" fill="#4338ca">perf record</text>
+    <text x="105" y="95" text-anchor="middle" font-size="9" fill="#6366f1">采样记录到 perf.data</text>
+
+    <rect x="210" y="62" width="150" height="40" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1"/>
+    <text x="285" y="82" text-anchor="middle" font-size="12" font-weight="bold" fill="#4338ca">perf stat</text>
+    <text x="285" y="95" text-anchor="middle" font-size="9" fill="#6366f1">精确计数统计</text>
+
+    <rect x="390" y="62" width="150" height="40" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1"/>
+    <text x="465" y="82" text-anchor="middle" font-size="12" font-weight="bold" fill="#4338ca">perf top</text>
+    <text x="465" y="95" text-anchor="middle" font-size="9" fill="#6366f1">实时热点分析</text>
+
+    <rect x="570" y="62" width="150" height="40" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1"/>
+    <text x="645" y="82" text-anchor="middle" font-size="12" font-weight="bold" fill="#4338ca">perf report</text>
+    <text x="645" y="95" text-anchor="middle" font-size="9" fill="#6366f1">分析 perf.data</text>
+
+    <rect x="750" y="62" width="150" height="40" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1"/>
+    <text x="825" y="82" text-anchor="middle" font-size="12" font-weight="bold" fill="#4338ca">perf list</text>
+    <text x="825" y="95" text-anchor="middle" font-size="9" fill="#6366f1">列出 PMU 事件</text>
+
+    <rect x="930" y="62" width="260" height="40" rx="6" fill="#eef2ff" stroke="#6366f1" stroke-width="1"/>
+    <text x="1060" y="78" text-anchor="middle" font-size="11" font-weight="bold" fill="#4338ca">系统调用接口</text>
+    <text x="1060" y="95" text-anchor="middle" font-size="9" fill="#6366f1">perf_event_open() / mmap() / ioctl() / read()</text>
+  </g>
+
+  <!-- 连线: 用户空间 → perf event core -->
+  <path d="M700,200 L700,240" fill="none" stroke="#333" stroke-width="2" marker-end="url(#aBlk)"/>
+  <rect x="620" y="210" width="160" height="20" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="700" y="224" text-anchor="middle" font-size="10" fill="#333">sys_perf_event_open()</text>
+
+  <!-- ================================================================== -->
+  <!--  Perf Event Core 层  -->
+  <!-- ================================================================== -->
+  <g transform="translate(90,250)">
+    <rect width="1220" height="140" rx="10" fill="#fff" stroke="#2563eb" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1220" height="32" rx="10" fill="url(#hdrCore)"/>
+    <rect x="0" y="24" width="1220" height="8" fill="url(#hdrCore)"/>
+    <text x="610" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">Perf Event Core — kernel/events/core.c</text>
+    <text x="15" y="52" fill="#2563eb" font-size="10" font-weight="bold">统一事件管理框架：事件创建/销毁/调度/多路复用/ring buffer 传递</text>
+
+    <rect x="30" y="62" width="180" height="58" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+    <text x="120" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#1d4ed8">struct perf_event</text>
+    <text x="120" y="95" text-anchor="middle" font-size="9" fill="#2563eb">核心事件对象</text>
+    <text x="120" y="108" text-anchor="middle" font-size="9" fill="#2563eb">hw.idx / hw.config_base</text>
+
+    <rect x="240" y="62" width="180" height="58" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+    <text x="330" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#1d4ed8">事件调度器</text>
+    <text x="330" y="95" text-anchor="middle" font-size="9" fill="#2563eb">hrtimer 轮转</text>
+    <text x="330" y="108" text-anchor="middle" font-size="9" fill="#2563eb">组调度 / pinned 优先</text>
+
+    <rect x="450" y="62" width="180" height="58" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+    <text x="540" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#1d4ed8">Ring Buffer</text>
+    <text x="540" y="95" text-anchor="middle" font-size="9" fill="#2563eb">ring_buffer.c</text>
+    <text x="540" y="108" text-anchor="middle" font-size="9" fill="#2563eb">mmap 共享 → 用户态</text>
+
+    <rect x="660" y="62" width="180" height="58" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+    <text x="750" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#1d4ed8">struct pmu (通用)</text>
+    <text x="750" y="95" text-anchor="middle" font-size="9" fill="#2563eb">.event_init / .add / .del</text>
+    <text x="750" y="108" text-anchor="middle" font-size="9" fill="#2563eb">.start / .stop / .read</text>
+
+    <rect x="870" y="62" width="320" height="58" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+    <text x="1030" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#1d4ed8">perf_event_overflow()</text>
+    <text x="1030" y="95" text-anchor="middle" font-size="9" fill="#2563eb">PMI 溢出处理 → 写入 ring buffer</text>
+    <text x="1030" y="108" text-anchor="middle" font-size="9" fill="#2563eb">irq_work 延迟处理</text>
+  </g>
+
+  <!-- 连线: Core → ARM PMU 通用层 -->
+  <path d="M700,390 L700,440" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#aBlue)"/>
+  <rect x="615" y="400" width="170" height="20" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="700" y="414" text-anchor="middle" font-size="10" fill="#2563eb">struct pmu 回调 →</text>
+
+  <!-- ================================================================== -->
+  <!--  ARM PMU 通用层  -->
+  <!-- ================================================================== -->
+  <g transform="translate(90,450)">
+    <rect width="1220" height="155" rx="10" fill="#fff" stroke="#16a34a" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1220" height="32" rx="10" fill="url(#hdrPmu)"/>
+    <rect x="0" y="24" width="1220" height="8" fill="url(#hdrPmu)"/>
+    <text x="610" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">ARM PMU 通用框架 — drivers/perf/arm_pmu.c</text>
+    <text x="15" y="52" fill="#16a34a" font-size="10" font-weight="bold">通用 ARM PMU 生命周期管理：alloc / register / IRQ / hotplug / event 映射</text>
+
+    <rect x="30" y="62" width="200" height="72" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+    <text x="130" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#15803d">struct arm_pmu</text>
+    <text x="130" y="95" text-anchor="middle" font-size="9" fill="#16a34a">.handle_irq / .enable / .disable</text>
+    <text x="130" y="108" text-anchor="middle" font-size="9" fill="#16a34a">.read_counter / .write_counter</text>
+    <text x="130" y="121" text-anchor="middle" font-size="9" fill="#16a34a">.get_event_idx / .map_event</text>
+
+    <rect x="260" y="62" width="200" height="72" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+    <text x="360" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#15803d">struct pmu_hw_events</text>
+    <text x="360" y="95" text-anchor="middle" font-size="9" fill="#16a34a">events[33] — 活跃事件数组</text>
+    <text x="360" y="108" text-anchor="middle" font-size="9" fill="#16a34a">used_mask — 计数器占用位图</text>
+    <text x="360" y="121" text-anchor="middle" font-size="9" fill="#16a34a">percpu — 每 CPU 独立</text>
+
+    <rect x="490" y="62" width="220" height="72" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+    <text x="600" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#15803d">armpmu_* 回调实现</text>
+    <text x="600" y="95" text-anchor="middle" font-size="9" fill="#16a34a">armpmu_event_init() → map_event</text>
+    <text x="600" y="108" text-anchor="middle" font-size="9" fill="#16a34a">armpmu_add() → get_event_idx</text>
+    <text x="600" y="121" text-anchor="middle" font-size="9" fill="#16a34a">armpmu_event_update() → delta 算法</text>
+
+    <rect x="740" y="62" width="220" height="72" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+    <text x="850" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#15803d">armpmu_event_set_period()</text>
+    <text x="850" y="95" text-anchor="middle" font-size="9" fill="#16a34a">采样周期设置算法</text>
+    <text x="850" y="108" text-anchor="middle" font-size="9" fill="#16a34a">写入 (max_period/2 - left)</text>
+    <text x="850" y="121" text-anchor="middle" font-size="9" fill="#16a34a">触发溢出中断</text>
+
+    <rect x="990" y="62" width="200" height="72" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+    <text x="1090" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#15803d">IRQ / CPU Hotplug</text>
+    <text x="1090" y="95" text-anchor="middle" font-size="9" fill="#16a34a">armpmu_dispatch_irq()</text>
+    <text x="1090" y="108" text-anchor="middle" font-size="9" fill="#16a34a">percpu IRQ / NMI 支持</text>
+    <text x="1090" y="121" text-anchor="middle" font-size="9" fill="#16a34a">CPUHP_AP_PERF_ARM_STARTING</text>
+  </g>
+
+  <!-- 连线: ARM PMU 通用 → PMUv3 驱动 -->
+  <path d="M700,605 L700,660" fill="none" stroke="#16a34a" stroke-width="2" marker-end="url(#aGreen)"/>
+  <rect x="590" y="615" width="220" height="20" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="700" y="629" text-anchor="middle" font-size="10" fill="#16a34a">arm_pmu 回调 → 具体 PMU 实现</text>
+
+  <!-- ================================================================== -->
+  <!--  PMUv3 驱动层  -->
+  <!-- ================================================================== -->
+  <g transform="translate(90,670)">
+    <rect width="1220" height="155" rx="10" fill="#fff" stroke="#dc2626" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1220" height="32" rx="10" fill="url(#hdrDrv)"/>
+    <rect x="0" y="24" width="1220" height="8" fill="url(#hdrDrv)"/>
+    <text x="610" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">ARMv8 PMUv3 驱动 — drivers/perf/arm_pmuv3.c</text>
+    <text x="15" y="52" fill="#dc2626" font-size="10" font-weight="bold">具体 PMU 硬件操作：读写寄存器、中断处理、事件映射、计数器分配</text>
+
+    <rect x="30" y="62" width="200" height="72" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1"/>
+    <text x="130" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">armv8pmu_handle_irq()</text>
+    <text x="130" y="95" text-anchor="middle" font-size="9" fill="#dc2626">读取 PMOVSCLR 溢出状态</text>
+    <text x="130" y="108" text-anchor="middle" font-size="9" fill="#dc2626">遍历溢出计数器</text>
+    <text x="130" y="121" text-anchor="middle" font-size="9" fill="#dc2626">→ perf_event_overflow()</text>
+
+    <rect x="260" y="62" width="200" height="72" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1"/>
+    <text x="360" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">armv8pmu_get_event_idx()</text>
+    <text x="360" y="95" text-anchor="middle" font-size="9" fill="#dc2626">cycles → PMCCNTR (idx=31)</text>
+    <text x="360" y="108" text-anchor="middle" font-size="9" fill="#dc2626">inst → PMICNTR (idx=32)</text>
+    <text x="360" y="121" text-anchor="middle" font-size="9" fill="#dc2626">通用 → bitmap 分配</text>
+
+    <rect x="490" y="62" width="220" height="72" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1"/>
+    <text x="600" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">armv8pmu_enable/disable_event()</text>
+    <text x="600" y="95" text-anchor="middle" font-size="9" fill="#dc2626">1. write_event_type → PMEVTYPER</text>
+    <text x="600" y="108" text-anchor="middle" font-size="9" fill="#dc2626">2. enable_event_irq → PMINTENSET</text>
+    <text x="600" y="121" text-anchor="middle" font-size="9" fill="#dc2626">3. enable_counter → PMCNTENSET</text>
+
+    <rect x="740" y="62" width="220" height="72" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1"/>
+    <text x="850" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">armv8pmu_read/write_counter()</text>
+    <text x="850" y="95" text-anchor="middle" font-size="9" fill="#dc2626">idx==31 → PMCCNTR_EL0</text>
+    <text x="850" y="108" text-anchor="middle" font-size="9" fill="#dc2626">idx==32 → PMICNTR_EL0</text>
+    <text x="850" y="121" text-anchor="middle" font-size="9" fill="#dc2626">else → PMEVCNTRn_EL0</text>
+
+    <rect x="990" y="62" width="200" height="72" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1"/>
+    <text x="1090" y="80" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">armv8_pmu_init()</text>
+    <text x="1090" y="95" text-anchor="middle" font-size="9" fill="#dc2626">probe PMU → 注册回调</text>
+    <text x="1090" y="108" text-anchor="middle" font-size="9" fill="#dc2626">读 PMCR.N 确定计数器数</text>
+    <text x="1090" y="121" text-anchor="middle" font-size="9" fill="#dc2626">读 PMCEID 确定事件能力</text>
+  </g>
+
+  <!-- 连线: PMUv3 驱动 → 硬件寄存器 -->
+  <path d="M700,825 L700,880" fill="none" stroke="#dc2626" stroke-width="2" marker-end="url(#aRed)"/>
+  <rect x="595" y="836" width="210" height="20" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="700" y="850" text-anchor="middle" font-size="10" fill="#dc2626">MSR/MRS 系统寄存器访问</text>
+
+  <!-- ================================================================== -->
+  <!--  硬件层  -->
+  <!-- ================================================================== -->
+  <g transform="translate(90,890)">
+    <rect width="1220" height="135" rx="10" fill="#fff" stroke="#ea580c" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1220" height="32" rx="10" fill="url(#hdrHw)"/>
+    <rect x="0" y="24" width="1220" height="8" fill="url(#hdrHw)"/>
+    <text x="610" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">ARM PMUv3 硬件寄存器（Per-CPU）</text>
+    <text x="15" y="52" fill="#ea580c" font-size="10" font-weight="bold">ARM Architecture Reference Manual — D13 Performance Monitors Extension (PMUv3)</text>
+
+    <rect x="20" y="62" width="150" height="55" rx="6" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+    <text x="95" y="80" text-anchor="middle" font-size="10" font-weight="bold" fill="#9a3412">PMCR_EL0</text>
+    <text x="95" y="95" text-anchor="middle" font-size="9" fill="#ea580c">E=全局使能</text>
+    <text x="95" y="108" text-anchor="middle" font-size="9" fill="#ea580c">N=计数器数量</text>
+
+    <rect x="190" y="62" width="150" height="55" rx="6" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+    <text x="265" y="80" text-anchor="middle" font-size="10" font-weight="bold" fill="#9a3412">PMEVCNTRn_EL0</text>
+    <text x="265" y="95" text-anchor="middle" font-size="9" fill="#ea580c">事件计数器 ×N</text>
+    <text x="265" y="108" text-anchor="middle" font-size="9" fill="#ea580c">(n=0..30, 32/64bit)</text>
+
+    <rect x="360" y="62" width="150" height="55" rx="6" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+    <text x="435" y="80" text-anchor="middle" font-size="10" font-weight="bold" fill="#9a3412">PMEVTYPERn_EL0</text>
+    <text x="435" y="95" text-anchor="middle" font-size="9" fill="#ea580c">事件类型选择</text>
+    <text x="435" y="108" text-anchor="middle" font-size="9" fill="#ea580c">evtCount[15:0]</text>
+
+    <rect x="530" y="62" width="130" height="55" rx="6" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+    <text x="595" y="80" text-anchor="middle" font-size="10" font-weight="bold" fill="#9a3412">PMCCNTR_EL0</text>
+    <text x="595" y="95" text-anchor="middle" font-size="9" fill="#ea580c">64-bit 周期计数器</text>
+    <text x="595" y="108" text-anchor="middle" font-size="9" fill="#ea580c">(idx=31)</text>
+
+    <rect x="680" y="62" width="140" height="55" rx="6" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+    <text x="750" y="80" text-anchor="middle" font-size="10" font-weight="bold" fill="#9a3412">PMINTENSET/CLR</text>
+    <text x="750" y="95" text-anchor="middle" font-size="9" fill="#ea580c">中断使能寄存器</text>
+    <text x="750" y="108" text-anchor="middle" font-size="9" fill="#ea580c">每计数器一位</text>
+
+    <rect x="840" y="62" width="140" height="55" rx="6" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+    <text x="910" y="80" text-anchor="middle" font-size="10" font-weight="bold" fill="#9a3412">PMOVSCLR_EL0</text>
+    <text x="910" y="95" text-anchor="middle" font-size="9" fill="#ea580c">溢出状态标志</text>
+    <text x="910" y="108" text-anchor="middle" font-size="9" fill="#ea580c">读取并清除</text>
+
+    <rect x="1000" y="62" width="190" height="55" rx="6" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+    <text x="1095" y="80" text-anchor="middle" font-size="10" font-weight="bold" fill="#9a3412">PMCNTENSET/CLR</text>
+    <text x="1095" y="95" text-anchor="middle" font-size="9" fill="#ea580c">计数器使能寄存器</text>
+    <text x="1095" y="108" text-anchor="middle" font-size="9" fill="#ea580c">SET 写 1 使能，CLR 写 1 禁用</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!--  DT/ACPI 平台探测层  -->
+  <!-- ================================================================== -->
+  <g transform="translate(90,1070)">
+    <rect width="1220" height="100" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2" filter="url(#sh)"/>
+    <rect width="1220" height="32" rx="10" fill="url(#hdrPlat)"/>
+    <rect x="0" y="24" width="1220" height="8" fill="url(#hdrPlat)"/>
+    <text x="610" y="22" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">平台探测与注册 — arm_pmu_platform.c / arm_pmu_acpi.c</text>
+
+    <rect x="30" y="50" width="350" height="35" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1"/>
+    <text x="205" y="72" text-anchor="middle" font-size="11" font-weight="bold" fill="#6d28d9">DeviceTree: compatible = "arm,armv8-pmuv3"</text>
+
+    <rect x="420" y="50" width="350" height="35" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1"/>
+    <text x="595" y="72" text-anchor="middle" font-size="11" font-weight="bold" fill="#6d28d9">ACPI: arm_pmu_acpi_probe()</text>
+
+    <rect x="810" y="50" width="380" height="35" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1"/>
+    <text x="1000" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#6d28d9">armpmu_alloc() → init_fn() → armpmu_register()</text>
+    <text x="1000" y="80" text-anchor="middle" font-size="9" fill="#7c3aed">→ perf_pmu_register() 注册到 perf core</text>
+  </g>
+
+  <!-- 连线: 平台探测 → PMUv3 驱动 (右侧) -->
+  <path d="M1310,1070 L1340,1070 L1340,750 L1310,750" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#aPurple)"/>
+  <rect x="1345" y="890" width="45" height="22" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="1367" y="905" text-anchor="middle" font-size="9" fill="#7c3aed">init</text>
+
+  <!-- 图例 -->
+  <g transform="translate(20,1200)">
+    <rect width="400" height="75" rx="6" fill="white" fill-opacity="0.9" stroke="#cbd5e1" stroke-width="1"/>
+    <text x="10" y="18" font-size="11" font-weight="bold" fill="#334155">图例</text>
+    <line x1="10" y1="35" x2="50" y2="35" stroke="#333" stroke-width="2"/>
+    <text x="55" y="39" font-size="9" fill="#333">调用流 (同步)</text>
+    <line x1="140" y1="35" x2="180" y2="35" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="185" y="39" font-size="9" fill="#7c3aed">初始化流 (probe)</text>
+    <rect x="10" y="48" width="12" height="12" rx="2" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+    <text x="28" y="58" font-size="9" fill="#333">Core 层</text>
+    <rect x="80" y="48" width="12" height="12" rx="2" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+    <text x="98" y="58" font-size="9" fill="#333">ARM 通用框架</text>
+    <rect x="170" y="48" width="12" height="12" rx="2" fill="#fef2f2" stroke="#dc2626" stroke-width="1"/>
+    <text x="188" y="58" font-size="9" fill="#333">PMUv3 驱动</text>
+    <rect x="250" y="48" width="12" height="12" rx="2" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+    <text x="268" y="58" font-size="9" fill="#333">硬件寄存器</text>
+  </g>
+</svg>

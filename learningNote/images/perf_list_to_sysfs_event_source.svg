@@ -1,0 +1,260 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2240 1580" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.16"/>
+    </filter>
+
+    <linearGradient id="hdrUser" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="hdrTool" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="hdrScan" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="hdrSysfs" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#16a34a"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="hdrTrace" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="hdrBuiltIn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="hdrKernel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#115e59"/>
+    </linearGradient>
+
+    <marker id="a" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#334155" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#15803d" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#d97706" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#dc2626" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="dG" markerWidth="10" markerHeight="7" refX="1" refY="3.5" orient="auto">
+      <path d="M0,3.5 L5,0 L10,3.5 L5,7 Z" fill="#fff" stroke="#15803d" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="2240" height="1580" fill="#f8fafc"/>
+  <text x="1120" y="42" text-anchor="middle" font-size="24" font-weight="700" fill="#0f172a">从 perf list 到 sysfs event_source 目录的关联图</text>
+  <text x="1120" y="66" text-anchor="middle" font-size="12" fill="#64748b">关键主线：perf list → builtin-list.c / print-events.c → util/pmu.c 扫描 sysfs → event_source/devices/* → 由 perf_pmu_register() 在内核侧创建</text>
+
+  <g transform="translate(38,92)">
+    <rect width="520" height="118" rx="10" fill="#ffffff" fill-opacity="0.94" stroke="#cbd5e1" stroke-width="1.2" filter="url(#sh)"/>
+    <text x="16" y="22" font-size="12" font-weight="700" fill="#0f172a">图例</text>
+    <path d="M18,44 H112" fill="none" stroke="#334155" stroke-width="1.8" marker-end="url(#a)"/>
+    <text x="126" y="48" font-size="11" fill="#334155">调用或数据流</text>
+    <path d="M18,70 H112" fill="none" stroke="#15803d" stroke-width="2.4" marker-start="url(#dG)" marker-end="url(#aG)"/>
+    <text x="126" y="74" font-size="11" fill="#334155">sysfs 目录/文件来源于内核注册</text>
+    <path d="M18,96 H112" fill="none" stroke="#d97706" stroke-width="1.8" stroke-dasharray="6,3" marker-end="url(#aO)"/>
+    <text x="126" y="100" font-size="11" fill="#334155">旁路数据源，不属于 event_source sysfs 主干</text>
+  </g>
+
+  <g transform="translate(80,250)">
+    <rect width="280" height="210" rx="8" fill="#fff" stroke="#6d28d9" stroke-width="2" filter="url(#sh)"/>
+    <rect width="280" height="30" rx="8" fill="url(#hdrUser)"/>
+    <rect x="0" y="22" width="280" height="8" fill="url(#hdrUser)"/>
+    <text x="140" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">终端输出</text>
+    <text x="15" y="48" font-size="10" font-weight="700" fill="#6d28d9">用户命令：perf list</text>
+    <line x1="12" y1="58" x2="268" y2="58" stroke="#ddd6fe" stroke-width="0.8"/>
+    <text x="15" y="80" font-family="monospace" font-size="11" fill="#111827">perf list</text>
+    <text x="15" y="102" font-family="monospace" font-size="11" fill="#111827">perf list hw</text>
+    <text x="15" y="124" font-family="monospace" font-size="11" fill="#111827">perf list pmu</text>
+    <text x="15" y="146" font-family="monospace" font-size="11" fill="#111827">perf list tracepoint</text>
+    <text x="15" y="176" font-size="10" fill="#6b7280">输出既包含 built-in 事件，</text>
+    <text x="15" y="194" font-size="10" fill="#6b7280">也包含 tracepoint 和 PMU sysfs 事件。</text>
+  </g>
+
+  <g transform="translate(440,250)">
+    <rect width="300" height="230" rx="8" fill="#fff" stroke="#1d4ed8" stroke-width="2" filter="url(#sh)"/>
+    <rect width="300" height="30" rx="8" fill="url(#hdrTool)"/>
+    <rect x="0" y="22" width="300" height="8" fill="url(#hdrTool)"/>
+    <text x="150" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">tools/perf/builtin-list.c</text>
+    <text x="15" y="48" font-size="10" font-weight="700" fill="#1d4ed8">perf list 的命令入口</text>
+    <line x1="12" y1="58" x2="288" y2="58" stroke="#bfdbfe" stroke-width="0.8"/>
+    <text x="15" y="80" font-family="monospace" font-size="11" fill="#111827">cmd_list()</text>
+    <text x="15" y="102" font-size="10" fill="#6b7280">根据参数选择打印类别：</text>
+    <text x="15" y="122" font-size="10" fill="#6b7280">hw / sw / cache / tracepoint / pmu / metric</text>
+    <text x="15" y="150" font-size="10" fill="#6b7280">真正的事件枚举与格式化，</text>
+    <text x="15" y="168" font-size="10" fill="#6b7280">大多委托给 util/print-events.c。</text>
+    <text x="15" y="196" font-size="10" fill="#6b7280">它本身不是直接扫 sysfs 的地方。</text>
+  </g>
+
+  <g transform="translate(820,250)">
+    <rect width="340" height="250" rx="8" fill="#fff" stroke="#0284c7" stroke-width="2" filter="url(#sh)"/>
+    <rect width="340" height="30" rx="8" fill="url(#hdrScan)"/>
+    <rect x="0" y="22" width="340" height="8" fill="url(#hdrScan)"/>
+    <text x="170" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">tools/perf/util/print-events.c</text>
+    <text x="15" y="48" font-size="10" font-weight="700" fill="#0369a1">把多来源事件统一成 perf list 输出</text>
+    <line x1="12" y1="58" x2="328" y2="58" stroke="#bae6fd" stroke-width="0.8"/>
+    <text x="15" y="80" font-family="monospace" font-size="11" fill="#111827">print_symbol_events()</text>
+    <text x="15" y="102" font-family="monospace" font-size="11" fill="#111827">print_hwcache_events()</text>
+    <text x="15" y="124" font-family="monospace" font-size="11" fill="#111827">perf_pmus__scan_core(pmu)</text>
+    <text x="15" y="146" font-size="10" fill="#6b7280">会遍历 perf_pmu 对象，</text>
+    <text x="15" y="164" font-size="10" fill="#6b7280">然后把别名格式化成：</text>
+    <text x="15" y="186" font-family="monospace" font-size="11" fill="#111827">armv8_pmuv3/cache_misses/</text>
+    <text x="15" y="214" font-size="10" fill="#6b7280">这一层是“把扫描结果变成可读事件名”。</text>
+  </g>
+
+  <g transform="translate(1260,230)">
+    <rect width="430" height="290" rx="8" fill="#fff" stroke="#15803d" stroke-width="2" filter="url(#sh)"/>
+    <rect width="430" height="30" rx="8" fill="url(#hdrSysfs)"/>
+    <rect x="0" y="22" width="430" height="8" fill="url(#hdrSysfs)"/>
+    <text x="215" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">/sys/bus/event_source/devices</text>
+    <text x="15" y="48" font-size="10" font-weight="700" fill="#166534">PMU 事件的 sysfs 主目录</text>
+    <line x1="12" y1="58" x2="418" y2="58" stroke="#bbf7d0" stroke-width="0.8"/>
+
+    <rect x="18" y="74" width="120" height="180" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+    <text x="78" y="94" text-anchor="middle" font-size="11" font-weight="700" fill="#166534">cpu/</text>
+    <text x="30" y="116" font-family="monospace" font-size="10" fill="#111827">type</text>
+    <text x="30" y="136" font-family="monospace" font-size="10" fill="#111827">format/</text>
+    <text x="30" y="156" font-family="monospace" font-size="10" fill="#111827">events/</text>
+    <text x="30" y="176" font-family="monospace" font-size="10" fill="#111827">caps/</text>
+    <text x="30" y="196" font-family="monospace" font-size="10" fill="#111827">cpus</text>
+    <text x="30" y="224" font-size="9" fill="#6b7280">core PMU</text>
+
+    <rect x="154" y="74" width="140" height="180" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+    <text x="224" y="94" text-anchor="middle" font-size="11" font-weight="700" fill="#166534">armv8_pmuv3/</text>
+    <text x="166" y="116" font-family="monospace" font-size="10" fill="#111827">type</text>
+    <text x="166" y="136" font-family="monospace" font-size="10" fill="#111827">format/event</text>
+    <text x="166" y="156" font-family="monospace" font-size="10" fill="#111827">events/cache_misses</text>
+    <text x="166" y="176" font-family="monospace" font-size="10" fill="#111827">events/cpu_cycles</text>
+    <text x="166" y="196" font-family="monospace" font-size="10" fill="#111827">cpus</text>
+    <text x="166" y="224" font-size="9" fill="#6b7280">别名变成 pmu/event/</text>
+
+    <rect x="310" y="74" width="102" height="180" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+    <text x="361" y="94" text-anchor="middle" font-size="11" font-weight="700" fill="#166534">arm_spe_0/</text>
+    <text x="322" y="116" font-family="monospace" font-size="10" fill="#111827">type</text>
+    <text x="322" y="136" font-family="monospace" font-size="10" fill="#111827">format/</text>
+    <text x="322" y="156" font-family="monospace" font-size="10" fill="#111827">caps/min_interval</text>
+    <text x="322" y="176" font-family="monospace" font-size="10" fill="#111827">caps/filter</text>
+    <text x="322" y="196" font-family="monospace" font-size="10" fill="#111827">cpus</text>
+    <text x="322" y="224" font-size="9" fill="#6b7280">AUX/trace PMU</text>
+  </g>
+
+  <g transform="translate(1760,240)">
+    <rect width="380" height="270" rx="8" fill="#fff" stroke="#0284c7" stroke-width="2" filter="url(#sh)"/>
+    <rect width="380" height="30" rx="8" fill="url(#hdrScan)"/>
+    <rect x="0" y="22" width="380" height="8" fill="url(#hdrScan)"/>
+    <text x="190" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">tools/perf/util/pmu.c</text>
+    <text x="15" y="48" font-size="10" font-weight="700" fill="#0369a1">真正扫描 event_source sysfs 的地方</text>
+    <line x1="12" y1="58" x2="368" y2="58" stroke="#bae6fd" stroke-width="0.8"/>
+    <text x="15" y="80" font-family="monospace" font-size="11" fill="#111827">perf_pmu__lookup()</text>
+    <text x="15" y="102" font-family="monospace" font-size="11" fill="#111827">perf_pmu__scan_file_at(..., "type")</text>
+    <text x="15" y="124" font-family="monospace" font-size="11" fill="#111827">pmu_format(...)</text>
+    <text x="15" y="146" font-family="monospace" font-size="11" fill="#111827">pmu_cpumask(...)</text>
+    <text x="15" y="168" font-family="monospace" font-size="11" fill="#111827">pmu_add_sys_aliases(pmu)</text>
+    <text x="15" y="196" font-size="10" fill="#6b7280">把 sysfs 目录转换成内存中的 perf_pmu：</text>
+    <text x="15" y="214" font-size="10" fill="#6b7280">type、format、别名、caps、cpumask。</text>
+    <text x="15" y="238" font-size="10" fill="#6b7280">print-events.c 遍历到的 PMU 对象，</text>
+    <text x="15" y="256" font-size="10" fill="#6b7280">就是由这里构建出来的。</text>
+  </g>
+
+  <g transform="translate(180,640)">
+    <rect width="320" height="232" rx="8" fill="#fff" stroke="#dc2626" stroke-width="2" filter="url(#sh)"/>
+    <rect width="320" height="30" rx="8" fill="url(#hdrBuiltIn)"/>
+    <rect x="0" y="22" width="320" height="8" fill="url(#hdrBuiltIn)"/>
+    <text x="160" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">built-in 事件表</text>
+    <text x="15" y="48" font-size="10" font-weight="700" fill="#991b1b">不是从 event_source sysfs 来的</text>
+    <line x1="12" y1="58" x2="308" y2="58" stroke="#fecaca" stroke-width="0.8"/>
+    <text x="15" y="80" font-size="10" fill="#6b7280">PERF_TYPE_HARDWARE</text>
+    <text x="15" y="100" font-size="10" fill="#6b7280">PERF_TYPE_SOFTWARE</text>
+    <text x="15" y="120" font-size="10" fill="#6b7280">PERF_TYPE_HW_CACHE</text>
+    <text x="15" y="148" font-size="10" fill="#6b7280">示例：</text>
+    <text x="15" y="168" font-family="monospace" font-size="11" fill="#111827">cpu-cycles</text>
+    <text x="15" y="190" font-family="monospace" font-size="11" fill="#111827">instructions</text>
+    <text x="15" y="212" font-family="monospace" font-size="11" fill="#111827">cache-misses</text>
+  </g>
+
+  <g transform="translate(560,640)">
+    <rect width="320" height="232" rx="8" fill="#fff" stroke="#d97706" stroke-width="2" filter="url(#sh)"/>
+    <rect width="320" height="30" rx="8" fill="url(#hdrTrace)"/>
+    <rect x="0" y="22" width="320" height="8" fill="url(#hdrTrace)"/>
+    <text x="160" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">tracefs 事件源</text>
+    <text x="15" y="48" font-size="10" font-weight="700" fill="#b45309">同样不是 event_source sysfs 主干</text>
+    <line x1="12" y1="58" x2="308" y2="58" stroke="#fdba74" stroke-width="0.8"/>
+    <text x="15" y="80" font-family="monospace" font-size="11" fill="#111827">/sys/kernel/tracing/events/</text>
+    <text x="15" y="102" font-family="monospace" font-size="11" fill="#111827">sched/sched_switch/id</text>
+    <text x="15" y="124" font-family="monospace" font-size="11" fill="#111827">block/block_rq_issue/id</text>
+    <text x="15" y="152" font-size="10" fill="#6b7280">`perf list tracepoint` 主要看这里，</text>
+    <text x="15" y="170" font-size="10" fill="#6b7280">而不是 `/sys/bus/event_source/devices`。</text>
+  </g>
+
+  <g transform="translate(1040,620)">
+    <rect width="360" height="252" rx="8" fill="#fff" stroke="#115e59" stroke-width="2" filter="url(#sh)"/>
+    <rect width="360" height="30" rx="8" fill="url(#hdrKernel)"/>
+    <rect x="0" y="22" width="360" height="8" fill="url(#hdrKernel)"/>
+    <text x="180" y="20" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">内核侧来源</text>
+    <text x="15" y="48" font-size="10" font-weight="700" fill="#134e4a">sysfs event_source 目录不是凭空出现的</text>
+    <line x1="12" y1="58" x2="348" y2="58" stroke="#99f6e4" stroke-width="0.8"/>
+    <text x="15" y="80" font-family="monospace" font-size="11" fill="#111827">perf_pmu_register(&amp;pmu-&gt;pmu, name, -1)</text>
+    <text x="15" y="102" font-size="10" fill="#6b7280">把 PMU 注册进 perf core</text>
+    <text x="15" y="122" font-size="10" fill="#6b7280">并创建：</text>
+    <text x="15" y="144" font-family="monospace" font-size="11" fill="#111827">/sys/bus/event_source/devices/name/</text>
+    <text x="15" y="166" font-size="10" fill="#6b7280">目录内容由 PMU 驱动和 perf core 一起决定：</text>
+    <text x="15" y="186" font-size="10" fill="#6b7280">type / format / events / caps / cpus</text>
+    <text x="15" y="214" font-size="10" fill="#6b7280">用户态 `perf list pmu` 实际上就是在消费这里。</text>
+  </g>
+
+  <path d="M360,354 H440" fill="none" stroke="#334155" stroke-width="1.8" marker-end="url(#a)"/>
+  <path d="M740,366 H820" fill="none" stroke="#334155" stroke-width="1.8" marker-end="url(#a)"/>
+  <path d="M1160,372 H1260" fill="none" stroke="#1d4ed8" stroke-width="1.8" marker-end="url(#aB)"/>
+  <path d="M1690,378 H1760" fill="none" stroke="#1d4ed8" stroke-width="1.8" marker-end="url(#aB)"/>
+
+  <rect x="1188" y="348" width="72" height="22" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="1224" y="363" text-anchor="middle" font-size="10" font-weight="700" fill="#1d4ed8">scan PMUs</text>
+  <rect x="1708" y="354" width="52" height="22" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="1734" y="369" text-anchor="middle" font-size="10" font-weight="700" fill="#1d4ed8">build</text>
+
+  <path d="M1260,520 V580 H1400 V620" fill="none" stroke="#15803d" stroke-width="2.4" marker-start="url(#dG)" marker-end="url(#aG)"/>
+  <rect x="1318" y="567" width="166" height="22" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="1401" y="582" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">created by perf_pmu_register</text>
+
+  <path d="M500,756 H820 V480" fill="none" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="6,3" marker-end="url(#aR)"/>
+  <rect x="600" y="667" width="126" height="22" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="663" y="682" text-anchor="middle" font-size="10" font-weight="700" fill="#dc2626">hw/sw/cache built-ins</text>
+
+  <path d="M880,756 H980 V512 H1160" fill="none" stroke="#d97706" stroke-width="1.8" stroke-dasharray="6,3" marker-end="url(#aO)"/>
+  <rect x="892" y="595" width="132" height="22" rx="4" fill="white" fill-opacity="0.95"/>
+  <text x="958" y="610" text-anchor="middle" font-size="10" font-weight="700" fill="#d97706">tracepoint branch</text>
+
+  <g transform="translate(1480,640)">
+    <rect width="620" height="292" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.4" filter="url(#sh)"/>
+    <text x="20" y="28" font-size="12" font-weight="700" fill="#0f172a">sysfs 文件和 perf list 输出的对应关系</text>
+    <rect x="18" y="46" width="584" height="224" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+    <text x="34" y="74" font-family="monospace" font-size="11" fill="#111827">devices/armv8_pmuv3/type</text>
+    <text x="270" y="74" font-size="10" fill="#6b7280">→ PMU type 编号，装入 perf_pmu-&gt;type</text>
+    <text x="34" y="102" font-family="monospace" font-size="11" fill="#111827">devices/armv8_pmuv3/format/event</text>
+    <text x="270" y="102" font-size="10" fill="#6b7280">→ 事件编码字段如何解析</text>
+    <text x="34" y="130" font-family="monospace" font-size="11" fill="#111827">devices/armv8_pmuv3/events/cache_misses</text>
+    <text x="270" y="130" font-size="10" fill="#6b7280">→ 显示成 armv8_pmuv3/cache_misses/</text>
+    <text x="34" y="158" font-family="monospace" font-size="11" fill="#111827">devices/arm_spe_0/caps/min_interval</text>
+    <text x="270" y="158" font-size="10" fill="#6b7280">→ 辅助能力信息，供工具判断约束</text>
+    <text x="34" y="186" font-family="monospace" font-size="11" fill="#111827">devices/*/cpus</text>
+    <text x="270" y="186" font-size="10" fill="#6b7280">→ 该 PMU 覆盖哪些 CPU</text>
+    <text x="34" y="214" font-family="monospace" font-size="11" fill="#111827">devices/*/caps/*</text>
+    <text x="270" y="214" font-size="10" fill="#6b7280">→ precise、slots、filter 等能力</text>
+    <text x="34" y="246" font-size="10" font-weight="700" fill="#334155">结论：</text>
+    <text x="86" y="246" font-size="10" fill="#475569">`perf list pmu` 本质是“把 event_source sysfs 里的 PMU 元数据翻译成人能读的事件名”。</text>
+  </g>
+
+  <text x="1120" y="1528" text-anchor="middle" font-size="12" fill="#475569">关键理解：`perf list` 是聚合视图。只有 PMU 相关事件那一支会经过 `/sys/bus/event_source/devices`；hardware/software/cache 的 built-in 名字和 tracepoint 的 tracefs 路径是另外两条来源。</text>
+</svg>

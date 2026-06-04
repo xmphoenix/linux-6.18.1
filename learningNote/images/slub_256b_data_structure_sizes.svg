@@ -1,0 +1,369 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1480" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.10"/>
+    </filter>
+    <linearGradient id="hdrCache" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#673AB7"/><stop offset="100%" stop-color="#512DA8"/>
+    </linearGradient>
+    <linearGradient id="hdrCPU" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2196F3"/><stop offset="100%" stop-color="#1565C0"/>
+    </linearGradient>
+    <linearGradient id="hdrSlab" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4CAF50"/><stop offset="100%" stop-color="#2E7D32"/>
+    </linearGradient>
+    <linearGradient id="hdrNode" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F44336"/><stop offset="100%" stop-color="#C62828"/>
+    </linearGradient>
+    <linearGradient id="hdrPage" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF9800"/><stop offset="100%" stop-color="#E65100"/>
+    </linearGradient>
+    <linearGradient id="hdrObj" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#009688"/><stop offset="100%" stop-color="#00695C"/>
+    </linearGradient>
+    <marker id="aP" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#512DA8" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aB" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1565C0" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aG" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#2E7D32" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aR" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#C62828" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aO" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#E65100" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aT" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#00695C" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="720" y="28" text-anchor="middle" font-size="17" font-weight="bold" fill="#212121">SLUB kmalloc-256 各数据结构实际大小与多 CPU 关联图</text>
+  <text x="720" y="48" text-anchor="middle" font-size="11" fill="#757575">Linux 6.18.1 / ARM64 / 4 CPU / 1 NUMA Node / 典型配置 (CONFIG_SLUB_CPU_PARTIAL + CONFIG_SYSFS)</text>
+
+  <!-- ==================== struct kmem_cache (全局唯一) ==================== -->
+  <g transform="translate(340, 65)" filter="url(#sh)">
+    <rect width="760" height="210" rx="8" fill="#fff" stroke="#512DA8" stroke-width="2"/>
+    <rect width="760" height="28" rx="8" fill="url(#hdrCache)"/>
+    <rect x="0" y="20" width="760" height="8" fill="#512DA8"/>
+    <text x="380" y="19" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">struct kmem_cache ("kmalloc-256") — 全局唯一 ≈ 256~320 字节</text>
+
+    <!-- Fields with sizes -->
+    <text x="15" y="46" font-size="9" fill="#512DA8" font-weight="bold">指针/percpu (各8B):</text>
+    <text x="15" y="62" font-size="9" font-family="monospace" fill="#424242">cpu_slab        __percpu *   8B  → 每个CPU一份 kmem_cache_cpu</text>
+    <text x="15" y="76" font-size="9" font-family="monospace" fill="#424242">cpu_sheaves     __percpu *   8B  → 每个CPU一份 slub_percpu_sheaves</text>
+    <text x="15" y="90" font-size="9" font-family="monospace" fill="#424242">node[0]         *            8B  → kmem_cache_node (per NUMA node)</text>
+
+    <text x="400" y="46" font-size="9" fill="#512DA8" font-weight="bold">对象参数 (4B each):</text>
+    <text x="400" y="62" font-size="9" font-family="monospace" fill="#424242">size            = 256        4B</text>
+    <text x="400" y="76" font-size="9" font-family="monospace" fill="#424242">object_size     = 256        4B</text>
+    <text x="400" y="90" font-size="9" font-family="monospace" fill="#424242">offset          = 128        4B  (FP放对象中部)</text>
+    <text x="400" y="104" font-size="9" font-family="monospace" fill="#424242">inuse           = 256        4B</text>
+    <text x="400" y="118" font-size="9" font-family="monospace" fill="#424242">align           = 8          4B</text>
+
+    <text x="15" y="108" font-size="9" fill="#512DA8" font-weight="bold">Slab 页参数:</text>
+    <text x="15" y="122" font-size="9" font-family="monospace" fill="#424242">oo              = {order=0, objects=16}  4B</text>
+    <text x="15" y="136" font-size="9" font-family="monospace" fill="#424242">min             = {order=0, objects=16}  4B</text>
+    <text x="15" y="150" font-size="9" font-family="monospace" fill="#424242">min_partial     = 5          8B</text>
+    <text x="15" y="164" font-size="9" font-family="monospace" fill="#424242">allocflags      = __GFP_COMP 4B</text>
+
+    <text x="400" y="136" font-size="9" fill="#512DA8" font-weight="bold">其他 (含 sysfs kobject ~64B):</text>
+    <text x="400" y="150" font-size="9" font-family="monospace" fill="#424242">kobj            struct kobject    64B</text>
+    <text x="400" y="164" font-size="9" font-family="monospace" fill="#424242">name            "kmalloc-256" *   8B</text>
+    <text x="400" y="178" font-size="9" font-family="monospace" fill="#424242">list            list_head         16B</text>
+    <text x="400" y="192" font-size="9" font-family="monospace" fill="#424242">random          unsigned long     8B (HARDENED)</text>
+
+    <text x="15" y="180" font-size="9" font-family="monospace" fill="#424242">flags           slab_flags_t 8B</text>
+    <text x="15" y="194" font-size="9" font-family="monospace" fill="#424242">refcount        int          4B</text>
+
+    <!-- Total size badge -->
+    <rect x="600" y="38" width="140" height="20" rx="4" fill="#EDE7F6" stroke="#7E57C2" stroke-width="1"/>
+    <text x="670" y="52" text-anchor="middle" font-size="9" font-weight="bold" fill="#4A148C">总计 ≈ 280 字节</text>
+  </g>
+
+  <!-- ==================== Per-CPU kmem_cache_cpu × 4 ==================== -->
+  <!-- CPU 0 -->
+  <g transform="translate(30, 340)" filter="url(#sh)">
+    <rect width="320" height="160" rx="6" fill="#fff" stroke="#1565C0" stroke-width="1.8"/>
+    <rect width="320" height="26" rx="6" fill="url(#hdrCPU)"/>
+    <rect x="0" y="18" width="320" height="8" fill="#1565C0"/>
+    <text x="160" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">kmem_cache_cpu — CPU 0</text>
+
+    <text x="12" y="42" font-size="9" font-family="monospace" fill="#1565C0">freelist     void **        8B</text>
+    <text x="12" y="58" font-size="9" font-family="monospace" fill="#7B1FA2">tid          unsigned long  8B</text>
+    <rect x="8" y="30" width="200" height="32" rx="3" fill="none" stroke="#9C27B0" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="220" y="50" font-size="7" fill="#7B1FA2">↑ union freelist_aba_t (16B, 原子CAS)</text>
+
+    <text x="12" y="76" font-size="9" font-family="monospace" fill="#2E7D32">slab         struct slab *  8B</text>
+    <text x="12" y="92" font-size="9" font-family="monospace" fill="#616161">partial      struct slab *  8B</text>
+    <text x="12" y="108" font-size="9" font-family="monospace" fill="#9E9E9E">lock         local_trylock  1B</text>
+    <text x="12" y="124" font-size="9" font-family="monospace" fill="#9E9E9E">(padding)                   7B</text>
+
+    <rect x="200" y="112" width="105" height="20" rx="4" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1"/>
+    <text x="252" y="125" text-anchor="middle" font-size="8" font-weight="bold" fill="#1565C0">总计 = 40 字节</text>
+
+    <text x="12" y="150" font-size="8" fill="#757575">× 4 CPUs = 160B percpu 总开销</text>
+  </g>
+
+  <!-- CPU 1 -->
+  <g transform="translate(380, 340)" filter="url(#sh)">
+    <rect width="320" height="160" rx="6" fill="#fff" stroke="#1565C0" stroke-width="1.8"/>
+    <rect width="320" height="26" rx="6" fill="url(#hdrCPU)"/>
+    <rect x="0" y="18" width="320" height="8" fill="#1565C0"/>
+    <text x="160" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">kmem_cache_cpu — CPU 1</text>
+    <text x="12" y="42" font-size="9" font-family="monospace" fill="#1565C0">freelist     8B</text>
+    <text x="12" y="58" font-size="9" font-family="monospace" fill="#7B1FA2">tid          8B</text>
+    <text x="12" y="76" font-size="9" font-family="monospace" fill="#2E7D32">slab         8B</text>
+    <text x="12" y="92" font-size="9" font-family="monospace" fill="#616161">partial      8B</text>
+    <text x="12" y="108" font-size="9" font-family="monospace" fill="#9E9E9E">lock+pad     8B</text>
+    <rect x="200" y="95" width="105" height="20" rx="4" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1"/>
+    <text x="252" y="108" text-anchor="middle" font-size="8" font-weight="bold" fill="#1565C0">40 字节</text>
+    <text x="160" y="150" text-anchor="middle" font-size="9" fill="#757575">(结构相同, 独立实例)</text>
+  </g>
+
+  <!-- CPU 2 -->
+  <g transform="translate(730, 340)" filter="url(#sh)">
+    <rect width="320" height="160" rx="6" fill="#fff" stroke="#1565C0" stroke-width="1.8"/>
+    <rect width="320" height="26" rx="6" fill="url(#hdrCPU)"/>
+    <rect x="0" y="18" width="320" height="8" fill="#1565C0"/>
+    <text x="160" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">kmem_cache_cpu — CPU 2</text>
+    <text x="12" y="42" font-size="9" font-family="monospace" fill="#1565C0">freelist     8B</text>
+    <text x="12" y="58" font-size="9" font-family="monospace" fill="#7B1FA2">tid          8B</text>
+    <text x="12" y="76" font-size="9" font-family="monospace" fill="#2E7D32">slab         8B</text>
+    <text x="12" y="92" font-size="9" font-family="monospace" fill="#616161">partial      8B</text>
+    <text x="12" y="108" font-size="9" font-family="monospace" fill="#9E9E9E">lock+pad     8B</text>
+    <rect x="200" y="95" width="105" height="20" rx="4" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1"/>
+    <text x="252" y="108" text-anchor="middle" font-size="8" font-weight="bold" fill="#1565C0">40 字节</text>
+    <text x="160" y="150" text-anchor="middle" font-size="9" fill="#757575">(结构相同, 独立实例)</text>
+  </g>
+
+  <!-- CPU 3 -->
+  <g transform="translate(1080, 340)" filter="url(#sh)">
+    <rect width="320" height="160" rx="6" fill="#fff" stroke="#1565C0" stroke-width="1.8"/>
+    <rect width="320" height="26" rx="6" fill="url(#hdrCPU)"/>
+    <rect x="0" y="18" width="320" height="8" fill="#1565C0"/>
+    <text x="160" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">kmem_cache_cpu — CPU 3</text>
+    <text x="12" y="42" font-size="9" font-family="monospace" fill="#1565C0">freelist     8B</text>
+    <text x="12" y="58" font-size="9" font-family="monospace" fill="#7B1FA2">tid          8B</text>
+    <text x="12" y="76" font-size="9" font-family="monospace" fill="#2E7D32">slab         8B</text>
+    <text x="12" y="92" font-size="9" font-family="monospace" fill="#616161">partial      8B</text>
+    <text x="12" y="108" font-size="9" font-family="monospace" fill="#9E9E9E">lock+pad     8B</text>
+    <rect x="200" y="95" width="105" height="20" rx="4" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1"/>
+    <text x="252" y="108" text-anchor="middle" font-size="8" font-weight="bold" fill="#1565C0">40 字节</text>
+    <text x="160" y="150" text-anchor="middle" font-size="9" fill="#757575">(结构相同, 独立实例)</text>
+  </g>
+
+  <!-- Arrows: kmem_cache → cpu_slabs -->
+  <path d="M480,275 L190,340" fill="none" stroke="#512DA8" stroke-width="1.8" marker-end="url(#aP)"/>
+  <path d="M620,275 L540,340" fill="none" stroke="#512DA8" stroke-width="1.8" marker-end="url(#aP)"/>
+  <path d="M820,275 L890,340" fill="none" stroke="#512DA8" stroke-width="1.8" marker-end="url(#aP)"/>
+  <path d="M980,275 L1240,340" fill="none" stroke="#512DA8" stroke-width="1.8" marker-end="url(#aP)"/>
+  <rect x="560" y="290" width="180" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="650" y="301" text-anchor="middle" font-size="8" fill="#512DA8">s-&gt;cpu_slab = alloc_percpu(40B) × 4 CPUs</text>
+
+  <!-- ==================== struct slab (per-CPU 各自持有) ==================== -->
+  <g transform="translate(30, 550)" filter="url(#sh)">
+    <rect width="660" height="170" rx="6" fill="#fff" stroke="#2E7D32" stroke-width="1.8"/>
+    <rect width="660" height="26" rx="6" fill="url(#hdrSlab)"/>
+    <rect x="0" y="18" width="660" height="8" fill="#2E7D32"/>
+    <text x="330" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">struct slab (复用 struct page 内存) — 每个 slab 页对应一个 = 64 字节</text>
+
+    <text x="15" y="42" font-size="9" font-family="monospace" fill="#2E7D32">flags           memdesc_flags_t     8B   (PG_slab 等标志)</text>
+    <text x="15" y="58" font-size="9" font-family="monospace" fill="#512DA8">slab_cache      struct kmem_cache *  8B   → 指回 "kmalloc-256"</text>
+    <text x="15" y="74" font-size="9" font-family="monospace" fill="#C62828">slab_list       struct list_head     16B  (挂在 node-&gt;partial)</text>
+    <text x="15" y="90" font-size="9" font-family="monospace" fill="#E65100">freelist        void *               8B  → 第一个空闲对象</text>
+    <text x="15" y="106" font-size="9" font-family="monospace" fill="#424242">counters        unsigned long        8B  {inuse:16, objects:15, frozen:1}</text>
+    <text x="15" y="122" font-size="9" font-family="monospace" fill="#9E9E9E">__page_type     unsigned int         4B</text>
+    <text x="15" y="138" font-size="9" font-family="monospace" fill="#9E9E9E">__page_refcount atomic_t             4B</text>
+    <text x="15" y="154" font-size="9" font-family="monospace" fill="#9E9E9E">obj_exts        unsigned long        8B  (CONFIG_SLAB_OBJ_EXT)</text>
+
+    <rect x="480" y="32" width="160" height="20" rx="4" fill="#E8F5E9" stroke="#66BB6A" stroke-width="1"/>
+    <text x="560" y="46" text-anchor="middle" font-size="9" font-weight="bold" fill="#2E7D32">总计 = 64 字节 (= struct page)</text>
+
+    <text x="480" y="75" font-size="9" fill="#757575">对 kmalloc-256:</text>
+    <text x="480" y="91" font-size="9" fill="#424242">objects = 16</text>
+    <text x="480" y="107" font-size="9" fill="#424242">inuse = 0~16</text>
+    <text x="480" y="123" font-size="9" fill="#424242">frozen = 1 (CPU持有)</text>
+    <text x="480" y="139" font-size="9" fill="#424242">        0 (在node链上)</text>
+  </g>
+
+  <!-- Arrow: cpu_slab.slab → struct slab -->
+  <path d="M190,500 L190,530 L190,550" fill="none" stroke="#2E7D32" stroke-width="1.8" marker-end="url(#aG)"/>
+  <rect x="130" y="520" width="120" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="190" y="531" text-anchor="middle" font-size="8" fill="#2E7D32">c-&gt;slab (每CPU一个)</text>
+
+  <!-- ==================== 4KB Slab Page (物理页面) ==================== -->
+  <g transform="translate(30, 770)" filter="url(#sh)">
+    <rect width="660" height="200" rx="6" fill="#fff" stroke="#E65100" stroke-width="1.8"/>
+    <rect width="660" height="26" rx="6" fill="url(#hdrPage)"/>
+    <rect x="0" y="18" width="660" height="8" fill="#E65100"/>
+    <text x="330" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">Slab Page 物理内存 = 4096 字节 (order-0, 1页)</text>
+
+    <text x="15" y="42" font-size="9" fill="#E65100" font-weight="bold">4096B ÷ 256B = 16 个对象 | 无内部碎片 (4096 mod 256 = 0)</text>
+
+    <!-- 16 objects in 2 rows -->
+    <g transform="translate(10, 50)">
+      <rect x="0" y="0" width="78" height="55" rx="3" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.2"/>
+      <text x="39" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="#E65100">Obj[0]</text>
+      <text x="39" y="28" text-anchor="middle" font-size="7" fill="#424242">256 字节</text>
+      <text x="39" y="42" text-anchor="middle" font-size="7" fill="#1565C0">FP@128B</text>
+      <text x="39" y="52" text-anchor="middle" font-size="6" fill="#9E9E9E">偏移: 0x000</text>
+
+      <rect x="82" y="0" width="78" height="55" rx="3" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.2"/>
+      <text x="121" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="#E65100">Obj[1]</text>
+      <text x="121" y="28" text-anchor="middle" font-size="7" fill="#424242">256 字节</text>
+      <text x="121" y="42" text-anchor="middle" font-size="7" fill="#1565C0">FP@128B</text>
+      <text x="121" y="52" text-anchor="middle" font-size="6" fill="#9E9E9E">偏移: 0x100</text>
+
+      <rect x="164" y="0" width="78" height="55" rx="3" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.2"/>
+      <text x="203" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="#E65100">Obj[2]</text>
+      <text x="203" y="28" text-anchor="middle" font-size="7" fill="#424242">256 字节</text>
+      <text x="203" y="42" text-anchor="middle" font-size="7" fill="#1565C0">FP@128B</text>
+      <text x="203" y="52" text-anchor="middle" font-size="6" fill="#9E9E9E">偏移: 0x200</text>
+
+      <rect x="246" y="0" width="78" height="55" rx="3" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.2"/>
+      <text x="285" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="#E65100">Obj[3]</text>
+      <text x="285" y="28" text-anchor="middle" font-size="7" fill="#424242">256 字节</text>
+      <text x="285" y="52" text-anchor="middle" font-size="6" fill="#9E9E9E">偏移: 0x300</text>
+
+      <text x="340" y="28" font-size="14" fill="#BDBDBD">···</text>
+
+      <rect x="370" y="0" width="78" height="55" rx="3" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.2"/>
+      <text x="409" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="#E65100">Obj[14]</text>
+      <text x="409" y="28" text-anchor="middle" font-size="7" fill="#424242">256 字节</text>
+      <text x="409" y="52" text-anchor="middle" font-size="6" fill="#9E9E9E">偏移: 0xE00</text>
+
+      <rect x="452" y="0" width="78" height="55" rx="3" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.2"/>
+      <text x="491" y="14" text-anchor="middle" font-size="8" font-weight="bold" fill="#E65100">Obj[15]</text>
+      <text x="491" y="28" text-anchor="middle" font-size="7" fill="#424242">256 字节</text>
+      <text x="491" y="42" text-anchor="middle" font-size="7" fill="#D32F2F">FP→NULL</text>
+      <text x="491" y="52" text-anchor="middle" font-size="6" fill="#9E9E9E">偏移: 0xF00</text>
+    </g>
+
+    <!-- Single object detail -->
+    <g transform="translate(10, 118)">
+      <text x="0" y="12" font-size="9" fill="#E65100" font-weight="bold">单个 256B 对象内存布局:</text>
+      <rect x="0" y="18" width="200" height="20" rx="3" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1"/>
+      <text x="100" y="32" text-anchor="middle" font-size="8" fill="#1565C0">用户数据 0~127B (128字节)</text>
+      <rect x="204" y="18" width="60" height="20" rx="3" fill="#EDE7F6" stroke="#9575CD" stroke-width="1.5"/>
+      <text x="234" y="32" text-anchor="middle" font-size="8" font-weight="bold" fill="#4527A0">FP (8B)</text>
+      <rect x="268" y="18" width="195" height="20" rx="3" fill="#E3F2FD" stroke="#64B5F6" stroke-width="1"/>
+      <text x="365" y="32" text-anchor="middle" font-size="8" fill="#1565C0">用户数据 136~255B (120字节)</text>
+      <text x="480" y="32" font-size="8" fill="#757575">| 共256B</text>
+    </g>
+
+    <!-- Address calculation -->
+    <g transform="translate(10, 155)">
+      <rect width="630" height="34" rx="4" fill="#FFFDE7" stroke="#FBC02D" stroke-width="1"/>
+      <text x="15" y="14" font-size="8" fill="#F57F17" font-weight="bold">地址计算:</text>
+      <text x="15" y="28" font-size="8" font-family="monospace" fill="#424242">object[n] = slab_address(slab) + n × 256    |    FP 位置 = object[n] + 128    |    FP 值 = object[n+1] 的地址 (或 NULL)</text>
+    </g>
+  </g>
+
+  <!-- Arrow: struct slab → slab page -->
+  <path d="M360,720 L360,770" fill="none" stroke="#E65100" stroke-width="1.8" marker-end="url(#aO)"/>
+  <rect x="290" y="736" width="140" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="360" y="747" text-anchor="middle" font-size="8" fill="#E65100">slab_address(slab) = page 虚拟地址</text>
+
+  <!-- ==================== kmem_cache_node (共享) ==================== -->
+  <g transform="translate(750, 550)" filter="url(#sh)">
+    <rect width="640" height="170" rx="6" fill="#fff" stroke="#C62828" stroke-width="1.8"/>
+    <rect width="640" height="26" rx="6" fill="url(#hdrNode)"/>
+    <rect x="0" y="18" width="640" height="8" fill="#C62828"/>
+    <text x="320" y="17" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">struct kmem_cache_node (Node 0) — 所有 CPU 共享 ≈ 64 字节</text>
+
+    <text x="15" y="42" font-size="9" font-family="monospace" fill="#C62828">list_lock       spinlock_t       4B   (保护 partial 链表)</text>
+    <text x="15" y="58" font-size="9" font-family="monospace" fill="#424242">nr_partial      unsigned long    8B   (partial slab 数量)</text>
+    <text x="15" y="74" font-size="9" font-family="monospace" fill="#424242">partial         struct list_head 16B  (partial slab 双向链表)</text>
+    <text x="15" y="92" font-size="9" fill="#9E9E9E">#ifdef CONFIG_SLUB_DEBUG:</text>
+    <text x="15" y="106" font-size="9" font-family="monospace" fill="#9E9E9E">nr_slabs        atomic_long_t    8B</text>
+    <text x="15" y="120" font-size="9" font-family="monospace" fill="#9E9E9E">total_objects    atomic_long_t    8B</text>
+    <text x="15" y="134" font-size="9" font-family="monospace" fill="#9E9E9E">full            struct list_head 16B</text>
+    <text x="15" y="150" font-size="9" font-family="monospace" fill="#424242">barn            struct node_barn* 8B</text>
+
+    <rect x="460" y="32" width="160" height="20" rx="4" fill="#FFEBEE" stroke="#EF5350" stroke-width="1"/>
+    <text x="540" y="46" text-anchor="middle" font-size="9" font-weight="bold" fill="#C62828">总计 ≈ 64 字节 (debug)</text>
+    <text x="460" y="78" font-size="9" fill="#C62828" font-weight="bold">× 1 Node = 64B</text>
+    <text x="460" y="96" font-size="9" fill="#757575">如果 2-node NUMA:</text>
+    <text x="460" y="112" font-size="9" fill="#757575">  node[0] + node[1] = 128B</text>
+  </g>
+
+  <!-- Arrow: kmem_cache → node -->
+  <path d="M980,275 L1070,550" fill="none" stroke="#C62828" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#aR)"/>
+  <rect x="990" y="400" width="100" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+  <text x="1040" y="411" text-anchor="middle" font-size="8" fill="#C62828">s-&gt;node[0]</text>
+
+  <!-- ==================== 总开销汇总 ==================== -->
+  <g transform="translate(30, 1010)" filter="url(#sh)">
+    <rect width="1380" height="220" rx="8" fill="#FAFAFA" stroke="#424242" stroke-width="1.5"/>
+    <text x="690" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#212121">kmalloc-256 完整内存开销汇总 (4 CPU / 1 Node)</text>
+    <line x1="20" y1="30" x2="1360" y2="30" stroke="#E0E0E0" stroke-width="1"/>
+
+    <!-- Table -->
+    <text x="40" y="52" font-size="10" font-weight="bold" fill="#424242">数据结构</text>
+    <text x="340" y="52" font-size="10" font-weight="bold" fill="#424242">单实例大小</text>
+    <text x="500" y="52" font-size="10" font-weight="bold" fill="#424242">实例数</text>
+    <text x="660" y="52" font-size="10" font-weight="bold" fill="#424242">总计</text>
+    <text x="800" y="52" font-size="10" font-weight="bold" fill="#424242">说明</text>
+    <line x1="30" y1="58" x2="1360" y2="58" stroke="#BDBDBD" stroke-width="0.8"/>
+
+    <text x="40" y="76" font-size="10" font-family="monospace" fill="#512DA8">struct kmem_cache</text>
+    <text x="340" y="76" font-size="10" fill="#424242">~280B</text>
+    <text x="500" y="76" font-size="10" fill="#424242">1 (全局唯一)</text>
+    <text x="660" y="76" font-size="10" font-weight="bold" fill="#424242">280B</text>
+    <text x="800" y="76" font-size="9" fill="#757575">含 kobject/HARDENED/NUMA 等可选字段</text>
+
+    <text x="40" y="96" font-size="10" font-family="monospace" fill="#1565C0">struct kmem_cache_cpu</text>
+    <text x="340" y="96" font-size="10" fill="#424242">40B</text>
+    <text x="500" y="96" font-size="10" fill="#424242">4 (每CPU一个)</text>
+    <text x="660" y="96" font-size="10" font-weight="bold" fill="#424242">160B</text>
+    <text x="800" y="96" font-size="9" fill="#757575">percpu 分配, cacheline 对齐可能扩大到 64B×4=256B</text>
+
+    <text x="40" y="116" font-size="10" font-family="monospace" fill="#C62828">struct kmem_cache_node</text>
+    <text x="340" y="116" font-size="10" fill="#424242">~64B</text>
+    <text x="500" y="116" font-size="10" fill="#424242">1 (每Node一个)</text>
+    <text x="660" y="116" font-size="10" font-weight="bold" fill="#424242">64B</text>
+    <text x="800" y="116" font-size="9" fill="#757575">从 kmalloc-64/128 cache 分配</text>
+
+    <text x="40" y="136" font-size="10" font-family="monospace" fill="#2E7D32">struct slab (元数据)</text>
+    <text x="340" y="136" font-size="10" fill="#424242">64B</text>
+    <text x="500" y="136" font-size="10" fill="#424242">N (每slab页一个)</text>
+    <text x="660" y="136" font-size="10" font-weight="bold" fill="#424242">64B × N</text>
+    <text x="800" y="136" font-size="9" fill="#757575">复用 struct page 内存, 零额外分配!</text>
+
+    <text x="40" y="156" font-size="10" font-family="monospace" fill="#E65100">Slab Page (对象存储)</text>
+    <text x="340" y="156" font-size="10" fill="#424242">4096B</text>
+    <text x="500" y="156" font-size="10" fill="#424242">N (每slab一页)</text>
+    <text x="660" y="156" font-size="10" font-weight="bold" fill="#424242">4096B × N</text>
+    <text x="800" y="156" font-size="9" fill="#757575">16个256B对象 | 利用率 = 16×256/4096 = 100%!</text>
+
+    <line x1="30" y1="165" x2="1360" y2="165" stroke="#BDBDBD" stroke-width="0.8"/>
+    <text x="40" y="184" font-size="10" font-weight="bold" fill="#212121">管理开销合计 (不含对象页):</text>
+    <text x="340" y="184" font-size="11" font-weight="bold" fill="#D32F2F">≈ 504B (+ 64B/slab × N 页, 但这部分复用 page 结构, 不额外消耗)</text>
+
+    <text x="40" y="206" font-size="10" font-weight="bold" fill="#212121">额外开销比:</text>
+    <text x="340" y="206" font-size="10" fill="#424242">504B 管理结构 / 4096B 每 slab = 12.3% 一次性开销 (slab 越多占比越低)</text>
+    <text x="900" y="206" font-size="9" fill="#4CAF50" font-weight="bold">每个对象的额外开销 = 0B (FP 嵌入对象内, 分配后被用户数据覆盖)</text>
+  </g>
+
+  <!-- ==================== 多 CPU 关联关系说明 ==================== -->
+  <g transform="translate(30, 1260)" filter="url(#sh)">
+    <rect width="1380" height="190" rx="8" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="1.5"/>
+    <text x="690" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#4A148C">多 CPU 关联关系</text>
+    <line x1="20" y1="30" x2="1360" y2="30" stroke="#CE93D8" stroke-width="0.8"/>
+
+    <text x="40" y="52" font-size="10" fill="#424242">• <tspan font-weight="bold" fill="#512DA8">kmem_cache</tspan> (全局1个) → 持有 <tspan font-weight="bold" fill="#1565C0">cpu_slab</tspan> percpu 指针, 系统自动为每个 CPU 分配独立的 kmem_cache_cpu 实例</text>
+    <text x="40" y="72" font-size="10" fill="#424242">• 每个 <tspan font-weight="bold" fill="#1565C0">kmem_cache_cpu</tspan> 独立持有一个 <tspan font-weight="bold" fill="#2E7D32">frozen slab</tspan> — 该 slab 页面只被本 CPU 使用, 其他 CPU 看不到</text>
+    <text x="40" y="92" font-size="10" fill="#424242">• 当某 CPU 的 slab 耗尽, 它去 <tspan font-weight="bold" fill="#C62828">kmem_cache_node.partial</tspan> 链表 (共享) 取一个新 slab, 需要 spin_lock</text>
+    <text x="40" y="112" font-size="10" fill="#424242">• 当某 CPU deactivate 它的 slab 时, 把 slab 放回 node-&gt;partial — 其他 CPU 后续可以取走</text>
+
+    <text x="40" y="140" font-size="10" font-weight="bold" fill="#4A148C">内存消耗举例 (4 CPU, 稳态各持有 1 slab + 1 partial):</text>
+    <text x="40" y="160" font-size="10" font-family="monospace" fill="#424242">  管理结构: 280 + 160 + 64 = 504B</text>
+    <text x="40" y="178" font-size="10" font-family="monospace" fill="#424242">  对象页面: 4 CPU × 2 slab/CPU × 4096B = 32,768B (32KB) → 可容纳 128 个 256B 对象</text>
+    <text x="600" y="178" font-size="10" fill="#4CAF50" font-weight="bold">管理开销占比 = 504 / 32768 = 1.5%</text>
+  </g>
+</svg>

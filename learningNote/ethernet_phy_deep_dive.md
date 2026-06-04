@@ -172,34 +172,36 @@ typedef enum {
 
 | 分类 | 接口模式 | 速率 | 数据位宽 | 时钟频率 | 引脚数 | 典型应用场景 |
 |------|----------|------|----------|----------|--------|-------------|
-| **并行低速** | MII | 10/100M | 4bit | 2.5/25MHz | 18 | 传统嵌入式 |
-| | RMII | 10/100M | 2bit | 50MHz | 9 | 引脚受限的嵌入式 |
-| | SMII | 10/100M | 1bit | 125MHz | 4 | 多端口交换机 |
-| | MII-Lite | 10/100M | 4bit | 2.5/25MHz | 14 | 简化MII |
-| **并行千兆** | GMII | 1G | 8bit | 125MHz | 24 | 早期千兆设计 |
-| | RGMII | 1G | 4bit DDR | 125MHz | 12 | **最广泛的千兆接口** |
-| | RGMII_ID/RXID/TXID | 1G | 4bit DDR | 125MHz | 12 | 需要内部延迟调整 |
-| | TRGMII | 2G+ | 4bit DDR | >125MHz | 12 | MediaTek 交换机 |
-| **串行千兆** | SGMII | 10/100/1G | 1bit | 1.25GHz SerDes | 2 | **服务器/交换机最常用** |
+| **并行低速** | MII (Media Independent Interface) | 10/100M | 4bit | 2.5/25MHz | 18 | 传统嵌入式 |
+| | RMII (Reduced Media Independent Interface) | 10/100M | 2bit | 50MHz | 9 | 引脚受限的嵌入式 |
+| | SMII (Serial Media Independent Interface) | 10/100M | 1bit | 125MHz | 4 | 多端口交换机 |
+| | MII-Lite (Lite Media Independent Interface) | 10/100M | 4bit | 2.5/25MHz | 14 | 简化 MII |
+| **并行千兆** | GMII (Gigabit Media Independent Interface) | 1G | 8bit | 125MHz | 24 | 早期千兆设计 |
+| | RGMII (Reduced Gigabit Media Independent Interface) | 1G | 4bit DDR | 125MHz | 12 | **最广泛的千兆接口** |
+| | RGMII_ID/RXID/TXID (RGMII Internal Delay variants) | 1G | 4bit DDR | 125MHz | 12 | 需要内部延迟调整 |
+| | TRGMII (Turbo Reduced Gigabit Media Independent Interface) | 2G+ | 4bit DDR | >125MHz | 12 | MediaTek 交换机 |
+| **串行千兆** | SGMII (Serial Gigabit Media Independent Interface) | 10/100/1G | 1bit | 1.25GHz SerDes | 2 | **服务器/交换机最常用** |
 | | 1000Base-X | 1G | 1bit | 1.25GHz SerDes | 2 | 光纤模块(SFP) |
 | | 1000Base-KX | 1G | 1bit | 1.25GHz SerDes | 2 | 背板互联 |
-| | QSGMII | 4x 1G | 1bit | 5GHz SerDes | 2 | 多端口交换机 |
-| | PSGMII | 5x 1G | 1bit | 6.25GHz SerDes | 2 | Qualcomm交换芯片 |
+| | QSGMII (Quad Serial Gigabit Media Independent Interface) | 4x 1G | 1bit | 5GHz SerDes | 2 | 多端口交换机 |
+| | PSGMII (Penta Serial Gigabit Media Independent Interface) | 5x 1G | 1bit | 6.25GHz SerDes | 2 | Qualcomm交换芯片 |
 | **多千兆** | 2500Base-X | 2.5G | 1bit | 3.125GHz SerDes | 2 | 2.5G以太网 |
 | | 5GBase-R | 5G | 1bit | 5.15625GHz SerDes | 2 | 5G以太网 |
-| | USXGMII | 10M-10G | 1bit | 10.3125GHz SerDes | 2 | **多速率自适应** |
-| | QUSGMII | 4x 2.5G | 1bit | 10.3125GHz SerDes | 2 | 4端口2.5G |
+| | USXGMII (Universal Serial 10 Gigabit Media Independent Interface) | 10M-10G | 1bit | 10.3125GHz SerDes | 2 | **多速率自适应** |
+| | QUSGMII (Quad Universal Serial Gigabit Media Independent Interface) | 4x 2.5G | 1bit | 10.3125GHz SerDes | 2 | 4端口2.5G |
 | | 10G-QXGMII | 4x 2.5G | 1bit | 10.3125GHz SerDes | 2 | 4端口 over USXGMII |
-| **万兆** | XGMII | 10G | 32/64bit | 156.25/312.5MHz | 74 | 早期10G |
-| | XAUI | 10G | 4x 3.125G | 3.125GHz | 8 | 10G多通道 |
-| | RXAUI | 10G | 2x 6.25G | 6.25GHz | 4 | 精简XAUI |
+| **万兆** | XGMII (10 Gigabit Media Independent Interface) | 10G | 32/64bit | 156.25/312.5MHz | 74 | 早期10G |
+| | XAUI (10 Gigabit Attachment Unit Interface) | 10G | 4x 3.125G | 3.125GHz | 8 | 10G多通道 |
+| | RXAUI (Reduced 10 Gigabit Attachment Unit Interface) | 10G | 2x 6.25G | 6.25GHz | 4 | 精简 XAUI |
 | | 10GBase-R (XFI/SFI) | 10G | 1bit | 10.3125GHz SerDes | 2 | **主流10G接口** |
 | | 10GBase-KR | 10G | 1bit | 10.3125GHz SerDes | 2 | 背板+Clause73 AN |
 | **超高速** | 25GBase-R | 25G | 1bit | 25.78125GHz | 2 | 25G以太网 |
 | | 50GBase-R | 50G | 1bit | 26.5625GHz PAM4 | 2 | 50G以太网 |
-| | LAUI | 50G | 1bit | - | 2 | 50G附件单元接口 |
+| | LAUI (LAN Attachment Unit Interface) | 50G | 1bit | - | 2 | 50G附件单元接口 |
 | | 100GBase-P | 100G | 1bit | - | 2 | 100G以太网 |
-| | XLGMII | 40G | 64bit | 312.5MHz | 74+ | 40G以太网 |
+| | XLGMII (40 Gigabit Media Independent Interface) | 40G | 64bit | 312.5MHz | 74+ | 40G以太网 |
+
+记忆规律：MII = Media Independent Interface，R = Reduced，S = Serial，G = Gigabit，XG = 10 Gigabit，Q = Quad（4 路），P = Penta（5 路），U = Universal。按这个规则，RGMII、QSGMII、USXGMII 这类名称可以直接按前后缀拆开记。
 
 ### 1.3 RGMII 延迟变体说明
 
@@ -356,7 +358,7 @@ static int aqr_gen2_get_rate_matching(struct phy_device *phydev,
 
 **完整软件架构 SVG 图**（包含所有层次、数据结构、驱动实例和源码索引）：
 
-![Linux Ethernet PHY 软件架构全景图](ethernet_phy_software_arch.svg)
+![Linux Ethernet PHY 软件架构全景图](images/ethernet_phy_software_arch.svg)
 
 ### 2.2 关键数据结构
 

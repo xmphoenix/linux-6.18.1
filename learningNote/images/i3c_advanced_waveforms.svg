@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1040" viewBox="0 0 1280 1040">
+  <style>
+    .title { font: 700 28px sans-serif; fill: #111827; }
+    .subtitle { font: 700 20px sans-serif; fill: #1f2937; }
+    .label { font: 16px sans-serif; fill: #374151; }
+    .small { font: 14px sans-serif; fill: #4b5563; }
+    .bus { fill: none; stroke: #111827; stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+    .sda { fill: none; stroke: #0891b2; stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+    .guide { fill: none; stroke: #d1d5db; stroke-width: 2; stroke-dasharray: 5 5; }
+    .box { fill: #ffffff; stroke: #d1d5db; stroke-width: 2; }
+  </style>
+
+  <rect x="0" y="0" width="1280" height="1040" fill="#f8fafc"/>
+  <text x="40" y="50" class="title">I3C Advanced Waveforms</text>
+  <text x="40" y="80" class="small">Detailed conceptual waveforms for CCC read, Hot-Join, and mixed-bus phase transitions.</text>
+
+  <rect x="30" y="110" width="1220" height="280" rx="12" class="box"/>
+  <text x="50" y="145" class="subtitle">1. Direct CCC Read Transaction</text>
+  <text x="60" y="195" class="label">Sequence</text>
+  <text x="180" y="195" class="small">S  TargetAddr + W  ACK  Direct CCC(GETPID/GETBCR/GETDCR)  ACK  Sr  TargetAddr + R  Data  P</text>
+  <text x="60" y="250" class="label">SCL</text>
+  <text x="60" y="310" class="label">SDA</text>
+  <polyline class="bus" points="130,235 165,235 165,295 205,295 205,235 245,235 245,295 285,295 285,235 325,235 325,295 365,295 365,235 405,235 405,295 445,295 445,235 485,235 485,295 525,295 525,235 565,235 565,295 605,295 605,235 645,235 645,295 685,295 685,235 725,235 725,295 765,295 765,235 805,235 805,295 845,295 845,235 885,235 885,295 925,295 925,235 965,235 965,295 1005,295 1005,235 1045,235 1045,295 1085,295 1085,235 1125,235"/>
+  <polyline class="sda" points="130,300 150,300 165,340 510,340 530,300 760,300 780,340 900,340 920,300 1085,300 1105,340 1125,340"/>
+  <text x="930" y="220" class="small">CCC read usually appears as write phase for command, then read phase for returned data</text>
+  <text x="930" y="245" class="small">This is one major difference from plain I2C register access</text>
+
+  <rect x="30" y="420" width="1220" height="250" rx="12" class="box"/>
+  <text x="50" y="455" class="subtitle">2. Hot-Join</text>
+  <text x="60" y="505" class="label">New target</text>
+  <text x="180" y="505" class="small">Requests to join after bus is already running</text>
+  <text x="60" y="555" class="label">Controller</text>
+  <text x="180" y="555" class="small">ACKs Hot-Join, then schedules bus management, often followed by DAA</text>
+  <text x="60" y="610" class="label">Bus view</text>
+  <text x="180" y="610" class="small">HJ request -&gt; ACK/NACK -&gt; maintenance operation -&gt; enumeration/addressing</text>
+  <polyline class="bus" points="680,500 720,500 720,620 790,620 790,500 860,500 860,620 930,620 930,500 1000,500 1000,620 1070,620 1070,500 1140,500"/>
+  <polyline class="sda" points="680,575 720,575 755,535 825,535 860,600 930,600 965,535 1040,535 1075,600 1140,600"/>
+  <text x="920" y="650" class="small">Hot-Join is a protocol-defined bus entry mechanism, not an ad hoc rescan</text>
+
+  <rect x="30" y="700" width="1220" height="300" rx="12" class="box"/>
+  <text x="50" y="735" class="subtitle">3. Mixed Bus Phase Transition</text>
+  <text x="60" y="790" class="label">Phase</text>
+  <text x="170" y="790" class="small">Bus Available / Arbitration / Broadcast Setup</text>
+  <text x="60" y="845" class="label">Drive mode</text>
+  <text x="170" y="845" class="small">Open-drain</text>
+  <text x="540" y="790" class="small">Private SDR Data Phase</text>
+  <text x="540" y="845" class="small">Push-pull where allowed</text>
+  <text x="900" y="790" class="small">Legacy-sensitive Stage</text>
+  <text x="900" y="845" class="small">Back to OD-compatible behavior</text>
+  <text x="60" y="915" class="label">Concept</text>
+  <text x="170" y="915" class="small">I3C does not stay in a single electrical mode across the whole transaction when legacy compatibility matters</text>
+  <line x1="480" y1="760" x2="480" y2="960" class="guide"/>
+  <line x1="860" y1="760" x2="860" y2="960" class="guide"/>
+  <polyline class="bus" points="170,885 230,885 230,945 320,945 320,885 410,885 410,945 480,945 540,885 600,885 600,945 690,945 690,885 780,885 780,945 860,945 920,885 980,885 980,945 1070,945 1070,885 1160,885"/>
+  <polyline class="sda" points="170,950 220,950 250,980 430,980 470,950 540,950 590,950 620,920 800,920 850,950 920,950 970,950 1000,980 1160,980"/>
+  <text x="170" y="980" class="small">Left and right phases emphasize compatibility; the middle phase emphasizes high-speed transfer efficiency</text>
+</svg>

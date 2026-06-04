@@ -1,0 +1,309 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1260 980" font-family="'Segoe UI','Noto Sans SC',Arial,sans-serif">
+  <defs>
+    <filter id="sh">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.12"/>
+    </filter>
+    <linearGradient id="hdrCache" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#673AB7"/>
+      <stop offset="100%" stop-color="#512DA8"/>
+    </linearGradient>
+    <linearGradient id="hdrCPU" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2196F3"/>
+      <stop offset="100%" stop-color="#1976D2"/>
+    </linearGradient>
+    <linearGradient id="hdrSlab" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4CAF50"/>
+      <stop offset="100%" stop-color="#388E3C"/>
+    </linearGradient>
+    <linearGradient id="hdrObj" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF9800"/>
+      <stop offset="100%" stop-color="#F57C00"/>
+    </linearGradient>
+    <linearGradient id="hdrNode" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F44336"/>
+      <stop offset="100%" stop-color="#D32F2F"/>
+    </linearGradient>
+    <marker id="aBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#1976D2" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#388E3C" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aOrange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#F57C00" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aPurple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#512DA8" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aRed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#D32F2F" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+    <marker id="aGray" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#757575" stroke-width="1.5" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="630" y="32" text-anchor="middle" font-size="18" font-weight="bold" fill="#212121">SLUB 空闲对象组织方式 — 嵌入式 Freelist 链表</text>
+  <text x="630" y="52" text-anchor="middle" font-size="11" fill="#757575">mm/slub.c :: allocate_slab() 初始化 + 运行时 freelist 管理</text>
+
+  <!-- ==================== 第一层: Slab Page 物理布局 ==================== -->
+  <g transform="translate(30, 75)" filter="url(#sh)">
+    <rect width="1200" height="280" rx="8" fill="#fff" stroke="#388E3C" stroke-width="2"/>
+    <rect width="1200" height="30" rx="8" fill="url(#hdrSlab)"/>
+    <rect x="0" y="22" width="1200" height="8" fill="#388E3C"/>
+    <text x="600" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">Slab Page 物理内存布局 (allocate_slab() 初始化后)</text>
+
+    <text x="15" y="52" font-size="10" fill="#388E3C" font-weight="bold">一个 slab = 连续 2^order 个物理页，被切分成 N 个等大的对象槽 (size = s-&gt;size)</text>
+
+    <!-- slab page address bar -->
+    <rect x="20" y="62" width="1160" height="24" rx="4" fill="#E8F5E9" stroke="#A5D6A7" stroke-width="1"/>
+    <text x="30" y="78" font-size="9" font-family="monospace" fill="#2E7D32">slab_address(slab) = page 起始地址</text>
+    <text x="1000" y="78" font-size="9" font-family="monospace" fill="#2E7D32">+ PAGE_SIZE &lt;&lt; order</text>
+
+    <!-- Object slots -->
+    <g transform="translate(20, 95)">
+      <!-- Object 0 -->
+      <rect x="0" y="0" width="180" height="110" rx="5" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.5"/>
+      <text x="90" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#E65100">Object 0 (空闲)</text>
+      <line x1="5" y1="22" x2="175" y2="22" stroke="#FFCC80" stroke-width="0.8"/>
+      <!-- fp area -->
+      <rect x="5" y="26" width="170" height="22" rx="3" fill="#E3F2FD" stroke="#90CAF9" stroke-width="1"/>
+      <text x="12" y="40" font-size="9" font-family="monospace" fill="#1565C0">offset=s-&gt;offset</text>
+      <text x="110" y="40" font-size="9" font-weight="bold" fill="#1976D2">FP → Obj1</text>
+      <!-- payload area -->
+      <rect x="5" y="52" width="170" height="40" rx="3" fill="#FAFAFA" stroke="#E0E0E0" stroke-width="0.8"/>
+      <text x="90" y="70" text-anchor="middle" font-size="9" fill="#9E9E9E">用户数据区域</text>
+      <text x="90" y="84" text-anchor="middle" font-size="8" fill="#BDBDBD">(空闲时可能被 poison)</text>
+      <!-- size label -->
+      <text x="90" y="106" text-anchor="middle" font-size="8" fill="#757575">← s-&gt;size →</text>
+    </g>
+
+    <g transform="translate(210, 95)">
+      <!-- Object 1 -->
+      <rect x="0" y="0" width="180" height="110" rx="5" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.5"/>
+      <text x="90" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#E65100">Object 1 (空闲)</text>
+      <line x1="5" y1="22" x2="175" y2="22" stroke="#FFCC80" stroke-width="0.8"/>
+      <rect x="5" y="26" width="170" height="22" rx="3" fill="#E3F2FD" stroke="#90CAF9" stroke-width="1"/>
+      <text x="12" y="40" font-size="9" font-family="monospace" fill="#1565C0">offset=s-&gt;offset</text>
+      <text x="110" y="40" font-size="9" font-weight="bold" fill="#1976D2">FP → Obj2</text>
+      <rect x="5" y="52" width="170" height="40" rx="3" fill="#FAFAFA" stroke="#E0E0E0" stroke-width="0.8"/>
+      <text x="90" y="74" text-anchor="middle" font-size="9" fill="#9E9E9E">用户数据区域</text>
+      <text x="90" y="106" text-anchor="middle" font-size="8" fill="#757575">← s-&gt;size →</text>
+    </g>
+
+    <g transform="translate(420, 95)">
+      <!-- Object 2 -->
+      <rect x="0" y="0" width="180" height="110" rx="5" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.5"/>
+      <text x="90" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#E65100">Object 2 (空闲)</text>
+      <line x1="5" y1="22" x2="175" y2="22" stroke="#FFCC80" stroke-width="0.8"/>
+      <rect x="5" y="26" width="170" height="22" rx="3" fill="#E3F2FD" stroke="#90CAF9" stroke-width="1"/>
+      <text x="12" y="40" font-size="9" font-family="monospace" fill="#1565C0">offset=s-&gt;offset</text>
+      <text x="110" y="40" font-size="9" font-weight="bold" fill="#1976D2">FP → Obj3</text>
+      <rect x="5" y="52" width="170" height="40" rx="3" fill="#FAFAFA" stroke="#E0E0E0" stroke-width="0.8"/>
+      <text x="90" y="74" text-anchor="middle" font-size="9" fill="#9E9E9E">用户数据区域</text>
+      <text x="90" y="106" text-anchor="middle" font-size="8" fill="#757575">← s-&gt;size →</text>
+    </g>
+
+    <!-- dots -->
+    <text x="630" y="160" font-size="16" fill="#BDBDBD">· · ·</text>
+
+    <g transform="translate(680, 95)">
+      <!-- Object N-2 -->
+      <rect x="0" y="0" width="180" height="110" rx="5" fill="#E8F5E9" stroke="#66BB6A" stroke-width="1.5"/>
+      <text x="90" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#2E7D32">Object N-2 (已分配)</text>
+      <line x1="5" y1="22" x2="175" y2="22" stroke="#A5D6A7" stroke-width="0.8"/>
+      <rect x="5" y="26" width="170" height="66" rx="3" fill="#F1F8E9" stroke="#C5E1A5" stroke-width="0.8"/>
+      <text x="90" y="55" text-anchor="middle" font-size="10" fill="#33691E">用户正在使用</text>
+      <text x="90" y="70" text-anchor="middle" font-size="8" fill="#689F38">(FP 被覆盖/无效)</text>
+      <text x="90" y="106" text-anchor="middle" font-size="8" fill="#757575">← s-&gt;size →</text>
+    </g>
+
+    <g transform="translate(890, 95)">
+      <!-- Object N-1 (last free) -->
+      <rect x="0" y="0" width="180" height="110" rx="5" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.5"/>
+      <text x="90" y="16" text-anchor="middle" font-size="10" font-weight="bold" fill="#E65100">Object N-1 (空闲尾)</text>
+      <line x1="5" y1="22" x2="175" y2="22" stroke="#FFCC80" stroke-width="0.8"/>
+      <rect x="5" y="26" width="170" height="22" rx="3" fill="#E3F2FD" stroke="#90CAF9" stroke-width="1"/>
+      <text x="12" y="40" font-size="9" font-family="monospace" fill="#1565C0">offset=s-&gt;offset</text>
+      <text x="110" y="40" font-size="9" font-weight="bold" fill="#D32F2F">FP → NULL</text>
+      <rect x="5" y="52" width="170" height="40" rx="3" fill="#FAFAFA" stroke="#E0E0E0" stroke-width="0.8"/>
+      <text x="90" y="74" text-anchor="middle" font-size="9" fill="#9E9E9E">用户数据区域</text>
+      <text x="90" y="106" text-anchor="middle" font-size="8" fill="#757575">← s-&gt;size →</text>
+    </g>
+
+    <!-- FP arrows between objects -->
+    <path d="M195,132 L225,132" fill="none" stroke="#1976D2" stroke-width="2" marker-end="url(#aBlue)"/>
+    <path d="M385,132 L415,132" fill="none" stroke="#1976D2" stroke-width="2" marker-end="url(#aBlue)"/>
+
+    <!-- FP offset explanation -->
+    <rect x="20" y="218" width="1160" height="48" rx="4" fill="#F3E5F5" stroke="#CE93D8" stroke-width="1"/>
+    <text x="35" y="236" font-size="10" fill="#4A148C" font-weight="bold">FP (Free Pointer) 放置规则 — calculate_sizes():</text>
+    <text x="35" y="254" font-size="9" fill="#616161">• 默认: s-&gt;offset = ALIGN_DOWN(object_size/2, sizeof(void*)) — 放在对象中部，远离溢出高发的首尾</text>
+    <text x="630" y="254" font-size="9" fill="#616161">• RCU/POISON/ctor: s-&gt;offset = inuse (放在对象数据区之后)</text>
+  </g>
+
+  <!-- ==================== 第二层: 多级 Freelist 架构 ==================== -->
+  <g transform="translate(30, 400)" filter="url(#sh)">
+    <rect width="1200" height="320" rx="8" fill="#fff" stroke="#512DA8" stroke-width="2"/>
+    <rect width="1200" height="30" rx="8" fill="url(#hdrCache)"/>
+    <rect x="0" y="22" width="1200" height="8" fill="#512DA8"/>
+    <text x="600" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">SLUB 运行时多级 Freelist 组织</text>
+
+    <!-- Level 1: percpu freelist -->
+    <g transform="translate(20, 45)">
+      <rect width="360" height="120" rx="6" fill="#E3F2FD" stroke="#1976D2" stroke-width="1.5"/>
+      <text x="180" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565C0">第1级: Per-CPU Freelist (c-&gt;freelist)</text>
+      <text x="15" y="38" font-size="9" fill="#424242">无锁 fastpath 直接消费的链表</text>
+      <line x1="10" y1="44" x2="350" y2="44" stroke="#90CAF9" stroke-width="0.6"/>
+
+      <!-- mini object chain -->
+      <rect x="15" y="52" width="55" height="28" rx="3" fill="#BBDEFB" stroke="#1976D2" stroke-width="1"/>
+      <text x="42" y="70" text-anchor="middle" font-size="9" font-weight="bold" fill="#0D47A1">obj</text>
+      <path d="M70,66 L85,66" fill="none" stroke="#1976D2" stroke-width="1.5" marker-end="url(#aBlue)"/>
+
+      <rect x="88" y="52" width="55" height="28" rx="3" fill="#BBDEFB" stroke="#1976D2" stroke-width="1"/>
+      <text x="115" y="70" text-anchor="middle" font-size="9" font-weight="bold" fill="#0D47A1">obj</text>
+      <path d="M143,66 L158,66" fill="none" stroke="#1976D2" stroke-width="1.5" marker-end="url(#aBlue)"/>
+
+      <rect x="161" y="52" width="55" height="28" rx="3" fill="#BBDEFB" stroke="#1976D2" stroke-width="1"/>
+      <text x="188" y="70" text-anchor="middle" font-size="9" font-weight="bold" fill="#0D47A1">obj</text>
+      <path d="M216,66 L231,66" fill="none" stroke="#1976D2" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#aBlue)"/>
+
+      <text x="240" y="70" font-size="9" fill="#9E9E9E">→ NULL</text>
+
+      <text x="15" y="100" font-size="9" fill="#1565C0" font-weight="bold">保护: 无锁 (cmpxchg on freelist_tid)</text>
+      <text x="15" y="114" font-size="9" fill="#616161">用完 → 从 slab-&gt;freelist 补充 (get_freelist)</text>
+    </g>
+
+    <!-- Level 2: slab freelist -->
+    <g transform="translate(420, 45)">
+      <rect width="360" height="120" rx="6" fill="#E8F5E9" stroke="#388E3C" stroke-width="1.5"/>
+      <text x="180" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#2E7D32">第2级: Slab Freelist (slab-&gt;freelist)</text>
+      <text x="15" y="38" font-size="9" fill="#424242">当前 frozen slab 的剩余空闲对象</text>
+      <line x1="10" y1="44" x2="350" y2="44" stroke="#A5D6A7" stroke-width="0.6"/>
+
+      <rect x="15" y="52" width="55" height="28" rx="3" fill="#C8E6C9" stroke="#388E3C" stroke-width="1"/>
+      <text x="42" y="70" text-anchor="middle" font-size="9" font-weight="bold" fill="#1B5E20">obj</text>
+      <path d="M70,66 L85,66" fill="none" stroke="#388E3C" stroke-width="1.5" marker-end="url(#aGreen)"/>
+
+      <rect x="88" y="52" width="55" height="28" rx="3" fill="#C8E6C9" stroke="#388E3C" stroke-width="1"/>
+      <text x="115" y="70" text-anchor="middle" font-size="9" font-weight="bold" fill="#1B5E20">obj</text>
+      <path d="M143,66 L158,66" fill="none" stroke="#388E3C" stroke-width="1.5" marker-end="url(#aGreen)"/>
+
+      <rect x="161" y="52" width="55" height="28" rx="3" fill="#C8E6C9" stroke="#388E3C" stroke-width="1"/>
+      <text x="188" y="70" text-anchor="middle" font-size="9" font-weight="bold" fill="#1B5E20">obj</text>
+      <path d="M216,66 L231,66" fill="none" stroke="#388E3C" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#aGreen)"/>
+
+      <text x="240" y="70" font-size="9" fill="#9E9E9E">→ NULL</text>
+
+      <text x="15" y="100" font-size="9" fill="#388E3C" font-weight="bold">保护: cmpxchg (slab_update_freelist)</text>
+      <text x="15" y="114" font-size="9" fill="#616161">耗尽 → 切到 cpu partial 或 node partial</text>
+    </g>
+
+    <!-- Level 3: node partial list -->
+    <g transform="translate(820, 45)">
+      <rect width="360" height="120" rx="6" fill="#FFEBEE" stroke="#D32F2F" stroke-width="1.5"/>
+      <text x="180" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#B71C1C">第3级: Node Partial 链表</text>
+      <text x="15" y="38" font-size="9" fill="#424242">node-&gt;partial: 多个 partially-free slab</text>
+      <line x1="10" y1="44" x2="350" y2="44" stroke="#EF9A9A" stroke-width="0.6"/>
+
+      <rect x="15" y="52" width="70" height="28" rx="3" fill="#FFCDD2" stroke="#D32F2F" stroke-width="1"/>
+      <text x="50" y="70" text-anchor="middle" font-size="9" font-weight="bold" fill="#B71C1C">slab A</text>
+      <path d="M85,66 L100,66" fill="none" stroke="#D32F2F" stroke-width="1.5" marker-end="url(#aRed)"/>
+
+      <rect x="103" y="52" width="70" height="28" rx="3" fill="#FFCDD2" stroke="#D32F2F" stroke-width="1"/>
+      <text x="138" y="70" text-anchor="middle" font-size="9" font-weight="bold" fill="#B71C1C">slab B</text>
+      <path d="M173,66 L188,66" fill="none" stroke="#D32F2F" stroke-width="1.5" marker-end="url(#aRed)"/>
+
+      <rect x="191" y="52" width="70" height="28" rx="3" fill="#FFCDD2" stroke="#D32F2F" stroke-width="1"/>
+      <text x="226" y="70" text-anchor="middle" font-size="9" font-weight="bold" fill="#B71C1C">slab C</text>
+      <path d="M261,66 L275,66" fill="none" stroke="#D32F2F" stroke-width="1.2" stroke-dasharray="3,2"/>
+      <text x="285" y="70" font-size="9" fill="#9E9E9E">···</text>
+
+      <text x="15" y="100" font-size="9" fill="#D32F2F" font-weight="bold">保护: spin_lock(&amp;node-&gt;list_lock)</text>
+      <text x="15" y="114" font-size="9" fill="#616161">没有 partial → new_slab() 从伙伴系统分配</text>
+    </g>
+
+    <!-- Arrows between levels -->
+    <path d="M380,120 L420,120" fill="none" stroke="#757575" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#aGray)"/>
+    <rect x="383" y="108" width="34" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+    <text x="400" y="119" text-anchor="middle" font-size="8" fill="#757575">补充</text>
+
+    <path d="M780,120 L820,120" fill="none" stroke="#757575" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#aGray)"/>
+    <rect x="783" y="108" width="34" height="14" rx="3" fill="white" fill-opacity="0.95"/>
+    <text x="800" y="119" text-anchor="middle" font-size="8" fill="#757575">补充</text>
+
+    <!-- 初始化流程说明 -->
+    <rect x="20" y="180" width="1160" height="125" rx="6" fill="#FFFDE7" stroke="#FBC02D" stroke-width="1"/>
+    <text x="35" y="200" font-size="11" font-weight="bold" fill="#F57F17">allocate_slab() 初始化 freelist 构造过程：</text>
+    <text x="35" y="220" font-size="10" font-family="monospace" fill="#424242">start = slab_address(slab);              // 页起始地址</text>
+    <text x="35" y="238" font-size="10" font-family="monospace" fill="#424242">start = fixup_red_left(s, start);        // 跳过左 redzone (如果有)</text>
+    <text x="35" y="256" font-size="10" font-family="monospace" fill="#424242">slab-&gt;freelist = setup_object(s, start); // 第一个对象成为链表头</text>
+    <text x="35" y="274" font-size="10" font-family="monospace" fill="#424242">for (idx = 0; idx &lt; objects-1; idx++) {   // 遍历后续对象</text>
+    <text x="35" y="292" font-size="10" font-family="monospace" fill="#424242">    next = p + s-&gt;size;                   // 下一个对象 = 当前 + 对象大小</text>
+    <text x="35" y="292" font-size="10" font-family="monospace" fill="#424242">    next = p + s-&gt;size;  set_freepointer(s, p, next);  // 在 p+offset 处写入 next 的地址</text>
+    <text x="35" y="310" font-size="10" font-family="monospace" fill="#424242">}  set_freepointer(s, last, NULL);        // 最后一个对象的 FP = NULL (链尾)</text>
+  </g>
+
+  <!-- ==================== 第三层: 单对象内部布局 ==================== -->
+  <g transform="translate(30, 750)" filter="url(#sh)">
+    <rect width="1200" height="200" rx="8" fill="#fff" stroke="#F57C00" stroke-width="2"/>
+    <rect width="1200" height="30" rx="8" fill="url(#hdrObj)"/>
+    <rect x="0" y="22" width="1200" height="8" fill="#F57C00"/>
+    <text x="600" y="21" text-anchor="middle" font-size="13" font-weight="bold" fill="#fff">单个 Object 内部布局 (空闲态 vs 已分配态)</text>
+
+    <!-- Free object layout -->
+    <g transform="translate(20, 45)">
+      <text x="0" y="12" font-size="10" font-weight="bold" fill="#E65100">空闲对象:</text>
+      <rect x="0" y="20" width="80" height="40" rx="3" fill="#FFECB3" stroke="#FFA000" stroke-width="1"/>
+      <text x="40" y="38" text-anchor="middle" font-size="8" fill="#E65100">red_left_pad</text>
+      <text x="40" y="50" text-anchor="middle" font-size="7" fill="#9E9E9E">(debug only)</text>
+
+      <rect x="85" y="20" width="200" height="40" rx="3" fill="#FFF3E0" stroke="#F57C00" stroke-width="1.5"/>
+      <text x="185" y="35" text-anchor="middle" font-size="9" fill="#E65100">object payload (object_size)</text>
+      <text x="185" y="50" text-anchor="middle" font-size="8" fill="#F57C00">可能被 POISON 填充 (0x6b/0xa5)</text>
+
+      <!-- FP highlight -->
+      <rect x="145" y="22" width="60" height="16" rx="2" fill="#1976D2" fill-opacity="0.15" stroke="#1976D2" stroke-width="1.2"/>
+      <text x="175" y="33" text-anchor="middle" font-size="7" font-weight="bold" fill="#1976D2">FP 嵌入</text>
+
+      <rect x="290" y="20" width="100" height="40" rx="3" fill="#E8EAF6" stroke="#5C6BC0" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="340" y="38" text-anchor="middle" font-size="8" fill="#283593">padding/align</text>
+      <text x="340" y="50" text-anchor="middle" font-size="7" fill="#9E9E9E">对齐到 s-&gt;size</text>
+
+      <!-- offset arrow -->
+      <path d="M85,68 L145,68" fill="none" stroke="#1976D2" stroke-width="1"/>
+      <text x="115" y="80" text-anchor="middle" font-size="8" fill="#1976D2">s-&gt;offset</text>
+    </g>
+
+    <!-- Allocated object layout -->
+    <g transform="translate(20, 125)">
+      <text x="0" y="12" font-size="10" font-weight="bold" fill="#2E7D32">已分配对象:</text>
+      <rect x="0" y="20" width="80" height="40" rx="3" fill="#FFECB3" stroke="#FFA000" stroke-width="1"/>
+      <text x="40" y="38" text-anchor="middle" font-size="8" fill="#E65100">red_left_pad</text>
+      <text x="40" y="50" text-anchor="middle" font-size="7" fill="#9E9E9E">(debug only)</text>
+
+      <rect x="85" y="20" width="200" height="40" rx="3" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
+      <text x="185" y="38" text-anchor="middle" font-size="9" fill="#1B5E20">用户有效数据 (object_size)</text>
+      <text x="185" y="52" text-anchor="middle" font-size="8" fill="#4CAF50">FP 位置被用户数据覆盖 — 无影响!</text>
+
+      <rect x="290" y="20" width="100" height="40" rx="3" fill="#E8EAF6" stroke="#5C6BC0" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="340" y="38" text-anchor="middle" font-size="8" fill="#283593">padding/align</text>
+      <text x="340" y="50" text-anchor="middle" font-size="7" fill="#9E9E9E">对齐到 s-&gt;size</text>
+    </g>
+
+    <!-- Hardened FP explanation -->
+    <g transform="translate(450, 45)">
+      <rect width="730" height="130" rx="5" fill="#FCE4EC" stroke="#E91E63" stroke-width="1"/>
+      <text x="15" y="20" font-size="10" font-weight="bold" fill="#880E4F">CONFIG_SLAB_FREELIST_HARDENED (安全加固):</text>
+      <text x="15" y="40" font-size="9" font-family="monospace" fill="#424242">encoded = ptr ^ s-&gt;random ^ swab(ptr_addr)</text>
+      <text x="15" y="58" font-size="9" fill="#616161">• s-&gt;random: cache 创建时的随机密钥，每个 kmem_cache 不同</text>
+      <text x="15" y="74" font-size="9" fill="#616161">• swab(ptr_addr): FP 存储位置自身地址的字节翻转</text>
+      <text x="15" y="90" font-size="9" fill="#616161">• 攻击者即使知道一个 FP 值，也无法伪造其他对象的 FP</text>
+      <text x="15" y="110" font-size="10" font-weight="bold" fill="#880E4F">CONFIG_SLAB_FREELIST_RANDOM:</text>
+      <text x="15" y="126" font-size="9" fill="#616161">• shuffle_freelist() 打乱初始化时链接顺序，不再是简单的地址顺序排列</text>
+    </g>
+  </g>
+
+</svg>

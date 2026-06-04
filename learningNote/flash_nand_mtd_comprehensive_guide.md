@@ -1104,24 +1104,261 @@ static SPINAND_OP_VARIANTS(read_cache_octal_variants,
     //                                                        dummy  max_freq
     SPINAND_PAGE_READ_FROM_CACHE_1S_1D_8D_OP(0, 3, NULL, 0, 120MHz), // 8线DTR, 3 dummy→120MHz
     SPINAND_PAGE_READ_FROM_CACHE_1S_1D_8D_OP(0, 2, NULL, 0, 105MHz), // 8线DTR, 2 dummy→105MHz
-    SPINAND_PAGE_READ_FROM_CACHE_1S_8S_8S_OP(0, 20, NULL, 0, 无限制),// 8线STR, 20 dummy→无限制
+    SPINAND_PAGE_READ_FROM_CACHE_1S_8S_8S_OP(0, 20, NULL, 0, 无额外频率上限),// 8线STR, 20 dummy→无额外频率上限
     SPINAND_PAGE_READ_FROM_CACHE_1S_8S_8S_OP(0, 16, NULL, 0, 162MHz),// 8线STR, 16 dummy→162MHz
     SPINAND_PAGE_READ_FROM_CACHE_1S_8S_8S_OP(0, 12, NULL, 0, 124MHz),// 8线STR, 12 dummy→124MHz
     SPINAND_PAGE_READ_FROM_CACHE_1S_8S_8S_OP(0, 8,  NULL, 0, 86MHz), // 8线STR, 8 dummy→86MHz
-    SPINAND_PAGE_READ_FROM_CACHE_1S_1S_8S_OP(0, 2,  NULL, 0, 无限制),// 1-1-8 STR, 2 dummy→无限制
+    SPINAND_PAGE_READ_FROM_CACHE_1S_1S_8S_OP(0, 2,  NULL, 0, 无额外频率上限),// 1-1-8 STR, 2 dummy→无额外频率上限
     SPINAND_PAGE_READ_FROM_CACHE_1S_1S_8S_OP(0, 1,  NULL, 0, 133MHz),// 1-1-8 STR, 1 dummy→133MHz
-    SPINAND_PAGE_READ_FROM_CACHE_FAST_1S_1S_1S_OP(0, 1, NULL, 0, 0), // 单线Fast, 无限制
-    SPINAND_PAGE_READ_FROM_CACHE_1S_1S_1S_OP(0, 1, NULL, 0, 0));     // 单线标准, 无限制
+    SPINAND_PAGE_READ_FROM_CACHE_FAST_1S_1S_1S_OP(0, 1, NULL, 0, 0), // 单线Fast, 无额外频率上限
+    SPINAND_PAGE_READ_FROM_CACHE_1S_1S_1S_OP(0, 1, NULL, 0, 0));     // 单线标准, 无额外频率上限
 
 // Quad+DTR 模式:
 static SPINAND_OP_VARIANTS(read_cache_dual_quad_dtr_variants,
     SPINAND_PAGE_READ_FROM_CACHE_1S_4D_4D_OP(0, 8, NULL, 0, 80MHz),  // 4线DTR→80MHz
     SPINAND_PAGE_READ_FROM_CACHE_1S_1D_4D_OP(0, 2, NULL, 0, 80MHz),  // 1-1-4 DTR→80MHz
-    SPINAND_PAGE_READ_FROM_CACHE_1S_4S_4S_OP(0, 4, NULL, 0, 无限制), // 4线STR, 4 dummy→无限制
+    SPINAND_PAGE_READ_FROM_CACHE_1S_4S_4S_OP(0, 4, NULL, 0, 无额外频率上限), // 4线STR, 4 dummy→无额外频率上限
     SPINAND_PAGE_READ_FROM_CACHE_1S_4S_4S_OP(0, 2, NULL, 0, 104MHz), // 4线STR, 2 dummy→104MHz
-    SPINAND_PAGE_READ_FROM_CACHE_1S_1S_4S_OP(0, 1, NULL, 0, 无限制), // 1-1-4 STR→无限制
+    SPINAND_PAGE_READ_FROM_CACHE_1S_1S_4S_OP(0, 1, NULL, 0, 无额外频率上限), // 1-1-4 STR→无额外频率上限
     ...);
 ```
+
+**这些名字到底是什么意思？**
+
+`1S_1D_8D`、`1S_8S_8S`、`1S_1S_8S` 这类命名不是“不同功能的读函数”，而是**同一个 read-from-cache 逻辑操作的不同总线协议模板**。可以按下面的规则拆开理解：
+
+- 第 1 段: 命令 (`cmd`) 阶段
+- 第 2 段: 地址 + dummy 阶段
+- 第 3 段: 数据 (`data`) 阶段
+
+其中数字表示这一阶段使用几根 IO 线，字母表示传输方式：
+
+- `1/2/4/8` = 1线 / 2线 / 4线 / 8线
+- `S` = STR (Single Transfer Rate, 单沿传输)
+- `D` = DTR (Double Transfer Rate, 双沿传输)
+
+例如：
+
+- `1S_1D_8D`: 命令阶段 1线 STR；地址+dummmy 阶段 1线 DTR；数据阶段 8线 DTR
+- `1S_8S_8S`: 命令阶段 1线 STR；地址+dummy 阶段 8线 STR；数据阶段 8线 STR
+- `1S_1S_8S`: 命令阶段 1线 STR；地址+dummy 阶段 1线 STR；数据阶段 8线 STR
+- `FAST 1S_1S_1S`: 单线 Fast Read，仍然是 1-1-1，只是用了带 dummy 的 fast opcode
+- `普通 1S_1S_1S`: 最保守的标准单线读
+
+这里的“1线/8线”说的是**该阶段并行使用多少根 IO 线传输位流**，不是整个事务从头到尾都固定只用 1 根或 8 根线。很多 Flash 的命令阶段仍然要求单线发 opcode，而地址/数据阶段才切到 Quad/Octal。
+
+**为什么同一个 read_cache 要准备这么多 variants？**
+
+虽然芯片 datasheet 的命令集合是固定的，但“从 cache 读数据”这个逻辑动作，通常对应多种**合法的物理传输格式**：
+
+- 芯片可能同时支持 1-1-1、1-1-8、1-8-8、1D-8D 等多种读法
+- 同一个 opcode 在不同 dummy cycle 下，对应不同的最大时钟频率
+- 控制器不一定支持所有总线宽度、DTR、dummy 格式
+- 板级连线和设备树 `spi-max-frequency` 还会进一步约束可用模式
+
+因此 `SPINAND_OP_VARIANTS(read_cache_octal_variants, ...)` 的作用不是“列出多个不同读函数”，而是告诉 SPI NAND core：
+
+- 这颗芯片对 `read_cache` 支持哪些候选协议模板
+- core 在 probe 时遍历这些模板
+- 对每个模板调用 `spi_mem_adjust_op_freq()`、`spi_mem_supports_op()` 等检查
+- 最后选出**当前控制器 + 当前板级约束下最快且可用**的一条，保存到 `spinand->op_templates.read_cache`
+
+也就是说，variants 是“同一逻辑操作的候选协议集合”，不是“重复定义命令表”。
+
+**这些配置的数据源头从哪里来？是不是硬编码？**
+
+是，**源头通常来自芯片 datasheet，但在 Linux SPI NAND 驱动里大多是厂商驱动手工硬编码进去的**，而不是像 SPI NOR 的 SFDP 那样大范围自动发现。
+
+具体分三层理解：
+
+- **协议能力来源于 datasheet**：例如 opcode、支持的 1-4-4 / 1-8-8 / DDR 读模式、dummy cycles 与最高频率的对应关系、是否需要切换 Quad/Octal/DDR 模式寄存器
+- **Linux 用统一记号表达这些能力**：datasheet 常写成 `1-4-4 Quad I/O Read`、`1-8-8 Octal I/O Read`、`Octal DDR Read`，Linux 则统一编码成 `1S_4S_4S`、`1S_8S_8S`、`1S_1D_8D` 这类 `spi-mem` 形式
+- **厂商驱动把这些能力静态写进代码**：例如 `drivers/mtd/nand/spi/winbond.c` 里的 `read_cache_octal_variants`、`write_cache_octal_variants`、dummy/freq 对应关系、VCR IO mode 配置值，都是根据 datasheet 手工翻译后写进驱动的
+
+所以更准确地说：
+
+- **芯片支持什么模式**：通常由厂商驱动静态描述在代码里
+- **当前平台最终启用哪一种模式**：由 SPI NAND core 在 probe 时结合控制器能力、DTS 频率、DTR/线宽支持情况动态选择
+
+也就是说，Linux SPI NAND 的流程不是“芯片把所有高级模式完整自描述出来”，而是“驱动先提供一份候选协议菜单，core 再从中选出当前平台可用且最快的一项”。
+
+**代码里到底按什么判断 `1S_4S_4S`、`1S_8S_8S`、`1S_1D_8D`？**
+
+关键点是：**代码里没有一个独立的“mode 枚举值”去判断这些名字**。这些模式名本质上只是人类便于阅读的缩写，真正被 core 判断的是 `struct spi_mem_op` 里的字段组合：
+
+- `op->cmd.buswidth`
+- `op->addr.buswidth`
+- `op->dummy.buswidth`
+- `op->data.buswidth`
+- `op->cmd.dtr / op->addr.dtr / op->dummy.dtr / op->data.dtr`
+- `op->max_freq`
+
+例如下面这几个宏展开后，真正差别就在这些字段上：
+
+```c
+/* include/linux/mtd/spinand.h */
+
+#define SPINAND_PAGE_READ_FROM_CACHE_1S_8S_8S_OP(addr, ndummy, buf, len, freq) \
+    SPI_MEM_OP(SPI_MEM_OP_CMD(0xcb, 1),        /* cmd.buswidth = 1 */       \
+               SPI_MEM_OP_ADDR(2, addr, 8),    /* addr.buswidth = 8 */      \
+               SPI_MEM_OP_DUMMY(ndummy, 8),    /* dummy.buswidth = 8 */     \
+               SPI_MEM_OP_DATA_IN(len, buf, 8),/* data.buswidth = 8 */      \
+               SPI_MEM_OP_MAX_FREQ(freq))      /* max_freq = freq */
+
+#define SPINAND_PAGE_READ_FROM_CACHE_1S_1D_8D_OP(addr, ndummy, buf, len, freq) \
+    SPI_MEM_OP(SPI_MEM_OP_CMD(0x9d, 1),            /* cmd.buswidth = 1 */   \
+               SPI_MEM_DTR_OP_ADDR(2, addr, 1),    /* addr.buswidth = 1, dtr */ \
+               SPI_MEM_DTR_OP_DUMMY(ndummy, 1),    /* dummy.buswidth = 1, dtr */\
+               SPI_MEM_DTR_OP_DATA_IN(len, buf, 8),/* data.buswidth = 8, dtr */ \
+               SPI_MEM_OP_MAX_FREQ(freq))
+```
+
+因此：
+
+- `1S_8S_8S` 的实质是：`cmd=1线STR, addr=8线STR, dummy=8线STR, data=8线STR`
+- `1S_1D_8D` 的实质是：`cmd=1线STR, addr=1线DTR, dummy=1线DTR, data=8线DTR`
+- `1S_4S_4S` 的实质是：`cmd=1线STR, addr=4线STR, dummy=4线STR, data=4线STR`
+
+也就是说，**mode 名字只是对 `buswidth + dtr + max_freq` 这组字段的口语化概括**。
+
+**模式选择的完整调用链**
+
+`SPI NAND` 在 probe 匹配到芯片后，会走下面这条调用链来决定最终采用哪种 `read_cache` 模式：
+
+```c
+/* drivers/mtd/nand/spi/core.c */
+
+op = spinand_select_op_variant(spinand, info->op_variants.read_cache);
+if (!op)
+    return -ENOTSUPP;
+
+spinand->op_templates.read_cache = op;
+```
+
+也就是说：厂商驱动先提供一组候选项，core 再从 `info->op_variants.read_cache` 里挑出一个最优的，保存到 `spinand->op_templates.read_cache`，后续真正读 page 时就用这个模板。
+
+**第一层：SPI NAND core 遍历所有候选模式**
+
+```c
+/* drivers/mtd/nand/spi/core.c */
+
+for (i = 0; i < variants->nops; i++) {
+    struct spi_mem_op op = variants->ops[i];
+
+    op.data.nbytes = nbytes;
+    ret = spi_mem_adjust_op_size(spinand->spimem, &op);
+    if (ret)
+        break;
+
+    spi_mem_adjust_op_freq(spinand->spimem, &op);
+
+    if (!spi_mem_supports_op(spinand->spimem, &op))
+        break;
+
+    op_duration_ns += spi_mem_calc_op_duration(spinand->spimem, &op);
+}
+```
+
+这一层做了三件事：
+
+- 先看这条 op 的数据长度能不能被控制器接受
+- 再看频率是否需要被降到 `DTS/控制器/芯片` 的共同上限
+- 再问 `spi-mem`：控制器到底支不支持这组 `buswidth + dtr` 组合
+
+如果支持，再估算理论传输时长，用来和其它候选模式比较。
+
+**第二层：SPI-MEM 判断“这个模式支不支持”**
+
+真正的支持性判断在 `spi_mem_supports_op()` 和 `spi_mem_default_supports_op()`：
+
+```c
+/* drivers/spi/spi-mem.c */
+
+bool spi_mem_supports_op(struct spi_mem *mem, const struct spi_mem_op *op)
+{
+    spi_mem_adjust_op_freq(mem, (struct spi_mem_op *)op);
+
+    if (spi_mem_check_op(op))
+        return false;
+
+    return spi_mem_internal_supports_op(mem, op);
+}
+```
+
+默认判断规则里，最关键的是这几项：
+
+```c
+bool op_is_dtr =
+    op->cmd.dtr || op->addr.dtr || op->dummy.dtr || op->data.dtr;
+
+if (op_is_dtr) {
+    if (!spi_mem_controller_is_capable(ctlr, dtr))
+        return false;
+}
+
+if (op->max_freq && op->max_freq < mem->spi->controller->min_speed_hz)
+    return false;
+
+return spi_mem_check_buswidth(mem, op);
+```
+
+这意味着：
+
+- 如果某个候选项是 `1S_1D_8D`，只要控制器不支持 `dtr`，这条模式就会被直接淘汰
+- 如果某个候选项要求 8 线地址/数据，但控制器或板级连线不支持 8bit buswidth，这条模式也会被淘汰
+- 如果某个候选项设置了更低的 `max_freq`，而控制器又不支持 per-op 限频，同样可能被淘汰
+
+**第三层：在所有“支持的模式”中选最快的**
+
+如果一个候选模式通过了支持性检查，还不会马上被选中；它还要和其它候选模式比较理论耗时。耗时计算在：
+
+```c
+/* drivers/spi/spi-mem.c */
+
+ncycles += ((op->cmd.nbytes * 8) / op->cmd.buswidth) / (op->cmd.dtr ? 2 : 1);
+ncycles += ((op->addr.nbytes * 8) / op->addr.buswidth) / (op->addr.dtr ? 2 : 1);
+
+if (op->dummy.nbytes)
+    ncycles += ((op->dummy.nbytes * 8) / op->dummy.buswidth) / (op->dummy.dtr ? 2 : 1);
+
+ncycles += ((op->data.nbytes * 8) / op->data.buswidth) / (op->data.dtr ? 2 : 1);
+```
+
+也就是说，core 会把整个事务拆成四段来算：
+
+- `cmd cycles`
+- `addr cycles`
+- `dummy cycles`
+- `data cycles`
+
+每一段的周期数都直接由 `buswidth` 和 `dtr` 决定：
+
+- 线越宽，周期越少
+- DTR 每拍传两次，周期进一步减少
+- 但 dummy 越多，总空转周期也越多
+
+所以：
+
+- `1S_8S_8S` 往往比 `1S_1S_8S` 更快，因为地址和数据阶段都更宽
+- `1S_1D_8D` 理论吞吐更高，但如果控制器不支持 DTR，直接淘汰
+- `FAST 1S_1S_1S` 虽然慢，但兼容性好，经常作为保底回退项
+
+最后，`spinand_select_op_variant()` 会把所有**既支持又最快**的候选项选出来：
+
+```c
+if (!nbytes && op_duration_ns < best_op_duration_ns) {
+    best_op_duration_ns = op_duration_ns;
+    best_variant = &variants->ops[i];
+}
+```
+
+**一句话总结这段代码逻辑**
+
+`1S_4S_4S`、`1S_8S_8S`、`1S_1D_8D` 的选择，不是靠一个模式枚举值，而是靠每个 `spi_mem_op` 里的 `cmd/addr/dummy/data` 四段 `buswidth + dtr + max_freq` 字段组合来判断：
+
+- `spi_mem_supports_op()` 负责判断“能不能用”
+- `spi_mem_calc_op_duration()` 负责估算“哪个更快”
+- `spinand_select_op_variant()` 负责在候选列表里选出“当前平台可用且最快”的那一条
 
 **关键理解**: `max_freq = 0` 表示无额外频率限制 (使用 SoC/DTS 中的全局限制)；
 `max_freq = 104MHz` 表示此操作模式下芯片最高只能跑 104MHz。

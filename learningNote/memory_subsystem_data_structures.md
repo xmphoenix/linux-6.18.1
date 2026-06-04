@@ -550,6 +550,14 @@ struct slab {                       // 复用 struct page 的内存布局
 
 ### 6.2 SLUB 三级缓存结构
 
+> **完整模型图**: 结合 `struct kmem_cache`、`struct kmem_cache_cpu`、`struct kmem_cache_node`、`struct slab` 与 `slab_alloc_node()` 分配路径，展示多核 CPU 上 SLUB 对象如何按 CPU 本地、Node 共享池、Buddy 后备页源逐级组织:
+>
+> ![SLUB 多核CPU完整对象组织与分配模型](images/slub_multi_cpu_full_model.svg)
+
+> **完整结构图**: 以 `kmalloc-256` (4KB slab / 16 objects) 为例，展示多 CPU 下的对象组织与分配顺序，参见:
+>
+> ![SLUB 256B 多CPU对象组织](images/slub_256b_multi_cpu_organization.svg)
+
 ```
 struct kmem_cache ("kmalloc-64")
   │
@@ -599,7 +607,13 @@ kmem_cache_alloc(kmalloc_caches[64], ...)
 └──────────────────────────────────────────────────┘
 ```
 
-### 6.4 设计目的
+### 6.4 数据结构实际大小
+
+> 以 `kmalloc-256` (4KB page / 16 objects / 4 CPU / 1 Node) 为例，各数据结构的实际内存开销:
+>
+> ![SLUB 256B 数据结构大小](images/slub_256b_data_structure_sizes.svg)
+
+### 6.5 设计目的
 
 | 特性 | 说明 |
 |------|------|
@@ -674,61 +688,21 @@ struct page {                           // 64 字节 (ARM64)
 
 ## 8. 数据结构关联全图
 
-```
-                            ┌──────────────────────────────┐
-              pgdat          │    pg_data_t (Node 0)        │
-           ┌─────────────────│  node_zones[MAX_NR_ZONES]    │
-           │                 │  node_zonelists[2]           │
-           │                 │  node_start_pfn              │
-           │                 │  kswapd                      │
-           │                 └──────────────────────────────┘
-           │
-           ▼
-    ┌──────────────────────────────────────────────────┐
-    │  struct zone (ZONE_DMA)                          │
-    │  ┌────────────────────────────────────────────┐  │
-    │  │ free_area[11]                              │  │
-    │  │  [order 0] → free_list[6] → page←→page    │  │
-    │  │  [order 1] → free_list[6] → page←→page    │  │  ◄── Buddy Allocator
-    │  │  ...                                       │  │
-    │  │  [order10] → free_list[6] → page←→page    │  │
-    │  └────────────────────────────────────────────┘  │
-    │  per_cpu_pageset → per_cpu_pages (PCP 缓存)      │
-    │  _watermark[MIN/LOW/HIGH/PROMO]                  │
-    │  zone_pgdat ──→ pgdat (反向指针)                  │
-    └──────────────────────────────────────────────────┘
-           │                          │
-           │ free_list 上的 page ←──── │
-           ▼                          ▼
-    ┌────────────────┐    ┌─────────────────┐
-    │  struct page    │    │ mem_section[]    │ ◄── Sparse Memory
-    │  (数组，连续)   │    │  section_mem_map │──→ page 数组基地址
-    │  vmemmap[pfn]   │    │  usage           │──→ pageblock_flags
-    │                 │    │                  │     subsection_map
-    │  flags 编码:     │    └─────────────────┘
-    │  [SECTION|NODE| │
-    │   ZONE|PG_xxx]  │
-    └────────┬────────┘
-             │ 当 page 被 SLUB 使用时，以 struct slab 视角访问
-             ▼
-    ┌───────────────────────────────────────────────┐
-    │  struct kmem_cache ("kmalloc-64")             │ ◄── SLUB Allocator
-    │    │                                          │
-    │    ├── cpu_slab (Per-CPU)                     │
-    │    │     ├── freelist → obj → obj → ...       │
-    │    │     └── slab → (当前 slab 页)            │
-    │    │                     │                    │
-    │    │               struct slab (复用 page)     │
-    │    │               ┌──────────────────────┐   │
-    │    │               │ slab_cache→kmem_cache│   │
-    │    │               │ freelist→空闲对象链   │   │
-    │    │               │ inuse / objects       │   │
-    │    │               └──────────────────────┘   │
-    │    │                                          │
-    │    └── node[0]                                │
-    │          └── partial → slab ←→ slab ←→ slab   │
-    └───────────────────────────────────────────────┘
-```
+> **完整关联图**: 把启动期 `memblock`、运行期 `pg_data_t/zone/free_area/PCP`、`mem_section/vmemmap/struct page`、以及 `kmem_cache/kmem_cache_cpu/kmem_cache_node/struct slab` 放到一张图里，强调“页层”和“对象层”是如何汇合的:
+>
+> ![内存子系统数据结构关联全图](images/memory_subsystem_association_full.svg)
+
+阅读这张图时，可以按下面 4 层去看：
+
+1. 启动期: `memblock` 只负责描述物理区间，`memblock_free_all()` 之后把空闲页交给 Buddy。
+2. 页层: `pg_data_t`/`zone`/`free_area`/`PCP` 管理的是 `page`，不是 SLUB object；`alloc_pages()` 在这里完成 zonelist 选择、水位线检查、PCP 和 buddy 取页。
+3. 映射层: `mem_section + vmemmap` 提供 `pfn_to_page()`/`page_to_pfn()` 的 O(1) 转换，`struct page` 由此成为所有子系统共享的页元数据载体。
+4. 对象层: `kmem_cache` 统一描述对象类型，`kmem_cache_cpu` 负责 per-CPU `freelist/slab/partial`，`kmem_cache_node.partial` 是同一 cache 的 node 级共享池；当 SLUB 需要新 slab 时，才重新掉回左边的页分配路径。
+
+这张图还额外强调了一个经常混淆的点：
+
+1. PCP 缓存的是 page，常规最大 order 为 3；在 4KB 页系统里就是最大 32KB。
+2. SLUB 返回的是 object；即使 `alloc_slab_page()` 命中了 PCP，SLUB 拿到的仍然是一页或多页，随后才会建立 `struct slab` 并按 `kmem_cache->size` 切出对象槽位。
 
 ---
 
