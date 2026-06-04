@@ -1125,7 +1125,7 @@ FQS 扫描时的 EQS 检测:
 
 ### 1.1 RCU 软件架构
 
-![RCU Tree 软件架构](images/rcu_tree_architecture.svg)
+![RCU Tree 软件架构](image/rcu_tree_architecture.svg)
 
 #### 1.1.1 层级树结构
 
@@ -1330,7 +1330,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 
 ### 1.2 RCU 关键数据结构
 
-![RCU 关键数据结构关系图](images/rcu_data_structures.svg)
+![RCU 关键数据结构关系图](image/rcu_data_structures.svg)
 
 #### 1.2.1 struct rcu_state — 全局 RCU 状态
 
@@ -2928,7 +2928,7 @@ rcu_dereference_protected(ptr, lockdep_is_held(&lock))
 
 ### 2.1 Watchdog 软件架构
 
-![Watchdog 子系统软件架构](images/watchdog_architecture.svg)
+![Watchdog 子系统软件架构](image/watchdog_architecture.svg)
 
 #### 2.1.1 三层锁检测框架总览
 
@@ -3168,7 +3168,7 @@ bool __init arch_perf_nmi_is_available(void)
 
 ### 2.3 关键数据结构
 
-![Watchdog 关键数据结构关系图](images/watchdog_data_structures.svg)
+![Watchdog 关键数据结构关系图](image/watchdog_data_structures.svg)
 
 **全局控制变量**（`kernel/watchdog.c`）：
 
@@ -4455,7 +4455,7 @@ lockdep_assert_none_held_once();      /* 断言当前未持有任何锁 */
 
 ### 3.2 DeadLock 软件架构
 
-![Lockdep 软件架构](images/lockdep_architecture.svg)
+![Lockdep 软件架构](image/lockdep_architecture.svg)
 
 #### 3.2.1 Lockdep 架构总览
 
@@ -4755,7 +4755,7 @@ lock_stat version 0.4
 
 ### 3.3 DeadLock 关键数据结构
 
-![Lockdep 关键数据结构关系图](images/lockdep_data_structures.svg)
+![Lockdep 关键数据结构关系图](image/lockdep_data_structures.svg)
 
 #### 3.3.1 struct lock_class — 锁类
 
@@ -6945,7 +6945,7 @@ kmemleak_scan_thread (nice=10, 低优先级)
 
 #### 4.3.1 架构总览
 
-![kmemleak 软件架构](images/kmemleak_architecture.svg)
+![kmemleak 软件架构](image/kmemleak_architecture.svg)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -7020,7 +7020,7 @@ kmemleak_scan_thread (nice=10, 低优先级)
 
 #### 4.3.2 关键数据结构
 
-![kmemleak 关键数据结构关系图](images/kmemleak_data_structures.svg)
+![kmemleak 关键数据结构关系图](image/kmemleak_data_structures.svg)
 
 ##### `struct kmemleak_object` — 核心追踪元数据
 
@@ -11387,7 +11387,7 @@ static inline void *kasan_mem_to_shadow(const void *addr)
 
 **【图 5.2-1】KASAN Generic Shadow Memory 地址空间映射**
 
-![KASAN Shadow Memory 地址映射](images/kasan_shadow_memory_mapping.svg)
+![KASAN Shadow Memory 地址映射](image/kasan_shadow_memory_mapping.svg)
 
 #### 5.2.2 编译器插桩机制
 
@@ -11449,7 +11449,7 @@ static __always_inline bool memory_is_poisoned_2_4_8(const void *addr, unsigned 
 
 **【图 5.2-2】KASAN 编译器插桩检查流程**
 
-![KASAN 编译器插桩检查流程](images/kasan_instrumentation_flow.svg)
+![KASAN 编译器插桩检查流程](image/kasan_instrumentation_flow.svg)
 
 #### 5.2.3 Slab 对象内存布局与 Shadow 染色
 
@@ -11484,7 +11484,7 @@ void __kasan_poison_slab(struct slab *slab)
 
 **【图 5.2-3】Slab 对象生命周期中的 Shadow 状态变化**
 
-![Slab 对象生命周期 Shadow 状态变化](images/kasan_slab_lifecycle.svg)
+![Slab 对象生命周期 Shadow 状态变化](image/kasan_slab_lifecycle.svg)
 
 #### 5.2.4 Quarantine（隔离区）延迟回收机制
 
@@ -11621,7 +11621,7 @@ HW_TAGS 利用 ARMv8.5-A 引入的 **MTE（Memory Tagging Extension）** 硬件�
 
 **【图 5.2-4】三种 KASAN 模式架构对比**
 
-![三种 KASAN 模式架构对比](images/kasan_three_modes_comparison.svg)
+![三种 KASAN 模式架构对比](image/kasan_three_modes_comparison.svg)
 
 **HW_TAGS 运行模式**（`mm/kasan/hw_tags.c`）：
 
@@ -12470,7 +12470,7 @@ kmalloc(50) → 分配 kmalloc-64 (object_size=64):
 
 **【图 5.4-1】SLUB Debug 对象内存布局与毒化模式**
 
-![SLUB Debug 对象内存布局与毒化模式](images/slub_debug_object_layout.svg)
+![SLUB Debug 对象内存布局与毒化模式](image/slub_debug_object_layout.svg)
 
 **Slab 页 Padding 检查**（`slab_pad_check()`）：
 
@@ -12639,7 +12639,7 @@ static int check_object(struct kmem_cache *s, struct slab *slab,
 
 **【图 5.4-2】check_object() 校验流程 — 分步决策图**
 
-![check_object 校验流程](images/slub_debug_check_object_flow.svg)
+![check_object 校验流程](image/slub_debug_check_object_flow.svg)
 
 **`check_bytes_and_report()` — 模式比较与报告**：
 
@@ -12671,7 +12671,7 @@ static int check_bytes_and_report(struct kmem_cache *s, struct slab *slab,
 
 **【图 5.4-3】SLUB Debug 分配 / 释放路径对比**
 
-![SLUB Debug 分配释放路径对比](images/slub_debug_alloc_free_paths.svg)
+![SLUB Debug 分配释放路径对比](image/slub_debug_alloc_free_paths.svg)
 
 **分配路径完整调用链**：
 
@@ -13100,7 +13100,7 @@ mprotect 页保护检测 MemoryOverwritten 的核心原理基于 **ARM64 MMU 的
 
 **【图 5.5-1】mprotect 页保护机制全景 — 从用户态到硬件**
 
-![mprotect 页保护机制全景](images/mprotect_page_protection_mechanism.svg)
+![mprotect 页保护机制全景](image/mprotect_page_protection_mechanism.svg)
 
 #### 5.5.2 mprotect 系统调用实现路径
 
@@ -13176,7 +13176,7 @@ int mprotect_fixup(struct vma_iterator *vmi, struct mmu_gather *tlb,
 
 **【图 5.5-2】mprotect 系统调用完整执行路径**
 
-![mprotect 系统调用完整执行路径](images/mprotect_syscall_flow.svg)
+![mprotect 系统调用完整执行路径](image/mprotect_syscall_flow.svg)
 
 #### 5.5.3 ARM64 PTE 权限位与页表修改
 
@@ -13292,7 +13292,7 @@ static int __kprobes do_page_fault(unsigned long far, unsigned long esr,
 
 **【图 5.5-3】ARM64 Permission Fault 检测流程**
 
-![ARM64 Permission Fault 检测流程](images/mprotect_permission_fault_flow.svg)
+![ARM64 Permission Fault 检测流程](image/mprotect_permission_fault_flow.svg)
 
 #### 5.5.5 内核态页保护 — set_memory_ro/rw 与 __ro_after_init
 
@@ -13401,7 +13401,7 @@ void mark_rodata_ro(void)
 
 **【图 5.5-4】内核态页保护机制 — set_memory_ro/rw 与 STRICT_KERNEL_RWX**
 
-![内核态页保护机制](images/mprotect_kernel_page_protection.svg)
+![内核态页保护机制](image/mprotect_kernel_page_protection.svg)
 
 #### 5.5.6 内核中的页保护实践 — DEBUG_PAGEALLOC / KFENCE / STRICT_KERNEL_RWX
 
@@ -13691,7 +13691,7 @@ MemoryOverwritten 防御体系分为四层，从上到下依次是：
 
 **【图 5.6-1】Linux MemoryOverwritten 多层防御体系架构**
 
-![MemoryOverwritten 多层防御体系架构](images/memory_overwritten_defense_architecture.svg)
+![MemoryOverwritten 多层防御体系架构](image/memory_overwritten_defense_architecture.svg)
 
 #### 5.6.2 编译期防御层
 
@@ -14107,7 +14107,7 @@ config ARM64_BTI_KERNEL
 
 **【图 5.6-2】MemoryOverwritten 各层协同与组合策略**
 
-![MemoryOverwritten 各层协同与组合策略](images/memory_overwritten_combination_strategy.svg)
+![MemoryOverwritten 各层协同与组合策略](image/memory_overwritten_combination_strategy.svg)
 
 ##### 方案 A — 开发/CI 全检测
 
@@ -14255,7 +14255,7 @@ KASAN 的数据结构围绕**追踪信息、对象元数据、错误报告、隔
 
 **【图 5.7-1】KASAN 关键数据结构关系图**
 
-![KASAN 关键数据结构关系图](images/kasan_data_structures.svg)
+![KASAN 关键数据结构关系图](image/kasan_data_structures.svg)
 
 ##### kasan_track — 调用栈追踪单元
 
@@ -14446,7 +14446,7 @@ KFENCE 的数据结构以 `kfence_metadata` 为核心，每个受保护对象一
 
 **【图 5.7-2】KFENCE 关键数据结构关系图**
 
-![KFENCE 关键数据结构关系图](images/kfence_data_structures.svg)
+![KFENCE 关键数据结构关系图](image/kfence_data_structures.svg)
 
 ##### kfence_metadata — 受保护对象元数据
 
@@ -14558,7 +14558,7 @@ SLUB Debug 的数据结构围绕 `kmem_cache` 的调试字段、`struct slab` �
 
 **【图 5.7-3】SLUB Debug 关键数据结构关系图**
 
-![SLUB Debug 关键数据结构关系图](images/slub_debug_data_structures.svg)
+![SLUB Debug 关键数据结构关系图](image/slub_debug_data_structures.svg)
 
 ##### kmem_cache — Debug 相关字段
 
@@ -14689,7 +14689,7 @@ MemoryOverwritten 检测机制的效果取决于**正确的内核配置和调优
 
 **【图 5.8-1】MemoryOverwritten 配置选择决策图**
 
-![MemoryOverwritten 配置选择决策图](images/memory_overwritten_config_decision.svg)
+![MemoryOverwritten 配置选择决策图](image/memory_overwritten_config_decision.svg)
 
 #### 5.8.1 KASAN 配置
 
@@ -14925,7 +14925,7 @@ cat /proc/slabinfo | head -5
 
 **【图 5.8-2】启动参数与运行时调优参数全景**
 
-![启动参数与运行时调优参数全景](images/memory_overwritten_boot_runtime_params.svg)
+![启动参数与运行时调优参数全景](image/memory_overwritten_boot_runtime_params.svg)
 
 ##### 组合一：生产环境（7×24 运行、性能敏感）
 
@@ -15027,7 +15027,7 @@ kfence.sample_interval=10 kfence.check_on_panic=1
 
 **【图 5.9-1】MemoryOverwritten 各机制告警 Log 关键字段解剖**
 
-![MemoryOverwritten 各机制告警 Log 关键字段解剖](images/memory_overwritten_log_anatomy.svg)
+![MemoryOverwritten 各机制告警 Log 关键字段解剖](image/memory_overwritten_log_anatomy.svg)
 
 #### 5.9.1 Case 1：KASAN 检测 Slab OOB 写
 
@@ -15502,7 +15502,7 @@ Call trace:
 
 **【图 5.9-2】MemoryOverwritten 通用定位方法论流程**
 
-![MemoryOverwritten 通用定位方法论流程](images/memory_overwritten_debug_methodology.svg)
+![MemoryOverwritten 通用定位方法论流程](image/memory_overwritten_debug_methodology.svg)
 
 ##### 五步定位法
 
@@ -15561,7 +15561,7 @@ KASAN 的核心设计是将整个内核虚拟地址空间以 8:1 的压缩比映
 
 **【图 5.10-1】Shadow Memory 地址映射算法全景**
 
-![Shadow Memory 地址映射算法全景](images/memory_overwritten_shadow_mapping.svg)
+![Shadow Memory 地址映射算法全景](image/memory_overwritten_shadow_mapping.svg)
 
 ```
 算法: kasan_mem_to_shadow(addr)
@@ -15630,7 +15630,7 @@ KASAN 的两大核心路径：**毒化**（在 alloc/free 时设置 Shadow 值�
 
 **【图 5.10-2】Shadow Byte 毒化与检查算法流程**
 
-![Shadow Byte 毒化与检查算法流程](images/memory_overwritten_poison_check.svg)
+![Shadow Byte 毒化与检查算法流程](image/memory_overwritten_poison_check.svg)
 
 ```
 算法: kasan_poison(addr, size, value, init)
@@ -15743,7 +15743,7 @@ Quarantine（隔离区）是 KASAN 检测 Use-After-Free 的核心机制：对�
 
 **【图 5.10-3】Quarantine FIFO 批量回收算法**
 
-![Quarantine FIFO 批量回收算法](images/memory_overwritten_quarantine_fifo.svg)
+![Quarantine FIFO 批量回收算法](image/memory_overwritten_quarantine_fifo.svg)
 
 ```
 算法: kasan_quarantine_put(cache, object)
@@ -16526,7 +16526,7 @@ menuconfig KASAN
 
 #### 6.1.2 三种模式全景对比（Generic / SW_TAGS / HW_TAGS）
 
-![KASAN 三种检测模式全景对比](images/kasan_three_modes_overview.svg)
+![KASAN 三种检测模式全景对比](image/kasan_three_modes_overview.svg)
 
 KASAN 在 `lib/Kconfig.kasan` 中定义了三种**互斥**的检测模式（`choice` 语义，同一内核只能选一种）：
 
@@ -16663,7 +16663,7 @@ CONFIG_KASAN_HW_TAGS=y   # 三选一
 
 ### 6.2 Generic KASAN — Shadow Memory 检测原理
 
-![Generic KASAN Shadow Memory 映射与检查原理](images/kasan_generic_shadow_memory.svg)
+![Generic KASAN Shadow Memory 映射与检查原理](image/kasan_generic_shadow_memory.svg)
 
 #### 6.2.1 Shadow Memory 地址映射原理 — 8:1 压缩编码
 
@@ -16957,7 +16957,7 @@ struct kasan_global {
 
 ### 6.3 SW_TAGS KASAN — 软件标签检测原理
 
-![SW_TAGS KASAN 检测原理](images/kasan_sw_tags_detection.svg)
+![SW_TAGS KASAN 检测原理](image/kasan_sw_tags_detection.svg)
 
 #### 6.3.1 ARM64 Top Byte Ignore (TBI) 硬件特性
 
@@ -17146,7 +17146,7 @@ read_unlock_irqrestore(&stack_ring.lock, flags);
 
 ### 6.4 HW_TAGS KASAN — ARM64 MTE 硬件加速检测
 
-![HW_TAGS KASAN MTE 硬件检测原理](images/kasan_hw_tags_mte.svg)
+![HW_TAGS KASAN MTE 硬件检测原理](image/kasan_hw_tags_mte.svg)
 
 #### 6.4.1 ARMv8.5 MTE 硬件原理 — Allocation Tag 与 Logical Tag
 
@@ -17336,7 +17336,7 @@ ASYNC 模式下，Tag 检查失败不会立即中断，而是延迟到同步点�
 
 > **核心思想**：KASAN 采用 **五层架构** 设计，通过 Makefile 条件编译实现 Generic / SW_TAGS / HW_TAGS 三种模式的互斥选择，共享公共核心层和报告框架，最大限度复用代码。
 
-![KASAN 软件架构](images/kasan_software_architecture.svg)
+![KASAN 软件架构](image/kasan_software_architecture.svg)
 
 #### 6.5.1 架构总览 — 源码文件组织与分层设计
 
@@ -17880,7 +17880,7 @@ kasan_mem_to_shadow(addr) = (addr >> SCALE_SHIFT) + SHADOW_OFFSET
 
 > **核心思想**：Generic 模式使用 **per-object 元数据**（alloc_meta + free_meta）存储调用栈；Tag 模式使用 **全局 Stack Ring**（环形缓冲区）存储调用栈。两种策略的权衡是内存开销 vs 信息准确度。
 
-![KASAN 数据结构](images/kasan_data_structures.svg)
+![KASAN 数据结构](image/kasan_data_structures.svg)
 
 #### 6.6.1 struct kasan_alloc_meta — 对象分配元数据（Generic 专属）
 
@@ -19513,7 +19513,7 @@ Tag 模式判定：
 
 > **全景流程图**：
 >
-> ![Panic/Oops 异常处理完整流程](images/panic_oops_flow_overview.svg)
+> ![Panic/Oops 异常处理完整流程](image/panic_oops_flow_overview.svg)
 
 ### 7.1 Panic 与 Oops 概述
 
@@ -20845,7 +20845,7 @@ git bisect run ./test_script.sh
 
 > **全景对比图**：
 >
-> ![Ramdump 三大机制对比](images/ramdump_three_mechanisms.svg)
+> ![Ramdump 三大机制对比](image/ramdump_three_mechanisms.svg)
 
 ### 8.1 Ramdump 概述与对比
 
@@ -21568,7 +21568,7 @@ dmesg | grep ramoops               # 确认 ramoops 注册成功
 
 > **全景架构图**：
 >
-> ![内存压缩子系统架构总览](images/memory_compression_architecture.svg)
+> ![内存压缩子系统架构总览](image/memory_compression_architecture.svg)
 
 ### 9.1 内存压缩概述与动机
 
@@ -22179,7 +22179,7 @@ recompress_slot(index, page, threshold, prio_range)
 
 > **数据结构关系图**：
 >
-> ![zram 核心数据结构关系](images/zram_data_structures.svg)
+> ![zram 核心数据结构关系](image/zram_data_structures.svg)
 
 **`struct zram`**（`drivers/block/zram/zram_drv.h:107`）— 顶层设备结构体：
 
@@ -23850,7 +23850,7 @@ A：因为 zsmalloc 按 size class 分配，每个 class 有固定的对象大�
 
 > **全景数据结构图**：
 >
-> ![SLUB Debug 对象内存布局](images/slub_debug_object_layout.svg)
+> ![SLUB Debug 对象内存布局](image/slub_debug_object_layout.svg)
 
 ### 10.1 SLUB 分配器基础回顾
 
@@ -25367,7 +25367,7 @@ A：每个 cache 创建时生成一个随机数 `s->random`。存储 freelist �
 
 ## 11. 内核 Coredump 机制原理与实践
 
-> ![Coredump 执行流程与 ELF Core 文件结构](images/coredump_architecture.svg)
+> ![Coredump 执行流程与 ELF Core 文件结构](image/coredump_architecture.svg)
 
 ### 11.1 Coredump 概述
 

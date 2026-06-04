@@ -552,11 +552,11 @@ struct slab {                       // 复用 struct page 的内存布局
 
 > **完整模型图**: 结合 `struct kmem_cache`、`struct kmem_cache_cpu`、`struct kmem_cache_node`、`struct slab` 与 `slab_alloc_node()` 分配路径，展示多核 CPU 上 SLUB 对象如何按 CPU 本地、Node 共享池、Buddy 后备页源逐级组织:
 >
-> ![SLUB 多核CPU完整对象组织与分配模型](images/slub_multi_cpu_full_model.svg)
+> ![SLUB 多核CPU完整对象组织与分配模型](image/slub_multi_cpu_full_model.svg)
 
 > **完整结构图**: 以 `kmalloc-256` (4KB slab / 16 objects) 为例，展示多 CPU 下的对象组织与分配顺序，参见:
 >
-> ![SLUB 256B 多CPU对象组织](images/slub_256b_multi_cpu_organization.svg)
+> ![SLUB 256B 多CPU对象组织](image/slub_256b_multi_cpu_organization.svg)
 
 ```
 struct kmem_cache ("kmalloc-64")
@@ -611,7 +611,7 @@ kmem_cache_alloc(kmalloc_caches[64], ...)
 
 > 以 `kmalloc-256` (4KB page / 16 objects / 4 CPU / 1 Node) 为例，各数据结构的实际内存开销:
 >
-> ![SLUB 256B 数据结构大小](images/slub_256b_data_structure_sizes.svg)
+> ![SLUB 256B 数据结构大小](image/slub_256b_data_structure_sizes.svg)
 
 ### 6.5 设计目的
 
@@ -690,7 +690,7 @@ struct page {                           // 64 字节 (ARM64)
 
 > **完整关联图**: 把启动期 `memblock`、运行期 `pg_data_t/zone/free_area/PCP`、`mem_section/vmemmap/struct page`、以及 `kmem_cache/kmem_cache_cpu/kmem_cache_node/struct slab` 放到一张图里，强调“页层”和“对象层”是如何汇合的:
 >
-> ![内存子系统数据结构关联全图](images/memory_subsystem_association_full.svg)
+> ![内存子系统数据结构关联全图](image/memory_subsystem_association_full.svg)
 
 阅读这张图时，可以按下面 4 层去看：
 

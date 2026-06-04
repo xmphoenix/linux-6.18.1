@@ -4,7 +4,7 @@
 >
 > 虚拟地址空间布局图:
 >
-> ![ARM64 虚拟地址空间布局](images/arm64_va_space_48bit.svg)
+> ![ARM64 虚拟地址空间布局](image/arm64_va_space_48bit.svg)
 
 ---
 
@@ -344,7 +344,7 @@ mark_rodata_ro()
 
 ## 8. 总览图
 
-完整的图形化布局请查看文档开头的 SVG 图，或直接打开 `arm64_va_space_48bit.svg`。
+完整的图形化布局请查看文档开头的 SVG 图，或直接打开 `image/arm64_va_space_48bit.svg`。
 
 以下为 ASCII 文本版简图：
 

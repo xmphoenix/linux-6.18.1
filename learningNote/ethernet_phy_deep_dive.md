@@ -358,7 +358,7 @@ static int aqr_gen2_get_rate_matching(struct phy_device *phydev,
 
 **完整软件架构 SVG 图**（包含所有层次、数据结构、驱动实例和源码索引）：
 
-![Linux Ethernet PHY 软件架构全景图](images/ethernet_phy_software_arch.svg)
+![Linux Ethernet PHY 软件架构全景图](image/ethernet_phy_software_arch.svg)
 
 ### 2.2 关键数据结构
 

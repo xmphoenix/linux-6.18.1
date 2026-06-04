@@ -13,7 +13,7 @@ zone_sizes_init();    // 第3步：划分内存区域 —— "不同用途的内
 
 这三个函数的本质是：**用三种不同维度的数据结构，对同一块物理内存进行层层抽象管理。**
 
-![内存管理架构图](images/memory_management_architecture.svg)
+![内存管理架构图](image/memory_management_architecture.svg)
 
 ---
 
@@ -1388,7 +1388,7 @@ bit 63 ... [node bits] ... [zone bits] ... [page flags] ... bit 0
 
 下图展示了 NUMA、Sparse、Zone 三层如何通过数据结构的指针和索引关系结合在一起管理物理内存：
 
-![NUMA / Sparse / Zone 三层数据结构关联图](images/numa_sparse_zone_relations.svg)
+![NUMA / Sparse / Zone 三层数据结构关联图](image/numa_sparse_zone_relations.svg)
 
 ---
 

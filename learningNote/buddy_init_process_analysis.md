@@ -1146,7 +1146,7 @@ PCP 水位: high ∈ [high_min, high_max]，运行时动态浮动；当 pcp->cou
 > 下图展示 `memblock_free_all()` + `setup_per_cpu_pageset()` 全部完成后，
 > buddy allocator 各核心数据结构的内容和相互关系。
 
-![Buddy 初始化完成全景图](buddy_init_overview.svg)
+![Buddy 初始化完成全景图](image/buddy_init_overview.svg)
 
 **图例说明：**
 

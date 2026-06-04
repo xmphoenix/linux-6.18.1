@@ -321,7 +321,7 @@ alloc_pages() 分配内存
 
 **三种回收方式动态触发示意图**：
 
-![页面回收触发机制动态演示](images/page_reclaim_watermark_diagram.svg)
+![页面回收触发机制动态演示](image/page_reclaim_watermark_diagram.svg)
 
 **动态过程解读**：
 

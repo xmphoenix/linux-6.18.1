@@ -753,7 +753,7 @@ static struct hlist_head trampoline_table[TRAMPOLINE_TABLE_SIZE];
 
 ## 3. eBPF 内核软件架构
 
-![eBPF 内核软件架构](images/ebpf_architecture.svg)
+![eBPF 内核软件架构](image/ebpf_architecture.svg)
 
 ### 3.1 整体架构分层
 
@@ -830,7 +830,7 @@ static struct hlist_head trampoline_table[TRAMPOLINE_TABLE_SIZE];
 
 ### 3.2 核心数据结构关系
 
-![eBPF 核心数据结构关系图](images/ebpf_data_structures.svg)
+![eBPF 核心数据结构关系图](image/ebpf_data_structures.svg)
 
 ```
 bpf_prog (程序对象)
@@ -1165,7 +1165,7 @@ CFLAGS_REMOVE_rqspinlock.o      = $(CC_FLAGS_FTRACE)
 
 ### 3.8 子系统初始化流程
 
-![eBPF 子系统初始化流程](images/ebpf_subsystem_init.svg)
+![eBPF 子系统初始化流程](image/ebpf_subsystem_init.svg)
 
 eBPF 子系统的初始化并非集中在一个函数中完成，而是通过 Linux 内核的 **initcall 机制** 分散在多个层级（level）中，按严格的启动顺序依次执行。理解这个流程对于调试 "BPF 功能不可用" 类问题至关重要。
 

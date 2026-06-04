@@ -733,7 +733,7 @@ graph TD
 
 ### 1.2 原理图：CPU 访问内存的硬件路径
 
-<img src="images/arm64_cpu_memory_access_path.svg" alt="CPU 访问内存的硬件路径" width="100%" />
+<img src="image/arm64_cpu_memory_access_path.svg" alt="CPU 访问内存的硬件路径" width="100%" />
 
 ### 1.3 ARM64 关键系统寄存器
 

@@ -70,7 +70,7 @@ Softlockup 检测器的软件架构分为四个层次：**用户空间接口层*
 
 <div align="center">
 
-![Softlockup Software Architecture](images/softlockup_architecture.svg)
+![Softlockup Software Architecture](image/softlockup_architecture.svg)
 
 </div>
 
@@ -92,7 +92,7 @@ Softlockup 检测器不依赖复杂的自定义结构体，而是通过 **Per-CP
 
 <div align="center">
 
-![Softlockup Data Structures](images/softlockup_data_structures.svg)
+![Softlockup Data Structures](image/softlockup_data_structures.svg)
 
 </div>
 

@@ -83,7 +83,7 @@ Hung task 检测器的核心使命：**发现长时间处于 `TASK_UNINTERRUPTIB
 
 ### 1.2 整体架构图
 
-![Hung Task 软件架构总览](images/hung_task_architecture.svg)
+![Hung Task 软件架构总览](image/hung_task_architecture.svg)
 
 ### 1.3 核心源文件
 
@@ -194,7 +194,7 @@ static unsigned int sysctl_hung_task_all_cpu_backtrace; /* 是否 dump 所有 CP
 
 ### 2.4 数据结构关系图
 
-![Hung Task 关键数据结构关系](images/hung_task_data_structures.svg)
+![Hung Task 关键数据结构关系](image/hung_task_data_structures.svg)
 
 <!--
 原始文本版保留供参考：

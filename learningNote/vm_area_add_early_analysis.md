@@ -204,7 +204,7 @@ vm_C 被完美地插入到 A 和 B 之间，链表保持地址有序。
 
 ## 5. 插入过程可视化
 
-![vm_area_add_early 链表插入过程](images/vm_area_add_early.svg)
+![vm_area_add_early 链表插入过程](image/vm_area_add_early.svg)
 
 ## 6. 重叠检测机制
 

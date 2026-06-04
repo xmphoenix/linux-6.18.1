@@ -172,7 +172,7 @@ Linux GPIO 子系统采用经典的 **分层解耦** 设计，将硬件操作、
 
 ### 架构全景图
 
-![GPIO 子系统软件架构](images/gpio_subsystem_architecture.svg)
+![GPIO 子系统软件架构](image/gpio_subsystem_architecture.svg)
 
 ### 文本架构图
 
@@ -551,7 +551,7 @@ enum gpio_lookup_flags {
 
 ### 3.8 数据结构关系图
 
-![GPIO 关键数据结构关系图](images/gpio_data_structures_relationship.svg)
+![GPIO 关键数据结构关系图](image/gpio_data_structures_relationship.svg)
 
 以下为文本版关系示意：
 

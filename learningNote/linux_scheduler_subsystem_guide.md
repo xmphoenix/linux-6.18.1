@@ -649,7 +649,7 @@ try_to_wake_up(p)
 >
 > 调度类优先级链与 Per-CPU rq 架构图
 
-![调度类优先级链与 Per-CPU rq 架构图](images/sched_class_chain.svg)
+![调度类优先级链与 Per-CPU rq 架构图](image/sched_class_chain.svg)
 
 ### 五大调度类的实现意义与应用场景总览
 
@@ -1677,7 +1677,7 @@ enum scx_exit_kind {
 
 > PELT 三维信号衰减机制与消费者管线
 
-![PELT 三维信号衰减机制与消费者管线](images/sched_pelt_signal_flow.svg)
+![PELT 三维信号衰减机制与消费者管线](image/sched_pelt_signal_flow.svg)
 
 ### 5.1 pelt.c — Per-Entity Load Tracking
 
@@ -2080,7 +2080,7 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, ...)
 
 > 调度域 4 层层级与负载均衡流程图
 
-![调度域 4 层层级与负载均衡流程图](images/sched_domain_hierarchy.svg)
+![调度域 4 层层级与负载均衡流程图](image/sched_domain_hierarchy.svg)
 
 ### 7.1 topology.c — 调度域层级构建
 
@@ -3917,7 +3917,7 @@ struct sched_entity {
 
 > 调度子系统整体架构图
 
-![调度子系统整体架构图](images/sched_architecture.svg)
+![调度子系统整体架构图](image/sched_architecture.svg)
 
 调度子系统的分层架构：
 
@@ -4483,7 +4483,7 @@ struct sched_group {
 
 > 数据结构关系总图
 
-![数据结构关系总图](images/sched_data_structures.svg)
+![数据结构关系总图](image/sched_data_structures.svg)
 
 ---
 
@@ -5261,7 +5261,7 @@ $$vruntime += \frac{delta\_exec \times W_0}{weight_i}$$
 
 > EEVDF 算法示意图
 
-![EEVDF 算法示意图](images/sched_eevdf_algorithm.svg)
+![EEVDF 算法示意图](image/sched_eevdf_algorithm.svg)
 
 **论文**: Ion Stoica & Hussein Abdel-Wahab, 1995 — "Earliest Eligible Virtual Deadline First"
 

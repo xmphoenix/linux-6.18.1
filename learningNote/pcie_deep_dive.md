@@ -679,7 +679,7 @@ x8 单向 = 31.5 × 8 ≈ 252 Gb/s ≈ 31.5 GB/s
 
 ## 5. Linux PCIe 子系统软件架构
 
-![Linux PCIe 子系统软件架构](images/pcie_subsystem_architecture.svg)
+![Linux PCIe 子系统软件架构](image/pcie_subsystem_architecture.svg)
 
 ### 5.1 总体分层架构
 
@@ -796,7 +796,7 @@ Linux PCIe 子系统最重要的结构可以按三条主线理解：
 
 下面这张图把这些结构放到同一张关系图里，重点展示“谁拥有谁、谁引用谁、谁负责回调”。
 
-![Linux PCIe 关键数据结构关系图](images/pcie_key_data_structures_full.svg)
+![Linux PCIe 关键数据结构关系图](image/pcie_key_data_structures_full.svg)
 
 #### 5.3.1 核心结构总览
 
@@ -1176,7 +1176,7 @@ drivers/pci/
 
 这一节把 Linux PCIe 软件框架里最关键的几条调用链压缩成“面试可复述、调试可定位”的形式。你不需要背所有细节，但最好知道每条链是从哪里进、在哪里做关键决定。
 
-![Linux PCIe 软件框架调用链与关键数据结构联合图](images/pcie_software_call_chains.svg)
+![Linux PCIe 软件框架调用链与关键数据结构联合图](image/pcie_software_call_chains.svg)
 
 #### 1. 枚举主链
 

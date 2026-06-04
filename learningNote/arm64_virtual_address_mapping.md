@@ -4,7 +4,7 @@
 >
 > Virtual address space layout diagram:
 >
-> ![ARM64 Virtual Address Space Layout](images/arm64_va_space_48bit.svg)
+> ![ARM64 Virtual Address Space Layout](image/arm64_va_space_48bit.svg)
 
 ---
 
@@ -342,7 +342,7 @@ mark_rodata_ro()
 
 ## 8. Summary Diagram
 
-See the full diagram above, or open the SVG file directly: `arm64_va_space_48bit.svg`
+See the full diagram above, or open the SVG file directly: `image/arm64_va_space_48bit.svg`
 
 ```
 0xFFFF_FFFF_FFFF_FFFF  +---------------------+
