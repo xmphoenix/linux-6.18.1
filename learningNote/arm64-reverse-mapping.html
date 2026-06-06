@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 Linux 6.18.1 反向映射 (Reverse Mapping) 全景分析</title>
+<style>
+  :root {
+    --bg: #faf9f5;
+    --bg-card: #ffffff;
+    --fg: #2d2d2d;
+    --fg-muted: #5c5c5c;
+    --accent: #b34b00;
+    --accent2: #cc6b2c;
+    --accent-light: #fdf0e6;
+    --border: #e2dcd0;
+    --border-light: #ede8dd;
+    --code-bg: #f5f2ea;
+    --code-border: #e5dfd3;
+    --hdr-bg: #f5f1e9;
+    --success: #3a7d44;
+    --success-bg: #edf6ef;
+    --warn: #b3801a;
+    --warn-bg: #fef9ed;
+    --danger: #c0392b;
+    --danger-bg: #fdf1f0;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Georgia', 'Times New Roman', 'Noto Serif SC', serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.8;
+    max-width: 1060px;
+    margin: auto;
+    padding: 2.5rem 2rem;
+  }
+  h1 { font-size: 2rem; color: var(--accent); text-align:center; margin-bottom:0.3rem; border-bottom:2px solid var(--border); padding-bottom:1.2rem; font-weight:700; letter-spacing:-0.02em; }
+  h2 { font-size: 1.45rem; color: var(--accent); margin:2.8rem 0 1.2rem; border-left:4px solid var(--accent2); padding-left:1rem; font-weight:700; }
+  h3 { font-size: 1.18rem; color: var(--accent2); margin:1.8rem 0 0.8rem; font-weight:600; }
+  h4 { font-size: 1.05rem; color: var(--fg-muted); margin:1.2rem 0 0.5rem; font-weight:600; }
+  p { margin:0.8rem 0; text-align:justify; }
+  code, pre { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'SF Mono', monospace; }
+  code { background: var(--code-bg); padding:2px 7px; border-radius:4px; font-size:0.88em; color: #9b3c0f; border:1px solid var(--code-border); }
+  pre { background: var(--code-bg); border:1px solid var(--code-border); border-radius:6px; padding:1.1rem 1.3rem; overflow-x:auto; font-size:0.83em; line-height:1.55; margin:1rem 0; }
+  pre code { background: transparent; padding: 0; color: #3d3d3d; border:none; }
+  .c { color: #8c8c8c; font-style:italic; }   /* comment */
+  .k { color: #b34700; font-weight:600; }       /* keyword */
+  .t { color: #7a3d8a; }                        /* type */
+  .f { color: #5c3d6e; }                        /* function */
+  .s { color: #3d6b34; }                        /* string */
+  .m { color: #8b6914; }                        /* macro */
+  .n { color: #9b590d; }                        /* number */
+  .cp { color: #8b6914; }                       /* preprocessor */
+
+  table { width:100%; border-collapse:collapse; margin:1.2rem 0; font-size:0.9em; background:var(--bg-card); border-radius:6px; overflow:hidden; box-shadow:var(--shadow); }
+  th, td { border:1px solid var(--border-light); padding:0.65rem 0.9rem; text-align:left; }
+  th { background: var(--hdr-bg); color: var(--accent); font-weight:600; font-size:0.9em; }
+  tr:nth-child(even) { background: #fcfaf6; }
+  tr:hover { background: var(--accent-light); }
+
+  .box { background: var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.3rem; margin:1rem 0; box-shadow:var(--shadow); }
+  .box.info { border-left: 4px solid var(--accent); background: var(--accent-light); }
+  .box.warn { border-left: 4px solid var(--warn); background: var(--warn-bg); }
+  .box.success { border-left: 4px solid var(--success); background: var(--success-bg); }
+  .box.danger { border-left: 4px solid var(--danger); background: var(--danger-bg); }
+  .tag { display:inline-block; padding:1px 9px; border-radius:12px; font-size:0.78em; margin:0 3px; font-weight:500; }
+  .tag.cfg { background: #fdf0e6; color: #b34b00; border:1px solid #f0c8a0; }
+  .tag.api { background: #f3eaf7; color: #7a3d8a; border:1px solid #d4bce3; }
+  .tag.src { background: #fef9ed; color: #b3801a; border:1px solid #e8d5a0; }
+
+  .diagram { background: var(--code-bg); border:1px solid var(--code-border); border-radius:8px; padding:1.5rem; margin:1.5rem 0; text-align:center; overflow-x:auto; }
+  .diagram pre { background:transparent; border:none; padding:0; }
+
+  details { margin:1rem 0; }
+  summary { cursor:pointer; color: var(--accent); font-weight:600; padding:0.5rem 0; }
+  summary:hover { color: var(--accent2); }
+
+  ul, ol { margin-left:1.6rem; margin-bottom:1rem; }
+  li { margin:0.35rem 0; }
+
+  .toc { background: var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:1.3rem 1.6rem; margin:1.8rem 0; box-shadow:var(--shadow); }
+  .toc a { color: var(--accent); text-decoration:none; font-weight:500; }
+  .toc a:hover { color: var(--accent2); text-decoration:underline; }
+  .toc ol { margin-left:1.2rem; }
+  .toc ol ol { margin-left:1rem; font-size:0.92em; }
+
+  .exp { background: var(--bg-card); border:1px solid var(--border-light); border-left:4px solid var(--accent2); border-radius:6px; padding:1.2rem 1.4rem; margin:1.2rem 0; box-shadow:var(--shadow); }
+  .exp h4 { color: var(--accent); margin-top:0; font-size:1.08rem; }
+
+  blockquote { border-left:3px solid var(--accent2); padding:0.6rem 1.2rem; margin:1rem 0; background:var(--accent-light); border-radius:0 6px 6px 0; }
+
+  hr { border:none; border-top:1px solid var(--border-light); margin:2rem 0; }
+
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    pre { font-size:0.75em; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🔍 ARM64 Linux 6.18.1 反向映射 (Reverse Mapping) 全景分析</h1>
+<p style="text-align:center;color:#5c5c5c;margin-bottom:2rem;">
+  Reverse Mapping (rmap): 从物理页框反向查找所有映射它的虚拟地址
+</p>
+
+<!-- ====== 目录 ====== -->
+<div class="toc">
+<strong>📑 目录</strong>
+<ol>
+  <li><a href="#ch1">反向映射的目标与设计动机</a>
+    <ol><li><a href="#ch1.1">为什么需要反向映射</a></li>
+        <li><a href="#ch1.2">多进程相同虚拟地址如何区分？</a></li>
+        <li><a href="#ch1.3">核心数据结构全景</a></li>
+        <li><a href="#ch1.4">匿名页 vs 文件页的映射路径</a></li></ol>
+  </li>
+  <li><a href="#ch2">内核配置项全景</a>
+    <ol><li><a href="#ch2.1">ARM64 架构级配置</a></li>
+        <li><a href="#ch2.2">内存管理核心配置</a></li>
+        <li><a href="#ch2.3">相关特性配置矩阵</a></li></ol>
+  </li>
+  <li><a href="#ch3">触发反向映射的逻辑路径</a>
+    <ol><li><a href="#ch3.1">页面回收 (vmscan)</a></li>
+        <li><a href="#ch3.2">页面迁移 (migrate)</a></li>
+        <li><a href="#ch3.3">内存失败处理 (memory-failure)</a></li>
+        <li><a href="#ch3.4">THP 拆分/压缩 (khugepaged)</a></li>
+        <li><a href="#ch3.5">truncate / 文件截断</a></li>
+        <li><a href="#ch3.6">folio_referenced 引用检测</a></li>
+        <li><a href="#ch3.7">完整调用链汇总</a></li></ol>
+  </li>
+  <li><a href="#ch4">实验设计与实践</a>
+    <ol><li><a href="#ch4.1">实验一：匿名页 swap-out 反向映射</a></li>
+        <li><a href="#ch4.2">实验二：文件映射页回收反向映射</a></li>
+        <li><a href="#ch4.3">实验三：fork 后的 COW 反向映射</a></li>
+        <li><a href="#ch4.4">实验四：THP 大页反向映射</a></li>
+        <li><a href="#ch4.5">实验五：KSM 合并页反向映射</a></li>
+        <li><a href="#ch4.6">实验六：内存硬件错误处理</a></li>
+        <li><a href="#ch4.7">实验七：页面迁移 (NUMA Balancing)</a></li></ol>
+  </li>
+</ol>
+</div>
+
+<!-- ====== 第1章: 目标与设计动机 ====== -->
+<h2 id="ch1">1. 反向映射的目标与设计动机</h2>
+
+<h3 id="ch1.1">1.1 为什么需要反向映射？</h3>
+
+<div class="box info">
+  <strong>核心问题：</strong>给定一个物理页框 (page frame)，如何找出所有映射了它的进程页表项 (PTE)？
+</div>
+
+<p>
+在 Linux 虚拟内存管理中，"正向映射"是进程通过页表将虚拟地址翻译为物理地址。而<b>反向映射 (Reverse Mapping, rmap)</b> 则是反方向：<b>从物理页框出发，找到所有映射了该页框的虚拟地址和对应页表项</b>。
+</p>
+
+<p>反向映射在以下场景中<b>不可或缺</b>：</p>
+
+<table>
+<tr><th>场景</th><th>需要的操作</th><th>为什么需要反向映射</th></tr>
+<tr>
+  <td>📄 <b>页面回收 (Page Reclaim)</b></td>
+  <td>换出匿名页 / 回写文件页</td>
+  <td>必须解除所有进程对该页的映射才能安全回收</td>
+</tr>
+<tr>
+  <td>📦 <b>页面迁移 (Page Migration)</b></td>
+  <td>NUMA 平衡 / 内存规整 / 热插拔</td>
+  <td>需修改所有映射到旧物理页的 PTE 指向新位置</td>
+</tr>
+<tr>
+  <td>💥 <b>内存错误处理</b></td>
+  <td>HWPoison 隔离损坏页面</td>
+  <td>向所有映射进程发送 SIGBUS，解除页表映射</td>
+</tr>
+<tr>
+  <td>🔀 <b>KSM 页面去重</b></td>
+  <td>合并相同内容的匿名页</td>
+  <td>需要找到所有映射同一物理页的 VMA 并写保护</td>
+</tr>
+<tr>
+  <td>⚡ <b>THP 大页管理</b></td>
+  <td>拆分/回收透明大页</td>
+  <td>大页可能被多个进程部分映射，需全部解除</td>
+</tr>
+<tr>
+  <td>📏 <b>文件截断 (truncate)</b></td>
+  <td>截断文件时无效化映射</td>
+  <td>需找到所有 mmap 了该文件页范围的进程</td>
+</tr>
+<tr>
+  <td>🔎 <b>引用检测</b></td>
+  <td>判断页面是否被访问过</td>
+  <td>遍历所有映射检查 PTE 的 Accessed/Dirty 位</td>
+</tr>
+</table>
+
+<blockquote style="border-left:3px solid var(--accent2);padding:0.6rem 1.2rem;margin:1rem 0;background:var(--accent-light);border-radius:0 6px 6px 0;">
+  <strong>设计哲学：</strong>反向映射是"先有物理页，再找虚拟地址"的能力，它使得内核可以在不遍历所有进程页表的情况下，精确地找到并修改某个物理页的所有映射。这是实现高效页面回收、迁移和内存管理的基石。
+</blockquote>
+
+<h3 id="ch1.2">1.2 多进程相同虚拟地址如何区分？</h3>
+
+<p>
+这是理解反向映射最关键的认知跃迁：<b>反向映射找到的不是"裸虚拟地址"，而是 <code>(VMA, 虚拟地址)</code> 二元组</b>——其中 VMA 隐式包含了进程身份。
+</p>
+
+<div class="diagram">
+<pre style="font-size:0.82em;line-height:1.4;">
+<strong>错误的直觉：</strong>
+  物理页 ──► 虚拟地址 0x7f000000
+                 ↑
+                 └── 这是进程A的还是进程B的？无法区分！
+
+<strong>实际的设计：</strong>
+                          ┌─────────────────────────────────┐
+  物理页 ──► anon_vma ──► │  anon_vma_chain 的 interval tree │
+                          │  (key = 虚拟地址, value = VMA)    │
+                          └────────┬───────────┬────────────┘
+                                   │           │
+                    ┌──────────────┘           └──────────────┐
+                    ▼                                         ▼
+    ┌───────────────────────────┐       ┌───────────────────────────┐
+    │ avc1 → VMA_A              │       │ avc2 → VMA_B              │
+    │  .vma → vm_area_struct_A  │       │  .vma → vm_area_struct_B  │
+    │  VMA_A.vm_mm → 进程A的mm  │       │  VMA_B.vm_mm → 进程B的mm  │
+    │  VMA_A.vm_start = 0x...   │       │  VMA_B.vm_start = 0x...   │
+    │  虚拟地址 = 0x7f000000    │       │  虚拟地址 = 0x7f000000    │
+    └───────────────────────────┘       └───────────────────────────┘
+              ↑                                       ↑
+         "0x7f000000                            "0x7f000000
+          属于进程A"                              属于进程B"
+</pre>
+</div>
+
+<p><b>关键数据结构链：</b></p>
+
+<table>
+<tr><th>层级</th><th>包含的信息</th><th>如何区分进程</th></tr>
+<tr>
+  <td><code>struct vm_area_struct</code> (VMA)</td>
+  <td><code>vm_mm</code> (指向进程), <code>vm_start/vm_end</code> (虚拟地址范围), <code>vm_file</code> (文件映射) 等</td>
+  <td><code>vma->vm_mm</code> 是进程的 <code>mm_struct</code> 指针，<b>天然区分进程</b></td>
+</tr>
+<tr>
+  <td><code>struct anon_vma_chain</code></td>
+  <td>包含指向 VMA 的指针，插入在 anon_vma 的 interval tree 中 (key = 虚拟地址偏移)</td>
+  <td>通过 <code>avc->vma->vm_mm</code> 获取进程身份</td>
+</tr>
+<tr>
+  <td><code>struct mm_struct</code></td>
+  <td>进程的地址空间描述符，包含 PGD 基地址、所有 VMA 等</td>
+  <td><b>一个 mm_struct = 一个进程地址空间</b></td>
+</tr>
+</table>
+
+<p>完整遍历流程 — 以匿名页 <code>try_to_unmap</code> 为例：</p>
+
+<div class="diagram">
+<pre style="font-size:0.8em;line-height:1.45;">
+<b>try_to_unmap(folio)</b>
+  │
+  └─► rmap_walk_anon(folio, &rwc)
+        │
+        │  <b>1. 通过 folio→mapping 找到 anon_vma</b>
+        │    folio→mapping = anon_vma | ANON_FLAG
+        │
+        │  <b>2. 遍历 anon_vma→rb_root (interval tree)</b>
+        │    anon_vma_interval_tree_foreach(avc, &anon_vma→rb_root, ...)
+        │    │
+        │    ├─► avc_1 → vma_A (属于进程A的mm)  → 虚拟地址 = 0x7f000000
+        │    │    │
+        │    │    └─► try_to_unmap_one(folio, vma_A, 0x7f000000)
+        │    │           │
+        │    │           └─► 通过 vma_A→vm_mm→pgd 找到进程A的页表
+        │    │               修改 PTE(0x7f000000) → swap entry
+        │    │
+        │    ├─► avc_2 → vma_B (属于进程B的mm)  → 虚拟地址 = 0x7f000000
+        │    │    │
+        │    │    └─► try_to_unmap_one(folio, vma_B, 0x7f000000)
+        │    │           │
+        │    │           └─► 通过 vma_B→vm_mm→pgd 找到进程B的页表
+        │    │               修改 PTE(0x7f000000) → swap entry
+        │    │
+        │    └─► avc_3 → vma_C (进程A fork出的子进程) → 虚拟地址 = 0x7f000000
+        │           │
+        │           └─► try_to_unmap_one(folio, vma_C, 0x7f000000)
+        │                  └─► 通过 <b>vma_C→vm_mm (不同于 vma_A→vm_mm!)</b> 找到子进程页表
+        │
+        └─► <b>三个调用分别操作三个不同进程的页表，虚拟地址相同但互不干扰</b>
+</pre>
+</div>
+
+<div class="box info">
+  <strong>核心要点：</strong><br>
+  ① 反向映射通过 <b>VMA</b> (而非裸虚拟地址) 来定位映射，VMA 天然携带进程身份 (<code>vm_mm</code>)<br>
+  ② 即使 100 个进程的同一虚拟地址映射同一物理页，反向映射也能通过 <b>100 个不同的 VMA 对象</b> 逐一区分<br>
+  ③ Interval tree 的 key 是 <b>虚拟地址偏移量 (pgoff)</b>，value 是 <b>anon_vma_chain (→ VMA)</b>，所以同地址不同进程的映射会作为不同节点存储在树中<br>
+  ④ 解除映射时，使用 <code>vma→vm_mm→pgd</code> 定位正确的进程页表进行 PTE 修改
+</div>
+
+<h4>🔑 深入理解："裸虚拟地址" vs "(VMA, 虚拟地址) 二元组"</h4>
+
+<p>这两个术语的区别是理解反向映射设计的关键认知跃迁，我们逐一拆解。</p>
+
+<h4>裸虚拟地址</h4>
+
+<p>就是一个<b>单纯的 64 位数字</b>，比如 <code>0x7f000000</code>。</p>
+
+<p>
+把它想象成<b>门牌号</b>：你知道"38号房间"，但不知道是哪栋楼的 38 号——整条街可能有十栋楼，每栋都有 38 号房间。裸虚拟地址就是"38号"这个数字本身，脱离了进程上下文它毫无意义。
+</p>
+
+<div class="diagram">
+<pre style="font-size:0.82em;line-height:1.4;">
+    裸虚拟地址 = 0x7f000000
+
+    进程A 的地址空间              进程B 的地址空间              进程C 的地址空间
+  ┌─────────────────────┐   ┌─────────────────────┐   ┌─────────────────────┐
+  │ 0x7f000000 → 物理页X │   │ 0x7f000000 → 物理页X │   │ 0x7f000000 → 物理页X │
+  │                     │   │                     │   │                     │
+  │ PGD 基址: 0xAAAA000 │   │ PGD 基址: 0xBBBB000 │   │ PGD 基址: 0xCCCC000 │
+  └─────────────────────┘   └─────────────────────┘   └─────────────────────┘
+          ↑                         ↑                         ↑
+          └── 仅仅 "0x7f000000" 这个数字，无法知道该改哪个 PGD 下的页表！
+</pre>
+</div>
+
+<h4>(VMA, 虚拟地址) 二元组</h4>
+
+<p>就是 <b>"(哪栋楼的38号房间, 38)"</b>——把门牌号和楼栋绑定在一起。</p>
+
+<table>
+<tr><th>概念</th><th>日常类比</th><th>内核中的 C 类型</th></tr>
+<tr><td>裸虚拟地址</td><td>房号 "38"</td><td><code>unsigned long address = 0x7f000000</code></td></tr>
+<tr><td>VMA (进程身份)</td><td>哪栋楼</td><td><code>struct vm_area_struct *vma</code></td></tr>
+<tr><td>二元组</td><td>楼栋 + 房号</td><td><code>(vma, address)</code> —— 两者绑定传递</td></tr>
+</table>
+
+<h4>为什么必须用二元组？—— 看内核代码</h4>
+
+<p><code>try_to_unmap_one</code> 的函数签名直接体现了这个设计：</p>
+
+<pre><code><span class="c">// mm/rmap.c:1865</span>
+<span class="k">static</span> <span class="t">bool</span> <span class="f">try_to_unmap_one</span>(<span class="t">struct</span> folio *folio,
+                             <span class="t">struct</span> vm_area_struct *vma,   <span class="c">// ← 哪栋楼（哪个进程的哪段映射）</span>
+                             <span class="t">unsigned long</span> address,         <span class="c">// ← 几号房（哪个虚拟地址）</span>
+                             <span class="t">void</span> *arg)</code></pre>
+
+<p>函数内部通过 VMA 获取进程的 mm_struct，再获取该进程的页表基址：</p>
+
+<pre><code><span class="c">// try_to_unmap_one 内部 (mm/rmap.c:1867)</span>
+<span class="t">struct</span> mm_struct *mm = vma->vm_mm;   <span class="c">// 从 VMA 拿到进程的 mm_struct</span>
+<span class="c">// 之后通过 mm->pgd 找到该进程的页表基地址</span>
+<span class="c">// page_vma_mapped_walk() 使用 mm->pgd 去遍历该进程的页表</span>
+
+<span class="c">// 伪代码：如果只有裸虚拟地址，根本无法定位 PTE</span>
+pte = <span class="f">find_pte</span>(address);           <span class="c">// ❌ 在谁的页表里找？不知道！</span>
+
+<span class="c">// 实际代码：必须通过 VMA 提供页表基址</span>
+mm   = vma->vm_mm;                  <span class="c">// 从 VMA 获取进程的 mm_struct</span>
+pgd  = mm->pgd;                     <span class="c">// 该进程的页表基地址（每个进程不同！）</span>
+pte  = <span class="f">find_pte_in</span>(pgd, address);   <span class="c">// ✅ 在指定进程的页表里找</span></code></pre>
+
+<h4>完整场景对比</h4>
+
+<div class="diagram">
+<pre style="font-size:0.8em;line-height:1.45;">
+<strong>场景：三个进程都用 mmap 分配了匿名内存，碰巧系统给了它们相同的虚拟地址</strong>
+
+进程A:  mmap → 0x7f000000 ──→ 物理页 X
+进程B:  mmap → 0x7f000000 ──→ 物理页 X  (同一个物理页！比如 fork 后还没 COW)
+进程C:  mmap → 0x7f000000 ──→ 物理页 X
+
+现在要回收物理页 X，反向映射遍历 interval tree：
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  anon_vma 的 interval tree 中存的是：                                  │
+│                                                                     │
+│  裸地址 0x7f000000 → 如果只存这个，三次查找返回一样的值                     │
+│  → 完全无法区分！❌                                                    │
+│                                                                     │
+│  (VMA_A, 0x7f000000) → 进程A的页表 → 修改进程A的 PTE ✅               │
+│  (VMA_B, 0x7f000000) → 进程B的页表 → 修改进程B的 PTE ✅               │
+│  (VMA_C, 0x7f000000) → 进程C的页表 → 修改进程C的 PTE ✅               │
+│                                                                     │
+│  三个不同的 VMA 对象 → 三个不同的 mm_struct →                           │
+│  三个不同的 PGD 基址 → 三个不同页表中的 PTE 被各自修改                    │
+└─────────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<div class="box info">
+  <strong>一句话总结：</strong><br>
+  <b>裸虚拟地址</b>只是一个数字；<b>二元组 (VMA, address)</b> 是"谁的地址空间 + 哪个地址"。<br>
+  VMA 通过 <code>vma→vm_mm</code> 告诉你页表在哪里，address 告诉你找到页表后在哪个偏移量修改 PTE——两者缺一不可。
+</div>
+
+<h4>🔑 深入理解："VMA 天然携带进程身份"到底是什么意思？</h4>
+
+<p>
+<b>"进程身份"很容易被误解为 PID，但它在反向映射语境中的含义完全不同——它指的是"地址空间"。</b>
+</p>
+
+<table>
+<tr><th>你可能以为的</th><th>实际上是什么</th></tr>
+<tr><td>PID = 5678</td><td>❌ 就一个数字，不能用来找页表</td></tr>
+<tr><td><code>task_struct</code> 指针</td><td>❌ 也不是，太臃肿，反向映射不需要调度信息</td></tr>
+<tr><td><b><code>mm_struct</code> 指针</b></td><td>✅ 这才是"身份"——指向进程的地址空间描述符</td></tr>
+</table>
+
+<p>看一眼内核代码：</p>
+
+<pre><code><span class="c">// include/linux/mm_types.h</span>
+<span class="k">struct</span> <span class="t">vm_area_struct</span> {
+    <span class="k">struct</span> <span class="t">mm_struct</span> *vm_mm;   <span class="c">// ← 这就是"进程身份"的全部</span>
+    <span class="t">unsigned long</span> vm_start;
+    <span class="t">unsigned long</span> vm_end;
+    <span class="c">// ...</span>
+};
+
+<span class="k">struct</span> <span class="t">mm_struct</span> {
+    <span class="t">pgd_t</span> *pgd;              <span class="c">// ← 页表根物理地址，这才是反向映射真正需要的</span>
+    <span class="c">// ...</span>
+};</code></pre>
+
+<p>
+反向映射的最终目的不是"知道这个地址属于 PID 几"，而是<b>找到并修改正确的页表项 (PTE)</b>。要做到这一点，只需要知道<b>页表的根在哪里 (PGD 基址)</b>。而 <code>vma→vm_mm→pgd</code> 恰好提供了这个信息——两个进程只要 <code>vm_mm</code> 不同，<code>pgd</code> 就一定不同。
+</p>
+
+<h4>举例 ①：没有 fork 的场景（最简单）</h4>
+
+<div class="diagram">
+<pre style="font-size:0.8em;line-height:1.45;">
+<strong>两个独立进程各自 mmap 了匿名内存，恰好分配到了相同的虚拟地址</strong>
+
+<strong>进程A (PID=1001)</strong>                          <strong>进程B (PID=1002)</strong>
+┌──────────────────────────────┐    ┌──────────────────────────────┐
+│ mm_struct_A (地址 0xFFFF...A)│    │ mm_struct_B (地址 0xFFFF...B)│
+│  .pgd = 0xAAAA000            │    │  .pgd = 0xBBBB000            │ ← 关键！不同
+│                              │    │                              │
+│ VMA_A:                       │    │ VMA_B:                       │
+│  .vm_mm = → mm_struct_A     │    │  .vm_mm = → mm_struct_B     │
+│  .vm_start = 0x7f000000      │    │  .vm_start = 0x7f000000      │
+│  .vm_end   = 0x7f001000      │    │  .vm_end   = 0x7f001000      │
+└──────────────┬───────────────┘    └──────────────┬───────────────┘
+               │                                   │
+               │    都映射到同一个物理页 X             │
+               └───────────────┬───────────────────┘
+                               ▼
+                     ┌─────────────────┐
+                     │   物理页 X       │
+                     │   folio→mapping  │
+                     │   = anon_vma     │
+                     └────────┬────────┘
+                              │
+                     anon_vma 的 interval tree:
+                     ┌──────────────────────────┐
+                     │ avc1 → VMA_A (vm_mm_A)   │ ← 不同对象！
+                     │ avc2 → VMA_B (vm_mm_B)   │ ← 不同对象！
+                     └──────────────────────────┘
+
+反向映射遍历时：
+  avc1 → VMA_A → vm_mm_A → pgd=0xAAAA000 → 在进程A的页表中找 PTE(0x7f000000) ✅
+  avc2 → VMA_B → vm_mm_B → pgd=0xBBBB000 → 在进程B的页表中找 PTE(0x7f000000) ✅
+
+虽然虚拟地址相同 (都是 0x7f000000)，但因为 pgd 不同，PTE 在物理内存中的位置完全不同！
+</pre>
+</div>
+
+<h4>举例 ②：fork 之后的场景（更有趣）</h4>
+
+<div class="diagram">
+<pre style="font-size:0.8em;line-height:1.45;">
+<strong>进程A mmap 了一段匿名内存，然后 fork 出子进程B</strong>
+
+fork 之前:
+  进程A 的 VMA_A → anon_vma_root → interval tree 中只有一个 avc (指向 VMA_A)
+
+fork 之后 (anon_vma_fork 被调用):
+  进程A (父)                     进程B (子，fork 出来的)
+  ┌────────────────────┐        ┌────────────────────┐
+  │ mm_struct_A        │        │ mm_struct_B  ← 新的！│
+  │  .pgd = 0xAAAA000  │        │  .pgd = 0xBBBB000  │ ← 子进程有自己独立的 PGD！
+  │                    │        │                    │
+  │ VMA_A:             │        │ VMA_B:             │
+  │  .vm_mm = mm_A    │        │  .vm_mm = mm_B    │ ← 不同的 mm_struct
+  │  .anon_vma = root  │        │  .anon_vma = root  │ ← 共享同一个 anon_vma
+  └────────┬───────────┘        └────────┬───────────┘
+           │                             │
+           │    VMA_A 和 VMA_B 都挂在同一个 anon_vma 的 interval tree 里
+           │    物理页仍然是同一个（fork 后还没 COW）
+           │                             │
+           └──────────┬──────────────────┘
+                      ▼
+            ┌─────────────────┐
+            │   物理页 X       │
+            │   (映射计数 = 2) │
+            └────────┬────────┘
+                     │
+            anon_vma_root 的 interval tree:
+            ┌──────────────────────────────┐
+            │ avc1 → VMA_A → vm_mm = mm_A │
+            │ avc2 → VMA_B → vm_mm = mm_B │ ← 不同！
+            └──────────────────────────────┘
+
+反向映射回收物理页 X 时：
+  avc1 → VMA_A → mm_A → pgd=0xAAAA000 → 修改父进程 PTE(0x7f000000) ✅
+  avc2 → VMA_B → mm_B → pgd=0xBBBB000 → 修改子进程 PTE(0x7f000000) ✅
+
+两个 VMA 的虚拟地址范围完全相同（都是 fork 继承的），
+anon_vma 也是同一个，但因为 vm_mm 不同，pgd 不同 → 修改到不同的物理页表！
+</pre>
+</div>
+
+<div class="box info">
+  <strong>核心要点：</strong><br>
+  ① <b>"进程身份" = mm_struct，不是 PID。</b>反向映射不关心 PID 是多少，只关心页表根在哪。<br>
+  ② <b>fork 后父子进程共享 anon_vma 但拥有独立的 mm_struct。</b>所以同一物理页会被两个 avc 节点指向（分别指向父和子的 VMA），各自携带不同的 mm_struct → 不同的 pgd → 不同页表。<br>
+  ③ <b>这就是为什么 interval tree 中必须存 VMA 指针而非裸地址：</b>如果只存虚拟地址 0x7f000000，fork 之后到底去改父进程还是子进程的 PTE？无法决定。存 VMA 就天然解决了这个问题。
+</div>
+
+<h3 id="ch1.3">1.3 核心数据结构全景</h3>
+
+<div class="diagram">
+<pre style="font-size:0.82em;line-height:1.4;">
+┌──────────────────────────────────────────────────────────────────────┐
+│                    <strong>反向映射核心数据结构关系图</strong>                          │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  struct folio (物理页描述符)                                           │
+│  ┌──────────────────────────────┐                                    │
+│  │  ->mapping     ──────────────┼───► <strong>匿名页:</strong> anon_vma + ANON_FLAG  │
+│  │  ->index       (页内偏移)     │    <strong>文件页:</strong> address_space         │
+│  │  _mapcount     (映射计数)     │    <strong>KSM页:</strong>  ksm_stable_node     │
+│  │  _refcount     (引用计数)     │                                    │
+│  └──────────────────────────────┘                                    │
+│           │                                                          │
+│           ▼                                                          │
+│  ╔══════════════════════════════════════════════════════════════════╗ │
+│  ║                     <strong>匿名页 (Anonymous Page)</strong>                    ║ │
+│  ╠══════════════════════════════════════════════════════════════════╣ │
+│  ║                                                                  ║ │
+│  ║  anon_vma (root)                                                ║ │
+│  ║  ┌─────────────┐     rb_root (interval tree)                    ║ │
+│  ║  │ root ───────┼───► anon_vma_chain ──► anon_vma_chain ──►...  ║ │
+│  ║  │ rwsem       │         │                    │                 ║ │
+│  ║  │ refcount    │         ▼                    ▼                 ║ │
+│  ║  │ num_children│    vm_area_struct      vm_area_struct          ║ │
+│  ║  │ rb_root     │    (进程A的VMA)        (进程B的VMA)             ║ │
+│  ║  └──────┬──────┘         │                    │                 ║ │
+│  ║         │ parent         │ pgd -> pud -> pmd -> pte            ║ │
+│  ║         ▼                │                    │                 ║ │
+│  ║    anon_vma (子)         └──► 物理页 ◄────────┘                 ║ │
+│  ║   (fork产生的子进程)                                             ║ │
+│  ╚══════════════════════════════════════════════════════════════════╝ │
+│                                                                      │
+│  ╔══════════════════════════════════════════════════════════════════╗ │
+│  ║                     <strong>文件页 (File-backed Page)</strong>                  ║ │
+│  ╠══════════════════════════════════════════════════════════════════╣ │
+│  ║                                                                  ║ │
+│  ║  address_space (inode->i_mapping)                               ║ │
+│  ║  ┌──────────────────┐                                           ║ │
+│  ║  │ i_mmap (interval)│ ──► vm_area_struct ──► vm_area_struct    ║ │
+│  ║  │ i_mmap_rwsem     │        (进程A)          (进程B)           ║ │
+│  ║  │ i_pages (xarray) │          │                  │             ║ │
+│  ║  └──────────────────┘      page->index     page->index         ║ │
+│  ║                             == file offset   == file offset     ║ │
+│  ╚══════════════════════════════════════════════════════════════════╝ │
+│                                                                      │
+│  ╔══════════════════════════════════════════════════════════════════╗ │
+│  ║                     <strong>KSM 页 (Kernel Same-page Merging)</strong>         ║ │
+│  ╠══════════════════════════════════════════════════════════════════╣ │
+│  ║                                                                  ║ │
+│  ║  folio->mapping ──► ksm_stable_node (stable tree node)          ║ │
+│  ║                      └── hlist (rmap_list)                      ║ │
+│  ║                           └── rmap_item ──► rmap_item ──►...   ║ │
+│  ║                                 │               │               ║ │
+│  ║                            vma+address      vma+address         ║ │
+│  ╚══════════════════════════════════════════════════════════════════╝ │
+└──────────────────────────────────────────────────────────────────────┘
+</pre>
+</div>
+
+<h4>关键数据结构说明</h4>
+
+<table>
+<tr><th>结构体</th><th>定义文件</th><th>作用</th></tr>
+<tr>
+  <td><code>struct anon_vma</code></td>
+  <td><code>include/linux/rmap.h</code></td>
+  <td>匿名页反向映射的根结构。通过 interval tree (<code>rb_root</code>) 组织所有关联的 VMA</td>
+</tr>
+<tr>
+  <td><code>struct anon_vma_chain</code></td>
+  <td><code>include/linux/rmap.h</code></td>
+  <td>双向链接：同一个 VMA 的 anon_vma 链表 (<code>same_vma</code>) + 同一个 anon_vma 的 VMA interval tree (<code>rb</code>)</td>
+</tr>
+<tr>
+  <td><code>struct rmap_walk_control</code></td>
+  <td><code>mm/rmap.c</code> (内部)</td>
+  <td>控制反向映射遍历的回调：<code>rmap_one</code>、<code>done</code>、<code>anon_lock</code>、<code>invalid_vma</code></td>
+</tr>
+<tr>
+  <td><code>struct page_vma_mapped_walk</code></td>
+  <td><code>mm/page_vma_mapped.c</code></td>
+  <td>遍历一个 VMA 中给定 folio 的所有映射 PTE，处理 THP/大页/迁移条目</td>
+</tr>
+<tr>
+  <td><code>struct address_space</code></td>
+  <td><code>include/linux/fs.h</code></td>
+  <td>文件页的映射：<code>i_mmap</code> (interval tree of VMAs), <code>i_pages</code> (xarray of folios)</td>
+</tr>
+</table>
+
+<h3 id="ch1.4">1.4 匿名页 vs 文件页的映射路径</h3>
+
+<div class="diagram">
+<pre style="font-size:0.82em;line-height:1.4;">
+                     <strong>页面类型判断与遍历路径</strong>
+
+                      rmap_walk(folio, &rwc)
+                            │
+              ┌─────────────┼─────────────┐
+              ▼             ▼             ▼
+      folio_test_ksm()  anon  folio_test_anon()  file-backed
+              │             │             │
+              ▼             ▼             ▼
+      rmap_walk_ksm()  rmap_walk_anon()  rmap_walk_file()
+              │             │             │
+    ┌─────────┴──┐    ┌────┴────┐    ┌───┴────┐
+    │ ksm node   │    │ anon_vma│    │mapping │
+    │ hlist遍历  │    │ interval│    │i_mmap  │
+    │ rmap_item  │    │ tree遍历│    │interval│
+    └────────────┘    └─────────┘    │tree遍历│
+                                     └────────┘
+                            │
+                    ┌───────┴───────┐
+                    ▼               ▼
+              for each VMA    for each VMA
+                    │               │
+                    ▼               ▼
+         page_vma_mapped_walk()  (逐 PTE 查找)
+                    │
+                    ▼
+         调用 rwc->rmap_one() 回调
+         (如 try_to_unmap_one / folio_referenced_one / try_to_migrate_one)
+</pre>
+</div>
+
+<!-- ====== 第2章: 内核配置项 ====== -->
+<h2 id="ch2">2. 内核配置项全景</h2>
+
+<h3 id="ch2.1">2.1 ARM64 架构级配置</h3>
+
+<p>ARM64 架构通过 <code>arch/arm64/Kconfig</code> 反向选择 (select) 了大量与反向映射相关的通用内核特性：</p>
+
+<table>
+<tr><th>配置项</th><th>ARM64 Kconfig 行</th><th>对反向映射的影响</th></tr>
+<tr>
+  <td><code>MMU</code></td>
+  <td><code>config MMU (def_bool y)</code></td>
+  <td><span class="tag cfg">基础</span> 反向映射完全依赖 MMU 页表，ARM64 强制开启</td>
+</tr>
+<tr>
+  <td><code>ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH</code></td>
+  <td>第 114 行</td>
+  <td><span class="tag cfg">性能</span> 批量延迟 TLB 刷新，减少 unmap 时的 IPI 开销</td>
+</tr>
+<tr>
+  <td><code>HAVE_ARCH_TRANSPARENT_HUGEPAGE</code></td>
+  <td>第 199 行</td>
+  <td><span class="tag cfg">THP</span> 支持 PMD 级别大页的 rmap，涉及 PMD split</td>
+</tr>
+<tr>
+  <td><code>ARCH_WANTS_THP_SWAP</code></td>
+  <td>第 123 行 (4K 页时)</td>
+  <td><span class="tag cfg">THP</span> 允许 THP 整体 swap-out，需批量反向映射</td>
+</tr>
+<tr>
+  <td><code>ARCH_ENABLE_THP_MIGRATION</code></td>
+  <td>第 21 行</td>
+  <td><span class="tag cfg">迁移</span> THP 页面迁移时的反向映射支持</td>
+</tr>
+<tr>
+  <td><code>ARCH_ENABLE_HUGEPAGE_MIGRATION</code></td>
+  <td>第 17 行</td>
+  <td><span class="tag cfg">迁移</span> Hugetlb 大页迁移的反向映射</td>
+</tr>
+<tr>
+  <td><code>ARCH_WANT_HUGE_PMD_SHARE</code></td>
+  <td>第 119 行</td>
+  <td><span class="tag cfg">共享</span> Hugetlb PMD 共享的反向映射处理 (需额外锁)</td>
+</tr>
+<tr>
+  <td><code>ARCH_SUPPORTS_MEMORY_FAILURE</code></td>
+  <td>第 99 行</td>
+  <td><span class="tag cfg">容错</span> 硬件内存错误的 rmap 隔离支持</td>
+</tr>
+<tr>
+  <td><code>ARCH_SUPPORTS_NUMA_BALANCING</code></td>
+  <td>第 105 行</td>
+  <td><span class="tag cfg">NUMA</span> NUMA 页面迁移的 rmap 遍历</td>
+</tr>
+</table>
+
+<h3 id="ch2.2">2.2 内存管理核心配置</h3>
+
+<table>
+<tr><th>配置项</th><th>Kconfig 位置</th><th>描述</th></tr>
+<tr>
+  <td><code>SWAP</code></td>
+  <td><code>mm/Kconfig</code></td>
+  <td><span class="tag cfg">必须</span> 匿名页换出的前提。关闭后匿名页反向映射仍有效，但不会触发 swap-out 路径</td>
+</tr>
+<tr>
+  <td><code>TRANSPARENT_HUGEPAGE</code></td>
+  <td><code>mm/Kconfig</code></td>
+  <td>THP 的 PMD 级别反向映射，需要 split_huge_pmd 等功能</td>
+</tr>
+<tr>
+  <td><code>HUGETLBFS</code></td>
+  <td><code>fs/Kconfig</code></td>
+  <td>Hugetlb 的反向映射使用独立 API (<code>hugetlb_add_anon_rmap</code> 等)</td>
+</tr>
+<tr>
+  <td><code>KSM</code></td>
+  <td><code>mm/Kconfig</code></td>
+  <td>KSM 有独立的反向映射数据结构 (<code>rmap_item</code> → <code>ksm_stable_node</code>)</td>
+</tr>
+<tr>
+  <td><code>MIGRATION</code></td>
+  <td><code>mm/Kconfig</code></td>
+  <td>页面迁移需要反向映射来更新所有 PTE</td>
+</tr>
+<tr>
+  <td><code>MEMORY_FAILURE</code></td>
+  <td><code>mm/Kconfig</code></td>
+  <td>硬件错误时需要反向映射来隔离和信号通知</td>
+</tr>
+<tr>
+  <td><code>IDLE_PAGE_TRACKING</code></td>
+  <td><code>mm/Kconfig</code></td>
+  <td>通过反向映射检测空闲页面 (使用 <code>folio_referenced</code>)</td>
+</tr>
+<tr>
+  <td><code>MM_ID</code></td>
+  <td><code>mm/Kconfig</code></td>
+  <td>mm_id 功能，每个 folio 记录最多 2 个 mm_id 用于加速 rmap 查找</td>
+</tr>
+<tr>
+  <td><code>ZSWAP</code></td>
+  <td><code>mm/Kconfig</code></td>
+  <td>压缩交换，swap-out 时仍经过反向映射路径</td>
+</tr>
+</table>
+
+<h3 id="ch2.3">2.3 相关特性配置矩阵</h3>
+
+<div class="box">
+<pre><code><span class="c"># ARM64 推荐的反向映射相关 .config 最小集合</span>
+<span class="k">CONFIG_MMU</span>=y                    <span class="c"># 必须 (ARM64 强制)</span>
+<span class="k">CONFIG_SWAP</span>=y                   <span class="c"># 匿名页换出</span>
+<span class="k">CONFIG_TRANSPARENT_HUGEPAGE</span>=y    <span class="c"># THP 大页 rmap</span>
+<span class="k">CONFIG_HUGETLBFS</span>=y              <span class="c"># Hugetlb rmap</span>
+<span class="k">CONFIG_KSM</span>=y                    <span class="c"># KSM 页面合并 rmap</span>
+<span class="k">CONFIG_MIGRATION</span>=y              <span class="c"># 页面迁移</span>
+<span class="k">CONFIG_MEMORY_FAILURE</span>=y         <span class="c"># 硬件错误处理</span>
+<span class="k">CONFIG_NUMA_BALANCING</span>=y         <span class="c"># NUMA 自动迁移</span>
+
+<span class="c"># ARM64 特有 (自动选中):</span>
+<span class="k">CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH</span>=y
+<span class="k">CONFIG_HAVE_ARCH_TRANSPARENT_HUGEPAGE</span>=y
+<span class="k">CONFIG_ARCH_WANTS_THP_SWAP</span>=y    <span class="c"># 4K 页时</span>
+<span class="k">CONFIG_ARCH_ENABLE_THP_MIGRATION</span>=y
+<span class="k">CONFIG_ARCH_WANT_HUGE_PMD_SHARE</span>=y
+</code></pre>
+</div>
+
+<!-- ====== 第3章: 触发反向映射的逻辑 ====== -->
+<h2 id="ch3">3. 触发反向映射的逻辑路径</h2>
+
+<h3 id="ch3.1">3.1 页面回收 — vmscan (最核心路径)</h3>
+
+<div class="diagram">
+<pre style="font-size:0.8em;line-height:1.4;">
+<strong>调用链：页面回收 (kswapd / direct reclaim)</strong>
+
+shrink_folio_list()                          <span class="c">// mm/vmscan.c</span>
+  │
+  ├─ folio_mapped(folio)?
+  │   └─ YES ─► <strong>try_to_unmap(folio, flags)</strong>    <span class="c">// mm/rmap.c:2272</span>
+  │                │
+  │                ├─ rmap_walk(folio, &rwc)       <span class="c">// 遍历所有映射</span>
+  │                │     │
+  │                │     ├─ rmap_walk_anon() ─► anon_vma interval tree
+  │                │     │       └─ 对每个 VMA 调用 try_to_unmap_one()
+  │                │     ├─ rmap_walk_file() ─► mapping->i_mmap interval tree
+  │                │     │       └─ 对每个 VMA 调用 try_to_unmap_one()
+  │                │     └─ rmap_walk_ksm()  ─► ksm stable tree
+  │                │
+  │                └─ try_to_unmap_one()           <span class="c">// mm/rmap.c:1865</span>
+  │                      │
+  │                      ├─ page_vma_mapped_walk() <span class="c">// 逐 PTE 查找</span>
+  │                      ├─ 对于匿名页: 写入 swap entry 到 PTE
+  │                      ├─ 对于文件页: 清除 PTE (page_mkclean)
+  │                      ├─ 对于 THP: 可能需要 split_huge_pmd
+  │                      ├─ 对于 Hugetlb: huge_pmd_unshare 检查
+  │                      └─ TLB flush (可能批量延迟)
+  │
+  ├─ folio_maybe_dma_pinned(folio)?
+  │   └─ YES ─► 跳过 (被 pin 住不能回收)
+  │
+  └─ folio_test_dirty(folio)?
+      └─ YES ─► 回写 (文件页) 或 swap-out (匿名页，已在 try_to_unmap 中处理)
+</pre>
+</div>
+
+<h4>vmscan 调用 try_to_unmap 的代码片段</h4>
+<pre><code><span class="c">// mm/vmscan.c:1390 附近 (shrink_folio_list 函数中)</span>
+<span class="k">if</span> (folio_mapped(folio)) {
+    <span class="t">enum</span> ttu_flags flags = TTU_BATCH_FLUSH;
+    <span class="t">bool</span> was_swapbacked = folio_test_swapbacked(folio);
+
+    <span class="k">if</span> (folio_test_pmd_mappable(folio))
+        flags |= TTU_SPLIT_HUGE_PMD;
+    <span class="k">if</span> (folio_test_large(folio))
+        flags |= TTU_SYNC;
+
+    <span class="f">try_to_unmap</span>(folio, flags);    <span class="c">// ★ 反向映射入口</span>
+    <span class="k">if</span> (folio_mapped(folio)) {
+        stat->nr_unmap_fail += nr_pages;
+        <span class="k">goto</span> activate_locked;         <span class="c">// 仍有映射，无法回收</span>
+    }
+}
+</code></pre>
+
+<h3 id="ch3.2">3.2 页面迁移 — migrate</h3>
+
+<div class="box info">
+  <strong>触发场景：</strong>NUMA 自动平衡 (<code>CONFIG_NUMA_BALANCING</code>)、内存规整 (<code>compaction</code>)、内存热插拔 (<code>memory hotplug</code>)、手动迁移 (<code>migrate_pages</code> 系统调用)。
+</div>
+
+<pre><code><span class="c">// mm/migrate.c: migrate_pages() 内部</span>
+<span class="f">try_to_migrate</span>(folio, TTU_BATCH_FLUSH);   <span class="c">// 与 try_to_unmap 类似</span>
+  └─ rmap_walk(folio, &rwc)
+       └─ <span class="f">try_to_migrate_one</span>()           <span class="c">// mm/rmap.c (类似 try_to_unmap_one)</span>
+            └─ 将 PTE 替换为 migration entry (swap 类型的特殊条目)
+            └─ 迁移完成后，migration entry 替换为新页的 PTE
+</code></pre>
+
+<h3 id="ch3.3">3.3 内存失败处理 — memory-failure</h3>
+
+<pre><code><span class="c">// mm/memory-failure.c: hwpoison_user_mappings()</span>
+<span class="k">if</span> (!folio_test_hugetlb(folio))
+    <span class="f">try_to_unmap</span>(folio, ttu | TTU_RMAP_LOCKED);  <span class="c">// 普通页</span>
+<span class="k">else</span>
+    <span class="f">try_to_unmap</span>(folio, ttu);                   <span class="c">// Hugetlb 页</span>
+  └─ try_to_unmap_one() 中使用 TTU_HWPOISON 标志
+       └─ 将 PTE 替换为 hwpoison swap entry
+       └─ 向映射进程发送 SIGBUS
+</code></pre>
+
+<h3 id="ch3.4">3.4 THP 拆分/压缩 — khugepaged</h3>
+
+<pre><code><span class="c">// mm/khugepaged.c:2020 附近</span>
+<span class="f">try_to_unmap</span>(folio, TTU_IGNORE_MLOCK | ...);   <span class="c">// 拆分前先解除映射</span>
+
+<span class="c">// mm/huge_memory.c:3132 附近 (THP split)</span>
+<span class="f">try_to_unmap</span>(folio, ttu_flags | TTU_IGNORE_MLOCK);
+</code></pre>
+
+<h3 id="ch3.5">3.5 文件截断 — truncate</h3>
+
+<pre><code><span class="c">// mm/truncate.c:199 附近 (truncate_cleanup_folio)</span>
+<span class="f">try_to_unmap</span>(folio, ttu_flags);   <span class="c">// 强制解除所有文件映射</span>
+</code></pre>
+
+<h3 id="ch3.6">3.6 folio_referenced — 页面引用检测</h3>
+
+<div class="box warn">
+  <strong>用途：</strong>这是 <code>page reclaim</code> 的辅助决策函数，在回收前判断页面是否仍被活跃使用。
+</div>
+
+<pre><code><span class="c">// mm/rmap.c:968</span>
+<span class="t">int</span> <span class="f">folio_referenced</span>(<span class="t">struct</span> folio *folio, <span class="t">int</span> is_locked,
+                     <span class="t">struct</span> mem_cgroup *memcg, vm_flags_t *vm_flags)
+{
+    <span class="c">// 遍历所有映射，检查每个 PTE 的 Accessed 位</span>
+    <span class="c">// 返回引用计数 (有多少个映射访问过该页)</span>
+    <span class="f">rmap_walk</span>(folio, &rwc);
+      └─ <span class="f">folio_referenced_one</span>()        <span class="c">// 对每个 PTE 检查并清除 Accessed 位</span>
+}
+
+<span class="c">// 调用场景：</span>
+<span class="c">// 1. shrink_active_list() — 活跃链表收缩 (mm/vmscan.c:2178)</span>
+<span class="c">// 2. shrink_folio_list() — 非活跃链表回收前的引用检查 (mm/vmscan.c:912)</span>
+</code></pre>
+
+<h3 id="ch3.7">3.7 完整调用链汇总</h3>
+
+<table>
+<tr><th>触发源</th><th>调用入口</th><th>核心 rmap 函数</th><th>源文件</th></tr>
+<tr>
+  <td>📄 页面回收</td>
+  <td><code>shrink_folio_list()</code></td>
+  <td><code>try_to_unmap()</code> → <code>try_to_unmap_one()</code></td>
+  <td><code>mm/vmscan.c</code></td>
+</tr>
+<tr>
+  <td>📊 活跃链表收缩</td>
+  <td><code>shrink_active_list()</code></td>
+  <td><code>folio_referenced()</code> → <code>folio_referenced_one()</code></td>
+  <td><code>mm/vmscan.c</code></td>
+</tr>
+<tr>
+  <td>📦 页面迁移</td>
+  <td><code>migrate_pages()</code></td>
+  <td><code>try_to_migrate()</code> → <code>try_to_migrate_one()</code></td>
+  <td><code>mm/migrate.c</code></td>
+</tr>
+<tr>
+  <td>💥 内存错误</td>
+  <td><code>hwpoison_user_mappings()</code></td>
+  <td><code>try_to_unmap()</code> (TTU_HWPOISON)</td>
+  <td><code>mm/memory-failure.c</code></td>
+</tr>
+<tr>
+  <td>⚡ THP 拆分</td>
+  <td><code>split_huge_page_to_list_to_order()</code></td>
+  <td><code>try_to_unmap()</code></td>
+  <td><code>mm/huge_memory.c</code></td>
+</tr>
+<tr>
+  <td>🗜️ THP 压缩</td>
+  <td><code>collapse_file() / collapse_huge_page()</code></td>
+  <td><code>try_to_unmap()</code></td>
+  <td><code>mm/khugepaged.c</code></td>
+</tr>
+<tr>
+  <td>📏 文件截断</td>
+  <td><code>truncate_cleanup_folio()</code></td>
+  <td><code>try_to_unmap()</code></td>
+  <td><code>mm/truncate.c</code></td>
+</tr>
+<tr>
+  <td>🧹 页面清理</td>
+  <td><code>folio_mkclean()</code></td>
+  <td><code>page_mkclean_one()</code></td>
+  <td><code>mm/rmap.c</code></td>
+</tr>
+<tr>
+  <td>🔍 空闲页跟踪</td>
+  <td><code>page_idle_clear_pte_refs()</code></td>
+  <td><code>folio_referenced()</code></td>
+  <td><code>mm/page_idle.c</code></td>
+</tr>
+</table>
+
+<!-- ====== 第4章: 实验 ====== -->
+<h2 id="ch4">4. 实验设计与实践</h2>
+
+<p>以下实验均基于 ARM64 Linux 6.18.1 环境，使用 ftrace/tracepoint 观察反向映射的行为。</p>
+
+<div class="box">
+<strong>📋 前置准备：</strong>所有实验需要以下内核配置开启：
+<pre><code><span class="c"># 编译验证当前内核的 rmap 相关配置</span>
+grep -E <span class="s">'CONFIG_MMU|CONFIG_SWAP|CONFIG_KSM|CONFIG_MIGRATION|CONFIG_MEMORY_FAILURE|CONFIG_TRANSPARENT_HUGEPAGE|CONFIG_HUGETLBFS|CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH'</span> /boot/config-$(uname -r)
+
+<span class="c"># 挂载 tracefs</span>
+mount -t tracefs none /sys/kernel/tracing
+</code></pre>
+</div>
+
+<!-- 实验一 -->
+<div class="exp" id="ch4.1">
+<h4>🧪 实验一：匿名页 swap-out 反向映射</h4>
+<p><strong>目标：</strong>观察匿名页被换出时 <code>try_to_unmap</code> 的调用过程。</p>
+
+<strong>场景描述：</strong>
+<p>一个匿名页被多个进程通过 <code>fork()</code> 共享（COW 之前），当内存压力触发 swap-out 时，反向映射需要找到所有进程的 PTE 并替换为 swap entry。</p>
+
+<strong>实验步骤：</strong>
+<pre><code><span class="c">#!/bin/bash</span>
+<span class="c"># 步骤1: 启用 tracepoint</span>
+<span class="n">cd</span> /sys/kernel/tracing
+<span class="n">echo</span> 1 > events/rmap/enable              <span class="c"># 启用所有 rmap tracepoint</span>
+<span class="n">echo</span> 1 > events/vmscan/enable            <span class="c"># 启用 vmscan tracepoint</span>
+<span class="n">echo</span> 1 > tracing_on
+
+<span class="c"># 步骤2: 运行测试程序 (分配匿名内存，fork，触发内存压力)</span>
+<span class="c"># 编译: gcc -o test_anon_swap test_anon_swap.c -lpthread</span>
+./test_anon_swap &
+<span class="n">PID</span>=$!
+
+<span class="c"># 步骤3: 创建内存压力 (分配大量内存触发 swap)</span>
+stress-ng --vm 1 --vm-bytes 80% --timeout 30s
+
+<span class="c"># 步骤4: 查看 trace 结果</span>
+<span class="n">echo</span> 0 > tracing_on
+<span class="n">cat</span> trace | grep -E <span class="s">'try_to_unmap|folio_referenced|rmap_walk'</span> | head -50
+
+<span class="c"># 步骤5: 观察 /proc/PID/smaps 中的 Swap 字段</span>
+<span class="n">cat</span> /proc/$PID/smaps | grep -A 20 <span class="s">'[anon]'</span>
+</code></pre>
+
+<strong>测试程序 test_anon_swap.c：</strong>
+<pre><code><span class="cp">#include</span> <span class="s">&lt;stdio.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;stdlib.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;string.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;unistd.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/mman.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/wait.h&gt;</span>
+
+<span class="cp">#define SIZE</span> (128 * 1024 * 1024)  <span class="c">// 128 MB</span>
+
+<span class="t">int</span> <span class="f">main</span>() {
+    <span class="t">char</span> *p = <span class="f">mmap</span>(NULL, SIZE, PROT_READ|PROT_WRITE,
+                     MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    <span class="f">memset</span>(p, 0xAB, SIZE);        <span class="c">// 实际分配物理页</span>
+    <span class="f">printf</span>(<span class="s">"Allocated 128MB anon memory at %p</span><span class="se">\n</span><span class="s">"</span>, p);
+
+    <span class="t">pid_t</span> pid = <span class="f">fork</span>();
+    <span class="k">if</span> (pid == 0) {
+        <span class="c">// 子进程：读取共享的匿名页</span>
+        <span class="f">printf</span>(<span class="s">"Child: first byte = 0x%02x</span><span class="se">\n</span><span class="s">"</span>, p[0]);
+        <span class="f">pause</span>();
+    } <span class="k">else</span> {
+        <span class="c">// 父进程：等待子进程就绪</span>
+        <span class="f">sleep</span>(1);
+        <span class="f">printf</span>(<span class="s">"Parent: first byte = 0x%02x, pid=%d</span><span class="se">\n</span><span class="s">"</span>, p[0], pid);
+        <span class="f">printf</span>(<span class="s">"Press Enter to exit (observe /proc/PID/smaps)...</span><span class="se">\n</span><span class="s">"</span>);
+        <span class="f">getchar</span>();
+        <span class="f">kill</span>(pid, SIGTERM);
+        <span class="f">wait</span>(NULL);
+    }
+    <span class="k">return</span> 0;
+}
+</code></pre>
+
+<strong>预期观察结果：</strong>
+<ul>
+  <li>trace 中会出现 <code>try_to_unmap_one</code> 被多次调用（父进程和子进程各一次）</li>
+  <li>PTE 被替换为 swap entry</li>
+  <li>/proc/PID/smaps 中匿名映射的 Swap 字段非零</li>
+  <li>通过 <code>folio_mapcount()</code> 可以看到映射计数从 2 降到 0</li>
+</ul>
+</div>
+
+<!-- 实验二 -->
+<div class="exp" id="ch4.2">
+<h4>🧪 实验二：文件映射页回收反向映射</h4>
+<p><strong>目标：</strong>观察文件 backed 页面回收时的反向映射，理解 <code>rmap_walk_file()</code> 遍历 <code>i_mmap</code> interval tree 的过程。</p>
+
+<strong>实验步骤：</strong>
+<pre><code><span class="c"># 步骤1: 启用 tracepoint (关注文件页 rmap)</span>
+<span class="n">cd</span> /sys/kernel/tracing
+<span class="n">echo</span> 1 > events/filemap/enable
+<span class="n">echo</span> 1 > events/rmap/enable
+<span class="n">echo</span> 1 > events/vmscan/enable
+<span class="n">echo</span> 1 > tracing_on
+
+<span class="c"># 步骤2: 创建测试文件并 mmap</span>
+<span class="n">dd</span> if=/dev/urandom of=/tmp/testfile bs=1M count=100
+./test_file_rmap /tmp/testfile &    <span class="c"># 编译下方测试程序</span>
+
+<span class="c"># 步骤3: 触发页面回收</span>
+<span class="n">echo</span> 3 > /proc/sys/vm/drop_caches   <span class="c"># 清理 page cache</span>
+
+<span class="c"># 步骤4: 查看 trace</span>
+<span class="n">echo</span> 0 > tracing_on
+<span class="n">cat</span> trace | grep -E <span class="s">'rmap_walk_file|try_to_unmap_one|folio_remove_rmap'</span> | head -30
+</code></pre>
+
+<strong>测试程序 test_file_rmap.c：</strong>
+<pre><code><span class="cp">#include</span> <span class="s">&lt;stdio.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;stdlib.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;fcntl.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;unistd.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/mman.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/stat.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/wait.h&gt;</span>
+
+<span class="t">int</span> <span class="f">main</span>(<span class="t">int</span> argc, <span class="t">char</span> *argv[]) {
+    <span class="t">int</span> fd = <span class="f">open</span>(argv[1], O_RDONLY);
+    <span class="t">struct</span> stat st;
+    <span class="f">fstat</span>(fd, &st);
+
+    <span class="c">// 进程A: 共享只读映射</span>
+    <span class="t">char</span> *pA = <span class="f">mmap</span>(NULL, st.st_size, PROT_READ,
+                      MAP_SHARED, fd, 0);
+    <span class="t">pid_t</span> pid = <span class="f">fork</span>();
+    <span class="k">if</span> (pid == 0) {
+        <span class="c">// 进程B: 私有可写映射 (会触发 COW / page_mkclean)</span>
+        <span class="t">char</span> *pB = <span class="f">mmap</span>(NULL, st.st_size, PROT_READ|PROT_WRITE,
+                          MAP_PRIVATE, fd, 0);
+        <span class="f">printf</span>(<span class="s">"Child: file[0] = 0x%02x</span><span class="se">\n</span><span class="s">"</span>, pB[0]);
+        <span class="f">pause</span>();
+    } <span class="k">else</span> {
+        <span class="f">printf</span>(<span class="s">"Parent: file[0] = 0x%02x</span><span class="se">\n</span><span class="s">"</span>, pA[0]);
+        <span class="f">printf</span>(<span class="s">"Observe rmap walk for file-backed pages...</span><span class="se">\n</span><span class="s">"</span>);
+        <span class="f">getchar</span>();
+        <span class="f">kill</span>(pid, SIGTERM);
+        <span class="f">wait</span>(NULL);
+    }
+    <span class="k">return</span> 0;
+}
+</code></pre>
+</div>
+
+<!-- 实验三 -->
+<div class="exp" id="ch4.3">
+<h4>🧪 实验三：fork 后的 COW 反向映射</h4>
+<p><strong>目标：</strong>理解 fork 创建子进程后 <code>anon_vma_clone</code> 和 <code>anon_vma_fork</code> 如何构建反向映射数据结构，观察 COW 时 rmap 的行为。</p>
+
+<strong>关键内核函数：</strong>
+<ul>
+  <li><code>anon_vma_fork()</code> — fork 时建立子进程的 anon_vma 树 (mm/rmap.c)</li>
+  <li><code>anon_vma_clone()</code> — 复制父进程的 anon_vma_chain 到子进程</li>
+  <li><code>folio_try_share_anon_rmap_pte()</code> — COW 时共享 anon rmap 的尝试</li>
+</ul>
+
+<strong>实验步骤：</strong>
+<pre><code><span class="c"># 步骤1: 使用 kprobe 观察 anon_vma 操作</span>
+<span class="n">cd</span> /sys/kernel/tracing
+<span class="n">echo</span> <span class="s">'p:avc_fork anon_vma_fork'</span> >> kprobe_events
+<span class="n">echo</span> <span class="s">'p:avc_clone anon_vma_clone'</span> >> kprobe_events
+<span class="n">echo</span> 1 > events/kprobes/enable
+
+<span class="c"># 步骤2: 运行 fork 测试程序</span>
+./test_cow_fork &
+<span class="n">PID</span>=$!
+
+<span class="c"># 步骤3: 观察反向映射层次</span>
+<span class="n">echo</span> 0 > tracing_on
+<span class="n">cat</span> trace | head -30
+
+<span class="c"># 步骤4: 使用 crash/drgn 查看 anon_vma 树结构</span>
+<span class="c"># (需要安装 drgn: pip install drgn)</span>
+<span class="n">drgn</span> -c /proc/kcore -s /usr/lib/debug/boot/vmlinux-$(uname -r) &lt;&lt;<span class="s">'EOF'</span>
+<span class="k">import</span> drgn
+<span class="k">from</span> drgn.helpers.linux.pid <span class="k">import</span> find_task
+<span class="k">from</span> drgn.helpers.linux.mm <span class="k">import</span> for_each_vma
+task = find_task(prog, int(sys.argv[1]))
+<span class="k">print</span>(f<span class="s">"Task: {task.comm.string_().decode()}"</span>)
+<span class="k">for</span> vma <span class="k">in</span> for_each_vma(task.mm):
+    <span class="k">if</span> vma.anon_vma:
+        av = vma.anon_vma
+        <span class="k">print</span>(f<span class="s">"  VMA [{vma.vm_start:#x}-{vma.vm_end:#x}]"</span>)
+        <span class="k">print</span>(f<span class="s">"    anon_vma root: {av.root.value_():#x}"</span>)
+        <span class="k">print</span>(f<span class="s">"    num_active_vmas: {av.num_active_vmas}"</span>)
+        <span class="k">print</span>(f<span class="s">"    num_children: {av.num_children}"</span>)
+EOF
+</code></pre>
+
+<strong>测试程序 test_cow_fork.c：</strong>
+<pre><code><span class="cp">#include</span> <span class="s">&lt;stdio.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;stdlib.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;string.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;unistd.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/mman.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/wait.h&gt;</span>
+
+<span class="t">int</span> <span class="f">main</span>() {
+    <span class="t">char</span> *p = <span class="f">mmap</span>(NULL, 4096, PROT_READ|PROT_WRITE,
+                     MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    p[0] = <span class="s">'A'</span>;  <span class="c">// 父进程写入，创建 anon_vma</span>
+
+    <span class="t">pid_t</span> pid = <span class="f">fork</span>();
+    <span class="k">if</span> (pid == 0) {
+        <span class="c">// 子进程：触发 COW</span>
+        p[0] = <span class="s">'B'</span>;   <span class="c">// ★ 写入触发 COW，创建新的 anon_vma</span>
+        <span class="f">printf</span>(<span class="s">"Child COW: p[0]='%c' at %p</span><span class="se">\n</span><span class="s">"</span>, p[0], p);
+        <span class="f">pause</span>();
+    } <span class="k">else</span> {
+        <span class="f">sleep</span>(1);
+        <span class="f">printf</span>(<span class="s">"Parent: p[0]='%c' at %p</span><span class="se">\n</span><span class="s">"</span>, p[0], p);
+        <span class="f">printf</span>(<span class="s">"PID=%d, Child PID=%d</span><span class="se">\n</span><span class="s">"</span>, getpid(), pid);
+        <span class="f">getchar</span>();
+        <span class="f">kill</span>(pid, SIGTERM); <span class="f">wait</span>(NULL);
+    }
+    <span class="k">return</span> 0;
+}
+</code></pre>
+</div>
+
+<!-- 实验四 -->
+<div class="exp" id="ch4.4">
+<h4>🧪 实验四：THP 大页反向映射</h4>
+<p><strong>目标：</strong>观察透明大页 (THP) 的反向映射，特别是 PMD 级别映射和 split 过程。</p>
+
+<strong>实验步骤：</strong>
+<pre><code><span class="c"># 步骤1: 确保 THP 开启</span>
+<span class="n">cat</span> /sys/kernel/mm/transparent_hugepage/enabled
+<span class="n">echo</span> always > /sys/kernel/mm/transparent_hugepage/enabled
+<span class="n">echo</span> 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
+
+<span class="c"># 步骤2: 启用 tracepoint</span>
+<span class="n">cd</span> /sys/kernel/tracing
+<span class="n">echo</span> 1 > events/thp/enable
+<span class="n">echo</span> 1 > events/rmap/enable
+<span class="n">echo</span> 1 > tracing_on
+
+<span class="c"># 步骤3: 运行 THP 分配程序</span>
+./test_thp_rmap &
+
+<span class="c"># 步骤4: 触发内存回收，观察 THP split</span>
+stress-ng --vm 2 --vm-bytes 90% --timeout 20s
+
+<span class="c"># 步骤5: 查看 THP split 的 rmap 调用</span>
+<span class="n">echo</span> 0 > tracing_on
+<span class="n">cat</span> trace | grep -E <span class="s">'split_huge_pmd|try_to_unmap|TTU_SPLIT'</span> | head -20
+
+<span class="c"># 步骤6: 检查 THP 统计</span>
+<span class="n">grep</span> -E <span class="s">'AnonHugePages|anonhuge'</span> /proc/meminfo
+<span class="n">cat</span> /proc/vmstat | grep thp
+</code></pre>
+
+<strong>测试程序 test_thp_rmap.c：</strong>
+<pre><code><span class="cp">#include</span> <span class="s">&lt;stdio.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;stdlib.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;string.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;unistd.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/mman.h&gt;</span>
+
+<span class="cp">#define SIZE</span> (2 * 1024 * 1024)    <span class="c">// 2MB (对齐 PMD)</span>
+
+<span class="t">int</span> <span class="f">main</span>() {
+    <span class="c">// 使用 2MB 对齐分配以获取 THP</span>
+    <span class="t">char</span> *p = <span class="f">mmap</span>(NULL, SIZE, PROT_READ|PROT_WRITE,
+                     MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    <span class="f">madvise</span>(p, SIZE, MADV_HUGEPAGE);  <span class="c">// 建议使用大页</span>
+    <span class="f">memset</span>(p, 0xCC, SIZE);            <span class="c">// 触发分配</span>
+
+    <span class="f">printf</span>(<span class="s">"THP allocated at %p, size %d MB</span><span class="se">\n</span><span class="s">"</span>, p, SIZE/1024/1024);
+
+    <span class="c">// 检查是否获得 THP</span>
+    <span class="t">FILE</span> *f = <span class="f">fopen</span>(<span class="s">"/proc/self/smaps"</span>, <span class="s">"r"</span>);
+    <span class="t">char</span> buf[256];
+    <span class="k">while</span> (<span class="f">fgets</span>(buf, <span class="k">sizeof</span>(buf), f))
+        <span class="k">if</span> (<span class="f">strstr</span>(buf, <span class="s">"AnonHugePages"</span>)) <span class="f">printf</span>(<span class="s">"%s"</span>, buf);
+    <span class="f">fclose</span>(f);
+
+    <span class="f">printf</span>(<span class="s">"Press Enter to exit...</span><span class="se">\n</span><span class="s">"</span>);
+    <span class="f">getchar</span>();
+    <span class="k">return</span> 0;
+}
+</code></pre>
+</div>
+
+<!-- 实验五 -->
+<div class="exp" id="ch4.5">
+<h4>🧪 实验五：KSM 合并页反向映射</h4>
+<p><strong>目标：</strong>观察 KSM 如何通过独立的反向映射数据结构 (<code>rmap_item</code> → <code>ksm_stable_node</code>) 管理合并后的页面。</p>
+
+<strong>实验步骤：</strong>
+<pre><code><span class="c"># 步骤1: 启用 KSM</span>
+<span class="n">echo</span> 1 > /sys/kernel/mm/ksm/run
+<span class="n">cat</span> /sys/kernel/mm/ksm/pages_shared     <span class="c"># 合并前应为 0</span>
+
+<span class="c"># 步骤2: 运行 KSM 测试程序</span>
+./test_ksm_rmap &
+<span class="n">PID</span>=$!
+
+<span class="c"># 步骤3: 等待 KSM 扫描合并</span>
+<span class="n">sleep</span> 10
+<span class="n">cat</span> /sys/kernel/mm/ksm/pages_shared     <span class="c"># 合并后应 > 0</span>
+<span class="n">cat</span> /sys/kernel/mm/ksm/pages_sharing
+<span class="n">cat</span> /sys/kernel/mm/ksm/full_scans
+
+<span class="c"># 步骤4: 启用 KSM tracepoint</span>
+<span class="n">cd</span> /sys/kernel/tracing
+<span class="n">echo</span> 1 > events/ksm/enable
+<span class="n">echo</span> 1 > tracing_on
+
+<span class="c"># 步骤5: 触发回收观察 KSM 页的 rmap 行为</span>
+<span class="n">echo</span> 3 > /proc/sys/vm/drop_caches
+<span class="n">echo</span> 0 > tracing_on
+<span class="n">cat</span> trace | grep -E <span class="s">'ksm|rmap_walk_ksm'</span> | head -20
+
+<span class="c"># 步骤6: 通过 /proc/PID/smaps 观察 KSM 页</span>
+<span class="n">cat</span> /proc/$PID/smaps | grep -A 15 <span class="s">'anon'</span>
+</code></pre>
+
+<strong>测试程序 test_ksm_rmap.c：</strong>
+<pre><code><span class="cp">#include</span> <span class="s">&lt;stdio.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;stdlib.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;string.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;unistd.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/mman.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/wait.h&gt;</span>
+
+<span class="cp">#define NPAGES</span> 100
+<span class="cp">#define PAGESZ</span> 4096
+
+<span class="t">int</span> <span class="f">main</span>() {
+    <span class="t">char</span> *regions[3];
+
+    <span class="c">// 创建3个独立进程，各自分配匿名内存并写入相同内容</span>
+    <span class="k">for</span> (<span class="t">int</span> i = 0; i < 3; i++) {
+        <span class="t">pid_t</span> pid = <span class="f">fork</span>();
+        <span class="k">if</span> (pid == 0) {
+            regions[i] = <span class="f">mmap</span>(NULL, NPAGES*PAGESZ,
+                              PROT_READ|PROT_WRITE,
+                              MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+            <span class="f">madvise</span>(regions[i], NPAGES*PAGESZ, MADV_MERGEABLE);
+            <span class="c">// 写入相同内容以触发 KSM 合并</span>
+            <span class="k">for</span> (<span class="t">int</span> j = 0; j < NPAGES; j++)
+                <span class="f">memset</span>(regions[i] + j*PAGESZ, 0x42, PAGESZ);
+            <span class="f">printf</span>(<span class="s">"Child %d: region at %p</span><span class="se">\n</span><span class="s">"</span>, i, regions[i]);
+            <span class="f">pause</span>();
+            <span class="f">exit</span>(0);
+        }
+    }
+    <span class="f">printf</span>(<span class="s">"Parent PID=%d: waiting for KSM to merge...</span><span class="se">\n</span><span class="s">"</span>, getpid());
+    <span class="f">getchar</span>();
+    <span class="k">return</span> 0;
+}
+</code></pre>
+</div>
+
+<!-- 实验六 -->
+<div class="exp" id="ch4.6">
+<h4>🧪 实验六：内存硬件错误处理 (HWPoison)</h4>
+<p><strong>目标：</strong>观察硬件内存错误如何通过反向映射隔离损坏页面并通知进程。</p>
+
+<strong>实验步骤：</strong>
+<pre><code><span class="c"># 步骤1: 确保 CONFIG_MEMORY_FAILURE=y</span>
+<span class="n">grep</span> CONFIG_MEMORY_FAILURE /boot/config-$(uname -r)
+
+<span class="c"># 步骤2: 启用 hwpoison tracepoint</span>
+<span class="n">cd</span> /sys/kernel/tracing
+<span class="n">echo</span> 1 > events/hwpoison/enable
+<span class="n">echo</span> 1 > events/rmap/enable
+<span class="n">echo</span> 1 > tracing_on
+
+<span class="c"># 步骤3: 使用 hwpoison-inject 模拟内存错误 (需要 root + debugfs)</span>
+<span class="n">modprobe</span> hwpoison-inject
+
+<span class="c"># 步骤4: 运行测试程序并注入错误</span>
+./test_hwpoison &
+<span class="n">PID</span>=$!
+<span class="n">sleep</span> 1
+
+<span class="c"># 通过 /proc/PID/pagemap 找到物理页框号</span>
+<span class="c"># 然后注入错误</span>
+<span class="n">echo</span> 0x&lt;pfn&gt; > /sys/kernel/debug/hwpoison/corrupt-pfn
+
+<span class="c"># 步骤5: 观察进程是否收到 SIGBUS</span>
+<span class="n">echo</span> 0 > tracing_on
+<span class="n">cat</span> trace | grep -E <span class="s">'hwpoison|try_to_unmap|TTU_HWPOISON'</span> | head -20
+</code></pre>
+
+<strong>测试程序 test_hwpoison.c：</strong>
+<pre><code><span class="cp">#include</span> <span class="s">&lt;stdio.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;stdlib.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;string.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;unistd.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;signal.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/mman.h&gt;</span>
+
+<span class="t">char</span> *p;
+
+<span class="t">void</span> <span class="f">sigbus_handler</span>(<span class="t">int</span> sig) {
+    <span class="f">printf</span>(<span class="s">"Received SIGBUS (hwpoison) at %p</span><span class="se">\n</span><span class="s">"</span>, p);
+    <span class="f">exit</span>(1);
+}
+
+<span class="t">int</span> <span class="f">main</span>() {
+    <span class="f">signal</span>(SIGBUS, sigbus_handler);
+    p = <span class="f">mmap</span>(NULL, 4096, PROT_READ|PROT_WRITE,
+                 MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    p[0] = <span class="s">'X'</span>;
+    <span class="f">mlock</span>(p, 4096);  <span class="c">// 锁定页面防止被换出</span>
+
+    <span class="f">printf</span>(<span class="s">"Page at %p, PID=%d</span><span class="se">\n</span><span class="s">"</span>, p, getpid());
+    <span class="f">printf</span>(<span class="s">"Press Enter to try accessing the page...</span><span class="se">\n</span><span class="s">"</span>);
+    <span class="f">getchar</span>();
+
+    <span class="c">// 尝试访问可能已被 poison 的页面</span>
+    <span class="t">char</span> c = p[0];
+    <span class="f">printf</span>(<span class="s">"Read: '%c' (0x%02x)</span><span class="se">\n</span><span class="s">"</span>, c, c);
+    <span class="k">return</span> 0;
+}
+</code></pre>
+</div>
+
+<!-- 实验七 -->
+<div class="exp" id="ch4.7">
+<h4>🧪 实验七：页面迁移与 NUMA Balancing 反向映射</h4>
+<p><strong>目标：</strong>观察 NUMA 自动平衡触发页面迁移时反向映射的行为，理解 <code>try_to_migrate</code> 函数。</p>
+
+<strong>实验步骤：</strong>
+<pre><code><span class="c"># 前提: 需要 NUMA 系统 (或 QEMU 模拟: -smp 4 -numa node,mem=1G -numa node,mem=1G)</span>
+
+<span class="c"># 步骤1: 检查 NUMA 配置</span>
+<span class="n">numactl</span> --hardware
+<span class="n">grep</span> CONFIG_NUMA_BALANCING /boot/config-$(uname -r)
+
+<span class="c"># 步骤2: 启用迁移 tracepoint</span>
+<span class="n">cd</span> /sys/kernel/tracing
+<span class="n">echo</span> 1 > events/migrate/enable
+<span class="n">echo</span> 1 > events/rmap/enable
+<span class="n">echo</span> 1 > tracing_on
+
+<span class="c"># 步骤3: 运行跨 NUMA 节点程序</span>
+<span class="n">numactl</span> --cpunodebind=0 --membind=0 ./test_numa_migrate &
+<span class="n">PID</span>=$!
+
+<span class="c"># 步骤4: 将进程迁移到另一个 NUMA 节点</span>
+<span class="n">sleep</span> 2
+<span class="n">taskset</span> -p 0x2 $PID        <span class="c"># 绑定到 node1 的 CPU</span>
+
+<span class="c"># 步骤5: 触发 NUMA 平衡 (自动页面迁移)</span>
+<span class="n">echo</span> 1 > /proc/sys/kernel/numa_balancing
+<span class="n">sleep</span> 10
+
+<span class="c"># 步骤6: 观察迁移的 rmap 调用</span>
+<span class="n">echo</span> 0 > tracing_on
+<span class="n">cat</span> trace | grep -E <span class="s">'try_to_migrate|migrate_pages|rmap_walk'</span> | head -30
+
+<span class="c"># 步骤7: 检查页面位置</span>
+<span class="n">numastat</span> -p $PID
+</code></pre>
+
+<strong>测试程序 test_numa_migrate.c：</strong>
+<pre><code><span class="cp">#include</span> <span class="s">&lt;stdio.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;stdlib.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;string.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;unistd.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;sys/mman.h&gt;</span>
+<span class="cp">#include</span> <span class="s">&lt;numa.h&gt;</span>
+
+<span class="cp">#define SIZE</span> (64 * 1024 * 1024)  <span class="c">// 64 MB</span>
+
+<span class="t">int</span> <span class="f">main</span>() {
+    <span class="t">char</span> *p = <span class="f">mmap</span>(NULL, SIZE, PROT_READ|PROT_WRITE,
+                     MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    <span class="f">memset</span>(p, 0xDD, SIZE);
+
+    <span class="f">printf</span>(<span class="s">"PID=%d: allocated 64MB, accessing on current node</span><span class="se">\n</span><span class="s">"</span>, getpid());
+    <span class="k">for</span> (<span class="t">int</span> i = 0; i < 60; i++) {
+        <span class="t">volatile</span> <span class="t">char</span> c = p[<span class="f">rand</span>() % SIZE];  <span class="c">// 持续访问</span>
+        <span class="f">usleep</span>(100000);
+    }
+    <span class="f">printf</span>(<span class="s">"Done.</span><span class="se">\n</span><span class="s">"</span>);
+    <span class="k">return</span> 0;
+}
+</code></pre>
+</div>
+
+<!-- ====== 附录 ====== -->
+<h2 id="appendix">附录：关键函数速查表</h2>
+
+<table>
+<tr><th>函数</th><th>文件:行号</th><th>作用</th></tr>
+<tr><td><code>rmap_walk()</code></td><td><code>mm/rmap.c:2955</code></td><td>反向映射遍历总入口，分派到 anon/file/ksm</td></tr>
+<tr><td><code>rmap_walk_anon()</code></td><td><code>mm/rmap.c:2824</code></td><td>遍历 anon_vma 的 interval tree</td></tr>
+<tr><td><code>rmap_walk_file()</code></td><td><code>mm/rmap.c:2937</code></td><td>遍历 address_space->i_mmap interval tree</td></tr>
+<tr><td><code>rmap_walk_ksm()</code></td><td><code>mm/rmap.c</code></td><td>遍历 KSM stable tree 的 rmap_item 链表</td></tr>
+<tr><td><code>try_to_unmap()</code></td><td><code>mm/rmap.c:2272</code></td><td>尝试解除 folio 的所有映射 (回收入口)</td></tr>
+<tr><td><code>try_to_unmap_one()</code></td><td><code>mm/rmap.c:1865</code></td><td>对单个 VMA 解除映射 (核心 worker)</td></tr>
+<tr><td><code>try_to_migrate()</code></td><td><code>mm/rmap.c</code></td><td>迁移用 rmap 遍历入口</td></tr>
+<tr><td><code>try_to_migrate_one()</code></td><td><code>mm/rmap.c</code></td><td>对单个 VMA 创建 migration entry</td></tr>
+<tr><td><code>folio_referenced()</code></td><td><code>mm/rmap.c:968</code></td><td>检查 folio 是否被引用 (活跃检测)</td></tr>
+<tr><td><code>folio_referenced_one()</code></td><td><code>mm/rmap.c:848</code></td><td>检查单个 PTE 的 Accessed 位</td></tr>
+<tr><td><code>folio_add_anon_rmap_ptes()</code></td><td><code>mm/rmap.c:1491</code></td><td>添加匿名页 PTE 级别反向映射</td></tr>
+<tr><td><code>folio_add_anon_rmap_pmd()</code></td><td><code>mm/rmap.c:1512</code></td><td>添加匿名页 PMD 级别反向映射</td></tr>
+<tr><td><code>folio_add_file_rmap_ptes()</code></td><td><code>mm/rmap.c:1625</code></td><td>添加文件页 PTE 级别反向映射</td></tr>
+<tr><td><code>folio_add_file_rmap_pmd()</code></td><td><code>mm/rmap.c:1641</code></td><td>添加文件页 PMD 级别反向映射</td></tr>
+<tr><td><code>folio_remove_rmap_ptes()</code></td><td><code>mm/rmap.c:1789</code></td><td>移除 PTE 级别反向映射</td></tr>
+<tr><td><code>folio_remove_rmap_pmd()</code></td><td><code>mm/rmap.c:1805</code></td><td>移除 PMD 级别反向映射</td></tr>
+<tr><td><code>folio_lock_anon_vma_read()</code></td><td><code>mm/rmap.c:543</code></td><td>以读模式锁定 folio 的 anon_vma</td></tr>
+<tr><td><code>folio_get_anon_vma()</code></td><td><code>mm/rmap.c:496</code></td><td>获取 folio 的 anon_vma 引用</td></tr>
+<tr><td><code>anon_vma_prepare()</code></td><td><code>include/linux/rmap.h</code></td><td>确保 VMA 有 anon_vma (inline 快速路径)</td></tr>
+<tr><td><code>__anon_vma_prepare()</code></td><td><code>mm/rmap.c:187</code></td><td>为 VMA 创建/关联 anon_vma</td></tr>
+<tr><td><code>anon_vma_fork()</code></td><td><code>mm/rmap.c:324</code></td><td>fork 时建立子进程的 anon_vma 树</td></tr>
+<tr><td><code>anon_vma_clone()</code></td><td><code>mm/rmap.c:280</code></td><td>复制 anon_vma_chain (VMA 分裂/合并/fork)</td></tr>
+<tr><td><code>unlink_anon_vmas()</code></td><td><code>mm/rmap.c:387</code></td><td>断开 VMA 与所有 anon_vma 的关联</td></tr>
+<tr><td><code>page_vma_mapped_walk()</code></td><td><code>mm/page_vma_mapped.c</code></td><td>遍历 VMA 中给定 folio 的所有 PTE 映射</td></tr>
+<tr><td><code>try_to_unmap_flush()</code></td><td><code>mm/rmap.c:642</code></td><td>批量 TLB 刷新 (ARM64: arch_tlbbatch_flush)</td></tr>
+<tr><td><code>folio_mkclean()</code></td><td><code>mm/rmap.c</code></td><td>清除 folio 所有映射的 dirty 位</td></tr>
+<tr><td><code>page_mkclean_one()</code></td><td><code>mm/rmap.c</code></td><td>对单个 VMA 清除 dirty 位</td></tr>
+</table>
+
+<h2>ARM64 特有反向映射特性</h2>
+
+<div class="box info">
+  <strong>ARM64 架构在反向映射方面的独特优化和特性：</strong>
+</div>
+
+<table>
+<tr><th>特性</th><th>代码位置</th><th>说明</th></tr>
+<tr>
+  <td><b>批量 TLB 刷新</b></td>
+  <td><code>mm/rmap.c:642</code> + <code>arch/arm64/mm</code></td>
+  <td><code>ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH</code>，反向映射解除多个 PTE 后延迟统一刷新 TLB</td>
+</tr>
+<tr>
+  <td><b>Contiguous PTE</b></td>
+  <td><code>arch/arm64/mm/contpte.c</code></td>
+  <td>ARM64 的 contiguous bit 可以将连续 16 个 PTE 合并为一个 TLB entry，反向映射时需要处理 unfold 逻辑</td>
+</tr>
+<tr>
+  <td><b>MTE Swap</b></td>
+  <td><code>arch/arm64/mm/mteswap.c</code></td>
+  <td>ARM64 MTE (Memory Tagging Extension) 在 swap-out 时保存/恢复内存标签</td>
+</tr>
+<tr>
+  <td><b>PUD-level 映射</b></td>
+  <td><code>mm/rmap.c:1661</code></td>
+  <td>支持 PUD 级别的文件大页反向映射 (<code>folio_add_file_rmap_pud</code>)</td>
+</tr>
+<tr>
+  <td><b>硬件 Accessed/Dirty 位</b></td>
+  <td><code>arch/arm64/Kconfig</code>: <code>ARCH_HAS_HW_PTE_YOUNG</code></td>
+  <td>ARM64 硬件支持的 Access Flag，影响 <code>folio_referenced</code> 的 Accessed 位检测</td>
+</tr>
+</table>
+
+<hr style="border-color: var(--border); margin: 2rem 0;">
+<p style="text-align:center;color:#8c8c8c;font-size:0.85em;">
+  📅 生成日期: 2026-06-06 &nbsp;|&nbsp; 内核版本: Linux 6.18.1 (ARM64) &nbsp;|&nbsp;
+  分析范围: <code>mm/rmap.c</code> · <code>include/linux/rmap.h</code> · <code>arch/arm64/mm/</code> · <code>mm/vmscan.c</code> · <code>mm/migrate.c</code> · <code>mm/memory-failure.c</code> · <code>mm/ksm.c</code>
+</p>
+
+</body>
+</html>

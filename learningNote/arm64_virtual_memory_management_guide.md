@@ -5250,6 +5250,8 @@ watermark 触发内存压力
 2. reclaim 会主动制造未来的 swapin fault
 3. reclaim、swap、fault、页表更新，其实是同一条 VM 生命周期的不同阶段
 
+---
+
 ### 4. SLAB / SLUB 与 VM 的关系
 
 #### 定义、含义、作用

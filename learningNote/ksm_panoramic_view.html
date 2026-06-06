@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux 6.18.1 ARM64 KSM 机制全景视图</title>
+<style>
+  :root {
+    --bg: #FAFAF7; --surface: #FFFFFF; --border: #E5E2DB;
+    --text: #374151; --text2: #6B7280; --accent: #C2703E;
+    --heading: #1F2937;
+    --green: #059669; --orange: #D97706; --red: #DC2626;
+    --purple: #7C3AED; --blue: #2563EB; --cyan: #0891B2;
+    --code-bg: #F3F1EC; --code-text: #9B5A2C;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Georgia', 'Times New Roman', serif;
+         background: var(--bg); color: var(--text); line-height:1.8; padding:2rem 1.5rem; }
+  .container { max-width:960px; margin:0 auto; }
+  h1, h2, h3, h4 { font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+  h1 { font-size:2rem; text-align:center; margin-bottom:.3rem; color:var(--heading);
+       font-weight:700; letter-spacing:-0.02em; }
+  .subtitle { text-align:center; color:var(--text2); margin-bottom:2.5rem;
+              font-size:.9rem; font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+  h2 { font-size:1.4rem; color:var(--heading); margin:2.5rem 0 1rem;
+       padding-bottom:.5rem; border-bottom:1px solid var(--border); font-weight:600; }
+  h3 { font-size:1.1rem; color:var(--accent); margin:1.5rem 0 .8rem; font-weight:600; }
+  h4 { font-size:.95rem; color:var(--heading); margin:1.2rem 0 .5rem; font-weight:600; }
+  p, li { color:var(--text); margin-bottom:.5rem; font-size:.95rem; }
+  ul, ol { padding-left:1.5rem; }
+  a { color:var(--blue); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  code { background:var(--code-bg); padding:.12rem .35rem; border-radius:3px;
+         font-size:.85rem; color:var(--code-text); font-family:'SF Mono','Fira Code',monospace; }
+  pre { background:var(--code-bg); border:1px solid var(--border); border-radius:6px;
+        padding:1rem 1.2rem; overflow-x:auto; margin:1rem 0; font-size:.82rem;
+        line-height:1.6; font-family:'SF Mono','Fira Code',monospace; }
+  pre code { background:none; padding:0; color:var(--text); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:8px;
+          padding:1.5rem; margin:1rem 0; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+  .card-title { font-size:1.05rem; font-weight:700; color:var(--heading); margin-bottom:.8rem;
+                font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+  @media(max-width:800px){ .grid2,.grid3{grid-template-columns:1fr;} }
+  .tag { display:inline-block; padding:.1rem .45rem; border-radius:10px;
+         font-size:.72rem; font-weight:600; margin-right:.3rem;
+         font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+  .tag-green { background:#ECFDF5; color:var(--green); }
+  .tag-orange { background:#FFFBEB; color:var(--orange); }
+  .tag-red { background:#FEF2F2; color:var(--red); }
+  .tag-purple { background:#F5F3FF; color:var(--purple); }
+  .tag-cyan { background:#ECFEFF; color:var(--cyan); }
+  table { width:100%; border-collapse:collapse; margin:1rem 0; font-size:.85rem;
+          font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+  th { background:#F9F8F5; color:var(--heading); text-align:left; font-weight:600;
+       padding:.55rem .75rem; border:1px solid var(--border); }
+  td { padding:.5rem .75rem; border:1px solid var(--border); color:var(--text); }
+  tr:nth-child(even) td { background:#FDFCFA; }
+  .flow-box { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; margin:1rem 0; }
+  .flow-step { background:var(--surface); border:1px solid var(--border); border-radius:6px;
+               padding:.45rem .9rem; font-size:.82rem; font-weight:600;
+               font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+               color:var(--heading); }
+  .flow-arrow { color:var(--accent); font-size:1.1rem; }
+  .highlight { border-left:3px solid var(--accent); padding-left:1rem; margin:1rem 0; }
+  .warn { border-left:3px solid var(--orange); padding:1rem 1rem 1rem 1.2rem; margin:1rem 0;
+          background:#FFFBEB; border-radius:0 6px 6px 0; }
+  .toc { background:var(--surface); border:1px solid var(--border); border-radius:8px;
+         padding:1.5rem 2rem; margin:1.5rem 0; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+  .toc a { color:var(--blue); }
+  .toc ul { list-style:none; padding-left:0; }
+  .toc li { padding:.25rem 0; font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+            font-size:.9rem; }
+  .toc li::before { content:"→ "; color:var(--accent); font-weight:600; }
+  .exp-card { background:var(--surface); border:1px solid var(--border); border-radius:8px;
+              padding:1.5rem; margin:1.2rem 0; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+  .exp-title { font-size:1.02rem; font-weight:700; color:var(--heading); margin-bottom:.5rem;
+               font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+  .exp-goal { color:var(--text2); font-size:.88rem; margin-bottom:.8rem; }
+  .badge { display:inline-block; padding:.15rem .5rem; border-radius:4px;
+           font-size:.68rem; font-weight:700; vertical-align:middle; margin-left:.5rem;
+           font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+           text-transform:uppercase; letter-spacing:0.03em; }
+  .badge-basic { background:#ECFDF5; color:var(--green); }
+  .badge-intermediate { background:#FFFBEB; color:var(--orange); }
+  .badge-advanced { background:#FEF2F2; color:var(--red); }
+  svg text { font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Linux 6.18.1 ARM64 — KSM 机制全景视图</h1>
+<p class="subtitle">Kernel Samepage Merging 深度分析 · 基于 mm/ksm.c (3980 行) 源码</p>
+
+<div class="toc">
+  <div class="card-title">目录</div>
+  <ul>
+    <li><a href="#sec1">一、KSM 实现的目标</a></li>
+    <li><a href="#sec2">二、内核配置选项</a></li>
+    <li><a href="#sec3">三、核心数据结构</a></li>
+    <li><a href="#sec4">四、触发 KSM 的逻辑</a></li>
+    <li><a href="#sec5">五、页面合并核心流程</a></li>
+    <li><a href="#sec6">六、ARM64 架构特殊处理</a></li>
+    <li><a href="#sec7">七、嵌入式设备为何不开启 KSM</a></li>
+    <li><a href="#sec8">八、QEMU 实践指南</a></li>
+    <li><a href="#sec9">九、源码文件索引</a></li>
+  </ul>
+</div>
+
+<!-- ============ 一、KSM 实现的目标 ============ -->
+<h2 id="sec1">一、KSM 实现的目标</h2>
+
+<div class="card">
+  <div class="card-title">核心设计目标</div>
+  <p>KSM（Kernel Samepage Merging）从 Linux 2.6.32 引入，最初为 KVM 虚拟化开发（原名 Kernel Shared Memory）。核心目标：</p>
+  <ol>
+    <li><strong>内存节省</strong>：扫描用户空间匿名页面，将内容相同的页面合并为单个写保护页面，通过 COW 保证写时复制</li>
+    <li><strong>透明共享</strong>：应用只需 <code>madvise(MADV_MERGEABLE)</code> 标记候选区域，内核自动完成扫描、比较、合并</li>
+    <li><strong>安全回退</strong>：写操作触发 COW 缺页异常，自动创建私有副本</li>
+    <li><strong>可控开销</strong>：ksmd 守护线程以可配置频率运行，支持 Smart Scan 和 Advisor 自适应调节</li>
+  </ol>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-title">适用场景</div>
+    <ul>
+      <li><span class="tag tag-green">虚拟化</span>多个 VM 共享相同 OS 页面</li>
+      <li><span class="tag tag-green">容器</span>多个容器运行相同二进制</li>
+      <li><span class="tag tag-green">应用</span>fork 后子进程共享数据段</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">约束条件</div>
+    <ul>
+      <li><span class="tag tag-red">仅匿名页</span>不合并 pagecache / 文件页</li>
+      <li><span class="tag tag-red">需 MMU</span>依赖写保护机制</li>
+      <li><span class="tag tag-orange">CPU 开销</span>扫描消耗 CPU</li>
+      <li><span class="tag tag-orange">元数据开销</span>rmap_item 占额外内存</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">KSM 收益公式</div>
+  <pre><code># 系统级
+general_profit ≈ (pages_sharing + ksm_zero_pages) × PAGE_SIZE
+               - (pages_sharing + pages_shared + pages_unshared + pages_volatile) × sizeof(rmap_item)
+
+# 进程级 (/proc/&lt;pid&gt;/ksm_stat)
+process_profit ≈ (ksm_merging_pages + ksm_zero_pages) × PAGE_SIZE
+               - ksm_rmap_items × sizeof(rmap_item)
+
+# 经验法则 (64-bit): ksm_rmap_items / ksm_merging_pages > 64 → 收益为负</code></pre>
+</div>
+
+<!-- ============ 二、内核配置选项 ============ -->
+<h2 id="sec2">二、内核配置选项</h2>
+
+<div class="card">
+  <div class="card-title">Kconfig 定义 <code>mm/Kconfig</code></div>
+  <pre><code>config KSM
+    bool "Enable KSM for page merging"
+    depends on MMU
+    select XXHASH</code></pre>
+  <table>
+    <tr><th>配置项</th><th>说明</th></tr>
+    <tr><td><code>CONFIG_KSM=y</code></td><td>编译进内核（非模块）</td></tr>
+    <tr><td><code>depends on MMU</code></td><td>必须有 MMU（ARM64 天然满足）</td></tr>
+    <tr><td><code>select XXHASH</code></td><td>自动选择 xxhash 用于校验和</td></tr>
+  </table>
+  <p>构建：<code>mm/Makefile</code> → <code>obj-$(CONFIG_KSM) += ksm.o</code></p>
+</div>
+
+<div class="card">
+  <div class="card-title">运行时 Sysfs 参数 <code>/sys/kernel/mm/ksm/</code></div>
+  <table>
+    <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+    <tr><td><code>run</code></td><td>0</td><td>0=停止, 1=运行, 2=停止并取消合并</td></tr>
+    <tr><td><code>pages_to_scan</code></td><td>100</td><td>每轮扫描页数</td></tr>
+    <tr><td><code>sleep_millisecs</code></td><td>20</td><td>轮间休眠（ms）</td></tr>
+    <tr><td><code>merge_across_nodes</code></td><td>1</td><td>跨 NUMA 节点合并</td></tr>
+    <tr><td><code>max_page_sharing</code></td><td>256</td><td>单 KSM 页最大共享数</td></tr>
+    <tr><td><code>use_zero_pages</code></td><td>0</td><td>全零页与内核 zero page 合并</td></tr>
+    <tr><td><code>smart_scan</code></td><td>1</td><td>智能跳过历史失败页</td></tr>
+    <tr><td><code>advisor_mode</code></td><td>none</td><td>none / scan-time</td></tr>
+    <tr><td><code>advisor_max_cpu</code></td><td>70</td><td>ksmd 最大 CPU%</td></tr>
+    <tr><td><code>advisor_target_scan_time</code></td><td>200</td><td>目标扫描时间（秒）</td></tr>
+    <tr><td><code>stable_node_chains_prune_millisecs</code></td><td>2000</td><td>Chain 清理周期</td></tr>
+  </table>
+</div>
+
+<!-- ============ 三、核心数据结构 ============ -->
+<h2 id="sec3">三、核心数据结构</h2>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-title">struct ksm_mm_slot</div>
+    <pre><code>struct ksm_mm_slot {
+    struct mm_slot slot;     // 哈希: mm → mm_slot
+    struct ksm_rmap_item *rmap_list; // rmap_item 链表头
+};</code></pre>
+  </div>
+  <div class="card">
+    <div class="card-title">struct ksm_rmap_item</div>
+    <pre><code>struct ksm_rmap_item {
+    struct ksm_rmap_item *rmap_list;
+    union { struct anon_vma *anon_vma; int nid; };
+    struct mm_struct *mm;
+    unsigned long address;  // VA | flags
+      // 低8位: SEQNR  0x100: UNSTABLE  0x200: STABLE
+    unsigned int oldchecksum;
+    u8 age; u8 remaining_skips;
+    union {
+        struct rb_node node;       // unstable tree
+        struct { struct ksm_stable_node *head;
+                 struct hlist_node hlist; }; // stable
+    };
+};</code></pre>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-title">struct ksm_stable_node</div>
+    <pre><code>struct ksm_stable_node {
+    union {
+        struct rb_node node;      // rbtree 节点
+        struct { list_head list;
+                 hlist_node hlist_dup; }; // chain
+    };
+    struct hlist_head hlist;     // 共享者 rmap_item 链表
+    union { unsigned long kpfn;
+            unsigned long chain_prune_time; };
+    int rmap_hlist_len; // -1024 = CHAIN
+#ifdef CONFIG_NUMA
+    int nid;
+#endif
+};</code></pre>
+  </div>
+  <div class="card">
+    <div class="card-title">KSM 页面标识（Keyhole Reference）</div>
+    <pre><code>// include/linux/page-flags.h
+#define FOLIO_MAPPING_KSM  0x3
+
+folio_test_ksm(folio)
+  → (folio-&gt;mapping &amp; 0x3) == FOLIO_MAPPING_KSM
+
+folio_set_stable_node(folio, node)
+  → folio-&gt;mapping = node | FOLIO_MAPPING_KSM
+
+// "钥匙孔引用": 不持有 refcount
+// 通过 stable_node-&gt;kpfn → folio → mapping
+// 回指验证有效性</code></pre>
+  </div>
+</div>
+
+<!-- ====== KSM 与内核 rmap 反向映射机制深度解析 ====== -->
+<div class="card">
+  <div class="card-title">内核 rmap 反向映射机制是什么？</div>
+  <p>内核页表中存储的是<strong>正向映射</strong>：虚拟地址 → 物理页（通过 PTE）。但内核经常需要回答一个<strong>反向问题</strong>：</p>
+  <div class="highlight">
+    <strong>"给定一个物理页，哪些进程的哪些虚拟地址映射了它？"</strong>
+  </div>
+  <p>这个反向查询在以下场景至关重要：</p>
+  <ul>
+    <li><strong>页面回收</strong>：回收物理页前，必须找到并解除所有映射它的 PTE（<code>try_to_unmap()</code>）</li>
+    <li><strong>页面迁移</strong>：NUMA 平衡或内存热插拔时，需要更新所有映射该页的 PTE（<code>try_to_migrate()</code>）</li>
+    <li><strong>引用计数</strong>：判断页面是否被访问过（<code>folio_referenced()</code>）</li>
+    <li><strong>内存错误</strong>：硬件 MCE 发生时，找到所有映射故障页的进程并发送 SIGBUS（<code>collect_procs()</code>）</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-title">通用 rmap 的数据结构链</div>
+  <pre><code>物理页 (folio)
+  │
+  │  folio-&gt;mapping = anon_vma | 0x1    ← 低2位编码类型
+  ▼
+struct anon_vma                         ← 反向映射树的根
+  │  rb_root (interval tree)
+  ▼
+struct anon_vma_chain                   ← 桥接 VMA 和 anon_vma
+  │  ├── vma        → 指向具体的 VMA
+  │  ├── anon_vma   → 指回 anon_vma
+  │  └── rb         → interval tree 节点
+  ▼
+struct vm_area_struct (VMA)             ← 进程的虚拟地址区域
+  │  vm_start / vm_end / vm_mm
+  ▼
+页表 PTE                                ← 最终定位到具体的虚拟地址</code></pre>
+  <p>对于<strong>普通匿名页</strong>，<code>rmap_walk_anon()</code> 的遍历路径：</p>
+  <pre><code>// mm/rmap.c
+void rmap_walk_anon(struct folio *folio, struct rmap_walk_control *rwc, ...)
+{
+    // 1. 从 folio-&gt;mapping 取出 anon_vma（去掉低2位标志）
+    anon_vma = folio_anon_vma(folio);
+
+    // 2. 加读锁
+    anon_vma_lock_read(anon_vma);
+
+    // 3. 遍历 interval tree，找到所有映射此页的 VMA
+    anon_vma_interval_tree_foreach(vmac, &amp;anon_vma-&gt;rb_root, ...) {
+        vma = vmac-&gt;vma;
+        addr = ...;
+        rwc-&gt;rmap_one(folio, vma, addr, rwc-&gt;arg);
+        // 回调：try_to_unmap_one / try_to_migrate_one / ...
+    }
+
+    anon_vma_unlock_read(anon_vma);
+}</code></pre>
+</div>
+
+<div class="card">
+  <div class="card-title">KSM 为什么不能用通用 rmap？</div>
+  <p>通用 rmap 的前提是：<strong>一个匿名页只属于一个 anon_vma 树</strong>（fork 产生的进程家族）。
+     但 KSM 页的本质是<strong>多个不相关进程的页面被合并成一个</strong>——这些进程的 anon_vma 树完全不同！</p>
+  <pre><code>进程 A (anon_vma_A) ──┐
+进程 B (anon_vma_B) ──┤── 内容相同 ──→ 合并为同一个 KSM 页
+进程 C (anon_vma_C) ──┘
+
+问题：这个 KSM 页的 folio-&gt;mapping 应该指向哪个 anon_vma？
+答案：哪个都不能单独指向！需要一种新机制记录所有共享者。</code></pre>
+  <div class="warn">
+    如果强行使用通用 rmap，<code>folio-&gt;mapping</code> 只能指向一个 <code>anon_vma</code>，
+    那么 <code>rmap_walk_anon()</code> 只能遍历一棵 anon_vma 树，会<strong>遗漏其他进程的映射</strong>——
+    导致页面回收/迁移时无法解除所有 PTE，造成数据损坏。
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">KSM 的解决方案：自建反向映射 + 复用通用基础设施</div>
+  <p>KSM 采用<strong>混合架构</strong>：自建一套并行反向映射索引，但在最后定位 VMA 时复用通用的 <code>anon_vma</code> interval tree。</p>
+
+  <h4>folio-&gt;mapping 的编码（<code>include/linux/page-flags.h</code>）</h4>
+  <pre><code>// 低 2 位编码页面类型
+#define FOLIO_MAPPING_ANON      0x1   // 匿名页
+#define FOLIO_MAPPING_ANON_KSM  0x2   // KSM 标记
+#define FOLIO_MAPPING_KSM       0x3   // = ANON | ANON_KSM → 既是匿名又是 KSM
+
+// 普通匿名页: folio-&gt;mapping = anon_vma_ptr     | 0x1
+// KSM 页:     folio-&gt;mapping = stable_node_ptr  | 0x3
+// 文件页:     folio-&gt;mapping = address_space_ptr | 0x0</code></pre>
+
+  <h4>KSM 自建的反向映射链</h4>
+  <pre><code>KSM 物理页 (folio)
+  │
+  │  folio-&gt;mapping = stable_node | 0x3
+  ▼
+struct ksm_stable_node                  ← KSM 自建索引的入口
+  │  hlist (哈希链表头)
+  ▼
+struct ksm_rmap_item ─→ ksm_rmap_item ─→ ...  ← 所有共享者的链表
+  │                      │
+  │  ├── mm: 进程A       │  ├── mm: 进程B
+  │  ├── address: VA_A   │  ├── address: VA_B
+  │  └── anon_vma: av_A  │  └── anon_vma: av_B
+  ▼                      ▼
+anon_vma_A 的           anon_vma_B 的        ← 复用通用 anon_vma!
+interval tree           interval tree
+  ▼                      ▼
+VMA_A → PTE_A           VMA_B → PTE_B        ← 最终定位到 PTE</code></pre>
+</div>
+
+<div class="card">
+  <div class="card-title">rmap_walk() 分发：KSM 优先判断</div>
+  <pre><code>// mm/rmap.c — rmap_walk()
+void rmap_walk(struct folio *folio, struct rmap_walk_control *rwc)
+{
+    // ⚠️ KSM 必须在 anon 之前判断！
+    // 因为 KSM 页 folio_test_anon() 也返回 true（bit0=1）
+    if (unlikely(folio_test_ksm(folio)))
+        rmap_walk_ksm(folio, rwc);          // ← KSM 专用路径
+    else if (folio_test_anon(folio))
+        rmap_walk_anon(folio, rwc, false);   // 普通匿名页
+    else
+        rmap_walk_file(folio, rwc, false);   // 文件页
+}</code></pre>
+</div>
+
+<div class="card">
+  <div class="card-title">rmap_walk_ksm() 详解：两轮扫描策略</div>
+  <pre><code>// mm/ksm.c — rmap_walk_ksm()
+void rmap_walk_ksm(struct folio *folio, struct rmap_walk_control *rwc)
+{
+    stable_node = folio_stable_node(folio);
+    search_new_forks = 0;
+
+again:
+    // 遍历所有共享此 KSM 页的 rmap_item
+    hlist_for_each_entry(rmap_item, &amp;stable_node-&gt;hlist, hlist) {
+        anon_vma = rmap_item-&gt;anon_vma;
+        anon_vma_lock_read(anon_vma);
+
+        // 复用通用 interval tree 遍历该 anon_vma 下所有 VMA
+        anon_vma_interval_tree_foreach(vmac, &amp;anon_vma-&gt;rb_root, 0, ULONG_MAX) {
+            vma = vmac-&gt;vma;
+            addr = rmap_item-&gt;address &amp; PAGE_MASK;
+
+            if (addr &lt; vma-&gt;vm_start || addr &gt;= vma-&gt;vm_end)
+                continue;
+
+            // ★ 两轮扫描的关键过滤 ★
+            if ((rmap_item-&gt;mm == vma-&gt;vm_mm) == search_new_forks)
+                continue;
+
+            rwc-&gt;rmap_one(folio, vma, addr, rwc-&gt;arg);
+        }
+        anon_vma_unlock_read(anon_vma);
+    }
+
+    if (!search_new_forks++)    // 第一轮: 0→1, 继续第二轮
+        goto again;             // 第二轮: 1→2, 结束
+}</code></pre>
+  <h4>两轮扫描的逻辑</h4>
+  <table>
+    <tr><th>轮次</th><th><code>search_new_forks</code></th><th>处理哪些 VMA</th><th>目的</th></tr>
+    <tr><td>第一轮</td><td>0</td><td><code>rmap_item-&gt;mm == vma-&gt;vm_mm</code><br/>（原始进程的 VMA）</td>
+        <td>先处理 ksmd 扫描时记录的原始映射</td></tr>
+    <tr><td>第二轮</td><td>1</td><td><code>rmap_item-&gt;mm != vma-&gt;vm_mm</code><br/>（fork 产生的新进程 VMA）</td>
+        <td>处理扫描后新 fork 出的子进程中的映射</td></tr>
+  </table>
+  <p><strong>为什么需要两轮</strong>：ksmd 扫描合并时记录了 <code>rmap_item-&gt;mm</code>（原始进程）。
+     但合并后原始进程可能 fork 出子进程，子进程继承了 KSM 页面的映射，
+     其 <code>vma-&gt;vm_mm</code> 与 <code>rmap_item-&gt;mm</code> 不同。两轮扫描确保不遗漏。</p>
+</div>
+
+<div class="card">
+  <div class="card-title">共享 vs 独立：一张表看清 KSM 与通用 rmap 的关系</div>
+  <table>
+    <tr><th>功能</th><th>通用 rmap</th><th>KSM 的做法</th><th>共享/独立</th></tr>
+    <tr>
+      <td><code>folio-&gt;mapping</code> 编码</td>
+      <td><code>anon_vma | 0x1</code></td>
+      <td><code>stable_node | 0x3</code></td>
+      <td><span class="tag tag-red">独立</span></td>
+    </tr>
+    <tr>
+      <td>mapcount 管理</td>
+      <td><code>folio_add/remove_anon_rmap_pte()</code></td>
+      <td>调用相同的函数</td>
+      <td><span class="tag tag-green">共享</span></td>
+    </tr>
+    <tr>
+      <td>反向映射索引</td>
+      <td><code>anon_vma → anon_vma_chain → VMA</code></td>
+      <td><code>stable_node → hlist of rmap_item</code></td>
+      <td><span class="tag tag-red">独立</span></td>
+    </tr>
+    <tr>
+      <td>遍历入口</td>
+      <td><code>rmap_walk_anon()</code></td>
+      <td><code>rmap_walk_ksm()</code>（在 <code>mm/ksm.c</code>）</td>
+      <td><span class="tag tag-red">独立</span></td>
+    </tr>
+    <tr>
+      <td>最终定位 VMA</td>
+      <td><code>anon_vma_interval_tree_foreach()</code></td>
+      <td>复用同一函数</td>
+      <td><span class="tag tag-green">共享</span></td>
+    </tr>
+    <tr>
+      <td>锁机制</td>
+      <td><code>anon_vma_lock_read()</code></td>
+      <td>复用同一锁</td>
+      <td><span class="tag tag-green">共享</span></td>
+    </tr>
+    <tr>
+      <td>回调接口</td>
+      <td><code>struct rmap_walk_control</code></td>
+      <td>使用相同的回调结构</td>
+      <td><span class="tag tag-green">共享</span></td>
+    </tr>
+    <tr>
+      <td><code>__page_check_anon_rmap()</code></td>
+      <td>验证 <code>folio-&gt;mapping</code> 一致性</td>
+      <td><strong>跳过</strong>（KSM 页的 mapping 指向 stable_node）</td>
+      <td><span class="tag tag-red">独立</span></td>
+    </tr>
+    <tr>
+      <td><code>rmap_walk_locked()</code></td>
+      <td>支持</td>
+      <td><strong>不支持</strong>（<code>VM_BUG_ON</code>）</td>
+      <td><span class="tag tag-red">独立</span></td>
+    </tr>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-title">实际场景：rmap_walk_ksm 如何被调用</div>
+  <table>
+    <tr><th>场景</th><th>调用链</th><th>效果</th></tr>
+    <tr>
+      <td><strong>页面回收</strong></td>
+      <td><code>try_to_unmap()</code> → <code>rmap_walk()</code> → <code>rmap_walk_ksm()</code> → <code>try_to_unmap_one()</code></td>
+      <td>解除所有进程的 PTE，创建 swap entry</td>
+    </tr>
+    <tr>
+      <td><strong>页面迁移</strong></td>
+      <td><code>try_to_migrate()</code> → <code>rmap_walk()</code> → <code>rmap_walk_ksm()</code> → <code>try_to_migrate_one()</code></td>
+      <td>将所有 PTE 从旧页指向新页</td>
+    </tr>
+    <tr>
+      <td><strong>KSM 页迁移</strong></td>
+      <td><code>folio_migrate_ksm()</code> 直接更新 <code>stable_node-&gt;kpfn</code></td>
+      <td>更新 stable_node 指向新物理页</td>
+    </tr>
+    <tr>
+      <td><strong>硬件内存错误</strong></td>
+      <td><code>collect_procs_ksm()</code> → 遍历 stable_node hlist → <code>add_to_kill_ksm()</code></td>
+      <td>找到所有映射故障页的进程，发送 SIGBUS</td>
+    </tr>
+    <tr>
+      <td><strong>引用检查</strong></td>
+      <td><code>folio_referenced()</code> → <code>rmap_walk()</code> → <code>rmap_walk_ksm()</code></td>
+      <td>检查 KSM 页是否被任何进程最近访问</td>
+    </tr>
+  </table>
+  <div class="highlight">
+    <strong>总结</strong>：KSM 与内核 rmap 的关系是<strong>"自建索引 + 复用基础设施"</strong>。
+    KSM 维护自己的 <code>stable_node → rmap_item</code> 反向映射链表（因为一个 KSM 页跨多棵 anon_vma 树），
+    但在定位具体 VMA 时复用通用的 <code>anon_vma interval tree</code>、<code>rmap_walk_control</code> 回调接口和锁机制。
+    通用 rmap 代码通过 <code>folio_test_ksm()</code> 感知 KSM 的存在，并将遍历分发到 <code>rmap_walk_ksm()</code>。
+  </div>
+</div>
+
+<!-- ============ 四、触发 KSM 的逻辑 ============ -->
+<h2 id="sec4">四、触发 KSM 的逻辑</h2>
+
+<div class="card">
+  <div class="card-title">三种启用方式</div>
+  <div class="grid3">
+    <div class="card" style="border-color:var(--green)">
+      <div class="card-title" style="color:var(--green)">madvise 逐区域</div>
+      <pre><code>madvise(addr, len,
+  MADV_MERGEABLE);
+madvise(addr, len,
+  MADV_UNMERGEABLE);</code></pre>
+    </div>
+    <div class="card" style="border-color:var(--orange)">
+      <div class="card-title" style="color:var(--orange)">进程级全局</div>
+      <pre><code>ksm_enable_merge_any(mm);
+// 设置 MMF_VM_MERGE_ANY
+// 所有兼容 VMA 自动标记</code></pre>
+    </div>
+    <div class="card" style="border-color:var(--purple)">
+      <div class="card-title" style="color:var(--purple)">fork/exec 继承</div>
+      <pre><code>// fork: 子进程继承
+if (MMF_VM_MERGEABLE)
+  __ksm_enter(child_mm);
+// exec: 若 MERGE_ANY
+if (MMF_VM_MERGE_ANY)
+  __ksm_enter(new_mm);</code></pre>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">madvise(MADV_MERGEABLE) 调用链</div>
+  <div class="flow-box">
+    <div class="flow-step">madvise()</div><span class="flow-arrow">→</span>
+    <div class="flow-step">madvise_walk_vmas()</div><span class="flow-arrow">→</span>
+    <div class="flow-step">ksm_madvise()</div><span class="flow-arrow">→</span>
+    <div class="flow-step">__ksm_enter(mm)</div>
+  </div>
+  <pre><code>int ksm_madvise(vma, start, end, advice, vm_flags) {
+  case MADV_MERGEABLE:
+    if (*vm_flags &amp; VM_MERGEABLE) return 0;
+    if (!vma_ksm_compatible(vma)) return -EINVAL;
+    if (!test_bit(MMF_VM_MERGEABLE, &amp;mm-&gt;flags))
+        __ksm_enter(mm);
+    *vm_flags |= VM_MERGEABLE;
+  case MADV_UNMERGEABLE:
+    unmerge_ksm_pages(vma, start, end);
+    *vm_flags &amp;= ~VM_MERGEABLE;
+}</code></pre>
+</div>
+
+<div class="card">
+  <div class="card-title">VMA 兼容性 — 以下类型不可合并</div>
+  <table>
+    <tr><th>排除标志</th><th>原因</th></tr>
+    <tr><td><code>VM_SHARED / VM_MAYSHARE</code></td><td>共享映射由文件系统保证一致性</td></tr>
+    <tr><td><code>VM_SPECIAL</code></td><td>设备映射等特殊映射</td></tr>
+    <tr><td><code>VM_HUGETLB</code></td><td>大页有独立管理</td></tr>
+    <tr><td><code>VM_DAX / VM_DROPPABLE</code></td><td>直接访问存储 / 可丢弃页</td></tr>
+  </table>
+  <p class="highlight"><strong>核心要求</strong>：VMA 必须是<strong>私有匿名映射</strong>。</p>
+</div>
+
+<div class="card">
+  <div class="card-title">ksmd 守护线程</div>
+  <pre><code>static int ksm_scan_thread(void *nothing) {
+    set_user_nice(current, 5);  // nice 5
+    while (!kthread_should_stop()) {
+        mutex_lock(&amp;ksm_thread_mutex);
+        if (ksmd_should_run())
+            ksm_do_scan(ksm_thread_pages_to_scan);
+        mutex_unlock(&amp;ksm_thread_mutex);
+        wait_event_freezable_timeout(ksm_thread_wait,
+            ksmd_should_run(),
+            msecs_to_jiffies(ksm_thread_sleep_millisecs));
+    }
+}
+// ksm_do_scan: 逐页调用 cmp_and_merge_page()
+// 全扫描完成后: seqnr++, 清空 unstable tree, 调用 advisor</code></pre>
+</div>
+
+<!-- ============ 五、页面合并核心流程 ============ -->
+<h2 id="sec5">五、页面合并核心流程</h2>
+
+<div class="card">
+  <div class="card-title">cmp_and_merge_page() 决策流程</div>
+  <pre><code>scan_get_next_rmap_item()
+  │
+  ├─ Smart Scan: should_skip_rmap_item()?  → 跳过 (ksm_pages_skipped++)
+  │
+  ├─ calc_checksum() → xxhash
+  │
+  ├─ checksum ≠ oldchecksum?  → volatile, 更新 checksum, 返回
+  │
+  ├─ use_zero_pages &amp;&amp; checksum == zero?
+  │     → try_to_merge_with_zero_page()
+  │
+  ├─ stable_tree_search() → 找到匹配?
+  │     → try_to_merge_with_ksm_page() + stable_tree_append()
+  │
+  ├─ unstable_tree_search_insert() → 找到匹配?
+  │     → try_to_merge_two_pages() + stable_tree_insert()
+  │
+  └─ 无匹配 → 留在 unstable tree 等下轮</code></pre>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-title">write_protect_page()</div>
+    <pre><code>// 1. page_vma_mapped_walk 找 PTE
+// 2. 若可写/dirty:
+//    清 PTE → flush TLB
+//    检查 mapcount+1+swapped == refcount
+//    清 dirty/writable → 重设只读 PTE
+// 3. folio_try_share_anon_rmap_pte()
+// 4. 保存 orig_pte</code></pre>
+  </div>
+  <div class="card">
+    <div class="card-title">replace_page()</div>
+    <pre><code>// 1. 验证 PTE == orig_pte
+// 2. 非零 KSM 页:
+//    folio_add_anon_rmap_pte()
+//    创建新 PTE → kpage
+// 3. 零页: pte_mkdirty + ksm_map_zero_page()
+// 4. 清旧 PTE → flush TLB
+// 5. folio_remove_rmap_pte() + folio_put()</code></pre>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">COW 打破 — break_ksm()</div>
+  <pre><code>// 用户写 → PTE 只读 → 缺页异常
+// → do_wp_page() → break_ksm()
+static int break_ksm(vma, addr) {
+    do {
+        fault = handle_mm_fault(vma, addr,
+            FAULT_FLAG_UNSHARE | FAULT_FLAG_REMOTE, NULL);
+    } while (is_ksm_page_at(addr));
+}</code></pre>
+</div>
+
+<!-- ============ 六、ARM64 架构特殊处理 ============ -->
+<h2 id="sec6">六、ARM64 架构特殊处理</h2>
+
+<div class="card">
+  <div class="card-title">MTE 感知页面比较 <code>arch/arm64/kernel/mte.c</code></div>
+  <pre><code>int memcmp_pages(struct page *page1, struct page *page2)
+{
+    ret = memcmp(addr1, addr2, PAGE_SIZE);
+    if (!system_supports_mte() || ret)
+        return ret;
+
+    // 即使内容相同，若任一页有 MTE 标签 → 拒绝合并
+    if (page_mte_tagged(page1) || page_mte_tagged(page2))
+        return addr1 != addr2;  // 非零 → 不合并
+
+    return ret;
+}</code></pre>
+  <div class="warn">
+    <strong>安全原因</strong>：若两页内容相同但 MTE 标签不同，合并后 <code>__set_ptes()</code> 会通过
+    <code>mte_sync_tags()</code> 覆盖标签，导致 MTE 内存安全检查失效。
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">ARM64 相关架构特性</div>
+  <table>
+    <tr><th>特性</th><th>与 KSM 的关系</th></tr>
+    <tr><td>MTE</td><td>有标签的页面即使内容相同也不合并</td></tr>
+    <tr><td>64KB 页面</td><td>KSM 以页面为单位合并，64KB 页合并粒度更大</td></tr>
+    <tr><td>NUMA (AMP)</td><td><code>merge_across_nodes</code> 影响跨节点访问延迟</td></tr>
+    <tr><td>PAN / UAO</td><td>内核访问用户页面的权限机制，memcmp 需要此权限</td></tr>
+  </table>
+</div>
+
+<!-- ============ 七、嵌入式设备为何不开启 KSM ============ -->
+<h2 id="sec7">七、嵌入式设备为何不开启 KSM</h2>
+
+<div class="card">
+  <div class="card-title">问题的提出</div>
+  <p>嵌入式设备中同样存在 COW 场景（如 fork 后的子进程），但几乎看不到开启 KSM 的实践。
+     通过源码分析，原因是<strong>多维度</strong>的：</p>
+</div>
+
+<div class="card">
+  <div class="card-title">原因一：结构性内存开销 — 小内存设备上"入不敷出"</div>
+  <p>KSM 在启动时创建 <strong>3 个 slab cache</strong>，不论是否实际使用：</p>
+  <pre><code>// mm/ksm.c — ksm_slab_init()
+rmap_item_cache  = KMEM_CACHE(ksm_rmap_item, 0);
+stable_node_cache = KMEM_CACHE(ksm_stable_node, 0);
+mm_slot_cache    = KMEM_CACHE(ksm_mm_slot, 0);</code></pre>
+  <table>
+    <tr><th>结构体</th><th>大小 (ARM64)</th><th>分配频率</th></tr>
+    <tr><td><code>ksm_rmap_item</code></td><td>~64 字节</td><td>每个被扫描的页面</td></tr>
+    <tr><td><code>ksm_stable_node</code></td><td>~56 字节</td><td>每个去重后的唯一页面</td></tr>
+    <tr><td><code>ksm_mm_slot</code></td><td>~40 字节</td><td>每个参与 KSM 的进程</td></tr>
+  </table>
+  <p>关键数据：<strong>每扫描一个 4KB 页面，需分配 64 字节 rmap_item</strong>——1.56% 的元数据开销。
+     在 256MB 内存的嵌入式设备上，若扫描 10000 个页面，仅 rmap_item 就消耗 640KB。</p>
+  <div class="warn">
+    若 <code>ksm_rmap_items / ksm_merging_pages > 64</code>（64-bit 系统），KSM <strong>净收益为负</strong>——
+    消耗的元数据内存超过了合并节省的内存。嵌入式设备通常只有单一应用，重复页面极少，几乎必然落入此区间。
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">原因二：ksmd 内核线程 — CPU 与栈内存的持续消耗</div>
+  <pre><code>// mm/ksm.c — ksm_init()
+ksm_thread = kthread_run(ksm_scan_thread, NULL, "ksmd");
+// subsys_initcall → 开机无条件创建</code></pre>
+  <ul>
+    <li><strong>内核栈</strong>：ARM64 上永久占用 16KB 内核栈空间</li>
+    <li><strong>CPU 唤醒</strong>：默认每 20ms 唤醒一次，即使无任何 MERGEABLE 区域</li>
+    <li><strong>功耗</strong>：嵌入式设备对功耗敏感，持续的背景扫描不利于低功耗设计</li>
+  </ul>
+</div>
+
+<div class="card">
+  <div class="card-title">原因三：延迟不确定性 — 实时性冲突</div>
+  <p>许多嵌入式应用有实时或准实时需求。KSM 引入两类不可预测延迟：</p>
+  <ul>
+    <li><strong>扫描延迟</strong>：ksmd 在扫描时持有 <code>ksm_thread_mutex</code>，与 <code>__ksm_enter/exit</code> 竞争</li>
+    <li><strong>COW 打破延迟</strong>：写入 KSM 页面时触发 <code>break_ksm()</code>，需要分配新页 + 复制内容，
+        延迟远高于普通缺页</li>
+  </ul>
+  <p>内核文档明确警告：<em>"KSM's scans may use a lot of processing power: some installations will disable KSM for that reason."</em></p>
+</div>
+
+<div class="card">
+  <div class="card-title">原因四：工作负载不匹配 — 设计初衷是虚拟化</div>
+  <p>KSM 的 Kconfig 帮助文本写道：<em>"Recommended for use with KVM, or with other duplicative applications."</em></p>
+  <table>
+    <tr><th>场景</th><th>重复页面量</th><th>KSM 收益</th></tr>
+    <tr><td>KVM 主机 (10+ VM)</td><td>极高（相同 OS 内核页）</td><td><span class="tag tag-green">显著</span></td></tr>
+    <tr><td>容器宿主机</td><td>高（共享基础库）</td><td><span class="tag tag-green">明显</span></td></tr>
+    <tr><td>桌面 / 服务器</td><td>中等（fork 子进程）</td><td><span class="tag tag-orange">有限</span></td></tr>
+    <tr><td>嵌入式单应用</td><td>极低</td><td><span class="tag tag-red">为负</span></td></tr>
+    <tr><td>嵌入式多进程</td><td>低（进程间数据不同）</td><td><span class="tag tag-red">为负</span></td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-title">原因五：内核镜像体积 — Flash 受限</div>
+  <p>KSM 是 <code>bool</code> 配置（不可编译为模块），启用后永久增加内核 text 段。
+     <code>mm/ksm.c</code> 有 3980 行代码，编译后约增加 <strong>15-20KB</strong> 内核镜像体积。
+     对于 Flash 仅有几 MB 的 MCU 级设备，这一开销不可忽视。</p>
+</div>
+
+<div class="card">
+  <div class="card-title">原因六：arch/arm64/mm/init.c 的佐证</div>
+  <p>ARM64 内存初始化中对<strong>极小内存设备</strong>的处理方式揭示了内核的设计取向：</p>
+  <pre><code>// arch/arm64/mm/init.c — arch_mm_preinit()
+if (PAGE_SIZE >= 16384 &amp;&amp; get_num_physpages() &lt;= 128) {
+    // 内存 ≤ 2MB 的极端嵌入式设备
+    sysctl_overcommit_memory = OVERCOMMIT_ALWAYS;
+}</code></pre>
+  <p>内核对小内存设备的策略是<strong>开启 overcommit</strong>（零结构开销），而非启用 KSM（需要 slab + 线程 + 元数据）。
+     整个 <code>arch/arm64/mm/</code> 目录中<strong>没有任何 KSM 相关代码</strong>——KSM 与 ARM64 架构层完全解耦，
+     没有针对嵌入式的特殊协调。</p>
+</div>
+
+<div class="card">
+  <div class="card-title">深入理解：Overcommit 为什么是"零结构开销"？</div>
+  <p>Overcommit 控制的是<strong>虚拟地址空间的审批策略</strong>，不是物理页分配。理解这一点是理解内核内存管理的关键：</p>
+  <pre><code>进程调用 mmap(1GB)
+    ↓
+内核决策：是否批准这块虚拟地址空间？ ← overcommit 管的是这一步
+    ↓
+批准后：不分配物理页！只创建 VMA 结构体（几十字节）
+    ↓
+进程实际读写时 → 缺页异常 → 才按需分配物理页</code></pre>
+  <p>三种 overcommit 模式（<code>mm/util.c</code> — <code>__vm_enough_memory()</code>）：</p>
+  <table>
+    <tr><th>模式</th><th>值</th><th>行为</th><th>源码逻辑</th></tr>
+    <tr><td><code>OVERCOMMIT_GUESS</code></td><td>0</td><td>默认。粗略检查：单次请求不超过 RAM+swap</td>
+        <td><code>if (pages &gt; totalram + total_swap) goto error;</code></td></tr>
+    <tr><td><code>OVERCOMMIT_ALWAYS</code></td><td>1</td><td><strong>无条件批准</strong>所有虚拟内存请求</td>
+        <td><code>if (sysctl_overcommit_memory == OVERCOMMIT_ALWAYS) return 0;</code></td></tr>
+    <tr><td><code>OVERCOMMIT_NEVER</code></td><td>2</td><td>严格记账：总承诺量 ≤ 50%RAM + swap</td>
+        <td><code>vm_committed_as &lt; vm_commit_limit() ?</code></td></tr>
+  </table>
+  <div class="highlight">
+    <strong>"零结构开销"的含义</strong>：overcommit 只放宽了虚拟地址的审批门槛。<code>mmap</code> 成功后，
+    内核只创建了 VMA（几十字节），<strong>不分配任何物理页面</strong>。物理页在实际缺页时才按需分配。
+    所以 overcommit 不需要 slab cache、不需要内核线程、不需要每页元数据。
+  </div>
+  <p><strong>对比 KSM</strong>：KSM 需要为<strong>每个被扫描的页面</strong>分配 64 字节的 <code>rmap_item</code>，
+     需要 <code>ksmd</code> 线程持续运行——这些都是固定的结构性开销。在 2MB 内存的设备上，
+     KSM 的 slab cache + 线程栈（16KB）就可能占掉总内存的 1% 以上。</p>
+</div>
+
+<div class="card">
+  <div class="card-title">总结：嵌入式不开启 KSM 的决策矩阵</div>
+  <table>
+    <tr><th>因素</th><th>影响</th><th>严重程度</th></tr>
+    <tr><td>rmap_item 元数据开销</td><td>每页 64 字节，可能净亏损</td><td><span class="tag tag-red">高</span></td></tr>
+    <tr><td>ksmd 线程 CPU / 功耗</td><td>持续唤醒扫描，不利低功耗</td><td><span class="tag tag-red">高</span></td></tr>
+    <tr><td>延迟不确定性</td><td>COW 打破 + 扫描竞争</td><td><span class="tag tag-orange">中</span></td></tr>
+    <tr><td>工作负载无重复页</td><td>设计目标是 KVM 多 VM 场景</td><td><span class="tag tag-red">高</span></td></tr>
+    <tr><td>内核镜像增大</td><td>~15-20KB text 段</td><td><span class="tag tag-orange">中</span></td></tr>
+    <tr><td>无架构层协调</td><td>与 kswapd 等资源竞争</td><td><span class="tag tag-orange">中</span></td></tr>
+  </table>
+  <div class="highlight">
+    <strong>例外</strong>：若嵌入式设备运行多个相同二进制的容器/进程（如边缘计算网关），
+    且内存 ≥ 512MB，KSM 仍可能带来正收益。此时可考虑开启并配合 <code>smart_scan</code> + <code>advisor</code> 降低开销。
+  </div>
+</div>
+
+<!-- ============ 八、QEMU 实践指南 ============ -->
+<h2 id="sec8">八、QEMU 实践指南</h2>
+
+<p>以下实验可在 QEMU 模拟的 ARM64 虚拟机中完成，无需物理开发板。</p>
+
+<div class="card">
+  <div class="card-title">说明：KSM 实验为什么使用匿名页而非 ramfs/tmpfs？</div>
+  <p>本指南中所有 QEMU 实验的测试程序都使用 <code>mmap(MAP_PRIVATE | MAP_ANONYMOUS)</code> 分配<strong>匿名页面</strong>。
+     这是因为 <strong>KSM 只合并匿名页面</strong>，不合并文件页（pagecache）。具体原因：</p>
+  <ul>
+    <li><strong>匿名页</strong>（<code>MAP_ANONYMOUS</code>）：没有文件后端，内核通过 <code>anon_vma</code> / <code>ksm_rmap_item</code> 追踪映射关系。
+        KSM 可以安全地将其写保护并合并。</li>
+    <li><strong>文件页 / tmpfs / ramfs</strong>：有文件后端（即使 tmpfs 的"文件"在内存中），其一致性由文件系统层保证。
+        合并文件页会破坏文件系统的语义——两个不同文件的页面不应被合并为同一个。</li>
+  </ul>
+  <p>QEMU 虚拟机的根文件系统使用 <code>qcow2</code> 虚拟磁盘（<code>root=/dev/vda1</code>），测试程序在用户态运行，
+     通过 <code>mmap</code> / <code>malloc</code> 分配的内存都是匿名页。这与 KSM 的设计目标完全一致。</p>
+</div>
+
+<div class="exp-card">
+  <div class="exp-title">环境搭建：QEMU ARM64 虚拟机 <span class="badge badge-basic">基础</span></div>
+  <div class="exp-goal">目标：创建一个可运行 Linux 的 ARM64 虚拟机，用于 KSM 实验</div>
+  <h4>1. 安装 QEMU</h4>
+  <pre><code># Ubuntu / Debian
+sudo apt install qemu-system-arm gcc-aarch64-linux-gnu
+
+# Fedora
+sudo dnf install qemu-system-aarch64</code></pre>
+
+  <h4>2. 创建磁盘镜像并安装系统</h4>
+  <pre><code># 创建 8GB 虚拟磁盘
+qemu-img create -f qcow2 arm64-ksm.qcow2 8G
+
+# 下载 ARM64 版 Linux 安装镜像（以 Debian/Ubuntu 为例）
+wget https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-24.04-live-server-arm64.iso
+
+# 获取 UEFI 固件
+sudo apt install qemu-efi-aarch64
+cp /usr/share/qemu-efi-aarch64/QEMU_EFI.fd ./</code></pre>
+
+  <h4>3. 启动虚拟机</h4>
+  <pre><code>qemu-system-aarch64 \
+  -machine virt \
+  -cpu cortex-a76 \
+  -smp 2 \
+  -m 1024 \
+  -drive if=none,file=arm64-ksm.qcow2,format=qcow2,id=hd0 \
+  -device virtio-blk-device,drive=hd0 \
+  -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+  -device virtio-net-device,netdev=net0 \
+  -bios QEMU_EFI.fd \
+  -cdrom ubuntu-24.04-live-server-arm64.iso \
+  -nographic</code></pre>
+
+  <h4>4. 内核编译（启用 KSM）</h4>
+  <pre><code># 在宿主机上编译内核
+cd /path/to/linux-6.18.1
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+
+# 确保 KSM 已启用
+scripts/config --enable CONFIG_KSM
+# 可选：启用 trace 支持
+scripts/config --enable CONFIG_FTRACE
+scripts/config --enable CONFIG_TRACING
+
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc) Image.gz</code></pre>
+
+  <h4>5. 使用自编译内核启动</h4>
+  <pre><code>qemu-system-aarch64 \
+  -machine virt \
+  -cpu cortex-a76 \
+  -smp 2 \
+  -m 1024 \
+  -kernel arch/arm64/boot/Image \
+  -append "root=/dev/vda1 console=ttyAMA0 earlycon" \
+  -drive if=none,file=arm64-ksm.qcow2,format=qcow2,id=hd0 \
+  -device virtio-blk-device,drive=hd0 \
+  -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+  -device virtio-net-device,netdev=net0 \
+  -nographic</code></pre>
+
+  <h4>6. 验证 KSM 可用</h4>
+  <pre><code># 登录虚拟机后
+zcat /proc/config.gz | grep CONFIG_KSM
+# 预期: CONFIG_KSM=y
+
+ls /sys/kernel/mm/ksm/
+# 应看到 run, pages_to_scan, sleep_millisecs 等文件
+
+cat /sys/kernel/mm/ksm/run
+# 预期: 0 (默认未启动)</code></pre>
+</div>
+
+<div class="exp-card">
+  <div class="exp-title">QEMU 实验一：KSM 基础合并验证 <span class="badge badge-basic">基础</span></div>
+  <div class="exp-goal">目标：在 QEMU 虚拟机中验证 KSM 基本功能，观察内存节省</div>
+  <pre><code># === 虚拟机内执行 ===
+
+# 1. 启用 KSM
+echo 1 > /sys/kernel/mm/ksm/run
+echo 100 > /sys/kernel/mm/ksm/pages_to_scan
+echo 20 > /sys/kernel/mm/ksm/sleep_millisecs
+
+# 2. 记录初始内存
+free -m
+cat /sys/kernel/mm/ksm/pages_sharing  # 应为 0
+
+# 3. 编译并运行测试程序（ksm_basic.c 见前文实验一）
+gcc -o ksm_basic ksm_basic.c
+./ksm_basic &amp;
+./ksm_basic &amp;
+sleep 5
+
+# 4. 观察合并效果
+cat /sys/kernel/mm/ksm/pages_sharing   # 应 > 0
+cat /sys/kernel/mm/ksm/pages_shared
+cat /sys/kernel/mm/ksm/general_profit  # 应为正值
+free -m                                # 对比可用内存变化
+
+# 5. 查看进程级统计
+for pid in $(pgrep ksm_basic); do
+  echo "PID $pid:"; cat /proc/$pid/ksm_stat
+done</code></pre>
+</div>
+
+<div class="exp-card">
+  <div class="exp-title">QEMU 实验二：内存受限场景模拟 <span class="badge badge-intermediate">中级</span></div>
+  <div class="exp-goal">目标：模拟嵌入式小内存环境，验证 KSM 在资源受限时的负收益</div>
+  <h4>1. 用小内存重启 QEMU</h4>
+  <pre><code># 宿主机：仅分配 256MB 内存
+qemu-system-aarch64 \
+  -machine virt \
+  -cpu cortex-a53 \
+  -smp 1 \
+  -m 256 \
+  -kernel arch/arm64/boot/Image \
+  -append "root=/dev/vda1 console=ttyAMA0" \
+  -drive if=none,file=arm64-ksm.qcow2,format=qcow2,id=hd0 \
+  -device virtio-blk-device,drive=hd0 \
+  -nographic</code></pre>
+  <h4>2. 虚拟机内执行对比实验</h4>
+  <pre><code># === 场景 A: KSM 关闭 ===
+echo 0 > /sys/kernel/mm/ksm/run
+free -m
+# 记录 MemAvailable
+
+# === 场景 B: KSM 开启但无重复页面 ===
+echo 1 > /sys/kernel/mm/ksm/run
+# 运行一个分配大量不同内容页面的程序
+./ksm_volatile &amp;
+sleep 10
+
+free -m
+# 对比 MemAvailable — 可能反而减少！
+cat /sys/kernel/mm/ksm/general_profit
+# 预期: 接近 0 或为负值
+
+cat /sys/kernel/mm/ksm/pages_volatile
+# 预期: 高（频繁变化的页面无法合并）
+
+# === 结论 ===
+echo "在小内存 + 无重复页面场景下，KSM 净收益为负"</code></pre>
+</div>
+
+<div class="exp-card">
+  <div class="exp-title">QEMU 实验三：使用 ftrace 观察 KSM 内部行为 <span class="badge badge-intermediate">中级</span></div>
+  <div class="exp-goal">目标：利用 ftrace 在 QEMU 中实时观察 KSM 扫描、合并、COW 事件</div>
+  <pre><code># === 虚拟机内执行 ===
+
+# 1. 挂载 tracefs（若未自动挂载）
+mount -t tracefs none /sys/kernel/tracing
+
+# 2. 清除旧 trace
+echo > /sys/kernel/tracing/trace
+
+# 3. 启用 KSM 相关 trace 事件
+echo 1 > /sys/kernel/tracing/events/ksm/ksm_start_scan/enable
+echo 1 > /sys/kernel/tracing/events/ksm/ksm_stop_scan/enable
+echo 1 > /sys/kernel/tracing/events/ksm/ksm_merge_one_page/enable
+echo 1 > /sys/kernel/tracing/events/ksm/ksm_enter/enable
+
+# 4. 启动 KSM
+echo 1 > /sys/kernel/mm/ksm/run
+echo 50 > /sys/kernel/mm/ksm/pages_to_scan
+
+# 5. 运行测试程序
+./ksm_basic &amp;
+sleep 3
+
+# 6. 查看 trace 输出
+cat /sys/kernel/tracing/trace
+# 预期输出示例:
+# ksm_enter: mm 0xffff000012340000
+# ksm_start_scan: seq 1 rmap size 0
+# ksm_merge_one_page: ksm pfn 262144 rmap_item 0xffff0000deadbeef mm 0xffff000012340000 error 0
+# ksm_stop_scan: seq 1 rmap size 256
+
+# 7. 观察 COW 事件
+echo 1 > /sys/kernel/tracing/events/ksm/enable
+echo > /sys/kernel/tracing/trace
+
+# 运行 COW 测试（修改 KSM 页面）
+./ksm_cow &amp;
+sleep 8  # 等待合并
+
+# 触发 COW（程序内部会修改页面）
+sleep 3
+
+# 查看 trace
+cat /sys/kernel/tracing/trace | grep -E "merge|cow"
+
+# 8. 清理
+echo 0 > /sys/kernel/tracing/events/ksm/enable</code></pre>
+</div>
+
+<div class="exp-card">
+  <div class="exp-title">QEMU 实验四：KSM + NUMA 模拟 <span class="badge badge-advanced">高级</span></div>
+  <div class="exp-goal">目标：在 QEMU 中模拟 NUMA 拓扑，验证 merge_across_nodes 的影响</div>
+  <h4>1. 双 NUMA 节点启动</h4>
+  <pre><code># 宿主机：模拟 2 个 NUMA 节点，各 512MB
+qemu-system-aarch64 \
+  -machine virt \
+  -cpu cortex-a76 \
+  -smp 4 \
+  -m 1024 \
+  -object memory-backend-ram,size=512M,id=ram0 \
+  -object memory-backend-ram,size=512M,id=ram1 \
+  -numa node,nodeid=0,memdev=ram0,cpus=0-1 \
+  -numa node,nodeid=1,memdev=ram1,cpus=2-3 \
+  -kernel arch/arm64/boot/Image \
+  -append "root=/dev/vda1 console=ttyAMA0" \
+  -drive if=none,file=arm64-ksm.qcow2,format=qcow2,id=hd0 \
+  -device virtio-blk-device,drive=hd0 \
+  -nographic</code></pre>
+  <h4>2. 虚拟机内对比实验</h4>
+  <pre><code># 验证 NUMA 拓扑
+numactl --hardware
+# 应显示 2 个 node
+
+# === 场景 A: merge_across_nodes = 1 (默认) ===
+echo 1 > /sys/kernel/mm/ksm/merge_across_nodes
+echo 1 > /sys/kernel/mm/ksm/run
+./ksm_basic &amp;
+./ksm_basic &amp;
+sleep 10
+cat /sys/kernel/mm/ksm/pages_sharing   # 跨节点合并
+cat /sys/kernel/mm/ksm/general_profit
+
+# === 场景 B: merge_across_nodes = 0 ===
+echo 2 > /sys/kernel/mm/ksm/run        # 先取消合并
+echo 0 > /sys/kernel/mm/ksm/merge_across_nodes
+echo 1 > /sys/kernel/mm/ksm/run
+sleep 10
+cat /sys/kernel/mm/ksm/pages_sharing   # 仅同节点合并，可能更少
+cat /sys/kernel/mm/ksm/general_profit
+
+# 分析: merge_across_nodes=0 节省跨节点访问延迟，
+# 但可能降低合并率。大 NUMA 距离系统适合设为 0。</code></pre>
+</div>
+
+<div class="exp-card">
+  <div class="exp-title">QEMU 实验五：Advisor 自适应调节观察 <span class="badge badge-advanced">高级</span></div>
+  <div class="exp-goal">目标：在 QEMU 中观察 scan-time advisor 如何动态调整 pages_to_scan</div>
+  <pre><code># === 虚拟机内执行 ===
+
+# 1. 启用 advisor
+echo scan-time > /sys/kernel/mm/ksm/advisor_mode
+echo 200 > /sys/kernel/mm/ksm/advisor_target_scan_time
+echo 70 > /sys/kernel/mm/ksm/advisor_max_cpu
+
+# 2. 启用 trace 观察 advisor 决策
+echo 1 > /sys/kernel/tracing/events/ksm/ksm_advisor/enable
+
+# 3. 启动少量进程
+./ksm_basic &amp;
+./ksm_basic &amp;
+sleep 15
+
+# 4. 查看 advisor 调整
+cat /sys/kernel/tracing/trace | grep ksm_advisor
+# 预期: pages_to_scan 值较小（候选页面少）
+
+# 5. 大量增加进程
+for i in $(seq 1 20); do ./ksm_basic &amp; done
+sleep 15
+
+# 6. 再次查看
+cat /sys/kernel/tracing/trace | grep ksm_advisor | tail -5
+# 预期: pages_to_scan 自动增大
+
+# 7. 终止大部分进程
+kill $(pgrep ksm_basic | tail -18)
+sleep 30
+
+# 8. 最终查看
+cat /sys/kernel/tracing/trace | grep ksm_advisor | tail -5
+# 预期: pages_to_scan 自动减小
+
+# 清理
+echo none > /sys/kernel/mm/ksm/advisor_mode
+echo 0 > /sys/kernel/tracing/events/ksm/ksm_advisor/enable
+kill $(pgrep ksm_basic) 2>/dev/null</code></pre>
+</div>
+
+<div class="card">
+  <div class="card-title">QEMU 快速参考</div>
+  <table>
+    <tr><th>操作</th><th>命令</th></tr>
+    <tr><td>SSH 进入虚拟机</td><td><code>ssh -p 2222 user@localhost</code></td></tr>
+    <tr><td>宿主机向 VM 传文件</td><td><code>scp -P 2222 ksm_basic.c user@localhost:~/</code></td></tr>
+    <tr><td>QEMU 监控窗口</td><td>按 <code>Ctrl-A C</code> 切换到 QEMU monitor</td></tr>
+    <tr><td>退出 QEMU</td><td><code>Ctrl-A X</code></td></tr>
+    <tr><td>快照保存</td><td>monitor 中: <code>savevm ksm_clean</code></td></tr>
+    <tr><td>快照恢复</td><td>monitor 中: <code>loadvm ksm_clean</code></td></tr>
+    <tr><td>查看 NUMA 拓扑</td><td><code>numactl --hardware</code>（需安装 numactl）</td></tr>
+  </table>
+</div>
+
+<!-- ============ 九、源码文件索引 ============ -->
+<h2 id="sec9">九、源码文件索引</h2>
+
+<div class="card">
+  <table>
+    <tr><th>文件路径</th><th>说明</th></tr>
+    <tr><td><code>mm/ksm.c</code> (3980 行)</td><td>KSM 核心实现</td></tr>
+    <tr><td><code>include/linux/ksm.h</code></td><td>KSM 对外接口</td></tr>
+    <tr><td><code>mm/Kconfig</code></td><td>CONFIG_KSM 配置</td></tr>
+    <tr><td><code>mm/mm_slot.h</code></td><td>mm_slot 基础设施</td></tr>
+    <tr><td><code>include/trace/events/ksm.h</code></td><td>Trace 事件定义</td></tr>
+    <tr><td><code>arch/arm64/kernel/mte.c</code></td><td>ARM64 memcmp_pages() MTE 感知</td></tr>
+    <tr><td><code>arch/arm64/mm/init.c</code></td><td>ARM64 内存初始化（含小内存 overcommit）</td></tr>
+    <tr><td><code>Documentation/mm/ksm.rst</code></td><td>设计文档</td></tr>
+    <tr><td><code>Documentation/admin-guide/mm/ksm.rst</code></td><td>管理指南</td></tr>
+  </table>
+</div>
+
+<div style="text-align:center; color:var(--text2); margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border);">
+  <p>基于 Linux 6.18.1 内核源码分析 · ARM64 架构 · 2026-06-06</p>
+  <p>核心源码: <code>mm/ksm.c</code> (3980 lines)</p>
+</div>
+
+</div>
+</body>
+</html>
