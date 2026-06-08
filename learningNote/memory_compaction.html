@@ -1,0 +1,2543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linux 6.18.1 Buddy Allocator - Memory Compaction 全景视图</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --accent-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --code-bg: #1e293b;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(37, 99, 235, 0.3);
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            opacity: 0.9;
+            font-size: 1.2em;
+        }
+        
+        .version-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        
+        .overview-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+        
+        .card h2 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: var(--primary-color);
+            border-radius: 2px;
+        }
+        
+        .card h3 {
+            color: var(--secondary-color);
+            margin: 20px 0 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #dbeafe, #eff6ff);
+            border-left: 4px solid var(--primary-color);
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        
+        .warning-box {
+            background: linear-gradient(135deg, #fef3c7, #fffbeb);
+            border-left: 4px solid var(--warning-color);
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        
+        .success-box {
+            background: linear-gradient(135deg, #d1fae5, #ecfdf5);
+            border-left: 4px solid var(--accent-color);
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+        
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #7c3aed;
+        }
+        
+        pre {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            color: #334155;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            font-size: 0.85em;
+            line-height: 1.5;
+            margin: 15px 0;
+            border: 1px solid #e2e8f0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+        }
+        
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+        
+        .keyword { color: #8b5cf6; }
+        .type { color: #0891b2; }
+        .comment { color: #64748b; font-style: italic; }
+        .string { color: #059669; }
+        .number { color: #ea580c; }
+        .function { color: #d97706; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: #f1f5f9;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        tr:hover {
+            background: #f8fafc;
+        }
+        
+        .flow-diagram {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .flow-diagram svg {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .toc {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .toc h2 {
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+        
+        .toc ul {
+            list-style: none;
+            columns: 2;
+        }
+        
+        .toc li {
+            padding: 8px 0;
+        }
+        
+        .toc a {
+            color: var(--text-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .toc a:hover {
+            color: var(--primary-color);
+        }
+        
+        .toc a::before {
+            content: '→';
+            color: var(--primary-color);
+        }
+        
+        .section-title {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 1.8em;
+            margin: 40px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .struct-diagram {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .struct-box {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .struct-header {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 12px 15px;
+            font-weight: 600;
+        }
+        
+        .struct-body {
+            padding: 15px;
+        }
+        
+        .field {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed var(--border-color);
+        }
+        
+        .field:last-child {
+            border-bottom: none;
+        }
+        
+        .field-name {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--primary-color);
+        }
+        
+        .field-type {
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+        
+        .phase-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .phase {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .phase-number {
+            background: var(--primary-color);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .phase-content h4 {
+            color: var(--primary-color);
+            margin-bottom: 8px;
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin-right: 5px;
+        }
+        
+        .tag-async { background: #dbeafe; color: #2563eb; }
+        .tag-sync { background: #d1fae5; color: #059669; }
+        .tag-proactive { background: #fef3c7; color: #d97706; }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+            margin-top: 40px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        @media (max-width: 768px) {
+            .toc ul {
+                columns: 1;
+            }
+            header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧩 Memory Compaction 全景视图</h1>
+            <p>Linux Buddy Allocator 内存碎片整理子系统深度解析</p>
+            <div class="version-badge">Linux Kernel 6.18.1 | ARM64 架构</div>
+        </header>
+        
+        <nav class="toc">
+            <h2>📑 目录</h2>
+            <ul>
+                <li><a href="#overview">概述与背景</a></li>
+                <li><a href="#data-structures">核心数据结构</a></li>
+                <li><a href="#algorithms">核心算法</a></li>
+                <li><a href="#workflow">工作流程</a></li>
+                <li><a href="#triggers">触发机制</a></li>
+                <li><a href="#policies">策略控制</a></li>
+                <li><a href="#kernel-config">内核配置选项</a></li>
+                <li><a href="#sysfs">用户空间接口</a></li>
+                <li><a href="#tracing">追踪与调试</a></li>
+                <li><a href="#qemu-experiments">QEMU 实验验证</a></li>
+            </ul>
+        </nav>
+
+        <!-- 概述与背景 -->
+        <section id="overview">
+            <h2 class="section-title">1. 概述与背景</h2>
+            
+            <div class="card">
+                <h2>什么是 Memory Compaction？</h2>
+                <p>Memory Compaction（内存压缩/整理）是 Linux 内核 Buddy 分配器的重要组成部分，旨在通过<strong>页面迁移</strong>来减少<strong>外部碎片</strong>，使得高阶（high-order）内存分配更容易成功。</p>
+                
+                <div class="highlight-box">
+                    <strong>核心思想：</strong>将分散在内存中的可移动页面（movable pages）迁移到一起，从而在内存的另一端腾出连续的空闲页面块。
+                </div>
+                
+                <h3>为什么需要 Compaction？</h3>
+                <ul>
+                    <li><strong>透明大页（THP）分配</strong>：需要连续的 2MB 物理内存</li>
+                    <li><strong>DMA 缓冲区</strong>：某些设备需要物理连续的内存</li>
+                    <li><strong>高阶内存分配</strong>：内核中各种需要连续页面的场景</li>
+                </ul>
+                
+                <h3>Compaction vs Reclaim</h3>
+                <table>
+                    <tr>
+                        <th>特性</th>
+                        <th>Compaction</th>
+                        <th>Reclaim</th>
+                    </tr>
+                    <tr>
+                        <td>目的</td>
+                        <td>减少外部碎片</td>
+                        <td>释放内存</td>
+                    </tr>
+                    <tr>
+                        <td>方式</td>
+                        <td>页面迁移</td>
+                        <td>页面回收/换出</td>
+                    </tr>
+                    <tr>
+                        <td>适用场景</td>
+                        <td>碎片化导致的分配失败</td>
+                        <td>内存不足</td>
+                    </tr>
+                    <tr>
+                        <td>判断指标</td>
+                        <td>fragmentation_index</td>
+                        <td>watermark</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Page Migration vs Memory Compaction</h2>
+                <p><strong>页面迁移（Page Migration）</strong>是一个<strong>基础机制/工具</strong>，而 <strong>Memory Compaction</strong> 是<strong>使用这个工具的一个场景</strong>。</p>
+                
+                <div class="flow-diagram">
+                    <svg viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrowDown" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+                                <path d="M1,1 L9,3.5 L1,6" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linejoin="round"/>
+                            </marker>
+                        </defs>
+                        
+                        <!-- Page Migration 基础层 -->
+                        <rect x="150" y="20" width="600" height="60" rx="8" fill="#7c3aed" stroke="#5b21b6" stroke-width="2"/>
+                        <text x="450" y="45" text-anchor="middle" fill="white" font-size="15" font-weight="bold">Page Migration (基础机制)</text>
+                        <text x="450" y="65" text-anchor="middle" fill="#e9d5ff" font-size="12">mm/migrate.c | migrate_pages() / migrate_folio()</text>
+                        
+                        <!-- 箭头 -->
+                        <line x1="250" y1="80" x2="250" y2="130" stroke="#64748b" stroke-width="2" marker-end="url(#arrowDown)"/>
+                        <line x1="450" y1="80" x2="450" y2="130" stroke="#64748b" stroke-width="2" marker-end="url(#arrowDown)"/>
+                        <line x1="650" y1="80" x2="650" y2="130" stroke="#64748b" stroke-width="2" marker-end="url(#arrowDown)"/>
+                        
+                        <!-- 使用场景层 -->
+                        <rect x="100" y="130" width="180" height="70" rx="6" fill="#2563eb" stroke="#1d4ed8" stroke-width="2"/>
+                        <text x="190" y="155" text-anchor="middle" fill="white" font-size="13" font-weight="bold">Compaction</text>
+                        <text x="190" y="175" text-anchor="middle" fill="#bfdbfe" font-size="11">减少外部碎片</text>
+                        <text x="190" y="190" text-anchor="middle" fill="#93c5fd" font-size="10">MR_COMPACTION</text>
+                        
+                        <rect x="310" y="130" width="180" height="70" rx="6" fill="#10b981" stroke="#059669" stroke-width="2"/>
+                        <text x="400" y="155" text-anchor="middle" fill="white" font-size="13" font-weight="bold">NUMA Balancing</text>
+                        <text x="400" y="175" text-anchor="middle" fill="#a7f3d0" font-size="11">本地化内存访问</text>
+                        <text x="400" y="190" text-anchor="middle" fill="#6ee7b7" font-size="10">MR_NUMA_MISPLACED</text>
+                        
+                        <rect x="520" y="130" width="180" height="70" rx="6" fill="#f59e0b" stroke="#d97706" stroke-width="2"/>
+                        <text x="610" y="155" text-anchor="middle" fill="white" font-size="13" font-weight="bold">Memory Hotplug</text>
+                        <text x="610" y="175" text-anchor="middle" fill="#fef3c7" font-size="11">内存热插拔</text>
+                        <text x="610" y="190" text-anchor="middle" fill="#fcd34d" font-size="10">MR_MEMORY_HOTPLUG</text>
+                        
+                        <!-- 更多箭头 -->
+                        <line x1="190" y1="200" x2="190" y2="240" stroke="#64748b" stroke-width="2" marker-end="url(#arrowDown)"/>
+                        <line x1="610" y1="200" x2="610" y2="240" stroke="#64748b" stroke-width="2" marker-end="url(#arrowDown)"/>
+                        
+                        <!-- 第三层 -->
+                        <rect x="100" y="240" width="180" height="50" rx="6" fill="#e0e7ff" stroke="#6366f1" stroke-width="1"/>
+                        <text x="190" y="262" text-anchor="middle" fill="#4338ca" font-size="12" font-weight="bold">CMA 分配</text>
+                        <text x="190" y="278" text-anchor="middle" fill="#6366f1" font-size="10">MR_CONTIG_RANGE</text>
+                        
+                        <rect x="310" y="240" width="180" height="50" rx="6" fill="#fef2f2" stroke="#ef4444" stroke-width="1"/>
+                        <text x="400" y="262" text-anchor="middle" fill="#dc2626" font-size="12" font-weight="bold">内存故障恢复</text>
+                        <text x="400" y="278" text-anchor="middle" fill="#ef4444" font-size="10">MR_MEMORY_FAILURE</text>
+                        
+                        <rect x="520" y="240" width="180" height="50" rx="6" fill="#f0fdf4" stroke="#22c55e" stroke-width="1"/>
+                        <text x="610" y="262" text-anchor="middle" fill="#16a34a" font-size="12" font-weight="bold">系统调用/策略</text>
+                        <text x="610" y="278" text-anchor="middle" fill="#22c55e" font-size="10">MR_SYSCALL / MR_MEMPOLICY</text>
+                        
+                        <!-- 连接线 -->
+                        <line x1="400" y1="200" x2="400" y2="240" stroke="#64748b" stroke-width="2" marker-end="url(#arrowDown)"/>
+                    </svg>
+                </div>
+                
+                <h3>迁移原因枚举</h3>
+                <p>在代码中，<code>migrate_pages()</code> 有一个 <code>reason</code> 参数来区分不同的使用场景：</p>
+                
+                <pre><code><span class="comment">// include/linux/migrate_mode.h</span>
+<span class="keyword">enum</span> <span class="type">migrate_reason</span> {
+    MR_COMPACTION,           <span class="comment">// Memory Compaction 使用</span>
+    MR_MEMORY_FAILURE,       <span class="comment">// 内存故障恢复</span>
+    MR_MEMORY_HOTPLUG,       <span class="comment">// 内存热插拔</span>
+    MR_SYSCALL,              <span class="comment">// move_pages() 系统调用</span>
+    MR_MEMPOLICY_MBIND,      <span class="comment">// NUMA 内存策略</span>
+    MR_NUMA_MISPLACED,       <span class="comment">// NUMA 均衡</span>
+    MR_CONTIG_RANGE,         <span class="comment">// CMA 连续内存分配</span>
+    MR_LONGTERM_PIN,         <span class="comment">// 长期 pin 的页面</span>
+    MR_DEMOTION,             <span class="comment">// 内存降级（分层内存）</span>
+    MR_PROMOTION,            <span class="comment">// 内存升级</span>
+    MR_TYPES
+};</code></pre>
+                
+                <h3>类比理解</h3>
+                <table>
+                    <tr>
+                        <th>概念</th>
+                        <th>类比</th>
+                        <th>作用</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Page Migration</strong></td>
+                        <td>🚚 搬家公司</td>
+                        <td>提供搬运物品的能力</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Compaction</strong></td>
+                        <td>🧹 房间整理</td>
+                        <td>使用搬家公司来重新排列，腾出连续空间</td>
+                    </tr>
+                    <tr>
+                        <td><strong>NUMA Balancing</strong></td>
+                        <td>📦 就近仓储</td>
+                        <td>使用搬家公司把货物搬到离使用者更近的地方</td>
+                    </tr>
+                </table>
+                
+                <div class="success-box">
+                    <strong>分开设计的好处：</strong>
+                    <ul>
+                        <li><strong>复用性</strong>：页面迁移代码被多个子系统共享（compaction、NUMA、CMA、hotplug 等）</li>
+                        <li><strong>关注点分离</strong>：migration 关注"如何安全迁移"，compaction 关注"选择什么页面、迁移到哪里"</li>
+                        <li><strong>可独立配置</strong>：可以通过 CONFIG_MIGRATION 和 CONFIG_COMPACTION 分别控制</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Compaction 在 Migration 之上增加了什么？</h2>
+                <p>Memory Compaction 在 Page Migration 基础上增加了大量<strong>决策层</strong>的工作：</p>
+                
+                <table>
+                    <tr>
+                        <th>层面</th>
+                        <th>Page Migration（只管搬）</th>
+                        <th>Compaction（决定搬什么、搬到哪）</th>
+                    </tr>
+                    <tr>
+                        <td><strong>页面选择</strong></td>
+                        <td>不关心，调用者指定</td>
+                        <td>双扫描器自动选择源/目标页面</td>
+                    </tr>
+                    <tr>
+                        <td><strong>空间策略</strong></td>
+                        <td>不关心</td>
+                        <td>把 movable 页面搬到 zone 末端，腾出前端连续空间</td>
+                    </tr>
+                    <tr>
+                        <td><strong>适用性判断</strong></td>
+                        <td>不关心</td>
+                        <td>fragmentation_index 判断碎片是否值得整理</td>
+                    </tr>
+                    <tr>
+                        <td><strong>延迟重试</strong></td>
+                        <td>不关心</td>
+                        <td>defer 机制避免无效重复尝试</td>
+                    </tr>
+                    <tr>
+                        <td><strong>缓存优化</strong></td>
+                        <td>不关心</td>
+                        <td>缓存扫描器位置，skip hint 跳过无效 pageblock</td>
+                    </tr>
+                    <tr>
+                        <td><strong>完成判断</strong></td>
+                        <td>不关心</td>
+                        <td>扫描器相遇、目标 order 已可用即完成</td>
+                    </tr>
+                    <tr>
+                        <td><strong>优先级调度</strong></td>
+                        <td>不关心</td>
+                        <td>ASYNC → SYNC_LIGHT → SYNC 逐步升级</td>
+                    </tr>
+                </table>
+                
+                <h3>Page Migration 的各调用者</h3>
+                <p>以下展示了 <code>migrate_pages()</code> 的各个调用者及其触发条件：</p>
+                
+                <div class="flow-diagram">
+                    <svg viewBox="0 0 900 380" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrowD2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                                <polygon points="0 0, 8 3, 0 6" fill="#64748b"/>
+                            </marker>
+                        </defs>
+                        
+                        <!-- 标题 -->
+                        <text x="450" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#334155">migrate_pages() 的调用者与触发条件</text>
+                        
+                        <!-- migrate_pages 中心 -->
+                        <rect x="330" y="35" width="240" height="45" rx="8" fill="#7c3aed" stroke="#5b21b6" stroke-width="2"/>
+                        <text x="450" y="55" text-anchor="middle" fill="white" font-size="14" font-weight="bold">migrate_pages()</text>
+                        <text x="450" y="72" text-anchor="middle" fill="#e9d5ff" font-size="11">mm/migrate.c</text>
+                        
+                        <!-- 左列 -->
+                        <rect x="30" y="110" width="250" height="55" rx="6" fill="#2563eb" stroke="#1d4ed8" stroke-width="2"/>
+                        <text x="155" y="133" text-anchor="middle" fill="white" font-size="12" font-weight="bold">① Memory Compaction</text>
+                        <text x="155" y="153" text-anchor="middle" fill="#bfdbfe" font-size="10">触发: 高阶分配失败 / kcompactd / proactive / 手动</text>
+                        
+                        <rect x="30" y="180" width="250" height="55" rx="6" fill="#10b981" stroke="#059669" stroke-width="2"/>
+                        <text x="155" y="203" text-anchor="middle" fill="white" font-size="12" font-weight="bold">② NUMA Balancing</text>
+                        <text x="155" y="223" text-anchor="middle" fill="#a7f3d0" font-size="10">触发: task_numa_fault() 检测到远程内存访问</text>
+                        
+                        <rect x="30" y="250" width="250" height="55" rx="6" fill="#f59e0b" stroke="#d97706" stroke-width="2"/>
+                        <text x="155" y="273" text-anchor="middle" fill="white" font-size="12" font-weight="bold">③ Memory Hotplug</text>
+                        <text x="155" y="293" text-anchor="middle" fill="#fef3c7" font-size="10">触发: offline_pages() 下线内存节点</text>
+                        
+                        <!-- 右列 -->
+                        <rect x="620" y="110" width="250" height="55" rx="6" fill="#ef4444" stroke="#dc2626" stroke-width="2"/>
+                        <text x="745" y="133" text-anchor="middle" fill="white" font-size="12" font-weight="bold">④ CMA 分配</text>
+                        <text x="745" y="153" text-anchor="middle" fill="#fecaca" font-size="10">触发: cma_alloc() 需要连续物理内存</text>
+                        
+                        <rect x="620" y="180" width="250" height="55" rx="6" fill="#8b5cf6" stroke="#7c3aed" stroke-width="2"/>
+                        <text x="745" y="203" text-anchor="middle" fill="white" font-size="12" font-weight="bold">⑤ move_pages() 系统调用</text>
+                        <text x="745" y="223" text-anchor="middle" fill="#ddd6fe" font-size="10">触发: 用户态进程主动请求迁移</text>
+                        
+                        <rect x="620" y="250" width="250" height="55" rx="6" fill="#06b6d4" stroke="#0891b2" stroke-width="2"/>
+                        <text x="745" y="273" text-anchor="middle" fill="white" font-size="12" font-weight="bold">⑥ 内存策略 mbind()</text>
+                        <text x="745" y="293" text-anchor="middle" fill="#cffafe" font-size="10">触发: mbind() 改变 NUMA 绑定策略</text>
+                        
+                        <!-- 连接线 -->
+                        <line x1="280" y1="137" x2="330" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowD2)"/>
+                        <line x1="280" y1="207" x2="330" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowD2)"/>
+                        <line x1="280" y1="277" x2="350" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowD2)"/>
+                        <line x1="620" y1="137" x2="570" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowD2)"/>
+                        <line x1="620" y1="207" x2="570" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowD2)"/>
+                        <line x1="620" y1="277" x2="550" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowD2)"/>
+                        
+                        <!-- Compaction 特有触发路径 -->
+                        <rect x="100" y="330" width="700" height="40" rx="6" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+                        <text x="450" y="355" text-anchor="middle" font-size="11" fill="#475569">Compaction 的触发路径最为复杂：Direct (同步阻塞) → kcompactd (异步后台) → Proactive (主动预防) → 手动 (sysctl)</text>
+                    </svg>
+                </div>
+                
+                <h3>Compaction 特有的触发路径详解</h3>
+                
+                <pre><code><span class="comment">// 触发点 1: Direct Compaction（同步，阻塞分配进程）</span>
+<span class="function">__alloc_pages</span>()
+  └── <span class="function">__alloc_pages_slowpath</span>()
+        └── <span class="function">__alloc_pages_direct_compact</span>()  <span class="comment">// 高阶分配失败时</span>
+              └── <span class="function">try_to_compact_pages</span>()
+                    └── <span class="function">compact_zone_order</span>()
+                          └── <span class="function">compact_zone</span>()
+
+<span class="comment">// 触发点 2: kcompactd 后台线程（异步，被唤醒执行）</span>
+<span class="function">wakeup_kcompactd</span>()  ←── 高阶分配失败时唤醒
+  └── kcompactd 线程被唤醒
+        └── <span class="function">kcompactd_do_work</span>()
+              └── <span class="function">compact_zone</span>()
+
+<span class="comment">// 触发点 3: Proactive Compaction（主动，基于碎片分数）</span>
+kcompactd() 主循环超时唤醒 (每 500ms 检查一次)
+  └── <span class="function">should_proactive_compact_node</span>()
+        └── fragmentation_score > wmark_high ?
+              └── <span class="function">compact_node</span>(pgdat, <span class="keyword">true</span>)
+                    └── <span class="function">compact_zone</span>()
+
+<span class="comment">// 触发点 4: 手动触发</span>
+echo <span class="number">1</span> > /proc/sys/vm/compact_memory
+  └── <span class="function">compact_nodes</span>()
+        └── <span class="function">compact_node</span>()
+              └── <span class="function">compact_zone</span>()
+
+echo <span class="number">1</span> > /sys/devices/system/node/node0/compact
+  └── <span class="function">compact_node</span>(NODE_DATA(nid), <span class="keyword">false</span>)
+        └── <span class="function">compact_zone</span>()</code></pre>
+                
+                <div class="highlight-box">
+                    <strong>总结：</strong>Page Migration 就像一个"搬家服务 API"，而 Compaction 是这个 API 最复杂的客户——它自带双向扫描器选页面、碎片化评估决策、多种触发模式、延迟重试策略等完整的"房间整理"逻辑。
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Compaction 处理的页面类型</h2>
+                <p>Compaction 的 Migration Scanner 在 <code>isolate_migratepages_block()</code> 中挑选"可以搬走的页面"，能否被搬动由两个维度决定：<strong>pageblock 级别的迁移类型</strong> 和 <strong>单个页面的当前状态</strong>。</p>
+
+                <h3>① pageblock 迁移类型（决定整块是否参与）</h3>
+                <table>
+                    <tr>
+                        <th>迁移类型</th>
+                        <th>含义</th>
+                        <th>Compaction 是否处理</th>
+                    </tr>
+                    <tr>
+                        <td><code>MIGRATE_MOVABLE</code></td>
+                        <td>可自由迁移：匿名页、文件缓存页、THP 等</td>
+                        <td>✅ 优先选择，Migration Scanner 的主要目标</td>
+                    </tr>
+                    <tr>
+                        <td><code>MIGRATE_RECLAIMABLE</code></td>
+                        <td>可回收对象（部分 slab 有 shrinker）</td>
+                        <td>⚠️ 有限支持，取决于对象是否实现迁移回调</td>
+                    </tr>
+                    <tr>
+                        <td><code>MIGRATE_UNMOVABLE</code></td>
+                        <td>内核固定分配：kmalloc/vmalloc/DMA 无迁移函数</td>
+                        <td>❌ 整块跳过，是碎片化的"永久障碍"</td>
+                    </tr>
+                    <tr>
+                        <td><code>MIGRATE_CMA</code></td>
+                        <td>CMA 区域，为连续内存预留</td>
+                        <td>✅ 可被搬走以腾出连续区块</td>
+                    </tr>
+                    <tr>
+                        <td><code>MIGRATE_ISOLATE</code></td>
+                        <td>已被隔离（正在 compaction 或 hotplug 中）</td>
+                        <td>❌ 跳过，避免重入</td>
+                    </tr>
+                    <tr>
+                        <td><code>MIGRATE_HIGHATOMIC</code></td>
+                        <td>高阶原子分配预留区</td>
+                        <td>❌ 跳过</td>
+                    </tr>
+                </table>
+
+                <h3>② 单个页面状态（决定某页是否能被隔离）</h3>
+                <table>
+                    <tr>
+                        <th>页面类型</th>
+                        <th>典型来源</th>
+                        <th>能否迁移</th>
+                        <th>原因</th>
+                    </tr>
+                    <tr>
+                        <td>匿名页（anon folio）</td>
+                        <td>malloc / mmap 私有匿名</td>
+                        <td>✅ 可迁移</td>
+                        <td>有 swap 后备，内核可安全更新所有 PTE</td>
+                    </tr>
+                    <tr>
+                        <td>文件映射页（file folio）</td>
+                        <td>mmap 文件、页缓存 read/write</td>
+                        <td>✅ 可迁移</td>
+                        <td>通过 <code>address_space</code> 重定向，不影响文件语义</td>
+                    </tr>
+                    <tr>
+                        <td>透明大页（THP folio）</td>
+                        <td>PMD 级 2MB 大页</td>
+                        <td>✅ 整体迁移（需架构支持）</td>
+                        <td>ARM64 启用 <code>ARCH_ENABLE_THP_MIGRATION</code> 后整体复制</td>
+                    </tr>
+                    <tr>
+                        <td>Slab/kmalloc 页</td>
+                        <td>内核 <code>kmem_cache_alloc()</code></td>
+                        <td>❌ 通常不可迁移</td>
+                        <td>内核持有裸指针，迁移后旧地址失效会崩溃</td>
+                    </tr>
+                    <tr>
+                        <td>vmalloc 页</td>
+                        <td><code>vmalloc()</code></td>
+                        <td>❌ 不可迁移</td>
+                        <td>虚拟地址固定，物理页不可挪动</td>
+                    </tr>
+                    <tr>
+                        <td>mlock 页（unevictable）</td>
+                        <td><code>mlock()</code> 系统调用</td>
+                        <td>⚠️ 取决于 <code>compact_unevictable_allowed</code></td>
+                        <td>sysctl 默认为 1 时允许迁移；RT 内核默认禁用</td>
+                    </tr>
+                    <tr>
+                        <td>已 pin 页（elevated refcnt）</td>
+                        <td><code>get_user_pages(GUP_PIN)</code>，DMA 映射</td>
+                        <td>❌ 不可迁移</td>
+                        <td>refcount 升高，迁移会破坏 DMA 映射导致数据损坏</td>
+                    </tr>
+                    <tr>
+                        <td>HugeTLB 页</td>
+                        <td><code>hugetlbfs</code> / <code>MAP_HUGETLB</code></td>
+                        <td>⚠️ 绕过 compaction 单独处理</td>
+                        <td>由 hugetlb 自身的迁移路径处理，compaction 不直接涉及</td>
+                    </tr>
+                </table>
+
+                <div class="highlight-box">
+                    <strong>Migration Scanner 的跳过判断链（<code>isolate_migratepages_block()</code> 内部）：</strong>
+                    <ol>
+                        <li>pageblock 是 <code>UNMOVABLE</code> / <code>ISOLATE</code> / <code>HIGHATOMIC</code> → <strong>整块 4MB 跳过</strong>（设置 skip hint）</li>
+                        <li>页面未设置 <code>PG_lru</code>（不在 LRU 链表上）→ 跳过单页</li>
+                        <li>页面 refcount 异常（被 pin/DMA 映射）→ 跳过单页</li>
+                        <li>ASYNC 模式下 folio_trylock 失败 → 跳过（不阻塞当前进程）</li>
+                        <li>unevictable 且 <code>compact_unevictable_allowed=0</code> → 跳过单页</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Compaction 为什么是一个独立概念，而不只是"调用页面迁移"？</h2>
+
+                <div class="highlight-box">
+                    <strong>核心区别：</strong><code>migrate_pages()</code> 只解决"<strong>怎么把已知的页面 A 安全地搬到已知的空位 B</strong>"，而 Compaction 解决的是"<strong>在 GB 级 zone 里，自动决定哪些页面值得搬、搬到哪里，使宏观效果产生连续空闲区块</strong>"。这是两个完全不同层次的问题。
+                </div>
+
+                <h3>停车场类比</h3>
+                <table>
+                    <tr>
+                        <th>停车场概念</th>
+                        <th>内存对应</th>
+                    </tr>
+                    <tr>
+                        <td>挪车操作（司机把车从A位开到B位）</td>
+                        <td><strong>Page Migration</strong>：把 folio 内容从源物理页复制到目标物理页，更新所有 PTE/地址引用</td>
+                    </tr>
+                    <tr>
+                        <td>停车场整理员：巡视全场，决定挪哪辆、挪到哪，使前半区连续空出来</td>
+                        <td><strong>Memory Compaction</strong>：双扫描器决策哪些页面可搬、目标位在哪，驱动整体布局优化</td>
+                    </tr>
+                    <tr>
+                        <td>大巴车需要连续8个车位</td>
+                        <td>THP / order-9 分配需要 512 个连续物理页</td>
+                    </tr>
+                    <tr>
+                        <td>挪车 API 只管"能不能挪"，不管"要不要挪"</td>
+                        <td><code>migrate_pages()</code> 只执行迁移，不做目标选择</td>
+                    </tr>
+                    <tr>
+                        <td>整理员知道哪些车位永远被占（固定车位），跳过不浪费时间</td>
+                        <td>Compaction 跳过 <code>MIGRATE_UNMOVABLE</code> pageblock，设置 skip hint 避免重复扫描</td>
+                    </tr>
+                </table>
+
+                <h3>Compaction 在 <code>migrate_pages()</code> 之外独有的工作</h3>
+                <table>
+                    <tr>
+                        <th>Compaction 特有能力</th>
+                        <th>如果没有这个，会发生什么</th>
+                    </tr>
+                    <tr>
+                        <td><strong>双向扫描器</strong>：Migration scanner 从低地址找可移页，Free scanner 从高地址找目标空位，两者相向而行</td>
+                        <td>不知道把哪些页移到哪里，即使调用迁移也无法使空闲页在物理上连续</td>
+                    </tr>
+                    <tr>
+                        <td><strong><code>fragmentation_index</code> 评估</strong>：判断分配失败是碎片化导致还是真的内存不足</td>
+                        <td>内存不足时反复做无效 compaction，白白消耗 CPU</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Defer 延迟机制</strong>：失败后指数退避（最多延迟 64 次），避免无效重试</td>
+                        <td>高负载下同一 zone 被反复整理，严重影响系统响应</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pageblock skip hint</strong>：记住哪些 pageblock 上次没有可迁移页，下次跳过</td>
+                        <td>每次都要完整扫描整个 zone，开销随内存大小线性增长（16GB 机器扫描代价极高）</td>
+                    </tr>
+                    <tr>
+                        <td><strong><code>compact_finished()</code> 终止判断</strong>：扫描器相遇或目标 order 已满足即停止</td>
+                        <td>不知道何时停止，要么过早停（大页仍分配失败），要么扫全 zone 浪费资源</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ASYNC → SYNC_LIGHT → SYNC 优先级升级</strong>：先快速异步，再阻塞同步</td>
+                        <td>要么阻塞分配进程过久，要么无法处理持锁的 folio</td>
+                    </tr>
+                    <tr>
+                        <td><strong>kcompactd 后台预防</strong>：系统空闲时主动整理，减少 direct compaction 触发</td>
+                        <td>所有整理都在分配路径中同步发生，分配延迟出现尖峰</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Proactive compaction</strong>：基于碎片化分数定期主动整理</td>
+                        <td>等到 THP 分配失败才开始整理，已经太晚</td>
+                    </tr>
+                </table>
+
+                <div class="warning-box">
+                    <strong>直接用 <code>migrate_pages()</code> 能替代 Compaction 吗？</strong><br>
+                    不能。如果你试图自己实现 compaction 的功能，你需要：①遍历整个 zone 的所有 pageblock，判断哪些是 MOVABLE；②遍历每个 MOVABLE pageblock 里的 LRU 页面，判断是否可隔离；③从 zone 末端的 buddy 系统里找足够的目标空闲页；④调用 <code>migrate_pages()</code>；⑤检查是否已满足目标 order；⑥决定何时放弃。这正是 <code>mm/compaction.c</code> 近 2000 行代码所做的事。<strong>Compaction 是整个决策系统，<code>migrate_pages()</code> 只是其中的执行器。</strong>
+                </div>
+            </div>
+        </section>
+
+        <!-- 核心数据结构 -->
+        <section id="data-structures">
+            <h2 class="section-title">2. 核心数据结构</h2>
+            
+            <div class="card">
+                <h2>compact_control 结构体</h2>
+                <p>这是 compaction 过程中最核心的控制结构，定义在 <code>mm/internal.h</code>:</p>
+                
+                <pre><code><span class="keyword">struct</span> <span class="type">compact_control</span> {
+    <span class="comment">/* 按 order 组织的空闲页面链表 */</span>
+    <span class="keyword">struct</span> <span class="type">list_head</span> freepages[NR_PAGE_ORDERS];
+    
+    <span class="comment">/* 待迁移页面链表 */</span>
+    <span class="keyword">struct</span> <span class="type">list_head</span> migratepages;
+    
+    <span class="comment">/* 计数器 */</span>
+    <span class="type">unsigned int</span> nr_freepages;      <span class="comment">// 已隔离的空闲页数</span>
+    <span class="type">unsigned int</span> nr_migratepages;   <span class="comment">// 待迁移页数</span>
+    
+    <span class="comment">/* 扫描器位置 */</span>
+    <span class="type">unsigned long</span> free_pfn;         <span class="comment">// 空闲页扫描器位置</span>
+    <span class="type">unsigned long</span> migrate_pfn;      <span class="comment">// 迁移页扫描器位置</span>
+    <span class="type">unsigned long</span> fast_start_pfn;   <span class="comment">// 快速扫描起始点</span>
+    
+    <span class="comment">/* 目标 zone */</span>
+    <span class="keyword">struct</span> <span class="type">zone</span> *zone;
+    
+    <span class="comment">/* 统计信息 */</span>
+    <span class="type">unsigned long</span> total_migrate_scanned;
+    <span class="type">unsigned long</span> total_free_scanned;
+    
+    <span class="comment">/* 分配相关 */</span>
+    <span class="keyword">const</span> <span class="type">gfp_t</span> gfp_mask;           <span class="comment">// GFP 分配标志</span>
+    <span class="type">int</span> order;                      <span class="comment">// 目标分配阶数</span>
+    <span class="type">int</span> migratetype;                <span class="comment">// 迁移类型</span>
+    
+    <span class="comment">/* 模式控制 */</span>
+    <span class="keyword">enum</span> <span class="type">migrate_mode</span> mode;         <span class="comment">// ASYNC/SYNC_LIGHT/SYNC</span>
+    <span class="type">bool</span> ignore_skip_hint;          <span class="comment">// 忽略跳过提示</span>
+    <span class="type">bool</span> direct_compaction;         <span class="comment">// 是否为直接压缩</span>
+    <span class="type">bool</span> proactive_compaction;      <span class="comment">// 是否为主动压缩</span>
+    <span class="type">bool</span> whole_zone;                <span class="comment">// 扫描整个 zone</span>
+    <span class="type">bool</span> contended;                 <span class="comment">// 锁竞争标志</span>
+    <span class="type">bool</span> finish_pageblock;          <span class="comment">// 完成当前 pageblock</span>
+};</code></pre>
+            </div>
+
+            <div class="card">
+                <h2>Zone 中的 Compaction 相关字段</h2>
+                <p>在 <code>struct zone</code> 中（定义于 <code>include/linux/mmzone.h</code>）：</p>
+                
+                <div class="struct-diagram">
+                    <div class="struct-box">
+                        <div class="struct-header">扫描器缓存字段</div>
+                        <div class="struct-body">
+                            <div class="field">
+                                <span class="field-name">compact_cached_free_pfn</span>
+                                <span class="field-type">空闲扫描器起始位置</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">compact_cached_migrate_pfn[2]</span>
+                                <span class="field-type">迁移扫描器起始位置 (async/sync)</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">compact_init_migrate_pfn</span>
+                                <span class="field-type">初始迁移扫描位置</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">compact_init_free_pfn</span>
+                                <span class="field-type">初始空闲扫描位置</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="struct-box">
+                        <div class="struct-header">延迟控制字段</div>
+                        <div class="struct-body">
+                            <div class="field">
+                                <span class="field-name">compact_considered</span>
+                                <span class="field-type">延迟计数器</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">compact_defer_shift</span>
+                                <span class="field-type">延迟指数 (max: 6)</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">compact_order_failed</span>
+                                <span class="field-type">失败的最小 order</span>
+                            </div>
+                            <div class="field">
+                                <span class="field-name">compact_blockskip_flush</span>
+                                <span class="field-type">是否需要清除跳过标记</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Pageblock 标志位</h2>
+                <p>定义在 <code>include/linux/pageblock-flags.h</code>：</p>
+                
+                <pre><code><span class="keyword">enum</span> <span class="type">pageblock_bits</span> {
+    PB_migrate_0,           <span class="comment">// 迁移类型位 0</span>
+    PB_migrate_1,           <span class="comment">// 迁移类型位 1</span>
+    PB_migrate_2,           <span class="comment">// 迁移类型位 2</span>
+    PB_compact_skip,        <span class="comment">// ⭐ Compaction 跳过标记</span>
+    PB_migrate_isolate,     <span class="comment">// 隔离标记</span>
+    __NR_PAGEBLOCK_BITS
+};</code></pre>
+                
+                <div class="warning-box">
+                    <strong>PB_compact_skip：</strong>当一个 pageblock 被标记为 skip 时，compaction 扫描器会跳过它。这个标记在以下情况被设置：
+                    <ul>
+                        <li>pageblock 中没有找到可迁移的页面</li>
+                        <li>pageblock 中没有找到空闲页面</li>
+                        <li>迁移失败后</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Compaction 结果枚举</h2>
+                <pre><code><span class="keyword">enum</span> <span class="type">compact_result</span> {
+    COMPACT_NOT_SUITABLE_ZONE,  <span class="comment">// Zone 不适合 compaction</span>
+    COMPACT_SKIPPED,            <span class="comment">// 跳过（无法执行或不需要）</span>
+    COMPACT_DEFERRED,           <span class="comment">// 延迟执行（之前失败过）</span>
+    COMPACT_NO_SUITABLE_PAGE,   <span class="comment">// 没有合适的空闲页</span>
+    COMPACT_CONTINUE,           <span class="comment">// 继续执行</span>
+    COMPACT_COMPLETE,           <span class="comment">// 完成但未成功</span>
+    COMPACT_PARTIAL_SKIPPED,    <span class="comment">// 部分完成</span>
+    COMPACT_CONTENDED,          <span class="comment">// 锁竞争导致终止</span>
+    COMPACT_SUCCESS,            <span class="comment">// ✅ 成功</span>
+};</code></pre>
+            </div>
+
+            <div class="card">
+                <h2>Compaction 优先级</h2>
+                <pre><code><span class="keyword">enum</span> <span class="type">compact_priority</span> {
+    COMPACT_PRIO_SYNC_FULL,     <span class="comment">// 最高优先级，完全同步</span>
+    MIN_COMPACT_PRIORITY = COMPACT_PRIO_SYNC_FULL,
+    COMPACT_PRIO_SYNC_LIGHT,    <span class="comment">// 轻量同步</span>
+    DEF_COMPACT_PRIORITY = COMPACT_PRIO_SYNC_LIGHT,
+    COMPACT_PRIO_ASYNC,         <span class="comment">// 异步模式</span>
+    INIT_COMPACT_PRIORITY = COMPACT_PRIO_ASYNC
+};</code></pre>
+            </div>
+        </section>
+
+        <!-- 核心算法 -->
+        <section id="algorithms">
+            <h2 class="section-title">3. 核心算法</h2>
+            
+            <div class="card">
+                <h2>双扫描器算法</h2>
+                <p>Compaction 使用两个扫描器相向扫描 zone：</p>
+                
+                <div class="flow-diagram">
+                    <svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg">
+                        <!-- 背景 -->
+                        <defs>
+                            <linearGradient id="zoneBg" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#dbeafe"/>
+                                <stop offset="50%" style="stop-color:#f0fdf4"/>
+                                <stop offset="100%" style="stop-color:#fef3c7"/>
+                            </linearGradient>
+                            <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+                            </marker>
+                            <marker id="arrowGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+                            </marker>
+                        </defs>
+                        
+                        <!-- Zone 背景 -->
+                        <rect x="50" y="100" width="800" height="80" fill="url(#zoneBg)" rx="8" stroke="#94a3b8" stroke-width="2"/>
+                        
+                        <!-- Zone 标签 -->
+                        <text x="450" y="85" text-anchor="middle" font-size="16" font-weight="bold" fill="#334155">Zone 内存区域</text>
+                        
+                        <!-- 起始和结束标记 -->
+                        <text x="50" y="200" text-anchor="middle" font-size="12" fill="#64748b">zone_start_pfn</text>
+                        <text x="850" y="200" text-anchor="middle" font-size="12" fill="#64748b">zone_end_pfn</text>
+                        
+                        <!-- Migration Scanner -->
+                        <rect x="80" y="110" width="150" height="60" fill="#2563eb" fill-opacity="0.3" rx="4" stroke="#2563eb" stroke-width="2"/>
+                        <text x="155" y="145" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e40af">Migration Scanner</text>
+                        <text x="155" y="162" text-anchor="middle" font-size="11" fill="#3b82f6">隔离可迁移页面</text>
+                        
+                        <!-- 扫描方向箭头 - Migration -->
+                        <line x1="240" y1="140" x2="380" y2="140" stroke="#2563eb" stroke-width="3" marker-end="url(#arrowBlue)" stroke-dasharray="8,4"/>
+                        <text x="310" y="135" text-anchor="middle" font-size="11" fill="#2563eb">→ 向右扫描</text>
+                        
+                        <!-- Free Scanner -->
+                        <rect x="670" y="110" width="150" height="60" fill="#10b981" fill-opacity="0.3" rx="4" stroke="#10b981" stroke-width="2"/>
+                        <text x="745" y="145" text-anchor="middle" font-size="13" font-weight="bold" fill="#047857">Free Scanner</text>
+                        <text x="745" y="162" text-anchor="middle" font-size="11" fill="#10b981">隔离空闲页面</text>
+                        
+                        <!-- 扫描方向箭头 - Free -->
+                        <line x1="660" y1="140" x2="520" y2="140" stroke="#10b981" stroke-width="3" marker-end="url(#arrowGreen)" stroke-dasharray="8,4"/>
+                        <text x="590" y="135" text-anchor="middle" font-size="11" fill="#10b981">← 向左扫描</text>
+                        
+                        <!-- 相遇点 -->
+                        <circle cx="450" cy="140" r="20" fill="#ef4444" fill-opacity="0.2" stroke="#ef4444" stroke-width="2"/>
+                        <text x="450" y="145" text-anchor="middle" font-size="12" font-weight="bold" fill="#dc2626">相遇</text>
+                        
+                        <!-- 说明文字 -->
+                        <text x="450" y="250" text-anchor="middle" font-size="13" fill="#475569">当两个扫描器相遇时（free_pfn ≤ migrate_pfn），compaction 完成</text>
+                        <text x="450" y="270" text-anchor="middle" font-size="12" fill="#64748b">可迁移页面被移动到 zone 末端，空闲页面在 zone 前端形成连续块</text>
+                    </svg>
+                </div>
+                
+                <h3>Migration Scanner（迁移扫描器）</h3>
+                <ul>
+                    <li>从 <code>zone_start_pfn</code> 开始向后扫描</li>
+                    <li>查找 LRU 上的可迁移页面（movable pages）</li>
+                    <li>将找到的页面添加到 <code>cc->migratepages</code> 链表</li>
+                    <li>关键函数：<code>isolate_migratepages()</code>、<code>isolate_migratepages_block()</code></li>
+                </ul>
+                
+                <h3>Free Scanner（空闲扫描器）</h3>
+                <ul>
+                    <li>从 <code>zone_end_pfn</code> 开始向前扫描</li>
+                    <li>在 buddy 系统中查找空闲页面</li>
+                    <li>将找到的页面添加到 <code>cc->freepages[]</code> 链表</li>
+                    <li>关键函数：<code>isolate_freepages()</code>、<code>isolate_freepages_block()</code></li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>什么是"隔离"（Isolate）？</h2>
+                <p>"隔离"是 compaction 里的核心专用术语：<strong>把页面从它原本所在的管理链表里摘出来，放进 compaction 自己的私有链表</strong>，使这期间其他内核路径无法并发分配或回收这些页面。</p>
+
+                <h3>隔离空闲页（Free Scanner 的工作）</h3>
+                <p>Free Scanner 在 buddy 系统的 <code>free_area[]</code> 链表里找到空闲页后，调用 <code>__isolate_free_page()</code>：</p>
+                <pre><code>buddy 的 free_area[order] 链表
+  ├── [PFN 12-13]  ← buddy 管理的空闲块
+  └── [PFN 2-3]
+
+隔离后 → 从 free_area 链表摘出，放入 cc->freepages[]
+          buddy 已不知道这些页，其他分配路径无法再拿走它们
+          它们将作为迁移的<strong>目标位置（destination）</strong>，等待接收数据</code></pre>
+
+                <h3>隔离可迁移页（Migration Scanner 的工作）</h3>
+                <p>Migration Scanner 在 LRU 链表里找到可移动页后，调用 <code>isolate_lru_folio()</code>：</p>
+                <pre><code>zone 的 LRU 链表（active_anon_list / inactive_file_list …）
+  ├── [PFN 0]  ← 进程的匿名页，正挂在 LRU 上
+  └── [PFN 6]
+
+隔离后 → 从 LRU 链表摘出，folio refcount +1，放入 cc->migratepages
+          kswapd / 内存回收路径看不到这些页，不会并发回收它们
+          它们将作为迁移的<strong>源页面（source）</strong>，等待内容被复制走</code></pre>
+
+                <h3>隔离完成后的整体关系</h3>
+                <table>
+                    <tr>
+                        <th>私有链表</th>
+                        <th>来源</th>
+                        <th>角色</th>
+                        <th>迁移完成后</th>
+                    </tr>
+                    <tr>
+                        <td><code>cc-&gt;migratepages</code></td>
+                        <td>Migration Scanner 从 LRU 摘出</td>
+                        <td>源页面（内容需要搬走）</td>
+                        <td>旧物理页帧释放回 buddy，形成连续空闲区</td>
+                    </tr>
+                    <tr>
+                        <td><code>cc-&gt;freepages[]</code></td>
+                        <td>Free Scanner 从 buddy 摘出</td>
+                        <td>目标槽（用来接收内容）</td>
+                        <td>内容写入后成为进程物理页，PTE 指向新地址</td>
+                    </tr>
+                </table>
+
+                <div class="highlight-box">
+                    <strong>为什么必须"隔离"而不是直接操作？</strong>
+                    <ul>
+                        <li><strong>防止并发竞争</strong>：从摘出到迁移完成期间，buddy 分配器、kswapd、其他 CPU 上的进程都可能触碰同一个页面。隔离后这些路径会跳过它们。</li>
+                        <li><strong>原子性保证</strong>：<code>migrate_pages()</code> 执行时只操作已隔离的私有链表，不需要持有 zone 锁，减少锁竞争。</li>
+                        <li><strong>失败可回滚</strong>：若迁移失败（refcount 异常、I/O 错误等），只需把页面放回原链表（<code>putback_movable_pages()</code>），系统状态不被破坏。</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>页面迁移流程</h2>
+                
+                <pre><code><span class="comment">/* 在 compact_zone() 中的核心迁移循环 */</span>
+<span class="keyword">while</span> ((ret = <span class="function">compact_finished</span>(cc)) == COMPACT_CONTINUE) {
+    <span class="comment">/* 1. 隔离待迁移的页面 */</span>
+    <span class="keyword">switch</span> (<span class="function">isolate_migratepages</span>(cc)) {
+        <span class="keyword">case</span> ISOLATE_ABORT:
+            <span class="comment">// 异常情况，放弃</span>
+            <span class="keyword">goto</span> out;
+        <span class="keyword">case</span> ISOLATE_NONE:
+            <span class="comment">// 没找到可迁移页面，继续下一个 pageblock</span>
+            <span class="keyword">continue</span>;
+        <span class="keyword">case</span> ISOLATE_SUCCESS:
+            <span class="comment">// 成功隔离了一些页面</span>
+            <span class="keyword">break</span>;
+    }
+    
+    <span class="comment">/* 2. 执行页面迁移 */</span>
+    err = <span class="function">migrate_pages</span>(&cc->migratepages, 
+                        compaction_alloc,   <span class="comment">// 分配目标页面</span>
+                        compaction_free,    <span class="comment">// 释放失败的页面</span>
+                        (<span class="type">unsigned long</span>)cc, 
+                        cc->mode,
+                        MR_COMPACTION, 
+                        &nr_succeeded);
+    
+    <span class="comment">/* 3. 处理迁移结果 */</span>
+    <span class="keyword">if</span> (err) {
+        <span class="function">putback_movable_pages</span>(&cc->migratepages);
+    }
+}</code></pre>
+            </div>
+
+            <div class="card">
+                <h2>碎片化指数计算</h2>
+                <p>定义在 <code>mm/vmstat.c</code> 中：</p>
+                
+                <pre><code><span class="comment">/*
+ * 碎片化指数：判断分配失败是由于内存不足还是外部碎片
+ * 返回值：
+ *   -1000: 分配可能会成功
+ *   接近 0: 分配失败是由于内存不足
+ *   接近 1000: 分配失败是由于碎片化
+ */</span>
+<span class="keyword">static int</span> <span class="function">__fragmentation_index</span>(<span class="type">unsigned int</span> order, 
+                                   <span class="keyword">struct</span> <span class="type">contig_page_info</span> *info)
+{
+    <span class="type">unsigned long</span> requested = <span class="number">1UL</span> << order;
+    
+    <span class="keyword">if</span> (!info->free_blocks_total)
+        <span class="keyword">return</span> <span class="number">0</span>;
+    
+    <span class="comment">/* 如果有合适大小的空闲块，不需要 compaction */</span>
+    <span class="keyword">if</span> (info->free_blocks_suitable)
+        <span class="keyword">return</span> <span class="number">-1000</span>;
+    
+    <span class="comment">/* 计算碎片化指数 */</span>
+    <span class="keyword">return</span> <span class="number">1000</span> - div_u64(
+        (<span class="number">1000</span> + div_u64(info->free_pages * <span class="number">1000ULL</span>, requested)),
+        info->free_blocks_total);
+}
+
+<span class="comment">/*
+ * 外部碎片百分比：小于目标 order 的空闲页占比
+ */</span>
+<span class="type">unsigned int</span> <span class="function">extfrag_for_order</span>(<span class="keyword">struct</span> <span class="type">zone</span> *zone, <span class="type">unsigned int</span> order)
+{
+    <span class="keyword">struct</span> <span class="type">contig_page_info</span> info;
+    <span class="function">fill_contig_page_info</span>(zone, order, &info);
+    
+    <span class="keyword">if</span> (info.free_pages == <span class="number">0</span>)
+        <span class="keyword">return</span> <span class="number">0</span>;
+    
+    <span class="keyword">return</span> div_u64(
+        (info.free_pages - (info.free_blocks_suitable << order)) * <span class="number">100</span>,
+        info.free_pages);
+}</code></pre>
+            </div>
+
+            <div class="card">
+                <h2>具体案例：16 页 Zone 的完整 Compaction 过程</h2>
+                <p>以一个只有 <strong>16 个物理页帧（PFN 0~15）</strong>的简化 Zone 为例，演示双扫描器算法如何解决碎片化问题。每个格子代表 2 个连续页帧（一个 pageblock 简化为 2 页）。</p>
+
+                <h3>初始内存状态（碎片化，order-2 分配失败）</h3>
+                <div class="flow-diagram">
+                    <svg viewBox="0 0 860 190" xmlns="http://www.w3.org/2000/svg">
+                        <text x="430" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">目标：分配 order-2（4 个连续页），当前失败</text>
+                        <!-- 8 blocks -->
+                        <rect x="20"  y="40" width="90" height="60" rx="5" fill="#93c5fd" stroke="#2563eb" stroke-width="2"/>
+                        <text x="65"  y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">PFN 0-1</text>
+                        <text x="65"  y="84" text-anchor="middle" font-size="10" fill="#1e40af">anon [M]</text>
+
+                        <rect x="120" y="40" width="90" height="60" rx="5" fill="#bbf7d0" stroke="#10b981" stroke-width="2"/>
+                        <text x="165" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#047857">PFN 2-3</text>
+                        <text x="165" y="84" text-anchor="middle" font-size="10" fill="#047857">FREE</text>
+
+                        <rect x="220" y="40" width="90" height="60" rx="5" fill="#fca5a5" stroke="#ef4444" stroke-width="2"/>
+                        <text x="265" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">PFN 4-5</text>
+                        <text x="265" y="84" text-anchor="middle" font-size="10" fill="#991b1b">slab [U]</text>
+
+                        <rect x="320" y="40" width="90" height="60" rx="5" fill="#93c5fd" stroke="#2563eb" stroke-width="2"/>
+                        <text x="365" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">PFN 6-7</text>
+                        <text x="365" y="84" text-anchor="middle" font-size="10" fill="#1e40af">file [M]</text>
+
+                        <rect x="420" y="40" width="90" height="60" rx="5" fill="#fca5a5" stroke="#ef4444" stroke-width="2"/>
+                        <text x="465" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">PFN 8-9</text>
+                        <text x="465" y="84" text-anchor="middle" font-size="10" fill="#991b1b">slab [U]</text>
+
+                        <rect x="520" y="40" width="90" height="60" rx="5" fill="#93c5fd" stroke="#2563eb" stroke-width="2"/>
+                        <text x="565" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">PFN 10-11</text>
+                        <text x="565" y="84" text-anchor="middle" font-size="10" fill="#1e40af">anon [M]</text>
+
+                        <rect x="620" y="40" width="90" height="60" rx="5" fill="#bbf7d0" stroke="#10b981" stroke-width="2"/>
+                        <text x="665" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#047857">PFN 12-13</text>
+                        <text x="665" y="84" text-anchor="middle" font-size="10" fill="#047857">FREE</text>
+
+                        <rect x="720" y="40" width="90" height="60" rx="5" fill="#93c5fd" stroke="#2563eb" stroke-width="2"/>
+                        <text x="765" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">PFN 14-15</text>
+                        <text x="765" y="84" text-anchor="middle" font-size="10" fill="#1e40af">anon [M]</text>
+
+                        <!-- legend -->
+                        <rect x="20"  y="120" width="14" height="14" rx="2" fill="#93c5fd" stroke="#2563eb"/>
+                        <text x="40"  y="132" font-size="11" fill="#475569">MOVABLE [M]</text>
+                        <rect x="190" y="120" width="14" height="14" rx="2" fill="#fca5a5" stroke="#ef4444"/>
+                        <text x="210" y="132" font-size="11" fill="#475569">UNMOVABLE [U]</text>
+                        <rect x="380" y="120" width="14" height="14" rx="2" fill="#bbf7d0" stroke="#10b981"/>
+                        <text x="400" y="132" font-size="11" fill="#475569">FREE</text>
+
+                        <text x="430" y="165" text-anchor="middle" font-size="11" fill="#dc2626">⚠ 空闲区 PFN 2-3 和 PFN 12-13 各仅 2 页，中间被 UNMOVABLE 块隔断，无法满足 order-2（需 4 个连续页）</text>
+                    </svg>
+                </div>
+
+                <h3>Step 1：初始化扫描器</h3>
+                <pre><code>migrate_pfn = zone_start_pfn = PFN 0   ← Migration Scanner，从左向右扫
+free_pfn    = zone_end_pfn   = PFN 15  ← Free Scanner，从右向左扫</code></pre>
+
+                <h3>Step 2：Free Scanner 从右向左，隔离空闲页</h3>
+                <p>Free scanner 从 PFN 15 开始向左扫描：PFN 14-15 是 MOVABLE（occupied），跳过；PFN 12-13 是空闲页，调用 <code>__isolate_free_page()</code> 从 buddy 系统中隔离，加入 <code>cc-&gt;freepages[]</code>。</p>
+                <pre><code>cc-&gt;nr_freepages = 2
+cc-&gt;freepages[order-1] → { PFN 12-13 }
+free_pfn 更新为 PFN 11（向左移，等待 migration scanner）</code></pre>
+
+                <h3>Step 3：Migration Scanner 从左向右，隔离可迁移页</h3>
+                <p>依次扫描每个 pageblock：</p>
+                <table>
+                    <tr><th>扫描位置</th><th>pageblock 类型</th><th>处理结果</th></tr>
+                    <tr><td>PFN 0-1</td><td>MOVABLE，anon page，在 LRU 上</td><td>✅ 隔离成功，加入 <code>migratepages</code>（2 页，已满足空闲目标槽数）</td></tr>
+                    <tr><td>PFN 2-3</td><td>空闲页，不在 LRU</td><td>跳过（非 LRU 页，由 free scanner 管理）</td></tr>
+                    <tr><td>PFN 4-5</td><td>UNMOVABLE（slab）</td><td>❌ 整块跳过，设置 skip hint</td></tr>
+                </table>
+                <p>cc-&gt;freepages 已有 2 个空闲目标页，隔离到 2 个 migratepages 后本轮即调用 migrate_pages 执行迁移。</p>
+                <pre><code>cc-&gt;migratepages → { PFN 0, PFN 1 }（共 2 页）
+migrate_pfn 更新为 PFN 2</code></pre>
+
+                <h3>Step 4：调用 migrate_pages() 执行迁移</h3>
+                <pre><code>migrate_pages(&amp;cc-&gt;migratepages,
+              compaction_alloc,   /* 从 cc-&gt;freepages 取 PFN 12~13 作为目标 */
+              compaction_free,
+              (unsigned long)cc,
+              MIGRATE_ASYNC,
+              MR_COMPACTION);
+
+迁移映射关系：
+  PFN 0  → PFN 12  （anon 内容复制 + 进程 PTE 原子更新：va → PFN 12）
+  PFN 1  → PFN 13  （同上）
+
+// PFN 0-1 原来的物理页帧现在变为空闲，归还 buddy 系统</code></pre>
+
+                <h3>Step 5：迁移后内存布局</h3>
+                <div class="flow-diagram">
+                    <svg viewBox="0 0 860 160" xmlns="http://www.w3.org/2000/svg">
+                        <text x="430" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">迁移后：低地址腾出连续空闲区</text>
+                        <rect x="20"  y="40" width="90" height="60" rx="5" fill="#bbf7d0" stroke="#15803d" stroke-width="2.5"/>
+                        <text x="65"  y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#15803d">PFN 0-1</text>
+                        <text x="65"  y="84" text-anchor="middle" font-size="10" fill="#15803d">FREE ✓</text>
+
+                        <rect x="120" y="40" width="90" height="60" rx="5" fill="#bbf7d0" stroke="#15803d" stroke-width="2.5"/>
+                        <text x="165" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#15803d">PFN 2-3</text>
+                        <text x="165" y="84" text-anchor="middle" font-size="10" fill="#15803d">FREE ✓</text>
+
+                        <rect x="220" y="40" width="90" height="60" rx="5" fill="#fca5a5" stroke="#ef4444" stroke-width="2"/>
+                        <text x="265" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">PFN 4-5</text>
+                        <text x="265" y="84" text-anchor="middle" font-size="10" fill="#991b1b">slab [U]</text>
+
+                        <rect x="320" y="40" width="90" height="60" rx="5" fill="#93c5fd" stroke="#2563eb" stroke-width="2"/>
+                        <text x="365" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">PFN 6-7</text>
+                        <text x="365" y="84" text-anchor="middle" font-size="10" fill="#1e40af">file [M]</text>
+
+                        <rect x="420" y="40" width="90" height="60" rx="5" fill="#fca5a5" stroke="#ef4444" stroke-width="2"/>
+                        <text x="465" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#991b1b">PFN 8-9</text>
+                        <text x="465" y="84" text-anchor="middle" font-size="10" fill="#991b1b">slab [U]</text>
+
+                        <rect x="520" y="40" width="90" height="60" rx="5" fill="#93c5fd" stroke="#2563eb" stroke-width="2"/>
+                        <text x="565" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">PFN 10-11</text>
+                        <text x="565" y="84" text-anchor="middle" font-size="10" fill="#1e40af">anon [M]</text>
+
+                        <rect x="620" y="40" width="90" height="60" rx="5" fill="#e0e7ff" stroke="#6366f1" stroke-width="2"/>
+                        <text x="665" y="62" text-anchor="middle" font-size="11" font-weight="bold" fill="#4338ca">PFN 12-13</text>
+                        <text x="665" y="79" text-anchor="middle" font-size="10" fill="#6366f1">anon（迁入）</text>
+                        <text x="665" y="94" text-anchor="middle" font-size="9" fill="#818cf8">PTE 已更新</text>
+
+                        <rect x="720" y="40" width="90" height="60" rx="5" fill="#93c5fd" stroke="#2563eb" stroke-width="2"/>
+                        <text x="765" y="66" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">PFN 14-15</text>
+                        <text x="765" y="84" text-anchor="middle" font-size="10" fill="#1e40af">anon [M]</text>
+
+                        <!-- brace under 0-3 -->
+                        <rect x="20" y="113" width="190" height="30" rx="5" fill="#dcfce7" stroke="#22c55e"/>
+                        <text x="115" y="133" text-anchor="middle" font-size="11" font-weight="bold" fill="#15803d">PFN 0-3 = 4 页连续空闲 → order-2 成功！🎉</text>
+                    </svg>
+                </div>
+
+                <h3>Step 6：compact_finished() 判断退出</h3>
+                <pre><code>compact_finished() 检查：
+  order = 2，需要 4 个连续空闲页
+  buddy 系统：PFN 0-1 (order-1) + PFN 2-3 (order-1) → 相邻合并 → PFN 0-3 (order-2) ✅
+  返回 COMPACT_SUCCESS → compact_zone() 退出主循环
+  zone-&gt;compact_cached_free_pfn  更新为 PFN 11（供下次快速扫描）
+  zone-&gt;compact_cached_migrate_pfn 更新为 PFN 8</code></pre>
+
+                <div class="success-box">
+                    <strong>案例关键结论：</strong>
+                    <ul>
+                        <li><strong>UNMOVABLE 页是"永久障碍"</strong>：PFN 4-5 和 PFN 8-9（slab）始终留在原位，compaction 无法移动它们。大量 UNMOVABLE pageblock 会将 zone 分割成孤立的空闲岛，严重限制 compaction 效果——这是为什么内核启动时要将 MOVABLE 和 UNMOVABLE 分配到不同 pageblock。</li>
+                        <li><strong>进程无感知</strong>：PFN 0-1 被迁移到 PFN 12-13，进程的虚拟地址（va）通过 PTE 仍然指向正确的物理内容，进程完全感知不到物理位置变化。PFN 6-7（file page）和 PFN 14-15（anon）本轮未被迁移，保持原位。</li>
+                        <li><strong><code>migrate_pages()</code> 是执行器，不是决策者</strong>：整个步骤 1~3 都是 compaction 自己的决策逻辑，<code>migrate_pages()</code> 在步骤 4 才被调用一次，执行实际搬迁。</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 工作流程 -->
+        <section id="workflow">
+            <h2 class="section-title">4. 工作流程</h2>
+            
+            <div class="card">
+                <h2>compact_zone() 主流程</h2>
+                
+                <div class="phase-container">
+                    <div class="phase">
+                        <div class="phase-number">1</div>
+                        <div class="phase-content">
+                            <h4>初始化阶段</h4>
+                            <p>初始化 <code>compact_control</code> 中的各种计数器和链表，设置扫描器的起始位置。如果是重试（restarting），清除 pageblock 的跳过标记。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="phase">
+                        <div class="phase-number">2</div>
+                        <div class="phase-content">
+                            <h4>适用性检查</h4>
+                            <p>调用 <code>compaction_suit_allocation_order()</code> 检查是否需要执行 compaction，包括 watermark 检查和碎片化指数评估。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="phase">
+                        <div class="phase-number">3</div>
+                        <div class="phase-content">
+                            <h4>迁移扫描</h4>
+                            <p>调用 <code>isolate_migratepages()</code> 从 migration scanner 位置开始扫描，找到可迁移的 LRU 页面并隔离到 <code>migratepages</code> 链表。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="phase">
+                        <div class="phase-number">4</div>
+                        <div class="phase-content">
+                            <h4>页面迁移</h4>
+                            <p>调用 <code>migrate_pages()</code> 执行实际的页面迁移。使用 <code>compaction_alloc()</code> 从空闲链表获取目标页面。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="phase">
+                        <div class="phase-number">5</div>
+                        <div class="phase-content">
+                            <h4>完成检查</h4>
+                            <p>调用 <code>compact_finished()</code> 检查是否应该停止：两个扫描器相遇、目标 order 的页面已可用、或出现异常情况。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="phase">
+                        <div class="phase-number">6</div>
+                        <div class="phase-content">
+                            <h4>清理阶段</h4>
+                            <p>释放未使用的空闲页面（<code>release_free_list()</code>），更新缓存的扫描器位置，记录统计信息。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>函数调用关系图</h2>
+                
+                <div class="flow-diagram">
+                    <svg viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+                            </marker>
+                            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+                            </filter>
+                        </defs>
+                        
+                        <!-- 入口层 -->
+                        <rect x="50" y="30" width="200" height="45" rx="8" fill="#2563eb" filter="url(#shadow)"/>
+                        <text x="150" y="58" text-anchor="middle" fill="white" font-size="13" font-weight="bold">try_to_compact_pages()</text>
+                        
+                        <rect x="300" y="30" width="200" height="45" rx="8" fill="#10b981" filter="url(#shadow)"/>
+                        <text x="400" y="58" text-anchor="middle" fill="white" font-size="13" font-weight="bold">wakeup_kcompactd()</text>
+                        
+                        <rect x="550" y="30" width="200" height="45" rx="8" fill="#f59e0b" filter="url(#shadow)"/>
+                        <text x="650" y="58" text-anchor="middle" fill="white" font-size="13" font-weight="bold">/proc/sys/vm/compact</text>
+                        
+                        <!-- 标签 -->
+                        <text x="150" y="20" text-anchor="middle" fill="#64748b" font-size="11">Direct Compaction</text>
+                        <text x="400" y="20" text-anchor="middle" fill="#64748b" font-size="11">kcompactd</text>
+                        <text x="650" y="20" text-anchor="middle" fill="#64748b" font-size="11">Manual Trigger</text>
+                        
+                        <!-- 箭头到 compact_zone_order -->
+                        <line x1="150" y1="75" x2="150" y2="110" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <line x1="400" y1="75" x2="400" y2="110" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <line x1="650" y1="75" x2="650" y2="110" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        
+                        <!-- compact_zone_order / kcompactd_do_work -->
+                        <rect x="75" y="115" width="150" height="40" rx="6" fill="#e0e7ff" stroke="#6366f1" stroke-width="2"/>
+                        <text x="150" y="140" text-anchor="middle" fill="#4338ca" font-size="12">compact_zone_order()</text>
+                        
+                        <rect x="325" y="115" width="150" height="40" rx="6" fill="#d1fae5" stroke="#10b981" stroke-width="2"/>
+                        <text x="400" y="140" text-anchor="middle" fill="#047857" font-size="12">kcompactd_do_work()</text>
+                        
+                        <rect x="575" y="115" width="150" height="40" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                        <text x="650" y="140" text-anchor="middle" fill="#b45309" font-size="12">compact_node()</text>
+                        
+                        <!-- 汇聚到 compact_zone -->
+                        <line x1="150" y1="155" x2="400" y2="195" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <line x1="400" y1="155" x2="400" y2="195" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <line x1="650" y1="155" x2="400" y2="195" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        
+                        <!-- compact_zone -->
+                        <rect x="300" y="200" width="200" height="50" rx="8" fill="#7c3aed" filter="url(#shadow)"/>
+                        <text x="400" y="225" text-anchor="middle" fill="white" font-size="14" font-weight="bold">compact_zone()</text>
+                        <text x="400" y="242" text-anchor="middle" fill="#e9d5ff" font-size="11">核心函数</text>
+                        
+                        <!-- 从 compact_zone 分出 -->
+                        <line x1="300" y1="225" x2="150" y2="295" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <line x1="400" y1="250" x2="400" y2="295" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <line x1="500" y1="225" x2="650" y2="295" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        
+                        <!-- 下层函数 -->
+                        <rect x="50" y="300" width="200" height="40" rx="6" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/>
+                        <text x="150" y="325" text-anchor="middle" fill="#dc2626" font-size="12">isolate_migratepages()</text>
+                        
+                        <rect x="300" y="300" width="200" height="40" rx="6" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/>
+                        <text x="400" y="325" text-anchor="middle" fill="#dc2626" font-size="12">migrate_pages()</text>
+                        
+                        <rect x="550" y="300" width="200" height="40" rx="6" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/>
+                        <text x="650" y="325" text-anchor="middle" fill="#dc2626" font-size="12">isolate_freepages()</text>
+                        
+                        <!-- 最底层 -->
+                        <line x1="150" y1="340" x2="150" y2="375" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        <line x1="650" y1="340" x2="650" y2="375" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        
+                        <rect x="25" y="380" width="250" height="35" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"/>
+                        <text x="150" y="403" text-anchor="middle" fill="#475569" font-size="11">isolate_migratepages_block()</text>
+                        
+                        <rect x="525" y="380" width="250" height="35" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"/>
+                        <text x="650" y="403" text-anchor="middle" fill="#475569" font-size="11">isolate_freepages_block()</text>
+                        
+                        <!-- 辅助函数 -->
+                        <rect x="300" y="380" width="200" height="35" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"/>
+                        <text x="400" y="403" text-anchor="middle" fill="#475569" font-size="11">compaction_alloc/free()</text>
+                        
+                        <line x1="400" y1="340" x2="400" y2="375" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+                        
+                        <!-- 图例 -->
+                        <rect x="50" y="440" width="800" height="50" rx="4" fill="#f8fafc" stroke="#e2e8f0"/>
+                        <text x="70" y="463" font-size="11" fill="#64748b">图例:</text>
+                        <rect x="110" y="450" width="20" height="20" rx="3" fill="#2563eb"/>
+                        <text x="140" y="465" font-size="11" fill="#475569">Direct Compaction</text>
+                        <rect x="260" y="450" width="20" height="20" rx="3" fill="#10b981"/>
+                        <text x="290" y="465" font-size="11" fill="#475569">kcompactd</text>
+                        <rect x="380" y="450" width="20" height="20" rx="3" fill="#7c3aed"/>
+                        <text x="410" y="465" font-size="11" fill="#475569">核心函数</text>
+                        <rect x="500" y="450" width="20" height="20" rx="3" fill="#fef2f2" stroke="#ef4444"/>
+                        <text x="530" y="465" font-size="11" fill="#475569">扫描/迁移函数</text>
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <!-- 触发机制 -->
+        <section id="triggers">
+            <h2 class="section-title">5. 触发机制</h2>
+            
+            <div class="overview-section">
+                <div class="card">
+                    <h2>Direct Compaction</h2>
+                    <span class="tag tag-sync">同步</span>
+                    
+                    <p>当高阶内存分配失败时，在页面分配路径中直接触发。</p>
+                    
+                    <h3>触发条件</h3>
+                    <ul>
+                        <li>分配 order > 0 的页面失败</li>
+                        <li>watermark 检查失败但内存碎片化</li>
+                        <li><code>fragmentation_index > extfrag_threshold</code></li>
+                    </ul>
+                    
+                    <h3>调用路径</h3>
+                    <pre><code>__alloc_pages_slowpath()
+  └── __alloc_pages_direct_compact()
+        └── try_to_compact_pages()
+              └── compact_zone_order()
+                    └── compact_zone()</code></pre>
+                    
+                    <div class="highlight-box">
+                        <strong>特点：</strong>
+                        <ul>
+                            <li>阻塞当前进程</li>
+                            <li>会记录 PSI（Pressure Stall Information）</li>
+                            <li>优先级可从 ASYNC 升级到 SYNC_FULL</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2>kcompactd 后台线程</h2>
+                    <span class="tag tag-async">异步</span>
+                    
+                    <p>每个 NUMA 节点都有一个 kcompactd 内核线程，在后台执行内存整理。</p>
+                    
+                    <h3>唤醒条件</h3>
+                    <ul>
+                        <li>高阶分配失败时调用 <code>wakeup_kcompactd()</code></li>
+                        <li>Proactive compaction 定时检查</li>
+                        <li>用户通过 sysctl 手动触发</li>
+                    </ul>
+                    
+                    <h3>主循环</h3>
+                    <pre><code><span class="keyword">static int</span> <span class="function">kcompactd</span>(<span class="keyword">void</span> *p) {
+    <span class="keyword">while</span> (!kthread_should_stop()) {
+        <span class="comment">/* 等待唤醒或超时 */</span>
+        wait_event_freezable_timeout(
+            pgdat->kcompactd_wait,
+            kcompactd_work_requested(pgdat),
+            timeout);
+        
+        <span class="comment">/* 执行 compaction */</span>
+        <span class="keyword">if</span> (kcompactd_work_requested())
+            kcompactd_do_work(pgdat);
+        
+        <span class="comment">/* 主动 compaction */</span>
+        <span class="keyword">if</span> (should_proactive_compact_node())
+            compact_node(pgdat, <span class="keyword">true</span>);
+    }
+}</code></pre>
+                </div>
+                
+                <div class="card">
+                    <h2>Proactive Compaction</h2>
+                    <span class="tag tag-proactive">主动</span>
+                    
+                    <p>基于碎片化分数（fragmentation score）主动执行 compaction，在系统空闲时预防性整理内存。</p>
+                    
+                    <h3>碎片化分数</h3>
+                    <pre><code><span class="comment">/* 节点级别的碎片化分数 */</span>
+<span class="type">unsigned int</span> score = <span class="function">fragmentation_score_node</span>(pgdat);
+
+<span class="comment">/* 高水位和低水位 */</span>
+wmark_low = <span class="number">100</span> - sysctl_compaction_proactiveness;
+wmark_high = wmark_low + min(<span class="number">10</span>, wmark_low / <span class="number">2</span>);
+
+<span class="comment">/* 当 score > wmark_high 时开始 compaction */</span>
+<span class="comment">/* 当 score < wmark_low 时停止 */</span></code></pre>
+                    
+                    <h3>控制参数</h3>
+                    <table>
+                        <tr>
+                            <th>参数</th>
+                            <th>路径</th>
+                            <th>默认值</th>
+                        </tr>
+                        <tr>
+                            <td>proactiveness</td>
+                            <td>/proc/sys/vm/compaction_proactiveness</td>
+                            <td>20</td>
+                        </tr>
+                        <tr>
+                            <td>检查间隔</td>
+                            <td>HPAGE_FRAG_CHECK_INTERVAL_MSEC</td>
+                            <td>500ms</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 策略控制 -->
+        <section id="policies">
+            <h2 class="section-title">6. 策略控制</h2>
+            
+            <div class="card">
+                <h2>迁移模式</h2>
+                
+                <table>
+                    <tr>
+                        <th>模式</th>
+                        <th>说明</th>
+                        <th>使用场景</th>
+                    </tr>
+                    <tr>
+                        <td><code>MIGRATE_ASYNC</code></td>
+                        <td>异步迁移，遇到阻塞立即跳过</td>
+                        <td>首次尝试、kcompactd 初始扫描</td>
+                    </tr>
+                    <tr>
+                        <td><code>MIGRATE_SYNC_LIGHT</code></td>
+                        <td>轻量同步，可等待页面锁但不等待 writeback</td>
+                        <td>默认重试模式、kcompactd 主要工作模式</td>
+                    </tr>
+                    <tr>
+                        <td><code>MIGRATE_SYNC</code></td>
+                        <td>完全同步，等待所有必要的锁和 I/O</td>
+                        <td>最后一次尝试、手动触发的 compaction</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Defer 机制（延迟重试）</h2>
+                
+                <p>当 compaction 失败时，为了避免频繁无效的重试，内核会延迟一段时间再进行 compaction。</p>
+                
+                <pre><code><span class="comment">/* 失败后延迟 compaction */</span>
+<span class="keyword">static void</span> <span class="function">defer_compaction</span>(<span class="keyword">struct</span> <span class="type">zone</span> *zone, <span class="type">int</span> order) {
+    zone->compact_considered = <span class="number">0</span>;
+    zone->compact_defer_shift++;  <span class="comment">// 增加延迟指数</span>
+    
+    <span class="keyword">if</span> (order < zone->compact_order_failed)
+        zone->compact_order_failed = order;
+    
+    <span class="comment">/* 最多延迟 64 次 (1 << 6) */</span>
+    <span class="keyword">if</span> (zone->compact_defer_shift > COMPACT_MAX_DEFER_SHIFT)
+        zone->compact_defer_shift = COMPACT_MAX_DEFER_SHIFT;
+}
+
+<span class="comment">/* 检查是否应该跳过 */</span>
+<span class="keyword">static bool</span> <span class="function">compaction_deferred</span>(<span class="keyword">struct</span> <span class="type">zone</span> *zone, <span class="type">int</span> order) {
+    <span class="type">unsigned long</span> defer_limit = <span class="number">1UL</span> << zone->compact_defer_shift;
+    
+    <span class="keyword">if</span> (order < zone->compact_order_failed)
+        <span class="keyword">return</span> <span class="keyword">false</span>;
+    
+    <span class="keyword">if</span> (++zone->compact_considered >= defer_limit)
+        <span class="keyword">return</span> <span class="keyword">false</span>;  <span class="comment">// 延迟结束，重新尝试</span>
+    
+    <span class="keyword">return</span> <span class="keyword">true</span>;  <span class="comment">// 继续延迟</span>
+}</code></pre>
+                
+                <div class="warning-box">
+                    <strong>延迟重置条件：</strong>
+                    <ul>
+                        <li>compaction 成功后调用 <code>compaction_defer_reset()</code></li>
+                        <li>分配成功后重置</li>
+                        <li>达到最大延迟次数后重新开始</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Pageblock Skip Hint</h2>
+                
+                <p>为了提高效率，compaction 会标记不合适的 pageblock，下次扫描时跳过它们。</p>
+                
+                <pre><code><span class="comment">/* 设置跳过标记 */</span>
+<span class="keyword">static void</span> <span class="function">update_pageblock_skip</span>(...) {
+    <span class="function">set_pageblock_skip</span>(page);
+    
+    <span class="comment">/* 更新空闲扫描器缓存位置 */</span>
+    <span class="keyword">if</span> (pfn < zone->compact_cached_free_pfn)
+        zone->compact_cached_free_pfn = pfn;
+}
+
+<span class="comment">/* 检查是否应该跳过 */</span>
+<span class="keyword">static inline bool</span> <span class="function">isolation_suitable</span>(...) {
+    <span class="keyword">if</span> (cc->ignore_skip_hint)
+        <span class="keyword">return</span> <span class="keyword">true</span>;
+    
+    <span class="keyword">return</span> !<span class="function">get_pageblock_skip</span>(page);
+}</code></pre>
+                
+                <div class="success-box">
+                    <strong>Skip 标记清除时机：</strong>
+                    <ul>
+                        <li>当 kswapd 进入睡眠状态时（通过 <code>compact_blockskip_flush</code> 标志）</li>
+                        <li>当 compaction 需要重新开始时（达到最大延迟）</li>
+                        <li>调用 <code>__reset_isolation_suitable()</code> 时</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 内核配置选项 -->
+        <section id="kernel-config">
+            <h2 class="section-title">7. 内核配置选项</h2>
+            
+            <div class="card">
+                <h2>核心配置项</h2>
+                <p>要启用 Memory Compaction 功能，需要配置以下内核选项（位于 <code>mm/Kconfig</code>）：</p>
+                
+                <table>
+                    <tr>
+                        <th>配置项</th>
+                        <th>说明</th>
+                        <th>默认值</th>
+                        <th>依赖</th>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_COMPACTION</code></td>
+                        <td>启用内存 compaction 功能（核心选项）</td>
+                        <td>y</td>
+                        <td>CONFIG_MMU</td>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_MIGRATION</code></td>
+                        <td>页面迁移支持（compaction 依赖此选项）</td>
+                        <td>y</td>
+                        <td>CONFIG_MMU</td>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_COMPACT_UNEVICTABLE_DEFAULT</code></td>
+                        <td>允许迁移 unevictable 页面的默认值</td>
+                        <td>1 (RT: 0)</td>
+                        <td>CONFIG_COMPACTION</td>
+                    </tr>
+                </table>
+                
+                <div class="highlight-box">
+                    <strong>注意：</strong><code>CONFIG_COMPACTION</code> 默认启用。内核文档建议不要禁用此选项，因为页面分配器高度依赖 compaction 来满足高阶内存请求。如果确有强烈理由需要禁用，建议联系 linux-mm@kvack.org 讨论。
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>相关功能配置</h2>
+                
+                <table>
+                    <tr>
+                        <th>配置项</th>
+                        <th>说明</th>
+                        <th>与 Compaction 的关系</th>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_TRANSPARENT_HUGEPAGE</code></td>
+                        <td>透明大页支持</td>
+                        <td>自动选择 CONFIG_COMPACTION</td>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_CMA</code></td>
+                        <td>连续内存分配器</td>
+                        <td>使用 CONTIG_ALLOC（依赖 compaction）</td>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_BALLOON_COMPACTION</code></td>
+                        <td>内存气球 compaction</td>
+                        <td>依赖 CONFIG_COMPACTION</td>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_MEMORY_ISOLATION</code></td>
+                        <td>内存隔离支持</td>
+                        <td>与 compaction 组合启用 CONTIG_ALLOC</td>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_CONTIG_ALLOC</code></td>
+                        <td>连续页面分配</td>
+                        <td>= (MEMORY_ISOLATION && COMPACTION) || CMA</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>配置示例</h2>
+                
+                <h3>最小配置（仅启用 compaction）</h3>
+                <pre><code><span class="comment"># 在 .config 或 menuconfig 中设置</span>
+CONFIG_MMU=y
+CONFIG_COMPACTION=y
+CONFIG_MIGRATION=y</code></pre>
+                
+                <h3>推荐配置（包含 THP 和 CMA）</h3>
+                <pre><code><span class="comment"># 完整的内存管理功能支持</span>
+CONFIG_MMU=y
+CONFIG_COMPACTION=y
+CONFIG_MIGRATION=y
+CONFIG_TRANSPARENT_HUGEPAGE=y
+CONFIG_TRANSPARENT_HUGEPAGE_MADVISE=y  <span class="comment"># 或 ALWAYS</span>
+CONFIG_CMA=y
+CONFIG_MEMORY_ISOLATION=y
+CONFIG_BALLOON_COMPACTION=y  <span class="comment"># 如果使用虚拟化</span></code></pre>
+                
+                <h3>使用 menuconfig 配置</h3>
+                <pre><code><span class="comment"># 进入内核配置菜单</span>
+make menuconfig
+
+<span class="comment"># 导航路径：</span>
+<span class="comment"># Memory Management options  ---></span>
+<span class="comment">#     [*] Allow for memory compaction</span>
+<span class="comment">#     [*] Page migration</span>
+<span class="comment">#     [*] Transparent Hugepage Support</span>
+<span class="comment">#         Transparent Hugepage Support sysfs defaults (madvise)  ---></span>
+<span class="comment">#     [*] Contiguous Memory Allocator</span></code></pre>
+            </div>
+
+            <div class="card">
+                <h2>验证配置</h2>
+                
+                <h3>检查当前内核配置</h3>
+                <pre><code><span class="comment"># 方法1：通过 /proc/config.gz（需要 CONFIG_IKCONFIG_PROC）</span>
+zcat /proc/config.gz | grep -E "COMPACTION|MIGRATION|TRANSPARENT_HUGEPAGE"
+
+<span class="comment"># 方法2：通过 /boot 下的 config 文件</span>
+grep -E "COMPACTION|MIGRATION" /boot/config-$(uname -r)
+
+<span class="comment"># 方法3：检查 sysfs 接口是否存在</span>
+ls -la /proc/sys/vm/compact_memory
+ls -la /proc/sys/vm/compaction_proactiveness</code></pre>
+                
+                <h3>预期输出示例</h3>
+                <pre><code>CONFIG_COMPACTION=y
+CONFIG_MIGRATION=y
+CONFIG_COMPACT_UNEVICTABLE_DEFAULT=1
+CONFIG_TRANSPARENT_HUGEPAGE=y
+CONFIG_BALLOON_COMPACTION=y</code></pre>
+                
+                <div class="success-box">
+                    <strong>提示：</strong>如果 <code>/proc/sys/vm/compact_memory</code> 文件存在，说明 CONFIG_COMPACTION 已启用。如果 <code>/proc/sys/vm/compaction_proactiveness</code> 存在，说明 proactive compaction 功能可用。
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>架构相关配置（ARM64）</h2>
+                
+                <p>对于 ARM64 架构，以下配置也与 compaction 相关：</p>
+                
+                <table>
+                    <tr>
+                        <th>配置项</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_HAVE_ARCH_TRANSPARENT_HUGEPAGE</code></td>
+                        <td>架构支持透明大页（ARM64 自动启用）</td>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_ARCH_ENABLE_THP_MIGRATION</code></td>
+                        <td>架构支持 THP 迁移</td>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_ARM64_4K_PAGES</code></td>
+                        <td>4K 页面大小（影响 pageblock_order）</td>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_ARM64_16K_PAGES</code></td>
+                        <td>16K 页面大小</td>
+                    </tr>
+                    <tr>
+                        <td><code>CONFIG_ARM64_64K_PAGES</code></td>
+                        <td>64K 页面大小</td>
+                    </tr>
+                </table>
+                
+                <div class="warning-box">
+                    <strong>pageblock_order 计算：</strong>
+                    <ul>
+                        <li>如果启用 <code>CONFIG_HUGETLB_PAGE</code>：pageblock_order = min(HUGETLB_PAGE_ORDER, MAX_PAGE_ORDER)</li>
+                        <li>如果启用 <code>CONFIG_TRANSPARENT_HUGEPAGE</code>：pageblock_order = min(HPAGE_PMD_ORDER, MAX_PAGE_ORDER)</li>
+                        <li>否则：pageblock_order = MAX_PAGE_ORDER</li>
+                    </ul>
+                    对于 ARM64 4K 页面 + THP：pageblock_order = 9（即 2MB）
+                </div>
+            </div>
+        </section>
+
+        <!-- 用户空间接口 -->
+        <section id="sysfs">
+            <h2 class="section-title">8. 用户空间接口</h2>
+            
+            <div class="card">
+                <h2>Sysctl 参数</h2>
+                
+                <table>
+                    <tr>
+                        <th>参数路径</th>
+                        <th>说明</th>
+                        <th>默认值</th>
+                    </tr>
+                    <tr>
+                        <td><code>/proc/sys/vm/compact_memory</code></td>
+                        <td>写入 1 触发全系统 compaction</td>
+                        <td>N/A</td>
+                    </tr>
+                    <tr>
+                        <td><code>/proc/sys/vm/compaction_proactiveness</code></td>
+                        <td>主动 compaction 的激进程度 (0-100)</td>
+                        <td>20</td>
+                    </tr>
+                    <tr>
+                        <td><code>/proc/sys/vm/extfrag_threshold</code></td>
+                        <td>外部碎片阈值 (0-1000)</td>
+                        <td>500</td>
+                    </tr>
+                    <tr>
+                        <td><code>/proc/sys/vm/compact_unevictable_allowed</code></td>
+                        <td>是否允许迁移 unevictable 页面</td>
+                        <td>1</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Sysfs 节点接口</h2>
+                
+                <p>每个 NUMA 节点都有 compaction 接口：</p>
+                
+                <pre><code><span class="comment"># 触发特定节点的 compaction</span>
+echo 1 > /sys/devices/system/node/node0/compact</code></pre>
+            </div>
+
+            <div class="card">
+                <h2>统计信息</h2>
+                
+                <p>通过 <code>/proc/vmstat</code> 可以查看 compaction 相关统计：</p>
+                
+                <pre><code><span class="comment"># 查看 compaction 统计</span>
+grep compact /proc/vmstat
+
+compact_migrate_scanned   <span class="comment"># 迁移扫描器扫描的页面数</span>
+compact_free_scanned      <span class="comment"># 空闲扫描器扫描的页面数</span>
+compact_isolated          <span class="comment"># 隔离的页面数</span>
+compact_stall             <span class="comment"># compaction 导致的阻塞次数</span>
+compact_fail              <span class="comment"># compaction 失败次数</span>
+compact_success           <span class="comment"># compaction 成功次数</span>
+compact_daemon_wake       <span class="comment"># kcompactd 唤醒次数</span>
+compact_daemon_migrate_scanned
+compact_daemon_free_scanned</code></pre>
+            </div>
+
+            <div class="card">
+                <h2>debugfs 接口</h2>
+                
+                <p>碎片化信息可通过 <code>/proc/buddyinfo</code> 和 <code>/sys/kernel/debug/extfrag/</code> 查看：</p>
+                
+                <pre><code><span class="comment"># 查看 buddy 系统状态</span>
+cat /proc/buddyinfo
+
+<span class="comment"># 查看碎片化索引（需要 CONFIG_DEBUG_FS）</span>
+cat /sys/kernel/debug/extfrag/extfrag_index
+cat /sys/kernel/debug/extfrag/unusable_index</code></pre>
+            </div>
+        </section>
+
+        <!-- 追踪与调试 -->
+        <section id="tracing">
+            <h2 class="section-title">9. 追踪与调试</h2>
+            
+            <div class="card">
+                <h2>Tracepoints</h2>
+                
+                <p>内核提供了丰富的 tracepoint 用于追踪 compaction 行为：</p>
+                
+                <table>
+                    <tr>
+                        <th>Tracepoint</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><code>mm_compaction_begin</code></td>
+                        <td>compaction 开始</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm_compaction_end</code></td>
+                        <td>compaction 结束</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm_compaction_try_to_compact_pages</code></td>
+                        <td>尝试执行 direct compaction</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm_compaction_isolate_migratepages</code></td>
+                        <td>隔离可迁移页面</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm_compaction_isolate_freepages</code></td>
+                        <td>隔离空闲页面</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm_compaction_migratepages</code></td>
+                        <td>页面迁移结果</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm_compaction_kcompactd_wake</code></td>
+                        <td>kcompactd 被唤醒</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm_compaction_kcompactd_sleep</code></td>
+                        <td>kcompactd 进入睡眠</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm_compaction_deferred</code></td>
+                        <td>compaction 被延迟</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm_compaction_defer_reset</code></td>
+                        <td>延迟计数器重置</td>
+                    </tr>
+                </table>
+                
+                <h3>使用示例</h3>
+                <pre><code><span class="comment"># 启用 compaction 追踪</span>
+echo 1 > /sys/kernel/debug/tracing/events/compaction/enable
+
+<span class="comment"># 查看追踪结果</span>
+cat /sys/kernel/debug/tracing/trace
+
+<span class="comment"># 使用 perf 追踪</span>
+perf record -e 'compaction:*' -a sleep 10
+perf script</code></pre>
+            </div>
+
+            <div class="card">
+                <h2>常见问题排查</h2>
+                
+                <div class="warning-box">
+                    <h4>高阶分配持续失败</h4>
+                    <ul>
+                        <li>检查 <code>/proc/buddyinfo</code> 确认高阶空闲页是否存在</li>
+                        <li>检查 <code>compact_stall</code> 和 <code>compact_fail</code> 比例</li>
+                        <li>增加 <code>compaction_proactiveness</code> 值</li>
+                        <li>降低 <code>extfrag_threshold</code> 让 compaction 更容易触发</li>
+                    </ul>
+                </div>
+                
+                <div class="warning-box">
+                    <h4>Compaction 导致性能下降</h4>
+                    <ul>
+                        <li>减小 <code>compaction_proactiveness</code> 值</li>
+                        <li>检查是否频繁的 direct compaction（<code>compact_stall</code>）</li>
+                        <li>考虑预留连续内存（CMA）</li>
+                        <li>使用 cgroup 限制 THP 使用</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- QEMU 实验验证 -->
+        <section id="qemu-experiments">
+            <h2 class="section-title">10. QEMU 实验验证</h2>
+            <p style="margin-bottom:20px;color:#475569;">以下 4 组实验在 ARM64 QEMU VM 中验证 Compaction 的不同行为。建议使用 256M 内存启动以加快碎片化过程。</p>
+
+            <div class="card">
+                <h2>实验环境准备</h2>
+                <h3>启动 QEMU VM（小内存快速碎片化）</h3>
+                <pre><code><span class="comment"># 编译内核时确保开启关键选项</span>
+grep -E "COMPACTION|TRANSPARENT_HUGEPAGE|FTRACE|TRACEPOINTS" .config
+
+<span class="comment"># 启动 QEMU（ARM64，256MB 内存）</span>
+qemu-system-aarch64 \
+    -M virt \
+    -cpu cortex-a57 \
+    -m 256M \
+    -kernel arch/arm64/boot/Image \
+    -initrd rootfs.cpio.gz \
+    -append "console=ttyAMA0 root=/dev/ram0 \
+             transparent_hugepage=madvise" \
+    -nographic
+
+<span class="comment"># 验证 compaction 功能可用</span>
+ls /proc/sys/vm/compact_memory &amp;&amp; echo "compaction enabled"
+ls /proc/sys/vm/compaction_proactiveness &amp;&amp; echo "proactive compaction available"</code></pre>
+
+                <h3>碎片化辅助脚本（保存为 /tmp/fragment.sh）</h3>
+                <pre><code><span class="comment">#!/bin/sh
+# 通过交替分配/释放制造内存碎片</span>
+python3 - &lt;&lt;'EOF'
+import mmap, random, gc
+
+CHUNK = 4096        # 4KB per allocation
+TOTAL = 5000        # 分配 5000 个小块
+pages = []
+
+print("Step 1: 分配大量 4KB 页...")
+for i in range(TOTAL):
+    m = mmap.mmap(-1, CHUNK)
+    m.write(b'\xAB' * CHUNK)
+    pages.append(m)
+
+print("Step 2: 随机释放约 50% 制造碎片...")
+indices = random.sample(range(TOTAL), TOTAL // 2)
+for i in sorted(indices, reverse=True):
+    pages[i].close()
+    pages[i] = None
+gc.collect()
+
+print("Step 3: 碎片化完成，保持剩余页面存活（按 Ctrl+C 退出）...")
+input()
+EOF</code></pre>
+            </div>
+
+            <div class="card">
+                <h2>实验一：观察碎片化并用 sysctl 手动整理</h2>
+                <p><strong>目标：</strong>直观看到碎片化前后 <code>/proc/buddyinfo</code> 的高阶（order ≥ 4）空闲块数量变化。</p>
+
+                <h3>步骤</h3>
+                <pre><code><span class="comment"># 1. 查看碎片化前的 buddy 状态（高阶块应该较多）</span>
+cat /proc/buddyinfo
+<span class="comment"># 输出示例：</span>
+<span class="comment"># Node 0, zone   Normal   45  32  18  9  5  3  2  1  0  0  0</span>
+<span class="comment">#                          ^order-0   ... order-5 ...  order-10^</span>
+
+<span class="comment"># 2. 运行碎片化脚本（后台运行）</span>
+sh /tmp/fragment.sh &amp;
+
+<span class="comment"># 3. 查看碎片化后的状态（高阶块减少）</span>
+cat /proc/buddyinfo
+<span class="comment"># 预期：order-8、order-9、order-10 变为 0</span>
+
+<span class="comment"># 4. 检查碎片化指数（需要 debugfs）</span>
+mount -t debugfs debugfs /sys/kernel/debug
+cat /sys/kernel/debug/extfrag/extfrag_index
+<span class="comment"># order-9 的值接近 1000 → 碎片化严重</span>
+
+<span class="comment"># 5. 手动触发 compaction</span>
+time echo 1 &gt; /proc/sys/vm/compact_memory
+
+<span class="comment"># 6. 再次查看 buddy 状态（高阶块应恢复）</span>
+cat /proc/buddyinfo
+<span class="comment"># 预期：order-8 或 order-9 出现非零值</span>
+
+<span class="comment"># 7. 查看 compaction 统计</span>
+grep compact /proc/vmstat</code></pre>
+
+                <h3>预期结果对比</h3>
+                <table>
+                    <tr><th>时间点</th><th>order-8（256页=1MB）</th><th>order-9（512页=2MB）</th><th>compact_success</th></tr>
+                    <tr><td>碎片化前</td><td>≥ 1</td><td>≥ 1</td><td>0</td></tr>
+                    <tr><td>碎片化后</td><td>0</td><td>0</td><td>0</td></tr>
+                    <tr><td>手动 compact 后</td><td>≥ 1</td><td>可能恢复</td><td>增加</td></tr>
+                </table>
+
+                <div class="highlight-box">
+                    <strong>验证什么：</strong>说明 UNMOVABLE 页（slab/内核）限制 compaction 效果——如果 order-9 无法完全恢复，是因为 UNMOVABLE pageblock 将 zone 切断，无法凑出 512 个连续页。
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>实验二：THP 分配 + Compaction 协同</h2>
+                <p><strong>目标：</strong>验证在碎片化状态下，madvise HUGEPAGE 请求触发 direct compaction，最终成功分配 THP（2MB 大页）。</p>
+
+                <pre><code><span class="comment"># 确认 THP 模式为 madvise（不自动分配，按需触发）</span>
+cat /sys/kernel/mm/transparent_hugepage/enabled
+<span class="comment"># 输出：always [madvise] never  ← 方括号表示当前选项</span>
+
+<span class="comment"># 如果是 never，改为 madvise</span>
+echo madvise &gt; /sys/kernel/mm/transparent_hugepage/enabled
+
+<span class="comment"># 清空 compact_success 计数作为基准</span>
+grep "compact_success\|compact_fail\|compact_stall" /proc/vmstat
+
+<span class="comment"># 碎片化内存</span>
+sh /tmp/fragment.sh &amp;
+FRAG_PID=$!
+sleep 2
+
+<span class="comment"># 用 C 程序请求 THP 并观察（保存为 /tmp/thp_test.c）</span>
+cat &gt; /tmp/thp_test.c &lt;&lt;'CEOF'
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/mman.h&gt;
+
+#define HUGEPAGE_SIZE (2 * 1024 * 1024)  /* 2MB */
+
+int main() {
+    /* 分配 4MB，要求 2MB 对齐以命中 PMD */
+    void *p = mmap(NULL, 4 * HUGEPAGE_SIZE,
+                   PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (p == MAP_FAILED) { perror("mmap"); return 1; }
+
+    /* 对齐到 2MB 边界 */
+    void *aligned = (void *)(((unsigned long)p + HUGEPAGE_SIZE - 1)
+                              &amp; ~(HUGEPAGE_SIZE - 1));
+
+    /* 提示内核：这块内存我希望用大页 */
+    madvise(aligned, HUGEPAGE_SIZE, MADV_HUGEPAGE);
+
+    /* 触发分配（写入才真正申请物理页）*/
+    printf("触发 THP 分配...\n");
+    memset(aligned, 0, HUGEPAGE_SIZE);
+    printf("分配成功！检查 /proc/vmstat 的 thp_fault_alloc\n");
+
+    getchar();  /* 等待观察 */
+    munmap(p, 4 * HUGEPAGE_SIZE);
+    return 0;
+}
+CEOF
+gcc -O0 -o /tmp/thp_test /tmp/thp_test.c &amp;&amp; /tmp/thp_test &amp;
+
+<span class="comment"># 同时观察 THP 和 compaction 统计变化</span>
+watch -n 1 'grep -E "thp_fault|compact_success|compact_stall|compact_fail" /proc/vmstat'</code></pre>
+
+                <h3>关键观察点</h3>
+                <table>
+                    <tr><th>vmstat 计数器</th><th>含义</th><th>预期变化</th></tr>
+                    <tr><td><code>thp_fault_alloc</code></td><td>缺页异常时直接分配到 THP</td><td>增加 1</td></tr>
+                    <tr><td><code>thp_collapse_alloc</code></td><td>khugepaged 折叠为大页</td><td>可能增加</td></tr>
+                    <tr><td><code>compact_stall</code></td><td>分配进程因 direct compaction 而阻塞</td><td>增加（若直接触发）</td></tr>
+                    <tr><td><code>compact_success</code></td><td>compaction 整理出足够的连续页</td><td>增加</td></tr>
+                    <tr><td><code>compact_fail</code></td><td>compaction 失败（内存过于碎片化）</td><td>如果 U 块太多则增加</td></tr>
+                </table>
+
+                <div class="warning-box">
+                    <strong>若 <code>compact_fail</code> 持续增加但 THP 分配失败：</strong>说明 UNMOVABLE 页太多，无法凑出连续 512 页。此时尝试 <code>echo 1 &gt; /proc/sys/vm/drop_caches</code> 释放 page cache 再重试。
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>实验三：ftrace 追踪 Direct Compaction 完整路径</h2>
+                <p><strong>目标：</strong>使用 ftrace function_graph 追踪一次完整的 direct compaction 调用链，验证 <code>__alloc_pages_slowpath → compact_zone</code> 的执行路径。</p>
+
+                <pre><code><span class="comment"># 确认 debugfs 已挂载</span>
+mount -t debugfs debugfs /sys/kernel/debug 2&gt;/dev/null || true
+cd /sys/kernel/debug/tracing
+
+<span class="comment"># 方法一：使用 compaction 专用 tracepoints（推荐，开销小）</span>
+echo 0 &gt; tracing_on
+echo &gt; trace                           <span class="comment"># 清空 trace buffer</span>
+echo 1 &gt; events/compaction/enable      <span class="comment"># 开启所有 compaction 事件</span>
+echo 1 &gt; tracing_on
+
+<span class="comment"># 在另一个终端触发碎片化 + THP 分配</span>
+sh /tmp/fragment.sh &amp;; sleep 2; /tmp/thp_test &lt; /dev/null
+
+<span class="comment"># 停止追踪并查看</span>
+echo 0 &gt; tracing_on
+cat trace | head -80
+
+<span class="comment"># 预期输出片段：</span>
+<span class="comment"># kworker/0:1-123  [000]  mm_compaction_begin: ... zone_start=0x... migrate_pfn=0x...</span>
+<span class="comment"># kworker/0:1-123  [000]  mm_compaction_isolate_migratepages: range=(0x... 0x...) nr_scanned=32 nr_taken=28</span>
+<span class="comment"># kworker/0:1-123  [000]  mm_compaction_migratepages: nr_migrated=28 nr_failed=0</span>
+<span class="comment"># kworker/0:1-123  [000]  mm_compaction_end: ... result=success</span>
+
+<span class="comment"># 方法二：function_graph 追踪（更详细，开销大，仅短时间使用）</span>
+echo function_graph &gt; current_tracer
+echo compact_zone &gt; set_graph_function    <span class="comment"># 只追踪 compact_zone 子树</span>
+echo 1 &gt; tracing_on
+<span class="comment"># ... 触发分配 ...</span>
+echo 0 &gt; tracing_on
+cat trace | grep -E "compact_zone|isolate_migrate|migrate_pages|compact_finished" | head -40</code></pre>
+
+                <h3>关键 tracepoint 说明</h3>
+                <table>
+                    <tr><th>Tracepoint</th><th>触发时机</th><th>关键字段</th></tr>
+                    <tr><td><code>mm_compaction_begin</code></td><td>compact_zone() 入口</td><td>zone_start, migrate_pfn, free_pfn, sync</td></tr>
+                    <tr><td><code>mm_compaction_isolate_migratepages</code></td><td>每次 isolate_migratepages() 返回</td><td>nr_scanned, nr_taken（效率指标）</td></tr>
+                    <tr><td><code>mm_compaction_migratepages</code></td><td>migrate_pages() 返回后</td><td>nr_migrated, nr_failed</td></tr>
+                    <tr><td><code>mm_compaction_deferred</code></td><td>compaction 被 defer 推迟</td><td>order, defer_shift（推迟指数）</td></tr>
+                    <tr><td><code>mm_compaction_end</code></td><td>compact_zone() 退出</td><td>result（success/fail/deferred）</td></tr>
+                    <tr><td><code>mm_compaction_kcompactd_wake</code></td><td>kcompactd 被唤醒</td><td>nid, classzone_idx, order</td></tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>实验四：kcompactd 行为与 Proactive Compaction 调参</h2>
+                <p><strong>目标：</strong>对比不同 <code>compaction_proactiveness</code> 值下系统空闲时的后台整理行为，理解主动整理对 THP 分配成功率的影响。</p>
+
+                <pre><code><span class="comment"># --- 场景 A：关闭主动 compaction ---</span>
+echo 0 &gt; /proc/sys/vm/compaction_proactiveness
+echo "proactiveness=0，kcompactd 仅响应被动唤醒"
+
+<span class="comment"># 碎片化后等待 30 秒，观察 kcompactd 是否主动工作</span>
+sh /tmp/fragment.sh &amp;
+BEFORE=$(grep compact_daemon_wake /proc/vmstat | awk '{print $2}')
+sleep 30
+AFTER=$(grep compact_daemon_wake /proc/vmstat | awk '{print $2}')
+echo "kcompactd 唤醒次数变化: $((AFTER - BEFORE))"
+<span class="comment"># 预期：变化接近 0（没有主动整理）</span>
+
+<span class="comment"># --- 场景 B：开启激进主动 compaction ---</span>
+echo 60 &gt; /proc/sys/vm/compaction_proactiveness
+<span class="comment"># wmark_low = 100 - 60 = 40，当碎片化分数 &gt; ~44 时触发</span>
+
+BEFORE=$(grep compact_daemon_wake /proc/vmstat | awk '{print $2}')
+sleep 30
+AFTER=$(grep compact_daemon_wake /proc/vmstat | awk '{print $2}')
+echo "kcompactd 唤醒次数变化: $((AFTER - BEFORE))"
+<span class="comment"># 预期：kcompactd 多次被唤醒，主动整理内存</span>
+
+<span class="comment"># 对比两种场景下 THP 分配成功率</span>
+echo "当前碎片化分数："
+python3 -c "
+import os
+for node_dir in os.listdir('/sys/kernel/debug/extfrag/'):
+    path = f'/sys/kernel/debug/extfrag/{node_dir}'
+    if os.path.isdir(path):
+        try:
+            with open(f'{path}/extfrag_index') as f:
+                print(f'{node_dir}:')
+                print(f.read())
+        except:
+            pass
+" 2&gt;/dev/null || cat /sys/kernel/debug/extfrag/extfrag_index
+
+<span class="comment"># 查看节点级碎片化分数（kcompactd 用此判断是否主动工作）</span>
+<span class="comment"># fragmentation_score_node() 返回该节点所有 zone 的加权平均碎片化分数</span>
+grep unusable /sys/kernel/debug/extfrag/unusable_index 2&gt;/dev/null | head -10</code></pre>
+
+                <h3>各参数效果对比</h3>
+                <table>
+                    <tr>
+                        <th><code>compaction_proactiveness</code></th>
+                        <th>触发阈值（wmark_high ≈）</th>
+                        <th>行为</th>
+                        <th>适用场景</th>
+                    </tr>
+                    <tr>
+                        <td>0</td>
+                        <td>不触发主动</td>
+                        <td>完全被动，只响应分配失败</td>
+                        <td>延迟敏感型 RT 系统</td>
+                    </tr>
+                    <tr>
+                        <td>20（默认）</td>
+                        <td>碎片化分数 &gt; ~82</td>
+                        <td>轻度主动，碎片化严重才动</td>
+                        <td>通用服务器</td>
+                    </tr>
+                    <tr>
+                        <td>60</td>
+                        <td>碎片化分数 &gt; ~44</td>
+                        <td>积极主动，频繁后台整理</td>
+                        <td>需要频繁 THP 分配的工作负载</td>
+                    </tr>
+                    <tr>
+                        <td>100</td>
+                        <td>碎片化分数 &gt; ~5</td>
+                        <td>极激进，几乎持续整理</td>
+                        <td>数据库 / 大页密集型应用</td>
+                    </tr>
+                </table>
+
+                <div class="success-box">
+                    <strong>调参建议：</strong>生产环境中建议先用 <code>perf stat -e 'compaction:*'</code> 统计一段时间内的 compaction 频率，再根据 <code>compact_stall</code>（同步阻塞次数）与 <code>thp_fault_alloc</code> 成功率决定是否需要调高 <code>compaction_proactiveness</code>。调高会带来 CPU 消耗，需在 THP 命中率和 CPU 开销之间取得平衡。
+                </div>
+            </div>
+        </section>
+
+        <!-- 总结 -->
+        <section>
+            <h2 class="section-title">11. 总结</h2>
+            
+            <div class="card">
+                <h2>关键源文件</h2>
+                
+                <table>
+                    <tr>
+                        <th>文件</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td><code>mm/compaction.c</code></td>
+                        <td>主要实现文件</td>
+                    </tr>
+                    <tr>
+                        <td><code>include/linux/compaction.h</code></td>
+                        <td>公共头文件</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm/internal.h</code></td>
+                        <td>compact_control 结构定义</td>
+                    </tr>
+                    <tr>
+                        <td><code>include/linux/mmzone.h</code></td>
+                        <td>zone 结构中的 compaction 字段</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm/page_alloc.c</code></td>
+                        <td>Direct compaction 触发点</td>
+                    </tr>
+                    <tr>
+                        <td><code>mm/vmstat.c</code></td>
+                        <td>碎片化指数计算和统计</td>
+                    </tr>
+                    <tr>
+                        <td><code>include/trace/events/compaction.h</code></td>
+                        <td>Tracepoint 定义</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>架构总览</h2>
+                
+                <div class="flow-diagram">
+                    <svg viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#2563eb"/>
+                                <stop offset="100%" style="stop-color:#7c3aed"/>
+                            </linearGradient>
+                        </defs>
+                        
+                        <!-- 标题 -->
+                        <rect x="200" y="10" width="500" height="40" rx="8" fill="url(#headerGrad)"/>
+                        <text x="450" y="37" text-anchor="middle" font-size="16" font-weight="bold" fill="white">Memory Compaction 架构总览</text>
+                        
+                        <!-- 触发层 -->
+                        <rect x="50" y="70" width="250" height="60" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+                        <text x="175" y="95" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e40af">触发机制</text>
+                        <text x="175" y="115" text-anchor="middle" font-size="11" fill="#3b82f6">Direct | kcompactd | Proactive</text>
+                        
+                        <rect x="325" y="70" width="250" height="60" rx="6" fill="#d1fae5" stroke="#10b981" stroke-width="2"/>
+                        <text x="450" y="95" text-anchor="middle" font-size="13" font-weight="bold" fill="#047857">策略控制</text>
+                        <text x="450" y="115" text-anchor="middle" font-size="11" fill="#10b981">Mode | Defer | Skip Hint</text>
+                        
+                        <rect x="600" y="70" width="250" height="60" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+                        <text x="725" y="95" text-anchor="middle" font-size="13" font-weight="bold" fill="#b45309">监控接口</text>
+                        <text x="725" y="115" text-anchor="middle" font-size="11" fill="#d97706">sysctl | sysfs | tracepoint</text>
+                        
+                        <!-- 核心层 -->
+                        <rect x="150" y="160" width="600" height="80" rx="8" fill="#7c3aed" stroke="#5b21b6" stroke-width="2"/>
+                        <text x="450" y="190" text-anchor="middle" font-size="15" font-weight="bold" fill="white">Compaction Core</text>
+                        <text x="450" y="215" text-anchor="middle" font-size="12" fill="#e9d5ff">compact_zone() | isolate_migratepages() | isolate_freepages()</text>
+                        <text x="450" y="230" text-anchor="middle" font-size="11" fill="#c4b5fd">双扫描器算法 | 页面迁移</text>
+                        
+                        <!-- 底层 -->
+                        <rect x="50" y="270" width="380" height="60" rx="6" fill="#fef2f2" stroke="#ef4444" stroke-width="2"/>
+                        <text x="240" y="295" text-anchor="middle" font-size="13" font-weight="bold" fill="#dc2626">Page Migration</text>
+                        <text x="240" y="315" text-anchor="middle" font-size="11" fill="#f87171">migrate_pages() | folio_migrate_*</text>
+                        
+                        <rect x="470" y="270" width="380" height="60" rx="6" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+                        <text x="660" y="295" text-anchor="middle" font-size="13" font-weight="bold" fill="#047857">Buddy System</text>
+                        <text x="660" y="315" text-anchor="middle" font-size="11" fill="#34d399">__isolate_free_page() | release_free_list()</text>
+                        
+                        <!-- LRU -->
+                        <rect x="200" y="350" width="500" height="40" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"/>
+                        <text x="450" y="375" text-anchor="middle" font-size="12" fill="#475569">LRU Lists | Pageblock Flags | Zone Metadata</text>
+                        
+                        <!-- 连接线 -->
+                        <line x1="175" y1="130" x2="350" y2="160" stroke="#64748b" stroke-width="1.5"/>
+                        <line x1="450" y1="130" x2="450" y2="160" stroke="#64748b" stroke-width="1.5"/>
+                        <line x1="725" y1="130" x2="550" y2="160" stroke="#64748b" stroke-width="1.5"/>
+                        
+                        <line x1="350" y1="240" x2="240" y2="270" stroke="#64748b" stroke-width="1.5"/>
+                        <line x1="550" y1="240" x2="660" y2="270" stroke="#64748b" stroke-width="1.5"/>
+                        
+                        <line x1="240" y1="330" x2="350" y2="350" stroke="#64748b" stroke-width="1.5"/>
+                        <line x1="660" y1="330" x2="550" y2="350" stroke="#64748b" stroke-width="1.5"/>
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Linux Kernel 6.18.1 | Memory Compaction 全景视图</p>
+            <p>源码路径: <code>mm/compaction.c</code> | 生成日期: 2024</p>
+        </footer>
+    </div>
+</body>
+</html>

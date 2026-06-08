@@ -1518,6 +1518,158 @@ echo "50M" > /sys/fs/cgroup/memory/app/memory.reclaim
 
 ## 6. 页面回收案例分析
 
+## QEMU 实验：三种页面回收场景动态演示
+
+本节通过 QEMU 虚拟机（推荐 512MB/1GB 内存）实践和动态观察 Linux 三种页面回收路径：
+1. **直接回收（Direct Reclaim）**
+2. **后台回收（kswapd）**
+3. **主动回收（Proactive Reclaim）**
+
+### 1. QEMU 启动与环境准备
+
+```bash
+# 启动 512MB 内存的 ARM64 QEMU 虚拟机（以 rootfs.img 为例）
+qemu-system-aarch64 \
+  -machine virt -cpu cortex-a57 -nographic \
+  -m 512M \
+  -kernel Image -append "root=/dev/vda rw console=ttyAMA0" \
+  -drive if=none,file=rootfs.img,format=raw,id=hd0 \
+  -device virtio-blk-device,drive=hd0
+```
+> 可根据实际情况调整 `-m` 参数为 512M 或 1024M。
+
+### 1.1 ram 根文件系统（initramfs/rootfs）模式
+
+当根文件系统在 RAM 中（`initramfs` 或 `rootfs`）时，建议使用“ram 根 + 额外块设备”的实验拓扑：
+
+1. 根文件系统使用 `-initrd initramfs.cpio.gz` 启动；
+2. 额外挂载一块 `virtio-blk` 数据盘用于文件缓存实验；
+3. 启用 `zram swap` 以完整覆盖匿名页回收路径。
+
+```bash
+# 建议启动参数（ram根 + 一块数据盘）
+qemu-system-aarch64 \
+    -machine virt -cpu cortex-a57 -nographic \
+    -m 512M \
+    -kernel Image -append "console=ttyAMA0 root=/dev/ram rw" \
+    -initrd initramfs.cpio.gz \
+    -drive if=none,file=data.img,format=raw,id=data0 \
+    -device virtio-blk-device,drive=data0
+
+# 来宾系统内准备数据盘（设备名以实际 lsblk 为准）
+mkfs.ext4 /dev/vda
+mkdir -p /mnt/data
+mount /dev/vda /mnt/data
+```
+
+```bash
+# 启用 zram swap（匿名页回收实验建议）
+modprobe zram
+echo 256M > /sys/block/zram0/disksize
+mkswap /dev/zram0
+swapon /dev/zram0
+```
+
+**为什么要这样做**：
+- ram 根下直接在 `/tmp` 写大文件，本质仍是内存占用，难以稳定观察“文件页缓存 -> 回收”的路径。
+- 使用 `/mnt/data`（块设备文件系统）可更清晰触发 page cache 增长与回收。
+
+### 2. 观测工具准备
+
+- **内存水位线**：`cat /proc/zoneinfo | grep -A 5 "pages free"`
+- **回收统计**：`cat /proc/vmstat | grep -E "pgsteal|pgscan|kswapd|direct"`
+- **kswapd 日志**：`dmesg | grep kswapd`
+- **cgroup v2**：`mount -t cgroup2 none /sys/fs/cgroup`
+
+---
+
+### 3. 实验一：直接回收（Direct Reclaim）
+
+**目标**：让进程分配大量内存，强制触发直接回收。
+
+**步骤**：
+1. 观测当前空闲页和水位线：
+    ```bash
+    cat /proc/zoneinfo | grep -A 5 "pages free"
+    ```
+2. 持续分配大块匿名内存（如 400MB）：
+    ```bash
+    stress-ng --vm 1 --vm-bytes 400M --vm-keep -t 60s
+    # 或
+    python3 -c 'a = [bytearray(1024*1024) for _ in range(400)] ; input()'
+    ```
+3. 监控 `/proc/vmstat`：
+    ```bash
+    watch -n 1 'cat /proc/vmstat | grep direct'
+    # direct_pagefault, direct_reclaim, pgscan_direct, pgsteal_direct
+    ```
+4. 现象：
+    - `pgscan_direct`/`pgsteal_direct` 数值快速增加
+    - 进程分配明显变慢甚至阻塞
+    - dmesg 可能出现 OOM 日志
+
+---
+
+### 4. 实验二：后台回收（kswapd）
+
+**目标**：让系统空闲页降到 low watermark 以下，观察 kswapd 被唤醒。
+
+**步骤**：
+1. 观测当前水位线和空闲页
+2. 运行中等压力的文件读写任务（如顺序读大文件，不要一次性耗尽内存）：
+    ```bash
+    # ram根系统建议写到块设备挂载点 /mnt/data
+    dd if=/dev/zero of=/mnt/data/bigfile bs=1M count=300 conv=fsync
+    # 或
+    cat /dev/zero | head -c 300M > /mnt/data/bigfile2
+    ```
+3. 监控 kswapd 活动：
+    ```bash
+    watch -n 1 'cat /proc/vmstat | grep kswapd'
+    # kswapd_steal, kswapd_inodesteal, pgscan_kswapd, pgsteal_kswapd
+    dmesg | grep kswapd
+    ```
+4. 现象：
+    - `pgscan_kswapd`/`pgsteal_kswapd` 持续增加
+    - kswapd 线程在 top/htop 可见
+    - 用户进程无明显卡顿
+
+---
+
+### 5. 实验三：主动回收（Proactive Reclaim）
+
+**目标**：通过 cgroup v2 的 memory.reclaim 接口主动触发回收。
+
+**步骤**：
+1. 挂载 cgroup v2 并创建测试组：
+    ```bash
+    mount -t cgroup2 none /sys/fs/cgroup
+    mkdir /sys/fs/cgroup/test
+    echo $$ > /sys/fs/cgroup/test/cgroup.procs
+    ```
+2. 运行内存消耗任务（如 stress-ng 或 python 分配大数组）
+3. 触发主动回收：
+    ```bash
+    echo "100M" > /sys/fs/cgroup/test/memory.reclaim
+    ```
+4. 观测 `/proc/vmstat`：
+    - `pgscan_memcg`, `pgsteal_memcg` 增加
+    - 命令阻塞至回收完成
+
+---
+
+### 6. 进阶：动态可视化与调试建议
+
+- 可用 `watch free -h`、`htop`、`vmstat 1` 实时观测内存变化
+- 结合 `perf top -e kswapd` 观测回收热点
+- 若启用 MGLRU，可通过 `/sys/kernel/mm/lru_gen/enabled` 验证
+- 结合 `echo 1 > /proc/sys/vm/drop_caches` 强制回收 page cache（仅测试用）
+
+---
+
+**小结**：
+通过上述 QEMU 实验，可直观验证和动态观测三种页面回收路径的触发与行为，便于理解内核回收机制在 ARM64 嵌入式场景下的实际表现。
+
 ### 6.1 案例一：文件缓存回收（读取大文件）
 
 **场景**：512MB 设备上 `dd if=/dev/mmcblk0 of=/dev/null bs=1M count=300` 读取 300MB 文件。
