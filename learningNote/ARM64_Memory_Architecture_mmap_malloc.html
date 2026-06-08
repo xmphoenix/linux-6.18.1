@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux 6.18.1 ARM64 内存架构全景分析 - mmap &amp; malloc 实现</title>
+<style>
+:root {
+  --bg: #1a1a2e;
+  --card-bg: #16213e;
+  --text: #e0e0e0;
+  --accent: #4fc3f7;
+  --accent2: #ff8a65;
+  --green: #81c784;
+  --yellow: #ffd54f;
+  --pink: #f48fb1;
+  --border: #2a3a5e;
+  --code-bg: #0d1117;
+  --inline-code: #e6edf3;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  padding: 0;
+}
+header {
+  background: linear-gradient(135deg, #0d47a1 0%, #1a237e 50%, #0d1117 100%);
+  padding: 60px 40px;
+  text-align: center;
+  border-bottom: 3px solid var(--accent);
+}
+header h1 {
+  font-size: 2.4em;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+}
+header .subtitle { color: #90a4ae; font-size: 1.1em; }
+header .kernel-ver {
+  display: inline-block;
+  background: rgba(255,255,255,0.1);
+  padding: 6px 20px;
+  border-radius: 20px;
+  margin-top: 16px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+.container { max-width: 1400px; margin: 0 auto; padding: 40px 24px; }
+.section {
+  background: var(--card-bg);
+  border-radius: 12px;
+  margin-bottom: 40px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.section-title {
+  background: linear-gradient(90deg, rgba(79,195,247,0.15), transparent);
+  padding: 20px 28px;
+  font-size: 1.4em;
+  font-weight: 700;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-content { padding: 32px 36px; }
+.section-content > p { margin-bottom: 20px; }
+.section-content > h3 {
+  margin-top: 40px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 1.15em;
+  color: #ce93d8;
+}
+.section-content > h3:first-child { margin-top: 0; }
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 24px;
+  margin: 24px 0;
+}
+.info-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  transition: border-color 0.3s;
+}
+.info-card:hover { border-color: var(--accent); }
+.info-card h3 {
+  color: var(--accent2);
+  margin-bottom: 14px;
+  font-size: 1.1em;
+}
+.info-card ul { padding-left: 22px; }
+.info-card li { margin-bottom: 8px; font-size: 0.93em; line-height: 1.6; }
+.info-card p { margin-bottom: 10px; }
+
+pre {
+  background: var(--code-bg);
+  border-radius: 10px;
+  padding: 20px 24px;
+  overflow-x: auto;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 0.88em;
+  line-height: 1.65;
+  border: 1px solid var(--border);
+  margin: 20px 0;
+}
+code {
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  background: rgba(255,255,255,0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.keyword { color: #ff79c6; }
+.func { color: #50fa7b; }
+.comment { color: #6a9955; }
+.string { color: #f1fa8c; }
+.type { color: #8be9fd; }
+.macro { color: #ffb86c; }
+.number { color: #bd93f9; }
+
+.call-chain {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px 28px;
+  margin: 24px 0;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.85em;
+  line-height: 2.1;
+}
+.call-chain .arrow { color: var(--accent); margin: 0 10px; }
+.call-chain .file { color: #6a9955; }
+.call-chain .level { padding-left: 0px; }
+
+.step-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 28px 0;
+  padding: 20px 12px;
+}
+.step-box {
+  background: linear-gradient(135deg, #1a237e, #283593);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 14px 20px;
+  text-align: center;
+  font-size: 0.85em;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  min-width: 125px;
+  line-height: 1.5;
+}
+.step-arrow {
+  color: var(--accent);
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 0 2px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0;
+  font-size: 0.9em;
+}
+th {
+  background: rgba(79,195,247,0.1);
+  color: var(--accent);
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 2px solid var(--accent);
+}
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 28px 0;
+}
+
+ul, ol {
+  padding-left: 24px;
+  margin: 16px 0;
+}
+li {
+  margin-bottom: 8px;
+  line-height: 1.7;
+}
+
+.tag {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 12px;
+  font-size: 0.78em;
+  margin: 2px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.tag-arch { background: rgba(255,138,101,0.2); color: var(--accent2); }
+.tag-core { background: rgba(79,195,247,0.2); color: var(--accent); }
+.tag-mm { background: rgba(129,199,132,0.2); color: var(--green); }
+.tag-except { background: rgba(255,213,79,0.2); color: var(--yellow); }
+
+.highlight { color: var(--yellow); font-weight: bold; }
+
+strong { color: #e8e8e8; }
+
+.addr-map {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin: 24px 0;
+  overflow: hidden;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.85em;
+}
+.addr-map-header {
+  background: rgba(79,195,247,0.08);
+  padding: 14px 24px;
+  color: #6a9955;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  font-size: 0.9em;
+}
+.addr-map-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 48px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.2s;
+}
+.addr-map-row:hover { background: rgba(255,255,255,0.02); }
+.addr-map-row:last-child { border-bottom: none; }
+.addr-map-addr {
+  width: 280px;
+  min-width: 280px;
+  padding: 12px 20px;
+  color: #8be9fd;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  white-space: nowrap;
+}
+.addr-map-addr.end { color: #ffb86c; }
+.addr-map-body {
+  flex: 1;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.addr-map-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.82em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.addr-map-tag.user  { background: rgba(129,199,132,0.18); color: #81c784; }
+.addr-map-tag.kernel { background: rgba(255,138,101,0.18); color: #ff8a65; }
+.addr-map-tag.linear { background: rgba(79,195,247,0.18); color: #4fc3f7; }
+.addr-map-tag.mod    { background: rgba(255,213,79,0.18); color: #ffd54f; }
+.addr-map-tag.vmalloc{ background: rgba(206,147,216,0.18); color: #ce93d8; }
+.addr-map-tag.fixed  { background: rgba(244,143,177,0.18); color: #f48fb1; }
+.addr-map-desc {
+  color: #90a4ae;
+  font-size: 0.83em;
+  flex: 1;
+  line-height: 1.5;
+}
+.addr-map-size {
+  color: #546e7a;
+  font-size: 0.78em;
+  min-width: 100px;
+  text-align: right;
+  padding-right: 20px;
+  line-height: 1.5;
+}
+.addr-map-divider {
+  background: linear-gradient(90deg, transparent, rgba(79,195,247,0.3), transparent);
+  height: 2px;
+  margin: 4px 20px;
+}
+
+footer {
+  text-align: center;
+  padding: 40px 30px;
+  color: #546e7a;
+  font-size: 0.85em;
+  border-top: 1px solid var(--border);
+  margin-top: 50px;
+  line-height: 1.8;
+}
+
+code.no-bg { background: transparent; }
+
+/* Inline pre/call-chain inside section-content gets extra top margin when following a paragraph */
+.section-content p + pre,
+.section-content p + .call-chain,
+.section-content ul + pre,
+.section-content ul + .call-chain,
+.section-content h3 + pre,
+.section-content h3 + .call-chain { margin-top: 24px; }
+.section-content pre + p,
+.section-content .call-chain + p { margin-top: 24px; }
+
+/* Interview Q&A styles */
+.qa-answer {
+  background: rgba(30,40,60,0.5);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 20px 24px;
+  margin: 16px 0 32px 0;
+}
+.qa-answer p { margin-bottom: 14px; }
+.qa-answer p:last-child { margin-bottom: 0; }
+.qa-answer ul, .qa-answer ol { margin: 10px 0; }
+.qa-answer table { margin: 16px 0; }
+
+.mermaid-diagram {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+.mermaid-diagram pre {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.82em;
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐧 Linux 6.18.1 ARM64 内存架构全景分析 — mmap &amp; malloc</h1>
+  <p class="subtitle">mmap 系统调用 &amp; malloc/kmalloc 底层的完整实现追踪</p>
+  <span class="kernel-ver">linux-6.18.1 · arch/arm64/ · AArch64</span>
+</header>
+
+<div class="container">
+
+<!-- ==================== 1. OVERVIEW ==================== -->
+<div class="section">
+  <div class="section-title">📋 1. 全景概览</div>
+  <div class="section-content">
+    <p>
+      本报告深入分析 <strong>Linux 6.18.1</strong> 内核在 <strong>ARM64 (AArch64)</strong> 架构上，
+      <code>mmap</code> 系统调用和内存分配（<code>malloc</code> 的底层支撑 <code>kmalloc</code> / buddy allocator）的完整实现。
+      追踪从异常入口到页表填充、从 VMA 管理到物理页分配的完整调用链。
+    </p>
+
+    <div class="card-grid">
+      <div class="info-card">
+        <h3>🔧 涉及的核心子系统</h3>
+        <ul>
+          <li><strong>ARM64 架构层</strong> — 异常向量、页表硬件定义、TLB 管理、ASID</li>
+          <li><strong>核心 MM 层</strong> — VMA 管理、缺页处理、页面回收</li>
+          <li><strong>页分配器</strong> — Buddy System、SLUB/SLAB 分配器</li>
+          <li><strong>文件映射</strong> — page cache、shmem、文件系统 mmap</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3>📁 关键源文件</h3>
+        <ul>
+          <li><code>arch/arm64/mm/fault.c</code> — 缺页异常处理</li>
+          <li><code>arch/arm64/mm/mmu.c</code> — 页表创建与映射</li>
+          <li><code>arch/arm64/mm/init.c</code> — 内存初始化</li>
+          <li><code>arch/arm64/mm/context.c</code> — ASID 管理</li>
+          <li><code>mm/mmap.c</code> — mmap 系统调用入口</li>
+          <li><code>mm/vma.c</code> — VMA 分配/合并（mmap_region）</li>
+          <li><code>mm/memory.c</code> — 缺页处理核心（handle_mm_fault）</li>
+          <li><code>mm/page_alloc.c</code> — Buddy 页分配器</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 2. ARM64 VIRTUAL ADDRESS LAYOUT ==================== -->
+<div class="section">
+  <div class="section-title">🗺️ 2. ARM64 虚拟地址空间布局</div>
+  <div class="section-content">
+    <!-- 48-bit VA Address Space Map -->
+    <div class="addr-map">
+      <div class="addr-map-header">ARM64 Virtual Address Space — 48-bit VA (TTBR0 + TTBR1), 可扩展至 52-bit</div>
+
+      <div class="addr-map-row">
+        <div class="addr-map-addr">0x0000_0000_0000_0000</div>
+        <div class="addr-map-body"><span class="addr-map-tag user">▼ TTBR0 用户空间</span><span class="addr-map-desc">User Stack / mmap / heap / text / data</span></div>
+        <div class="addr-map-size">~256 TB</div>
+      </div>
+      <div class="addr-map-row">
+        <div class="addr-map-addr end">0x0000_FFFF_FFFF_FFFF</div>
+        <div class="addr-map-body"><span class="addr-map-tag user">TASK_SIZE_64</span><span class="addr-map-desc">用户空间上限（TTBR0 寻址范围）</span></div>
+        <div class="addr-map-size"></div>
+      </div>
+
+      <div class="addr-map-divider"></div>
+
+      <div class="addr-map-row">
+        <div class="addr-map-addr">0xFFFF_0000_0000_0000</div>
+        <div class="addr-map-body"><span class="addr-map-tag linear">▼ TTBR1 线性映射</span><span class="addr-map-desc"><b>PAGE_OFFSET</b> — phys→virt: <code>phys + PAGE_OFFSET</code></span></div>
+        <div class="addr-map-size">128 TB</div>
+      </div>
+      <div class="addr-map-row">
+        <div class="addr-map-addr end">0xFFFF_8000_0000_0000</div>
+        <div class="addr-map-body"><span class="addr-map-tag linear">PAGE_END</span><span class="addr-map-desc">直接映射区终点（1:1 映射最大物理内存）</span></div>
+        <div class="addr-map-size"></div>
+      </div>
+
+      <div class="addr-map-row">
+        <div class="addr-map-addr">0xFFFF_8000_0000_0000</div>
+        <div class="addr-map-body"><span class="addr-map-tag mod">▼ 内核模块区</span><span class="addr-map-desc"><b>MODULES_VADDR</b> — 可加载内核模块 (2GB 窗口)</span></div>
+        <div class="addr-map-size">2 GB</div>
+      </div>
+      <div class="addr-map-row">
+        <div class="addr-map-addr">0xFFFF_8000_8000_0000</div>
+        <div class="addr-map-body"><span class="addr-map-tag kernel">KIMAGE_VADDR</span><span class="addr-map-desc">内核镜像起始 (_text .. _end)</span></div>
+        <div class="addr-map-size">~数十 MB</div>
+      </div>
+
+      <div class="addr-map-row">
+        <div class="addr-map-addr">0xFFFF_8000_8000_0000<br>+ image size</div>
+        <div class="addr-map-body"><span class="addr-map-tag vmalloc">▼ vmalloc 空间</span><span class="addr-map-desc"><b>VMALLOC_START</b> — vmalloc / ioremap / 动态映射</span></div>
+        <div class="addr-map-size">~123 TB</div>
+      </div>
+
+      <div class="addr-map-row">
+        <div class="addr-map-addr end">...</div>
+        <div class="addr-map-body"><span class="addr-map-tag vmalloc">VMEMMAP_START</span><span class="addr-map-desc">struct page 数组 (稀疏内存模型虚拟映射)</span></div>
+        <div class="addr-map-size"></div>
+      </div>
+
+      <div class="addr-map-row">
+        <div class="addr-map-addr end">0xFFFF_FFFF_7FFF_FFFF</div>
+        <div class="addr-map-body"><span class="addr-map-tag fixed">固定映射区</span><span class="addr-map-desc">PCI I/O、fixmap（FIXADDR_TOP = -8MB）</span></div>
+        <div class="addr-map-size">~2 GB</div>
+      </div>
+
+      <div class="addr-map-row">
+        <div class="addr-map-addr end" style="color:#ff5252;">0xFFFF_FFFF_FFFF_FFFF</div>
+        <div class="addr-map-body"><span class="addr-map-tag kernel">TTBR1 地址空间顶部</span><span class="addr-map-desc">内核虚拟地址空间结束</span></div>
+        <div class="addr-map-size"></div>
+      </div>
+    </div>
+
+    <p style="margin-top:20px;"><strong>核心常量定义</strong>（<code>arch/arm64/include/asm/memory.h</code>）：</p>
+    <table>
+      <tr><th>常量</th><th>表达式</th><th>含义</th></tr>
+      <tr><td><code>VA_BITS</code></td><td><code>CONFIG_ARM64_VA_BITS</code> (默认 48)</td><td>虚拟地址位宽</td></tr>
+      <tr><td><code>PAGE_OFFSET</code></td><td><code>-(1UL &lt;&lt; VA_BITS)</code></td><td>线性映射起点（TTBR1 最低地址）</td></tr>
+      <tr><td><code>PAGE_END</code></td><td><code>-(1UL &lt;&lt; (VA_BITS - 1))</code></td><td>线性映射终点 / 内核镜像区起点</td></tr>
+      <tr><td><code>TASK_SIZE_64</code></td><td><code>(1UL &lt;&lt; VA_BITS_MIN) - PAGE_SIZE</code></td><td>用户空间大小（48-bit VA 下 256TB）</td></tr>
+      <tr><td><code>KIMAGE_VADDR</code></td><td><code>MODULES_END</code></td><td>内核镜像虚拟基地址</td></tr>
+      <tr><td><code>MODULES_VSIZE</code></td><td><code>SZ_2G</code></td><td>内核模块地址空间大小</td></tr>
+    </table>
+
+    <p>ARM64 页表层级（定义在 <code>arch/arm64/include/asm/pgtable-hwdef.h</code>）：</p>
+    <table>
+      <tr><th>页粒度</th><th>层级</th><th>PTE 覆盖</th><th>PMD 覆盖</th><th>PUD 覆盖</th><th>PGD 覆盖</th></tr>
+      <tr><td>4KB</td><td>4 (PGD→PUD→PMD→PTE)</td><td>4KB</td><td>2MB</td><td>1GB</td><td>512GB</td></tr>
+      <tr><td>16KB</td><td>4</td><td>16KB</td><td>32MB</td><td>4GB (contiguous: 128GB)</td><td>2TB</td></tr>
+      <tr><td>64KB</td><td>3 (PGD→PMD→PTE)</td><td>64KB</td><td>512MB</td><td>—</td><td>4TB (8 entries)</td></tr>
+    </table>
+
+    <p>ARM64 支持 <strong>Contiguous PTE</strong> 优化：通过设置 <code>PTE_CONT</code> 位，单个 TLB 条目可以覆盖连续 16 个 PTE 区域（如 4KB 页粒度下覆盖 64KB）。</p>
+  </div>
+</div>
+
+<!-- ==================== 3. MMAP CALL CHAIN ==================== -->
+<div class="section">
+  <div class="section-title">📐 3. mmap 系统调用 — 完整调用链</div>
+  <div class="section-content">
+    <h3>3.1 系统调用入口 → VMA 创建</h3>
+
+    <pre><span class="comment">/* ═══ 阶段 1: 系统调用入口 (mm/mmap.c:611) ═══ */</span>
+<span class="func">SYSCALL_DEFINE6</span>(<span class="type">mmap_pgoff</span>, addr, len, prot, flags, fd, pgoff)
+  └─ <span class="func">ksys_mmap_pgoff</span>(addr, len, prot, flags, fd, pgoff)
+       <span class="comment">// 处理 fd → file, HUGETLB 特殊处理</span>
+       └─ <span class="func">vm_mmap_pgoff</span>(file, addr, len, prot, flags, pgoff)
+            <span class="comment">// 获取 mmap_write_lock</span>
+            └─ <span class="func">do_mmap</span>(file, addr, len, prot, flags, vm_flags, pgoff,
+                         &amp;populate, uf)                 <span class="file">/* mm/mmap.c:334 */</span>
+
+<span class="comment">/* ═══ 阶段 2: do_mmap — 参数验证与地址选择 ═══ */</span>
+                 <span class="comment">// 1. 参数合法性检查 (addr对齐, len对齐, offset溢出)</span>
+                 <span class="comment">// 2. calc_vm_prot_bits → arch_calc_vm_prot_bits (BTI/MTE/POE)</span>
+                 <span class="comment">// 3. calc_vm_flag_bits → arch_calc_vm_flag_bits (MTE_ALLOWED)</span>
+                 <span class="comment">// 4. MAP_SHARED / MAP_PRIVATE / MAP_DROPPABLE 语义处理</span>
+                 └─ <span class="func">__get_unmapped_area</span>(file, addr, len, pgoff, flags, vm_flags)
+                      <span class="comment">// ARM64: top-down 布局, 从 mm->mmap_base 向下搜索</span>
+                      └─ <span class="func">mmap_region</span>(file, addr, len, vm_flags, pgoff, uf)
+                                                              <span class="file">/* mm/vma.c:2714 */</span>
+
+<span class="comment">/* ═══ 阶段 3: mmap_region → __mmap_region — VMA 创建 ═══ */</span>
+                           <span class="comment">// map_deny_write_exec(), arch_validate_flags()</span>
+                           └─ <span class="func">__mmap_region</span>(file, addr, len, vm_flags, pgoff, uf)
+                                ├─ <span class="func">__mmap_prepare</span>()     <span class="comment">// 清理重叠 VMA, 内存统计</span>
+                                ├─ <span class="func">vma_merge_new_range</span>() <span class="comment">// 尝试与相邻 VMA 合并</span>
+                                │   <span class="comment">// 若无法合并 ↓</span>
+                                ├─ <span class="func">__mmap_new_vma</span>()     <span class="comment">// 分配新 vm_area_struct</span>
+                                │   ├─ <span class="func">vm_area_alloc</span>(mm)  <span class="comment">// 从 slab 分配 VMA</span>
+                                │   ├─ <span class="func">vma_set_range</span>()   <span class="comment">// 设置起止地址和 pgoff</span>
+                                │   ├─ <span class="func">vm_flags_init</span>()   <span class="comment">// 初始化 VMA 标志</span>
+                                │   └─ <span class="func">vma_iter_store</span>()  <span class="comment">// 插入 maple tree</span>
+                                └─ <span class="func">__mmap_complete</span>()   <span class="comment">// 解除旧映射, 更新统计</span>
+                                     └─ <span class="func">vms_complete_munmap_vmas</span>()
+                                     └─ <span class="func">perf_event_mmap</span>(), mm accounting
+
+<span class="comment">// 4. 若 MAP_POPULATE: 触发 populate_vma_page_range() 预填充</span></pre>
+
+    <h3>3.2 ARM64 架构特定处理</h3>
+    <p>ARM64 在 <code>arch/arm64/include/asm/mman.h</code> 中实现了两个关键钩子：</p>
+
+    <div class="card-grid">
+      <div class="info-card">
+        <h3><span class="tag tag-arch">ARCH</span> arch_calc_vm_prot_bits()</h3>
+        <p>将用户空间的 <code>prot</code> 标志转换为 VMA 标志：</p>
+        <ul>
+          <li><code>PROT_BTI</code> → <code>VM_ARM64_BTI</code> — Branch Target Identification</li>
+          <li><code>PROT_MTE</code> → <code>VM_MTE</code> — Memory Tagging Extension</li>
+          <li><code>pkey</code> bits → <code>VM_PKEY_BIT[0-2]</code> — Permission Overlay Extension</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3><span class="tag tag-arch">ARCH</span> arch_calc_vm_flag_bits()</h3>
+        <p>设置架构特定的默认 VMA 标志：</p>
+        <ul>
+          <li>匿名映射 + MTE 支持 → <code>VM_MTE_ALLOWED</code></li>
+          <li>shmem/hugetlb 文件 + MTE 支持 → <code>VM_MTE_ALLOWED</code></li>
+          <li><code>VM_DATA_DEFAULT_FLAGS</code> 默认包含 <code>VM_MTE_ALLOWED</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>3.3 地址空间搜索 — get_unmapped_area</h3>
+    <p>ARM64 默认使用 <strong>top-down</strong> 布局（<code>mmap_is_legacy()</code> 返回 false）：</p>
+    <pre><span class="comment">/* mm/mmap.c:737 — generic_get_unmapped_area_topdown() */</span>
+<span class="keyword">unsigned long</span> <span class="func">generic_get_unmapped_area_topdown</span>(filp, addr, len, pgoff, flags, vm_flags)
+{
+    <span class="comment">// low_limit = PAGE_SIZE, high_limit = mm->mmap_base</span>
+    <span class="comment">// 从高地址向低地址搜索未映射区间</span>
+    <span class="comment">// 使用 maple tree (VMA_ITERATOR) 高效搜索</span>
+    info.flags = <span class="number">VM_UNMAPPED_AREA_TOPDOWN</span>;
+    addr = <span class="func">vm_unmapped_area</span>(&amp;info);
+        <span class="arrow">→</span> <span class="func">unmapped_area_topdown</span>(info)  <span class="comment">// 实际搜索算法</span>
+}</pre>
+  </div>
+</div>
+
+<!-- ==================== 4. PAGE FAULT HANDLING ==================== -->
+<div class="section">
+  <div class="section-title">⚡ 4. 缺页异常处理 — 从异常向量到 PTE 填充</div>
+  <div class="section-content">
+    <h3>4.1 ARM64 异常入口 → 缺页处理</h3>
+
+    <pre><span class="comment">/* === ARM64 异常向量表 (arch/arm64/kernel/entry.S) === */</span>
+<span class="label">硬件异常</span> → <span class="label">异常向量表</span> →
+  <span class="func">el1h_64_sync_handler</span>(regs)           <span class="file">/* entry-common.c:458 */</span>
+    └─ <span class="keyword">switch</span> (ESR_ELx_EC(esr)):
+         <span class="keyword">case</span> <span class="number">ESR_ELx_EC_DABT_CUR</span>:          <span class="comment">// EL1 数据异常</span>
+         <span class="keyword">case</span> <span class="number">ESR_ELx_EC_IABT_CUR</span>:          <span class="comment">// EL1 指令异常</span>
+           └─ <span class="func">el1_abort</span>(regs, esr)
+                └─ <span class="func">do_mem_abort</span>(far, esr, regs)  <span class="file">/* fault.c */</span>
+                     └─ <span class="func">esr_to_fault_info</span>(esr)       <span class="comment">// 查 fault_info[] 分发表</span>
+                          └─ dispatch → 见下方 fault_info 路由表</pre>
+
+    <p><strong>fault_info[] 异常分发表</strong>（<code>arch/arm64/mm/fault.c:857</code>）：</p>
+    <table>
+      <tr><th>FSC 类型</th><th>处理函数</th><th>Level</th><th>场景</th></tr>
+      <tr><td>Translation Fault</td><td><code>do_translation_fault()</code></td><td>0~3</td><td>用户空间→<code>do_page_fault()</code>，内核空间→<code>do_bad_area()</code></td></tr>
+      <tr><td>Access Flag Fault</td><td><code>do_page_fault()</code></td><td>0~3</td><td>硬件未设置 AF 位，软件处理</td></tr>
+      <tr><td>Permission Fault</td><td><code>do_page_fault()</code></td><td>0~3</td><td>权限不匹配（如写只读页触发 CoW）</td></tr>
+      <tr><td>Synchronous External Abort</td><td><code>do_sea()</code></td><td>—</td><td>硬件 ECC 错误 / 总线错误</td></tr>
+      <tr><td>Tag Check Fault</td><td><code>do_tag_check_fault()</code></td><td>—</td><td>MTE 标签不匹配</td></tr>
+      <tr><td>Address Size Fault</td><td><code>do_bad()</code></td><td>0~3</td><td>地址超出有效范围</td></tr>
+      <tr><td>TTBR Address Size Fault</td><td><code>do_bad()</code></td><td>—</td><td>TTBR 配置错误</td></tr>
+    </table>
+
+    <h3>4.2 do_page_fault — ARM64 缺页处理核心</h3>
+    <p>实现在 <code>arch/arm64/mm/fault.c:552</code>：</p>
+
+    <pre><span class="func">do_page_fault</span>(far, esr, regs)                        <span class="file">/* fault.c:552 */</span>
+  ├─ <span class="comment">// 1. 确定 fault 类型 (exec/write/read) → 设置 mm_flags, vm_flags</span>
+  ├─ <span class="comment">// 2. 检查 is_el1_permission_fault() — PAN 保护</span>
+  ├─ <span class="comment">// 3. 快速路径: per-VMA lock (RCU)</span>
+  │   └─ <span class="func">lock_vma_under_rcu</span>(mm, addr)
+  │        ├─ 检查 vma-&gt;vm_flags 权限
+  │        ├─ 检查 GCS (Guarded Control Stack) 合法性
+  │        └─ 检查 pkey 权限 (POE)
+  │            └─ <span class="func">handle_mm_fault</span>(vma, addr, flags|VMA_LOCK, regs)
+  ├─ <span class="comment">// 4. 慢速路径 (VMA lock 失败时回退):</span>
+  │   └─ <span class="func">lock_mm_and_find_vma</span>(mm, addr)  <span class="comment">// mmap_read_lock + 查找 VMA</span>
+  │        └─ <span class="func">handle_mm_fault</span>(vma, addr, flags, regs)
+  └─ <span class="comment">// 5. fault 结果处理:</span>
+       ├─ VM_FAULT_COMPLETED        → return           <span class="comment">// 已完成</span>
+       ├─ VM_FAULT_RETRY            → goto retry       <span class="comment">// 重试</span>
+       ├─ VM_FAULT_ERROR            → bad_area         <span class="comment">// 发送 SIGSEGV/SIGBUS</span>
+       └─ VM_FAULT_OOM              → pagefault_out_of_memory()  <span class="comment">// OOM</span></pre>
+
+    <h3>4.3 handle_mm_fault — 通用缺页处理</h3>
+    <p>实现在 <code>mm/memory.c:6470</code>：</p>
+    <pre><span class="func">handle_mm_fault</span>(vma, address, flags, regs)         <span class="file">/* memory.c:6470 */</span>
+  ├─ <span class="func">sanitize_fault_flags</span>()         <span class="comment">// 标志合法性检查</span>
+  ├─ <span class="func">arch_vma_access_permitted</span>()    <span class="comment">// ARM64 pkey/POE 权限检查</span>
+  ├─ <span class="func">mem_cgroup_enter_user_fault</span>()  <span class="comment">// memcg OOM 上下文</span>
+  └─ <span class="func">__handle_mm_fault</span>(vma, address, flags)   <span class="file">/* memory.c:6245 */</span>
+       ├─ <span class="comment">// 构造 vm_fault 结构体</span>
+       ├─ <span class="comment">// 逐级遍历页表: pgd_offset → p4d_alloc → pud_alloc → pmd_alloc</span>
+       ├─ <span class="comment">// 尝试 huge page: create_huge_pud() / create_huge_pmd()</span>
+       ├─ <span class="comment">// 处理已存在 huge page: wp_huge_pmd(), huge_pmd_set_accessed()</span>
+       └─ <span class="func">handle_pte_fault</span>(vmf)          <span class="file">/* memory.c:6151 */</span></pre>
+
+    <h3>4.4 handle_pte_fault — PTE 级别缺页分发</h3>
+    <pre><span class="func">handle_pte_fault</span>(vmf)                              <span class="file">/* memory.c:6151 */</span>
+  ├─ pmd_none / pte_none → <span class="func">do_pte_missing</span>(vmf)
+  │    ├─ <span class="func">do_anonymous_page</span>()        <span class="comment">// 匿名映射</span>
+  │    └─ <span class="func">do_fault</span>()                   <span class="comment">// 文件映射</span>
+  ├─ !pte_present          → <span class="func">do_swap_page</span>(vmf)    <span class="comment">// 换入</span>
+  ├─ pte_protnone          → <span class="func">do_numa_page</span>(vmf)     <span class="comment">// NUMA 平衡</span>
+  ├─ write + !pte_write    → <span class="func">do_wp_page</span>(vmf)       <span class="comment">// Copy-on-Write</span>
+  └─ 其他                  → <span class="func">pte_mkyoung</span>() + <span class="func">ptep_set_access_flags</span>()</pre>
+
+    <h3>4.5 do_anonymous_page — 匿名页分配</h3>
+    <pre><span class="func">do_anonymous_page</span>(vmf)                            <span class="file">/* memory.c:5134 */</span>
+  <span class="keyword">if</span> (!write &amp;&amp; !mm_forbids_zeropage):
+    <span class="comment">// 只读访问 → 映射 zero page</span>
+    entry = <span class="func">pfn_pte</span>(<span class="func">my_zero_pfn</span>(addr), vma-&gt;vm_page_prot)
+  <span class="keyword">else</span>:
+    <span class="comment">// 写访问 → 分配新匿名页</span>
+    ├─ <span class="func">vmf_anon_prepare</span>(vmf)
+    ├─ <span class="func">alloc_anon_folio</span>(vmf)    <span class="comment">// → alloc_pages → buddy</span>
+    ├─ <span class="func">folio_add_new_anon_rmap</span>(folio, vma, addr)
+    ├─ <span class="func">set_ptes</span>(mm, addr, pte, entry)     <span class="comment">// 写入 PTE</span>
+    └─ <span class="func">update_mmu_cache_range</span>(vmf, vma, addr, pte)</pre>
+  </div>
+</div>
+
+<!-- ==================== 5. PAGE TABLE MANAGEMENT ==================== -->
+<div class="section">
+  <div class="section-title">📄 5. ARM64 页表管理 — 创建与修改</div>
+  <div class="section-content">
+    <h3>5.1 内核页表初始化</h3>
+    <p>内核页表在启动阶段通过 <code>arch/arm64/mm/mmu.c</code> 中的函数逐级建立：</p>
+
+    <pre><span class="func">paging_init</span>()                                            <span class="file">/* init.c */</span>
+  └─ <span class="func">map_mem</span>(pgdp)                                       <span class="file">/* mmu.c */</span>
+       <span class="comment">// 遍历 memblock，将物理内存映射到线性地址空间</span>
+       └─ <span class="func">__create_pgd_mapping</span>(swapper_pg_dir, phys, virt, size, prot, ...)
+            └─ <span class="func">__create_pgd_mapping_locked</span>(pgdir, phys, virt, size, ...)
+                 <span class="comment">// 逐级分配/填充页表 (PGD → P4D → PUD → PMD → PTE):</span>
+                 ├─ <span class="func">alloc_init_p4d</span>(pgdp, addr, end, phys, prot, alloc)
+                 │    └─ <span class="func">alloc_init_pud</span>(p4dp, addr, end, phys, prot, alloc)
+                 │         └─ <span class="func">alloc_init_cont_pmd</span>(pudp, addr, end, phys, prot, alloc)
+                 │              <span class="comment">// 优先 block mapping (PMD level, 2MB huge page)</span>
+                 │              └─ <span class="func">alloc_init_cont_pte</span>(pmdp, addr, end, phys, prot, alloc)
+                 │                   └─ <span class="func">init_pte</span>(ptep, addr, end, phys, prot)
+                 │                        └─ <span class="func">__set_pte_nosync</span>(ptep, pfn_pte(pfn, prot))
+                 │                        <span class="comment">// dsb(ishst) + isb() 确保 PTE 可见</span>
+                 └─ <span class="keyword">early_pgtable_alloc</span>()  <span class="comment">// 使用 memblock 分配页表页</span></pre>
+
+    <h3>5.2 PTE 条目格式</h3>
+    <p>ARM64 PTE 格式（定义在 <code>pgtable-hwdef.h</code> 和 <code>pgtable-prot.h</code>）：</p>
+    <table>
+      <tr><th>位域</th><th>名称</th><th>描述</th></tr>
+      <tr><td>bit 0</td><td><code>PTE_VALID</code></td><td>条目有效位</td></tr>
+      <tr><td>bit 1</td><td><code>PTE_TYPE_PAGE</code></td><td>页表项类型（=1 表示 page descriptor）</td></tr>
+      <tr><td>bit 2-3</td><td><code>PTE_ATTRINDX</code></td><td>内存属性索引（Normal/Device等）</td></tr>
+      <tr><td>bit 6</td><td><code>PTE_AF</code></td><td>Access Flag（硬件自动设置）</td></tr>
+      <tr><td>bit 7</td><td><code>PTE_SHARED</code></td><td>可共享属性</td></tr>
+      <tr><td>bit 10</td><td><code>PTE_AF</code></td><td>Access Flag / DBM</td></tr>
+      <tr><td>bit 11</td><td><code>PTE_NG</code></td><td>Non-Global（用户空间页）</td></tr>
+      <tr><td>bit 51</td><td><code>PTE_DBM / PTE_WRITE</code></td><td>Dirty Bit Modifier / 软件写权限</td></tr>
+      <tr><td>bit 52</td><td><code>PTE_CONT</code></td><td>Contiguous bit（TLB 优化）</td></tr>
+      <tr><td>bit 53</td><td><code>PTE_PXN</code></td><td>Privileged Execute Never</td></tr>
+      <tr><td>bit 54</td><td><code>PTE_UXN / PTE_XN</code></td><td>Unprivileged Execute Never</td></tr>
+      <tr><td>bit 55</td><td><code>PTE_DIRTY</code></td><td>软件脏位</td></tr>
+      <tr><td>bit 56</td><td><code>PTE_SPECIAL</code></td><td>特殊页（如 zero page）</td></tr>
+      <tr><td>bit 58</td><td><code>PTE_UFFD_WP</code></td><td>Userfaultfd write-protect</td></tr>
+    </table>
+
+    <h3>5.3 页表分配 — pgd_alloc</h3>
+    <pre><span class="comment">/* arch/arm64/mm/pgd.c */</span>
+<span class="func">pgd_alloc</span>(mm)
+  ├─ <span class="keyword">if</span> pgdir_is_page_size():
+  │    └─ <span class="func">__pgd_alloc</span>(mm, <span class="number">0</span>)    <span class="comment">// 直接分配一整页作为 PGD</span>
+  └─ <span class="keyword">else</span>:
+       └─ <span class="func">kmem_cache_alloc</span>(pgd_cache, GFP_PGTABLE_USER)
+                                    <span class="comment">// 从 slab cache 分配</span></pre>
+
+    <h3>5.4 运行时 PTE 设置</h3>
+    <pre><span class="comment">/* arch/arm64/include/asm/pgtable.h */</span>
+<span class="comment">// PTE 屏障 — 确保页表修改对硬件 Table Walker 可见</span>
+<span class="func">emit_pte_barriers</span>()
+  ├─ <span class="func">dsb</span>(ishst)    <span class="comment">// 确保存储对页表 walker 可见</span>
+  └─ <span class="func">isb</span>()          <span class="comment">// 清除流水线中无效翻译标记</span>
+
+<span class="comment">// 惰性 MMU 模式 — 批量修改页表时延迟屏障发出</span>
+<span class="func">arch_enter_lazy_mmu_mode</span>()   → set_thread_flag(TIF_LAZY_MMU)
+<span class="func">arch_leave_lazy_mmu_mode</span>()   → <span class="func">arch_flush_lazy_mmu_mode</span>()
+                                  └─ <span class="func">emit_pte_barriers</span>()
+<span class="comment">// 也可通过 queue_pte_barriers() 按需延迟屏障</span></pre>
+  </div>
+</div>
+
+<!-- ==================== 6. PAGE ALLOCATOR ==================== -->
+<div class="section">
+  <div class="section-title">🧩 6. 页分配器 — malloc/kmalloc 的底层支撑</div>
+  <div class="section-content">
+    <h3>6.1 Buddy Allocator — 伙伴系统</h3>
+    <p>内核物理页分配的核心，实现于 <code>mm/page_alloc.c</code>：</p>
+
+    <pre><span class="comment">/* ═══ 用户态 malloc 完整路径 ═══ */</span>
+<span class="label">Userspace:</span>  <span class="func">malloc</span>(size)                  <span class="comment">// glibc ptmalloc</span>
+               <span class="comment">// 小分配: brk() 扩展 heap → 切分 chunk</span>
+               <span class="comment">// 大分配 (>128KB): mmap() 创建新映射</span>
+               <span class="comment">// 首次访问时触发 page fault ↓</span>
+
+<span class="label">Kernel:</span>     <span class="func">kmalloc</span>(size, GFP_KERNEL)       <span class="comment">// 内核内存分配</span>
+               └─ <span class="keyword">SLUB/SLAB allocator</span>
+                    <span class="comment">// 小对象: slab cache (kmalloc-8 ~ kmalloc-8k)</span>
+                    <span class="comment">// 大对象 (>8KB): 直接调用 alloc_pages()</span>
+                    └─ <span class="func">alloc_pages</span>(gfp_mask, order)
+                         └─ <span class="func">__alloc_pages_noprof</span>(gfp, order, nid, nodemask)
+                                                       <span class="file">/* page_alloc.c:5207 */</span>
+
+<span class="comment">/* ═══ Buddy 分配核心 (__alloc_frozen_pages_noprof) ═══ */</span>
+                              └─ <span class="func">__alloc_frozen_pages_noprof</span>(gfp, order, nid, nodemask)
+                                                       <span class="file">/* page_alloc.c:5142 */</span>
+                                   ├─ <span class="func">prepare_alloc_pages</span>(...)
+                                   │    <span class="comment">// 准备: zonelist, watermark, migratetype</span>
+                                   ├─ <span class="comment">【快速路径】</span>
+                                   │    └─ <span class="func">get_page_from_freelist</span>(gfp, order, flags, &amp;ac)
+                                   │         ├─ 遍历 zonelist 各 zone
+                                   │         ├─ 检查 watermark (WMARK_LOW)
+                                   │         └─ <span class="func">rmqueue</span>() → <span class="func">__rmqueue_smallest</span>()
+                                   │              <span class="comment">// 从 free_area[order] 取连续页</span>
+                                   └─ <span class="comment">【慢速路径 — 快速路径失败时】</span>
+                                        └─ <span class="func">__alloc_pages_slowpath</span>(gfp, order, &amp;ac)
+                                             ├─ watermark 放宽 (WMARK_MIN)
+                                             ├─ 页面回收 (direct reclaim)
+                                             ├─ 内存压缩 (compaction)
+                                             └─ OOM killer (最后手段)</pre>
+
+    <h3>6.2 常用分配接口</h3>
+    <table>
+      <tr><th>接口</th><th>文件:行号</th><th>描述</th></tr>
+      <tr><td><code>alloc_pages(gfp, order)</code></td><td>gfp.h (宏)</td><td>分配 2^order 个连续页，返回 struct page*</td></tr>
+      <tr><td><code>__get_free_pages(gfp, order)</code></td><td>page_alloc.c:5233</td><td>分配 2^order 个连续页，返回虚拟地址</td></tr>
+      <tr><td><code>get_zeroed_page(gfp)</code></td><td>page_alloc.c:5240</td><td>分配一页并清零</td></tr>
+      <tr><td><code>__free_pages(page, order)</code></td><td>page_alloc.c:5290</td><td>释放 2^order 个页</td></tr>
+      <tr><td><code>free_pages(addr, order)</code></td><td>page_alloc.c:5308</td><td>通过虚拟地址释放页</td></tr>
+      <tr><td><code>alloc_pages_exact(size, gfp)</code></td><td>page_alloc.c:5352</td><td>精确尺寸分配（非 2 的幂）</td></tr>
+    </table>
+
+    <h3>6.3 kmalloc 实现路径</h3>
+    <pre><span class="comment">/* include/linux/slab.h → mm/slub.c */</span>
+<span class="func">kmalloc</span>(size, flags)
+  ├─ size > KMALLOC_MAX_CACHE_SIZE
+  │    └─ <span class="func">kmalloc_large</span>(size, flags)
+  │         └─ <span class="func">alloc_pages</span>(...)              <span class="comment">// 直接走 buddy</span>
+  └─ size ≤ KMALLOC_MAX_CACHE_SIZE
+       └─ <span class="keyword">SLUB allocator</span>:
+            ├─ 查找 kmalloc cache (kmalloc-8/16/32/.../8k)
+            ├─ <span class="func">slab_alloc</span>() → <span class="func">slab_alloc_node</span>()
+            │    └─ 从 per-CPU slab 获取空闲对象 (快速路径)
+            └─ slab 无空闲时:
+                 └─ <span class="func">new_slab</span>()
+                      └─ <span class="func">allocate_slab</span>()
+                           └─ <span class="func">alloc_slab_page</span>()
+                                └─ <span class="func">alloc_pages</span>()  <span class="comment">// 从 buddy 获取新 slab 页</span></pre>
+  </div>
+</div>
+
+<!-- ==================== 7. TLB MANAGEMENT ==================== -->
+<div class="section">
+  <div class="section-title">🔄 7. TLB 与 ASID 管理</div>
+  <div class="section-content">
+    <h3>7.1 ASID (Address Space Identifier)</h3>
+    <p>实现在 <code>arch/arm64/mm/context.c</code>：</p>
+    <ul>
+      <li>支持 8-bit 或 16-bit ASID（由 <code>ID_AA64MMFR0_EL1</code> 决定）</li>
+      <li>ASID 在进程切换时分配，用于避免全局 TLB 刷新</li>
+      <li><code>ASID_FIRST_VERSION = 1 &lt;&lt; 16</code> — 版本号机制，溢出时全局刷新</li>
+      <li>KPTI 场景下 ASID 成对分配：偶数用于内核，奇数用于用户</li>
+      <li><code>MAX_PINNED_ASIDS</code> — 预留的固定 ASID 数量</li>
+    </ul>
+
+    <h3>7.2 TLB 刷新操作</h3>
+    <pre><span class="comment">/* arch/arm64/include/asm/tlbflush.h */</span>
+<span class="comment">// 核心宏 — 生成 TLBI 指令</span>
+<span class="macro">__tlbi</span>(op, arg)              <span class="comment">// 通用 TLBI 操作</span>
+<span class="macro">__tlbi_user</span>(op, arg)         <span class="comment">// 用户空间 TLBI (带 USER_ASID_FLAG)</span>
+
+<span class="comment">// 常用刷新函数</span>
+<span class="func">flush_tlb_page</span>(vma, addr)           <span class="comment">// 刷新单个页面</span>
+<span class="func">flush_tlb_range</span>(vma, start, end)    <span class="comment">// 刷新地址范围</span>
+<span class="func">flush_tlb_mm</span>(mm)                    <span class="comment">// 刷新整个地址空间</span>
+<span class="func">flush_tlb_kernel_range</span>(start, end)  <span class="comment">// 刷新内核地址范围</span>
+<span class="func">flush_pmd_tlb_range</span>(vma, addr, end) <span class="comment">// PMD 级别 (THP)</span>
+<span class="func">flush_pud_tlb_range</span>(vma, addr, end) <span class="comment">// PUD 级别 (THP)</span>
+
+<span class="comment">// ARM64 使用广播 TLB 失效指令 (TLBI 默认全局广播)</span>
+<span class="comment">// → flush_tlb_fix_spurious_fault 为空操作 (无需额外刷新)</span></pre>
+
+    <h3>7.3 ARM64 TLB 关键特性</h3>
+    <div class="card-grid">
+      <div class="info-card">
+        <h3>🏷️ Contiguous PTE (CONT_PTE)</h3>
+        <p>连续 PTE 条目的 TLB 优化。16 个对齐的连续 PTE 可共享一个 TLB 条目。</p>
+        <p>定义在 <code>pgtable-hwdef.h</code>：<code>CONT_PTE_SHIFT = PAGE_SHIFT + 4</code></p>
+        <p>分裂操作：<code>split_contpte()</code> (mmu.c:531)</p>
+      </div>
+      <div class="info-card">
+        <h3>🔄 Break-Before-Make</h3>
+        <p>ARM 架构要求修改页表映射时必须先 invalidate 再建立新映射。</p>
+        <p><code>pgattr_change_is_safe()</code> (mmu.c:126) 判断是否可以安全地原地修改 PTE 属性。</p>
+        <p>允许的安全修改：<code>PTE_PXN | PTE_RDONLY | PTE_WRITE | PTE_NG</code> 等权限位变化。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 8. CORE DATA STRUCTURES ==================== -->
+<div class="section">
+  <div class="section-title">📦 8. 核心数据结构关系</div>
+  <div class="section-content">
+    <h3>8.1 关键结构体关系图</h3>
+    <pre>
+<span class="type">struct task_struct</span>
+  └── <span class="type">struct mm_struct</span> *mm          <span class="comment">// 地址空间描述符</span>
+        ├── <span class="type">pgd_t</span> *pgd                 <span class="comment">// 页全局目录 (TTBR0_EL1)</span>
+        ├── <span class="type">struct maple_tree</span> mm_mt     <span class="comment">// VMA 区间树</span>
+        ├── <span class="type">unsigned long</span> mmap_base    <span class="comment">// mmap 基地址 (top-down 上限)</span>
+        ├── <span class="type">unsigned long</span> task_size    <span class="comment">// 用户空间大小</span>
+        ├── <span class="type">unsigned long</span> start_code, end_code
+        ├── <span class="type">unsigned long</span> start_data, end_data
+        ├── <span class="type">unsigned long</span> start_brk, brk
+        ├── <span class="type">unsigned long</span> start_stack
+        ├── <span class="type">unsigned long</span> total_vm     <span class="comment">// 总虚拟页数</span>
+        ├── <span class="type">unsigned long</span> map_count    <span class="comment">// VMA 数量</span>
+        └── <span class="type">rw_semaphore</span> mmap_lock     <span class="comment">// mmap 读写锁</span>
+
+<span class="type">struct vm_area_struct</span> (VMA)          <span class="comment">// 虚拟内存区域</span>
+  ├── <span class="type">struct mm_struct</span> *vm_mm
+  ├── <span class="type">unsigned long</span> vm_start, vm_end <span class="comment">// 虚拟地址范围</span>
+  ├── <span class="type">vm_flags_t</span> vm_flags            <span class="comment">// VM_READ|VM_WRITE|VM_EXEC|VM_SHARED|VM_MAYxxx...</span>
+  ├── <span class="type">pgprot_t</span> vm_page_prot          <span class="comment">// PTE 保护位</span>
+  ├── <span class="type">struct file</span> *vm_file           <span class="comment">// 文件映射 (匿名映射为 NULL)</span>
+  ├── <span class="type">unsigned long</span> vm_pgoff         <span class="comment">// 文件/匿名页偏移</span>
+  └── <span class="type">const struct vm_operations_struct</span> *vm_ops  <span class="comment">// fault/open/close 回调</span>
+
+<span class="type">struct vm_fault</span> (vmf)
+  ├── <span class="type">struct vm_area_struct</span> *vma
+  ├── <span class="type">unsigned long</span> address, pgoff
+  ├── <span class="type">unsigned int</span> flags             <span class="comment">// FAULT_FLAG_WRITE|FAULT_FLAG_USER|...</span>
+  ├── <span class="type">gfp_t</span> gfp_mask                <span class="comment">// 分配标志</span>
+  ├── <span class="type">pmd_t</span> *pmd
+  ├── <span class="type">pud_t</span> *pud
+  ├── <span class="type">pte_t</span> *pte
+  └── <span class="type">spinlock_t</span> *ptl
+    </pre>
+
+    <h3>8.2 ARM64 特有 VMA 标志</h3>
+    <table>
+      <tr><th>标志</th><th>含义</th></tr>
+      <tr><td><code>VM_ARM64_BTI</code></td><td>Branch Target Identification 保护</td></tr>
+      <tr><td><code>VM_MTE</code></td><td>Memory Tagging Extension 已启用</td></tr>
+      <tr><td><code>VM_MTE_ALLOWED</code></td><td>允许使用 MTE（默认设置）</td></tr>
+      <tr><td><code>VM_SHADOW_STACK</code></td><td>Guarded Control Stack (GCS) 页面</td></tr>
+      <tr><td><code>VM_PKEY_BIT[0-2]</code></td><td>Permission Overlay Extension 密钥位</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== 9. SUMMARY ==================== -->
+<div class="section">
+  <div class="section-title">🎯 9. 全景总结</div>
+  <div class="section-content">
+
+    <h3>9.1 mmap 实现全景</h3>
+    <div class="step-flow">
+      <div class="step-box"><span class="keyword">userspace</span><br>mmap()</div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="func">SYSCALL<br>mmap_pgoff</span><br><span class="file">mm/mmap.c</span></div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="func">do_mmap</span><br><span class="file">mm/mmap.c</span><br>参数验证<br>地址选择</div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="func">mmap_region</span><br><span class="file">mm/vma.c</span><br>VMA创建<br>合并/插入</div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="keyword">返回</span><br>虚拟地址</div>
+    </div>
+    <p style="margin-top:16px">⚠️ <strong>注意：</strong>mmap 只创建 VMA（虚拟地址空间描述），<strong class="highlight">不分配物理页</strong>。物理页在第一次访问时通过 <strong>缺页异常</strong> 延迟分配（demand paging）。</p>
+
+    <h3>9.2 缺页处理全景</h3>
+    <div class="step-flow">
+      <div class="step-box"><span class="keyword">CPU</span><br>MMU fault</div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="func">exception<br>vector</span><br><span class="file">entry.S</span></div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="func">el1_abort</span><br><span class="file">entry-common.c</span></div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="func">do_mem_abort</span><br><span class="file">fault.c</span><br>ESR解码</div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="func">do_page_fault</span><br><span class="file">fault.c</span><br>ARM64特有<br>VMA锁</div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="func">handle_mm_fault</span><br><span class="file">memory.c</span><br>页表遍历<br>缺页分发</div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="func">do_anon_page</span><br>/ <span class="func">do_fault</span><br>/ <span class="func">do_swap</span></div>
+      <div class="step-arrow">→</div>
+      <div class="step-box"><span class="func">alloc_pages</span><br><span class="file">page_alloc.c</span><br>Buddy分配</div>
+    </div>
+
+    <h3>9.3 malloc 底层全景</h3>
+    <pre>
+<span class="keyword">用户态:</span>  <span class="func">malloc</span>(size)
+         ├─ <span class="comment">// glibc ptmalloc: arena, bins, chunks</span>
+         ├─ <span class="comment">// 小分配: 从已有 heap (brk) 切分 chunk</span>
+         ├─ <span class="comment">// 大分配 (>128KB): 调用 mmap() 创建新映射</span>
+         └─ <span class="comment">// 不足时: brk() 扩展 heap</span>
+              │
+<span class="keyword">内核态:</span>  brk() → <span class="func">do_brk_flags</span>() → VMA 扩展
+              │ (首次访问时触发 page fault)
+              ▼
+         <span class="func">do_anonymous_page</span>() → <span class="func">alloc_pages</span>()
+              │
+              ▼
+         <span class="func">__alloc_pages_noprof</span>()
+           ├─ <span class="func">get_page_from_freelist</span>()    <span class="comment">// 快速路径</span>
+           └─ <span class="func">__alloc_pages_slowpath</span>()    <span class="comment">// 慢速: 回收/压缩/OOM</span>
+              │
+              ▼
+         <span class="keyword">物理页:</span> Buddy System (order 0~10) → 返回 struct page*
+
+<span class="keyword">内核态:</span>  <span class="func">kmalloc</span>(size, GFP_KERNEL)
+         └─ <span class="keyword">SLUB allocator</span>
+              ├─ per-CPU slab 快速分配
+              └─ slab 不足 → <span class="func">new_slab</span>()
+                   └─ <span class="func">allocate_slab</span>()
+                        └─ <span class="func">alloc_slab_page</span>()
+                             └─ <span class="func">alloc_pages</span>()  <span class="comment">// 从 buddy 获取新 slab</span></pre>
+
+    <h3>9.4 ARM64 关键实现要点</h3>
+    <div class="card-grid">
+      <div class="info-card">
+        <h3>🔐 安全特性</h3>
+        <ul>
+          <li><strong>KPTI</strong> — 内核页表隔离，ASID 成对分配</li>
+          <li><strong>PAN</strong> — 内核访问用户地址需特权检查</li>
+          <li><strong>BTI</strong> — 分支目标识别，防止 JOP 攻击</li>
+          <li><strong>MTE</strong> — 内存标签扩展，检测 UAF/缓冲区溢出</li>
+          <li><strong>POE</strong> — 权限覆盖扩展，细粒度页权限控制</li>
+          <li><strong>GCS</strong> — 守护控制栈，防止返回地址篡改</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3>⚡ 性能优化</h3>
+        <ul>
+          <li><strong>Per-VMA Lock</strong> — RCU 保护的 VMA 锁，减少 mmap_lock 竞争</li>
+          <li><strong>Contiguous PTE</strong> — 16个连续PTE合并为单TLB条目</li>
+          <li><strong>Lazy MMU Mode</strong> — 批量页表修改延迟 TLB 刷新</li>
+          <li><strong>Block Mapping</strong> — 使用 PMD/PUD 级别的巨大页映射</li>
+          <li><strong>ASID</strong> — 避免进程切换时全 TLB 刷新</li>
+          <li><strong>THP</strong> — 透明大页支持 (PMD/PUD级别)</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3>📊 页表层级 (4KB 粒度)</h3>
+        <ul>
+          <li><strong>PGD</strong> (Level 0) — 512 entries × 512GB = 256TB</li>
+          <li><strong>PUD</strong> (Level 1) — 512 entries × 1GB = 512GB</li>
+          <li><strong>PMD</strong> (Level 2) — 512 entries × 2MB = 1GB</li>
+          <li><strong>PTE</strong> (Level 3) — 512 entries × 4KB = 2MB</li>
+          <li>TTBR0_EL1 → 用户空间 | TTBR1_EL1 → 内核空间</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 10. FILE INDEX ==================== -->
+<div class="section">
+  <div class="section-title">📁 10. 源文件索引</div>
+  <div class="section-content">
+    <table>
+      <tr><th>文件</th><th>关键函数/定义</th><th>行号</th></tr>
+      <tr><td><code>arch/arm64/mm/fault.c</code></td><td><code>do_page_fault</code></td><td>552</td></tr>
+      <tr><td></td><td><code>do_translation_fault</code></td><td>782</td></tr>
+      <tr><td></td><td><code>do_bad_area</code></td><td>465</td></tr>
+      <tr><td></td><td><code>fault_info[]</code> (异常分发表)</td><td>857</td></tr>
+      <tr><td><code>arch/arm64/mm/mmu.c</code></td><td><code>__create_pgd_mapping</code></td><td>461</td></tr>
+      <tr><td></td><td><code>alloc_init_cont_pte</code></td><td>197</td></tr>
+      <tr><td></td><td><code>init_pte / init_pmd</code></td><td>174 / 249</td></tr>
+      <tr><td></td><td><code>pgattr_change_is_safe</code></td><td>126</td></tr>
+      <tr><td></td><td><code>phys_mem_access_prot</code></td><td>107</td></tr>
+      <tr><td></td><td><code>early_pgtable_alloc</code></td><td>115</td></tr>
+      <tr><td><code>arch/arm64/mm/init.c</code></td><td><code>arm64_memblock_init</code></td><td>193</td></tr>
+      <tr><td></td><td><code>zone_sizes_init</code></td><td>123</td></tr>
+      <tr><td></td><td><code>pfn_is_map_memory</code></td><td>158</td></tr>
+      <tr><td><code>arch/arm64/mm/context.c</code></td><td>ASID 分配/管理</td><td>—</td></tr>
+      <tr><td><code>arch/arm64/mm/pgd.c</code></td><td><code>pgd_alloc / pgd_free</code></td><td>33 / 42</td></tr>
+      <tr><td><code>arch/arm64/include/asm/mman.h</code></td><td><code>arch_calc_vm_prot_bits</code></td><td>18</td></tr>
+      <tr><td></td><td><code>arch_calc_vm_flag_bits</code></td><td>43</td></tr>
+      <tr><td><code>arch/arm64/include/asm/page.h</code></td><td>页大小定义、VM_DATA_DEFAULT_FLAGS</td><td>—</td></tr>
+      <tr><td><code>arch/arm64/include/asm/pgtable.h</code></td><td>PTE 宏、屏障、TLB flush</td><td>—</td></tr>
+      <tr><td><code>arch/arm64/include/asm/pgtable-hwdef.h</code></td><td>页表层级常量、CONT_PTE</td><td>—</td></tr>
+      <tr><td><code>arch/arm64/include/asm/pgtable-prot.h</code></td><td>PTE 软件位定义、PROT_* 宏</td><td>—</td></tr>
+      <tr><td><code>arch/arm64/include/asm/memory.h</code></td><td>VA_BITS、PAGE_OFFSET、地址空间划分</td><td>—</td></tr>
+      <tr><td><code>arch/arm64/kernel/entry-common.c</code></td><td><code>el1h_64_sync_handler</code></td><td>458</td></tr>
+      <tr><td></td><td><code>el1_abort → do_mem_abort</code></td><td>318</td></tr>
+      <tr><td><code>mm/mmap.c</code></td><td><code>SYSCALL_DEFINE6(mmap_pgoff)</code></td><td>611</td></tr>
+      <tr><td></td><td><code>do_mmap</code></td><td>334</td></tr>
+      <tr><td></td><td><code>generic_get_unmapped_area_topdown</code></td><td>737</td></tr>
+      <tr><td><code>mm/vma.c</code></td><td><code>mmap_region</code></td><td>2714</td></tr>
+      <tr><td></td><td><code>__mmap_region → __mmap_new_vma</code></td><td>2639 / 2450</td></tr>
+      <tr><td><code>mm/memory.c</code></td><td><code>handle_mm_fault</code></td><td>6470</td></tr>
+      <tr><td></td><td><code>__handle_mm_fault</code></td><td>6245</td></tr>
+      <tr><td></td><td><code>handle_pte_fault</code></td><td>6151</td></tr>
+      <tr><td></td><td><code>do_anonymous_page</code></td><td>5134</td></tr>
+      <tr><td></td><td><code>do_swap_page</code></td><td>4582</td></tr>
+      <tr><td></td><td><code>do_fault</code></td><td>5820</td></tr>
+      <tr><td><code>mm/page_alloc.c</code></td><td><code>__alloc_pages_noprof</code></td><td>5207</td></tr>
+      <tr><td></td><td><code>__alloc_frozen_pages_noprof</code></td><td>5142</td></tr>
+      <tr><td></td><td><code>get_free_pages_noprof</code></td><td>5233</td></tr>
+    </table>
+  </div>
+</div>
+
+</div>
+
+<!-- ==================== 11. INTERVIEW Q&A ==================== -->
+<div class="section">
+  <div class="section-title">🎤 11. 面试高频考点 — mmap &amp; malloc 深度问答</div>
+  <div class="section-content">
+
+    <h3>Q1: mmap 和 malloc 的本质区别是什么？底层分别走什么路径？</h3>
+    <div class="qa-answer">
+      <p><strong>malloc (glibc)</strong>：用户态堆分配。小块内存（&lt;128KB）从 brk() 堆扩展，大块内存（&gt;128KB）内部调用 mmap(MAP_ANONYMOUS)。</p>
+      <ul>
+        <li><strong>brk 路径</strong>：sys_brk → do_brk_flags → 扩展堆 VMA，不立即分配物理页（demand paging）</li>
+        <li><strong>mmap 路径</strong>：sys_mmap_pgoff → do_mmap → mmap_region → 创建 VMA，同样延迟分配</li>
+      </ul>
+      <p><strong>mmap (系统调用)</strong>：直接创建 VMA 映射，可以是匿名映射或文件映射。内核路径：<code>SYSCALL_DEFINE6(mmap_pgoff)</code> → <code>ksys_mmap_pgoff</code> → <code>vm_mmap_pgoff</code> → <code>do_mmap</code> → <code>mmap_region</code> → <code>__mmap_new_vma</code>。</p>
+      <p><strong>关键差异</strong>：malloc 是 libc 函数，管理已映射内存；mmap 是系统调用，向内核申请新映射。malloc 可能复用已 free 的内存，mmap 总是创建新 VMA。</p>
+    </div>
+
+    <h3>Q2: ARM64 下 mmap 返回的虚拟地址为何总是页对齐？页大小有哪些可能？</h3>
+    <div class="qa-answer">
+      <p>ARM64 支持 3 种页粒度，由 TCR_EL1.TG0/TG1 配置：</p>
+      <table>
+        <tr><th>粒度</th><th>页大小</th><th>虚拟地址位</th><th>页表层级</th></tr>
+        <tr><td>4KB</td><td>4KB</td><td>48-bit (256TB)</td><td>PGD→PUD→PMD→PTE (4级)</td></tr>
+        <tr><td>16KB</td><td>16KB</td><td>47-bit</td><td>PGD→PUD→PMD→PTE (4级，但编码不同)</td></tr>
+        <tr><td>64KB</td><td>64KB</td><td>52-bit</td><td>PGD→PMD→PTE (3级，-1级抵消)</td></tr>
+      </table>
+      <p><code>do_mmap</code> 中 <code>len = PAGE_ALIGN(len)</code> 强制对齐，<code>__get_unmapped_area</code> 返回的地址也是页对齐的。面试常问：<strong>为什么必须页对齐？</strong>——因为 MMU 以页为单位进行地址翻译，非对齐地址无法建立 PTE 映射。</p>
+    </div>
+
+    <h3>Q3: 简述 ARM64 下从 mmap 调用到物理页分配的完整流程</h3>
+    <div class="qa-answer">
+      <div class="mermaid-diagram">
+        <pre>
+mmap(addr, len, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0)
+  │
+  ▼
+sys_mmap_pgoff()                     @ mm/mmap.c:611
+  │
+  ▼
+ksys_mmap_pgoff()                    @ mm/mmap.c:559
+  │  └─ vm_mmap_pgoff()
+  │       └─ do_mmap()               @ mm/mmap.c:334
+  │            ├─ [1] VMA flags 计算 (calc_vm_prot_bits + calc_vm_flag_bits)
+  │            ├─ [2] addr = __get_unmapped_area()  找空闲虚拟地址
+  │            ├─ [3] mmap_region()  → __mmap_new_vma()
+  │            │        └─ insert_vm_struct()  将 VMA 插入 mm->mm_mt (maple tree)
+  │            └─ [4] *populate = len  (MAP_POPULATE时)
+  │
+  ▼  ⚡ 首次访问触发缺页异常
+do_page_fault()                      @ arch/arm64/mm/fault.c:552
+  │
+  ▼
+handle_mm_fault()                    @ mm/memory.c:6470
+  │
+  ▼
+__handle_mm_fault()                  @ mm/memory.c:6245
+  │  └─ 遍历 PGTable (PGD → PUD → PMD → PTE)
+  │       └─ handle_pte_fault()
+  │            └─ do_anonymous_page() @ mm/memory.c:5134
+  │                 ├─ pte_alloc()     分配 PTE 页表
+  │                 ├─ alloc_zeroed_user_highpage() → __alloc_pages()
+  │                 │    └─ Buddy Allocator → 分配 order-0 物理页
+  │                 └─ set_pte_at()    设置 PTE 条目（含物理地址 + 属性位）
+  ▼
+返回用户态，页已映射 ✓</pre>
+      </div>
+      <p><strong>面试要点</strong>：这条路径涉及 VMA（虚拟地址管理）和页表（物理地址管理）两个正交维度，要能清晰说出 VMA 在 do_mmap 阶段创建，物理页在缺页异常阶段分配。</p>
+    </div>
+
+    <h3>Q4: MAP_POPULATE 标志有什么作用？为何能减少缺页异常？</h3>
+    <div class="qa-answer">
+      <p><code>MAP_POPULATE</code> 在 <code>do_mmap()</code> 末尾触发预映射（line 555-558）：</p>
+      <pre><code>if (!IS_ERR_VALUE(addr) &amp;&amp;
+    ((vm_flags &amp; VM_LOCKED) ||
+     (flags &amp; (MAP_POPULATE | MAP_NONBLOCK)) == MAP_POPULATE))
+    *populate = len;</code></pre>
+      <p>调用者 <code>vm_mmap_pgoff</code> 随后执行 <code>mm_populate(addr, len)</code>，内部调用 <code>__mm_populate</code> → <code>populate_vma_page_range</code>，<strong>在返回用户态前预先触发缺页处理</strong>，将物理页映射好。</p>
+      <ul>
+        <li>✅ 优点：后续访问零缺页延迟，适合实时/低延迟场景</li>
+        <li>❌ 缺点：增加 mmap 调用延迟，可能分配了不用的页（浪费内存）</li>
+        <li>⚠️ 注意：<code>MAP_LOCKED</code> 隐含 MAP_POPULATE 语义（因为 mlock 需要页在场）</li>
+      </ul>
+    </div>
+
+    <h3>Q5: ARM64 内核态 kmalloc 和用户态 malloc 在底层分配上有何异同？</h3>
+    <div class="qa-answer">
+      <table>
+        <tr><th>维度</th><th>用户态 malloc</th><th>内核态 kmalloc</th></tr>
+        <tr><td>调用接口</td><td>glibc malloc/free</td><td><code>kmalloc(size, GFP_KERNEL)</code></td></tr>
+        <tr><td>虚拟地址</td><td>用户空间 VMA (0x0000...)</td><td>内核线性映射区 (0xffff...)</td></tr>
+        <tr><td>物理页</td><td>Demand paging，首次访问时分配</td><td>立即通过 Buddy/SLUB 分配</td></tr>
+        <tr><td>底层分配器</td><td>Buddy Allocator (缺页时)</td><td>SLUB (≤8KB) → Buddy (&gt;8KB)</td></tr>
+        <tr><td>缓存机制</td><td>glibc ptmalloc (bins/fastbins)</td><td>SLUB per-CPU slab 缓存</td></tr>
+        <tr><td>页表</td><td>需要建立用户页表映射</td><td>内核线性映射已预建 (swapper_pg_dir)</td></tr>
+        <tr><td>缺页</td><td>可能触发 do_anonymous_page</td><td>不会缺页（线性映射已在启动时建立）</td></tr>
+      </table>
+      <p><strong>ARM64 特色</strong>：kmalloc 返回的地址在 <code>PAGE_OFFSET</code>（0xffff_8000_0000_0000 附近），这是内核线性映射区，使用 <code>TTBR1_EL1</code> 页表，页表项在 <code>paging_init()</code> 时预建，无需缺页处理。</p>
+    </div>
+
+    <h3>Q6: ARM64 下 mmap 一个文件时，内核如何建立文件页缓存与用户 VMA 的关联？</h3>
+    <div class="qa-answer">
+      <p><strong>核心数据结构链路</strong>：</p>
+      <pre><code>VMA (vm_area_struct)
+  ├─ vm_file → struct file
+  │              └─ f_mapping → struct address_space (文件页缓存)
+  │                                ├─ i_pages (xarray: page->index → struct page)
+  │                                └─ a_ops (address_space_operations)
+  │                                     ├─ read_folio / writepage 等
+  └─ vm_ops → struct vm_operations_struct
+               └─ fault → filemap_fault  (缺页时调用)</code></pre>
+      <p>流程：<code>mmap(file, ...)</code> → <code>do_mmap</code> 时记录 <code>vma->vm_file = file</code>，VMA 设置 <code>vma->vm_ops = &amp;filemap_vm_ops</code>（通过 <code>file->f_op->mmap</code> 回调设置）。</p>
+      <p>缺页时：<code>do_fault</code> → <code>do_read_fault</code> → <code>__do_fault</code> → <code>vma->vm_ops->fault</code> = <code>filemap_fault</code> → 在 <code>address_space->i_pages</code> 中查找/读取 page → <code>set_pte_at</code> 建立映射。</p>
+    </div>
+
+    <h3>Q7: mmap 的 MAP_SHARED vs MAP_PRIVATE 在内核中实现有何不同？fork 时如何体现？</h3>
+    <div class="qa-answer">
+      <table>
+        <tr><th>特性</th><th>MAP_SHARED</th><th>MAP_PRIVATE</th></tr>
+        <tr><td>VMA 标志</td><td><code>VM_SHARED | VM_MAYSHARE</code></td><td>无 VM_SHARED</td></tr>
+        <tr><td>页表 PTE</td><td>可写 PTE（无写保护）</td><td>写保护 PTE (<code>PTE_RDONLY</code>) → COW</td></tr>
+        <tr><td>写入传播</td><td>直接写入 page cache，其他进程可见</td><td>触发 COW，复制新页</td></tr>
+        <tr><td>fork() 后</td><td>父子共享同一物理页，写入互相可见</td><td>父子触发 COW，各自复制独立页</td></tr>
+        <tr><td>msync</td><td>写回文件</td><td>不会写回文件（匿名复制）</td></tr>
+      </table>
+      <p><strong>COW 实现要点</strong>（ARM64）：fork 时 <code>copy_page_range</code> → <code>copy_present_pte</code> → PTE 设为只读（<code>ptep_set_wrprotect</code>），两个进程共享同一物理页。写入时触发 <code>do_wp_page</code> → <code>wp_page_copy</code> → 分配新物理页、复制内容、更新各自 PTE。</p>
+    </div>
+
+    <h3>Q8: ARM64 VA_BITS 48 vs 52 对 mmap 可用空间有什么影响？</h3>
+    <div class="qa-answer">
+      <p>ARM64 地址空间分用户/内核两部分（各占一半）：</p>
+      <table>
+        <tr><th>配置</th><th>总 VA 空间</th><th>用户空间</th><th>内核空间</th><th>TASK_SIZE</th></tr>
+        <tr><td>VA_BITS=48 (4KB)</td><td>256TB</td><td>128TB</td><td>128TB</td><td>0x0000_7fff_ffff_ffff</td></tr>
+        <tr><td>VA_BITS=48 (64KB)</td><td>256TB</td><td>128TB</td><td>128TB</td><td>0x0000_7fff_ffff_ffff</td></tr>
+        <tr><td>VA_BITS=52 (64KB)</td><td>4PB</td><td>2PB</td><td>2PB</td><td>0x0007_ffff_ffff_ffff</td></tr>
+      </table>
+      <p><strong>面试追问</strong>：52-bit 如何兼容 48-bit？ARMv8.2-LVA 通过 -1 级页表（由 TCR_EL1.DS 控制）额外增加一级。硬件遍历时根据 VA[51:48] 决定从 L-1 还是 L0 开始。内核中 <code>pgtable_l4_enabled()</code> 检查是否启用。</p>
+    </div>
+
+    <h3>Q9: 内存碎片化对 mmap 大页映射有什么影响？内核如何应对？</h3>
+    <div class="qa-answer">
+      <p><strong>问题</strong>：mmap 需要 2MB/1GB 大页时，需要连续物理页。碎片化导致分配失败，退化为 4KB 小页。</p>
+      <p><strong>ARM64 透明大页 (THP)</strong>：<code>CONFIG_TRANSPARENT_HUGEPAGE=y</code> 时，缺页处理中 <code>__handle_mm_fault</code> 尝试 <code>do_huge_pmd_anonymous_page</code>，直接分配 PMD-mapped 2MB 页。如果分配失败，fallback 到 <code>handle_pte_fault</code> 用 4KB。</p>
+      <p><strong>反碎片机制</strong>：</p>
+      <ul>
+        <li><strong>Buddy 迁移类型</strong>：UNMOVABLE / RECLAIMABLE / MOVABLE 分区，减少不可移动页阻挡</li>
+        <li><strong>内存规整 (compaction)</strong>：<code>compact_zone</code> 迁移 MOVABLE 页腾出连续区域</li>
+        <li><strong>Pageblock 顺序</strong>：<code>pageblock_order</code>（通常 9，即 2MB），按迁移类型分组管理</li>
+      </ul>
+    </div>
+
+    <h3>Q10: mmap 的 MAP_FIXED vs MAP_FIXED_NOREPLACE 有何区别？</h3>
+    <div class="qa-answer">
+      <ul>
+        <li><strong>MAP_FIXED</strong>：强制使用指定地址，<strong>如果已有映射则先 munmap 再映射</strong>。危险——可能意外覆盖已有映射（如 ld.so、vDSO）。</li>
+        <li><strong>MAP_FIXED_NOREPLACE</strong>：指定地址如果已被占用，<strong>返回 -EEXIST 而不是覆盖</strong>。安全替代方案。</li>
+      </ul>
+      <p>内核实现（<code>do_mmap</code> line ~500）：</p>
+      <pre><code>if (flags &amp; MAP_FIXED_NOREPLACE) {
+    if (find_vma_intersection(mm, addr, addr + len))
+        return -EEXIST;
+}</code></pre>
+      <p><strong>典型面试场景</strong>：glibc 加载器使用 MAP_FIXED_NOREPLACE 防止覆盖已加载库；JVM/Go runtime 使用 MAP_FIXED 管理自定义堆。</p>
+    </div>
+
+    <h3>Q11: mmap(MAP_ANONYMOUS) 后的内存在 fork() 时如何共享？COW 如何触发？</h3>
+    <div class="qa-answer">
+      <p><strong>fork 时</strong>：<code>dup_mmap</code> → <code>copy_page_range</code>（遍历所有 VMA）→ <code>copy_pte_range</code>：</p>
+      <pre><code>// mm/memory.c
+copy_present_pte() {
+    // 如果是可写 PTE，设为只读（触发 COW）
+    if (pte_write(pte))
+        pte = pte_wrprotect(pte);  // ARM64: 清除 PTE_DBM 中的写权限
+    // 增加 page->_refcount（记录共享计数）
+    set_pte_at(dst_mm, addr, dst_pte, pte);
+}</code></pre>
+      <p><strong>写入时</strong>：MMU 触发 permission fault（<code>ESR_EL1.ISS = 0b0011xx</code>），进入 <code>do_page_fault</code> → <code>handle_mm_fault</code> → <code>do_wp_page</code> → <code>wp_page_copy</code> → 分配新物理页、复制内容、设置可写 PTE。</p>
+      <p><strong>ARM64 专用</strong>：PTE 的 <code>DBM (Dirty Bit Modifier)</code> 位决定硬件写入行为。读写权限由 PTE[6:4]（AP[2:0]）控制：AP=0b011 表示 EL0/EL1 可读写。</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== 12. QEMU EXPERIMENTS ==================== -->
+<div class="section">
+  <div class="section-title">🔬 12. QEMU 实践验证 — 面试考点动手实验</div>
+  <div class="section-content">
+
+    <h3>实验环境准备</h3>
+    <pre><code># 基于之前编译的内核和 rootfs
+# 启动 QEMU ARM64 虚拟机
+qemu-system-aarch64 \
+  -M virt -cpu cortex-a72 -smp 4 -m 2G \
+  -kernel arch/arm64/boot/Image \
+  -append "console=ttyAMA0 earlyprintk=1" \
+  -nographic \
+  -drive file=rootfs.ext4,if=none,id=drive0 \
+  -device virtio-blk-device,drive=drive0</code></pre>
+
+    <h3>实验 1: 验证 mmap MAP_POPULATE 与缺页延迟差异</h3>
+    <div class="qa-answer">
+      <p><strong>目的</strong>：对比普通 mmap 与 MAP_POPULATE mmap 的首次访问延迟，验证预映射效果。</p>
+      <pre><code>// test_mmap_populate.c
+#define _GNU_SOURCE
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/mman.h&gt;
+#include &lt;time.h&gt;
+#include &lt;unistd.h&gt;
+
+#define MAP_SIZE (256 * 1024 * 1024UL)  // 256MB
+#define PAGE_COUNT (MAP_SIZE / 4096)
+
+static unsigned long long nstime(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &amp;ts);
+    return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+}
+
+int main(void) {
+    unsigned long long t0, t1;
+    volatile char *p;
+    int i;
+
+    // === 普通 mmap（不预映射）===
+    t0 = nstime();
+    char *m1 = mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE,
+                    MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
+    t1 = nstime();
+    printf("mmap (lazy) syscall: %llu us\n", (t1 - t0) / 1000);
+
+    t0 = nstime();
+    for (i = 0; i &lt; PAGE_COUNT; i += 256)  // 每隔256页触发缺页
+        m1[i * 4096] = 'A';
+    t1 = nstime();
+    printf("First touch (lazy) : %llu us\n", (t1 - t0) / 1000);
+    munmap(m1, MAP_SIZE);
+
+    // === MAP_POPULATE mmap（预映射）===
+    t0 = nstime();
+    char *m2 = mmap(NULL, MAP_SIZE, PROT_READ|PROT_WRITE,
+                    MAP_ANONYMOUS|MAP_PRIVATE|MAP_POPULATE, -1, 0);
+    t1 = nstime();
+    printf("mmap (POPULATE) syscall: %llu us\n", (t1 - t0) / 1000);
+
+    t0 = nstime();
+    for (i = 0; i &lt; PAGE_COUNT; i += 256)
+        m2[i * 4096] = 'B';
+    t1 = nstime();
+    printf("First touch (POPULATE): %llu us\n", (t1 - t0) / 1000);
+    munmap(m2, MAP_SIZE);
+
+    return 0;
+}</code></pre>
+      <p><strong>预期结果</strong>：MAP_POPULATE 的 mmap 调用时间远大于普通 mmap，但后续首次访问几乎为零（因为页已映射）。普通 mmap 首次触页时间远大于 POPULATE。</p>
+      <p><strong>验证方式</strong>：同时 <code>perf stat -e page-faults,minor-faults</code> 运行，观察缺页计数差异。</p>
+    </div>
+
+    <h3>实验 2: 观察 /proc/PID/maps 中 mmap 映射的 VMA 信息</h3>
+    <div class="qa-answer">
+      <p><strong>目的</strong>：通过 /proc 接口观察 mmap 创建的 VMA，验证不同标志（SHARED/PRIVATE、ANONYMOUS/FILE）的差异。</p>
+      <pre><code>// test_mmap_view.c
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;sys/mman.h&gt;
+#include &lt;unistd.h&gt;
+
+int main(void) {
+    printf("PID: %d\n", getpid());
+
+    // 1. 匿名私有映射
+    char *anon = mmap(NULL, 64*4096, PROT_READ|PROT_WRITE,
+                      MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
+    printf("ANON_PRIVATE: %p\n", anon);
+
+    // 2. 文件私有映射
+    int fd = open("/bin/ls", O_RDONLY);
+    char *file_priv = mmap(NULL, 4096, PROT_READ,
+                           MAP_PRIVATE, fd, 0);
+    printf("FILE_PRIVATE: %p\n", file_priv);
+
+    // 3. 匿名共享映射
+    char *shared = mmap(NULL, 4096, PROT_READ|PROT_WRITE,
+                        MAP_ANONYMOUS|MAP_SHARED, -1, 0);
+    printf("ANON_SHARED: %p\n", shared);
+
+    printf("\n=== Press Enter to exit ===\n");
+    getchar();
+
+    // 在另一个终端: cat /proc/$(pidof test_mmap_view)/maps
+    return 0;
+}</code></pre>
+      <p><strong>验证命令</strong>（另一个终端）：</p>
+      <pre><code>cat /proc/$(pidof test_mmap_view)/maps
+# 观察每行的权限（r-xp/r--p/rw-p）、inode 编号（0 表示匿名）、路径名
+
+cat /proc/$(pidof test_mmap_view)/smaps
+# 查看每个 VMA 的详细统计：Rss（驻留内存）、Pss（按比例共享）、Swap 等</code></pre>
+    </div>
+
+    <h3>实验 3: 通过 perf 追踪 mmap → 缺页完整调用链</h3>
+    <div class="qa-answer">
+      <p><strong>目的</strong>：用 perf tracepoint 追踪从 mmap 系统调用到 do_page_fault 的完整内核路径。</p>
+      <pre><code># 终端1: 启动 perf 记录
+perf record -e syscalls:sys_enter_mmap \
+            -e syscalls:sys_exit_mmap \
+            -e exceptions:page_fault_user \
+            -e kmem:mm_page_alloc \
+            -- ./test_mmap_populate
+
+# 终端2: 使用 trace-cmd / ftrace 更精细追踪
+cd /sys/kernel/debug/tracing/
+
+# 追踪 mmap 系统调用
+echo 1 > events/syscalls/sys_enter_mmap/enable
+echo 1 > events/syscalls/sys_exit_mmap/enable
+
+# 追踪缺页异常
+echo 1 > events/exceptions/page_fault_user/enable
+
+# 追踪物理页分配
+echo 1 > events/kmem/mm_page_alloc/enable
+
+# 运行测试程序后查看 trace
+cat trace</code></pre>
+      <p><strong>预期观察</strong>：</p>
+      <ul>
+        <li><code>sys_enter_mmap</code> → <code>sys_exit_mmap</code> 之间没有 page_fault_user（因为延迟分配）</li>
+        <li>首次写入时，密集出现 <code>page_fault_user</code> → <code>mm_page_alloc</code> 序列</li>
+        <li>MAP_POPULATE 版本：<code>sys_enter_mmap</code> 和 <code>sys_exit_mmap</code> 之间出现大量 <code>page_fault_user</code></li>
+      </ul>
+    </div>
+
+    <h3>实验 4: 验证 COW（写时复制）在 fork 后的行为</h3>
+    <div class="qa-answer">
+      <p><strong>目的</strong>：通过 /proc/PID/smaps 观察 fork 前后和写入前后的 PSS/RSS 变化，验证 COW 机制。</p>
+      <pre><code>// test_cow.c
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/mman.h&gt;
+#include &lt;sys/wait.h&gt;
+#include &lt;unistd.h&gt;
+
+#define REGION_SIZE (10 * 1024 * 1024)  // 10MB
+
+int main(void) {
+    char *region = mmap(NULL, REGION_SIZE, PROT_READ|PROT_WRITE,
+                        MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
+    memset(region, 'X', REGION_SIZE);  // 触发所有页分配
+    printf("=== Before fork (PID=%d) ===\n", getpid());
+    printf("Region: %p - %p\n", region, region + REGION_SIZE);
+    printf("Press Enter after checking /proc/%d/smaps...\n", getpid());
+    getchar();
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        // 子进程：先读（不触发 COW），再写（触发 COW）
+        printf("Child (PID=%d): reading first byte = %c\n",
+               getpid(), region[0]);
+
+        printf("Child: Press Enter before writing...\n");
+        getchar();
+
+        region[0] = 'C';  // ← 触发 COW！该页被复制
+        region[REGION_SIZE/2] = 'C';  // 中间页也触发 COW
+        printf("Child: Wrote to region. Press Enter...\n");
+        getchar();
+        exit(0);
+    } else {
+        // 父进程：先读，再写不同页
+        printf("Parent: reading first byte = %c\n", region[0]);
+
+        printf("Parent: Press Enter before writing...\n");
+        getchar();
+
+        region[4096] = 'P';  // 写第2页，触发独立的 COW
+        printf("Parent: Wrote to page 2. Press Enter...\n");
+        getchar();
+        wait(NULL);
+    }
+    return 0;
+}</code></pre>
+      <p><strong>验证步骤</strong>：在每个暂停点，在另一个终端执行：</p>
+      <pre><code># 查看映射的 Rss/Pss（共享计数）
+cat /proc/PID/smaps | grep -A 20 "test_cow"
+
+# 关键指标变化：
+# fork 前: Rss=~10MB, Pss=~10MB (单进程)
+# fork 后写前: Rss=~10MB, Pss=~5MB  (父子各5MB，共享物理页)
+# 子进程写后: Rss不变, Pss增大      (COW页变为独占)
+# 父进程写后: Rss稍增, Pss增大      (各自COW的页不再共享)</code></pre>
+    </div>
+
+    <h3>实验 5: 对比 malloc 小内存 (brk) vs 大内存 (mmap) 的分配策略</h3>
+    <div class="qa-answer">
+      <p><strong>目的</strong>：验证 glibc 对不同大小 malloc 使用 brk 还是 mmap 的策略。</p>
+      <pre><code>// test_malloc_strategy.c
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;malloc.h&gt;
+#include &lt;unistd.h&gt;
+
+void show_heap_info(const char *label) {
+    struct mallinfo2 mi = mallinfo2();
+    printf("[%s] arena=%zu, hblkhd=%zu, uordblks=%zu, fordblks=%zu\n",
+           label, mi.arena, mi.hblkhd, mi.uordblks, mi.fordblks);
+    // hblkhd > 0 表示使用了 mmap 分配
+}
+
+int main(void) {
+    printf("MALLOC_MMAP_THRESHOLD = %ld\n",
+           M_MMAP_THRESHOLD);  // 默认 128KB
+
+    show_heap_info("start");
+
+    // 小内存: 走 brk (堆)
+    void *p1 = malloc(1024);
+    void *p2 = malloc(4096);
+    void *p3 = malloc(64 * 1024);  // 64KB < 128KB
+    show_heap_info("small allocs (brk)");
+    printf("p1=%p p2=%p p3=%p\n", p1, p2, p3);
+
+    // 大内存: 走 mmap
+    void *p4 = malloc(256 * 1024);  // 256KB > 128KB
+    show_heap_info("large alloc (mmap)");
+    printf("p4=%p (should be far from heap)\n", p4);
+
+    // 查看 /proc/PID/maps 确认:
+    // brk 分配: 在 [heap] 区域内
+    // mmap 分配: 在独立的 mmap 匿名区域
+    printf("\nPID=%d: cat /proc/%d/maps to verify\n", getpid(), getpid());
+    getchar();
+
+    free(p1); free(p2); free(p3); free(p4);
+    return 0;
+}</code></pre>
+      <p><strong>验证</strong>：<code>cat /proc/PID/maps</code> 观察：</p>
+      <ul>
+        <li><code>[heap]</code> 区域内的地址来自 brk 扩展</li>
+        <li>远离 heap 的匿名映射区域（无 inode、无路径名）来自 mmap</li>
+      </ul>
+    </div>
+
+    <h3>实验 6: ARM64 页表遍历验证 — 使用 devmem 读取 PTE</h3>
+    <div class="qa-answer">
+      <p><strong>目的</strong>：通过内核模块读取指定虚拟地址的 PTE 条目，验证 ARM64 四级页表结构。</p>
+      <pre><code>// pte_walk.c (内核模块，在 QEMU 中通过 scp 上传后 insmod)
+#include &lt;linux/module.h&gt;
+#include &lt;linux/mm.h&gt;
+#include &lt;linux/sched.h&gt;
+#include &lt;asm/pgtable.h&gt;
+
+static void dump_pte(unsigned long vaddr) {
+    pgd_t *pgd;
+    p4d_t *p4d;
+    pud_t *pud;
+    pmd_t *pmd;
+    pte_t *pte;
+    struct mm_struct *mm = current->mm;
+    unsigned long pfn;
+
+    pgd = pgd_offset(mm, vaddr);
+    if (pgd_none(*pgd) || pgd_bad(*pgd)) {
+        pr_info("PGD: empty/bad\n");
+        return;
+    }
+    pr_info("PGD: %px val=0x%016llx\n", pgd, pgd_val(*pgd));
+
+    p4d = p4d_offset(pgd, vaddr);
+    pud = pud_offset(p4d, vaddr);
+    if (pud_none(*pud) || pud_bad(*pud)) {
+        pr_info("PUD: empty/bad\n");
+        return;
+    }
+    pr_info("PUD: %px val=0x%016llx\n", pud, pud_val(*pud));
+
+    pmd = pmd_offset(pud, vaddr);
+    if (pmd_none(*pmd) || pmd_bad(*pmd)) {
+        pr_info("PMD: empty/bad\n");
+        return;
+    }
+    pr_info("PMD: %px val=0x%016llx\n", pmd, pmd_val(*pmd));
+
+    pte = pte_offset_map(pmd, vaddr);
+    if (pte_none(*pte)) {
+        pr_info("PTE: empty (not mapped yet)\n");
+        return;
+    }
+    pfn = pte_pfn(*pte);
+    pr_info("PTE: %px val=0x%016llx pfn=%lu phys=0x%016llx\n",
+            pte, pte_val(*pte), pfn, PFN_PHYS(pfn));
+    pr_info("  Present:%d  Write:%d  User:%d  Dirty:%d\n",
+            pte_present(*pte), pte_write(*pte),
+            pte_user(*pte), pte_dirty(*pte));
+    pte_unmap(pte);
+}
+
+static int __init pte_walk_init(void) {
+    // 遍历当前进程的几个地址验证
+    pr_info("=== Walking &lt;module_init&gt; (kernel text) ===\n");
+    dump_pte((unsigned long)pte_walk_init);
+
+    // 通过 /proc/PID/maps 找一个用户态地址传入
+    return 0;
+}
+
+module_init(pte_walk_init);
+MODULE_LICENSE("GPL");</code></pre>
+    <p><strong>Makefile</strong>：</p>
+    <pre><code>obj-m += pte_walk.o
+KERNEL_SRC ?= /home/ybzhang/kernel/linux-6.18.1
+all:
+	make -C $(KERNEL_SRC) M=$(PWD) modules</code></pre>
+    <p><strong>验证</strong>：加载模块后 <code>dmesg | tail -20</code>，观察 PGD→PUD→PMD→PTE 各级表项值和物理地址。</p>
+  </div>
+
+  <div class="section-content">
+    <h3>实验 7: 使用 stress-ng + perf 观察内存分配热路径</h3>
+    <div class="qa-answer">
+      <p><strong>目的</strong>：在高负载下用 perf 采样，找出 mmap/缺页相关内核函数的 CPU 热点。</p>
+      <pre><code># 安装 stress-ng（若 rootfs 中有）
+stress-ng --vm 4 --vm-bytes 256M --vm-method mmap --timeout 30s &amp;
+
+# 同时采样
+perf record -e cpu-clock -g -p $(pidof stress-ng) -- sleep 10
+
+# 查看热点
+perf report --stdio | head -60
+
+# 预期会看到的热点:
+# - do_page_fault / handle_mm_fault
+# - __alloc_pages / get_page_from_freelist
+# - __handle_mm_fault / handle_pte_fault
+# - do_anonymous_page</code></pre>
+    </div>
+
+    <h3>实验 8: 对比 /dev/zero mmap vs MAP_ANONYMOUS 的效率差异</h3>
+    <div class="qa-answer">
+      <p><strong>目的</strong>：验证两种"分配零填充内存"方式的性能差异。</p>
+      <pre><code>// test_mmap_zero_vs_anon.c
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;sys/mman.h&gt;
+#include &lt;time.h&gt;
+#include &lt;unistd.h&gt;
+
+#define SIZE (128 * 1024 * 1024UL)
+static unsigned long long nstime(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &amp;ts);
+    return ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+}
+
+int main(void) {
+    volatile char *p;
+    unsigned long long t0, t1;
+    int fd;
+
+    // 方法1: MAP_ANONYMOUS
+    t0 = nstime();
+    p = mmap(NULL, SIZE, PROT_READ|PROT_WRITE,
+             MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
+    for (unsigned long i = 0; i &lt; SIZE / 4096; i++)
+        p[i * 4096] = 1;
+    t1 = nstime();
+    printf("MAP_ANONYMOUS: %llu ms\n", (t1 - t0) / 1000000);
+    munmap((void *)p, SIZE);
+
+    // 方法2: /dev/zero mmap
+    fd = open("/dev/zero", O_RDONLY);
+    t0 = nstime();
+    p = mmap(NULL, SIZE, PROT_READ|PROT_WRITE,
+             MAP_PRIVATE, fd, 0);
+    for (unsigned long i = 0; i &lt; SIZE / 4096; i++)
+        p[i * 4096] = 1;
+    t1 = nstime();
+    printf("/dev/zero mmap:  %llu ms\n", (t1 - t0) / 1000000);
+    munmap((void *)p, SIZE);
+    close(fd);
+
+    return 0;
+}</code></pre>
+    <p><strong>预期结果</strong>：MAP_ANONYMOUS 略快于 /dev/zero，因为 MAP_ANONYMOUS 走 <code>do_anonymous_page</code> 而 /dev/zero 走文件缺页路径 <code>do_fault</code>（多一次 file_operations 解引用）。</p>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<footer>
+  <p>Linux 6.18.1 ARM64 Memory Architecture Analysis · Generated from kernel source tree</p>
+  <p>arch/arm64/mm/* · mm/* · arch/arm64/include/asm/* · arch/arm64/kernel/entry-common.c</p>
+</footer>
+
+</body>
+</html>
