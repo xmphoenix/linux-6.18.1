@@ -1,0 +1,2478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arm64 Locking Implementation And Debug Guide</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux ARM64 锁实现与调试实验指南</h1>
+
+<blockquote>环境基线：Linux 6.18.1 / ARM64 / SMP 内核<br>
+关注范围：spinlock、semaphore、mutex，以及锁调试与实验方法<br>
+分析原则：以当前仓库代码为准，区分 arm64 架构支撑层 与 内核通用锁算法层</blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><a href="#1-先给结论arm64-下锁到底是怎么分层的">1. 先给结论：ARM64 下锁到底是怎么分层的</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#2-源码导航图">2. 源码导航图</a></summary></p>
+
+<ul>
+<li><a href="#21-spinlock-相关">2.1 spinlock 相关</a></li>
+<li><a href="#22-semaphore-相关">2.2 semaphore 相关</a></li>
+<li><a href="#23-mutex-相关">2.3 mutex 相关</a></li>
+<li><a href="#24-锁调试相关">2.4 锁调试相关</a></li>
+<li><a href="#25-slub-实战延伸">2.5 SLUB 实战延伸</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#3-arm64-锁实现的底层基础原子有序访存与等待">3. ARM64 锁实现的底层基础：原子、有序访存与等待</a></summary></p>
+
+<ul>
+<li><a href="#31-acquire--release-是整个锁实现的根">3.1 Acquire / Release 是整个锁实现的根</a></li>
+<li><a href="#32-arm64-的条件等待不是忙等死转而是借助-wfe">3.2 ARM64 的条件等待不是忙等死转，而是借助 <code>wfe</code></a></li>
+<li><a href="#33-一个很容易忽视的点rqspinlock-有-arm64-特化">3.3 一个很容易忽视的点：rqspinlock 有 arm64 特化</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#4-spinlockarm64-上的实际实现原理">4. spinlock：ARM64 上的实际实现原理</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#41-类型层次">4.1 类型层次</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#42-qspinlock-的-32-bit-锁字布局">4.2 qspinlock 的 32-bit 锁字布局</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#43-fastpath先试图一把抢到">4.3 fastpath：先试图一把抢到</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#44-slowpathpending--mcs-队列">4.4 slowpath：pending + MCS 队列</a></summary></p>
+
+<ul>
+<li><a href="#阶段-a先尝试-pending-holder-优化">阶段 A：先尝试 pending holder 优化</a></li>
+<li><a href="#阶段-b竞争明显时进入-mcs-队列">阶段 B：竞争明显时，进入 MCS 队列</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#45-为什么-qspinlock-比简单-test-and-set-更适合多核竞争">4.5 为什么 qspinlock 比简单 test-and-set 更适合多核竞争</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#46-arm64-在-spinlock-中真正负责什么">4.6 ARM64 在 spinlock 中真正负责什么</a></summary></p>
+
+<ul>
+<li><a href="#负责-1等待循环的正确性">负责 1：等待循环的正确性</a></li>
+<li><a href="#负责-2解锁的-release-语义">负责 2：解锁的 release 语义</a></li>
+<li><a href="#负责-3前进性">负责 3：前进性</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#47-qspinlock-关键源码逐行解释">4.7 qspinlock 关键源码逐行解释</a></summary></p>
+
+<ul>
+<li><a href="#471-fastpath-逐行解释">4.7.1 fastpath 逐行解释</a></li>
+<li><a href="#472-slowpath-逐行解释pending-优化段">4.7.2 slowpath 逐行解释：pending 优化段</a></li>
+<li><a href="#473-slowpath-逐行解释mcs-入队段">4.7.3 slowpath 逐行解释：MCS 入队段</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#48-qspinlock-时序图与状态迁移图">4.8 qspinlock 时序图与状态迁移图</a></summary></p>
+
+<ul>
+<li><a href="#481-轻度竞争时序图">4.8.1 轻度竞争时序图</a></li>
+<li><a href="#482-重度竞争状态图">4.8.2 重度竞争状态图</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#5-semaphore本质是计数--等待队列--内部自旋锁">5. semaphore：本质是“计数 + 等待队列 + 内部自旋锁”</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#51-数据结构">5.1 数据结构</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#52-fastpathcount-大于-0-直接减-1">5.2 fastpath：count 大于 0 直接减 1</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#53-slowpath挂等待队列并睡眠">5.3 slowpath：挂等待队列并睡眠</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#54-up-为什么和-mutex_unlock-语义不同">5.4 up() 为什么和 mutex_unlock() 语义不同</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#55-semaphore-的本质特点">5.5 semaphore 的本质特点</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#56-semaphore-关键源码逐行解释">5.6 semaphore 关键源码逐行解释</a></summary></p>
+
+<ul>
+<li><a href="#561-down-快路径逐行解释">5.6.1 <code>down()</code> 快路径逐行解释</a></li>
+<li><a href="#562-<strong><em>down_common-慢路径逐行解释">5.6.2 <code></em></strong>down_common()</code> 慢路径逐行解释</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#6-mutex所有权明确的睡眠互斥锁">6. mutex：所有权明确的睡眠互斥锁</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#61-数据结构比-semaphore-更复杂">6.1 数据结构比 semaphore 更复杂</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#62-fastpathowner-从-0-原子改成-current">6.2 fastpath：owner 从 0 原子改成 current</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#63-midpathoptimistic-spinning">6.3 midpath：optimistic spinning</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#64-slowpathwait_list--wait_lock--handoff">6.4 slowpath：wait_list + wait_lock + handoff</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#65-mutex-为什么比-semaphore-更适合纯互斥">6.5 mutex 为什么比 semaphore 更适合“纯互斥”</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#66-一个必须记住的特例preempt_rt">6.6 一个必须记住的特例：PREEMPT_RT</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#67-mutex-关键源码逐行解释">6.7 mutex 关键源码逐行解释</a></summary></p>
+
+<ul>
+<li><a href="#671-mutex_lock-fastpath-逐行解释">6.7.1 <code>mutex_lock()</code> fastpath 逐行解释</a></li>
+<li><a href="#672-mutex_optimistic_spin-逐行解释">6.7.2 <code>mutex_optimistic_spin()</code> 逐行解释</a></li>
+<li><a href="#673-<strong>mutex_lock_common-慢路径逐行解释">6.7.3 <code></strong>mutex_lock_common()</code> 慢路径逐行解释</a></li>
+<li><a href="#674-<strong>mutex_unlock_slowpath-逐行解释">6.7.4 <code></strong>mutex_unlock_slowpath()</code> 逐行解释</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#68-mutex-时序图与状态迁移图">6.8 mutex 时序图与状态迁移图</a></summary></p>
+
+<ul>
+<li><a href="#681-optimistic-spinning--睡眠时序图">6.8.1 optimistic spinning + 睡眠时序图</a></li>
+<li><a href="#682-mutex-owner-状态图">6.8.2 mutex owner 状态图</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#7-三种锁放在一起对比">7. 三种锁放在一起对比</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#8-从-arm64-角度理解这三类锁的统一模型">8. 从 ARM64 角度理解这三类锁的统一模型</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#9-实验环境建议">9. 实验环境建议</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#10-实验一用-locktorture-观察自旋锁与-mutex-的竞争特征">10. 实验一：用 locktorture 观察自旋锁与 mutex 的竞争特征</a></summary></p>
+
+<ul>
+<li><a href="#101-编译模块">10.1 编译模块</a></li>
+<li><a href="#102-跑-spinlock-压测">10.2 跑 spinlock 压测</a></li>
+<li><a href="#103-跑-mutex-压测">10.3 跑 mutex 压测</a></li>
+<li><a href="#104-结论预期">10.4 结论预期</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#11-实验二观察-semaphore-与-mutex-的语义差异">11. 实验二：观察 semaphore 与 mutex 的语义差异</a></summary></p>
+
+<ul>
+<li><a href="#111-semaphore-实验思路">11.1 semaphore 实验思路</a></li>
+<li><a href="#112-mutex-实验思路">11.2 mutex 实验思路</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#12-实验三在-arm64-上观察-qspinlock-的竞争热点">12. 实验三：在 ARM64 上观察 qspinlock 的竞争热点</a></summary></p>
+
+<ul>
+<li><a href="#121-开启-lockstat">12.1 开启 lockstat</a></li>
+<li><a href="#122-寻找典型热点-spinlock">12.2 寻找典型热点 spinlock</a></li>
+<li><a href="#123-关注-rqspinlock">12.3 关注 <code>rqspinlock</code></a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#13-实验四用-tracepoint-直接观察锁争用开始与结束">13. 实验四：用 tracepoint 直接观察锁争用开始与结束</a></summary></p>
+
+<ul>
+<li><a href="#131-用-tracefs-打开事件">13.1 用 tracefs 打开事件</a></li>
+<li><a href="#132-如何把地址对应回具体锁">13.2 如何把地址对应回具体锁</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#14-调试锁问题的完整方法论">14. 调试锁问题的完整方法论</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#141-第一层先抓违规语义">14.1 第一层：先抓“违规语义”</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#142-第二层用-lockdep-查锁顺序">14.2 第二层：用 lockdep 查锁顺序</a></summary></p>
+
+<ul>
+<li><a href="#lockdep-最擅长抓什么">lockdep 最擅长抓什么</a></li>
+<li><a href="#lockdep-不擅长抓什么">lockdep 不擅长抓什么</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#143-第三层用-lockstat--perf-lock-查性能热点">14.3 第三层：用 lockstat / perf lock 查性能热点</a></summary></p>
+
+<ul>
+<li><a href="#lockstat">lockstat</a></li>
+<li><a href="#perf-lock">perf lock</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#144-第四层用-tracepoint-看时间线">14.4 第四层：用 tracepoint 看时间线</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#145-第五层怀疑死锁或长时间卡住时看-hung-task">14.5 第五层：怀疑死锁或长时间卡住时，看 hung task</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#146-第六层在代码里加断言而不是靠猜">14.6 第六层：在代码里加断言，而不是靠猜</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#15-arm64-锁调试时最常见的几类坑">15. ARM64 锁调试时最常见的几类坑</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#151-误把-semaphore-当-mutex">15.1 误把 semaphore 当 mutex</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#152-在-spinlock-保护区里走到了可睡眠路径">15.2 在 spinlock 保护区里走到了可睡眠路径</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#153-只看功能正确不看锁顺序">15.3 只看功能正确，不看锁顺序</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#154-误解-arm64-上的等待行为">15.4 误解 ARM64 上的等待行为</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#16-建议的阅读顺序">16. 建议的阅读顺序</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#17-最后的总结">17. 最后的总结</a></summary></p>
+
+<p></details></p>
+
+<hr>
+
+<h2>1. 先给结论：ARM64 下锁到底是怎么分层的</h2>
+
+<p>在当前内核里，<code>arm64</code> 并没有单独维护一套“完全独立”的 <code>spinlock/semaphore/mutex</code> 算法，而是采用下面这套分层：</p>
+
+<ol>
+<li><strong>硬件与架构支撑层由 arm64 提供</strong></li>
+</ol>
+<ul>
+<li>原子读改写、Acquire/Release 语义</li>
+<li><code>ldar/stlr</code> 这类有序访存指令</li>
+<li><code>wfe</code> 等待、事件唤醒相关机制</li>
+<li><code>__cmpwait_relaxed()</code>、<code>smp_cond_load_acquire()</code> 这种等待原语</li>
+</ul>
+
+<ol>
+<li><strong>锁算法主体大多在通用 locking 子系统里</strong></li>
+</ol>
+<ul>
+<li><code>spinlock</code> 走的是 <code>qspinlock</code></li>
+<li><code>semaphore</code> 在 <code>kernel/locking/semaphore.c</code></li>
+<li><code>mutex</code> 在 <code>kernel/locking/mutex.c</code></li>
+</ul>
+
+<ol>
+<li><strong>ARM64 的关键价值不在“重新发明锁算法”，而在于保证这些算法在 ARM 弱内存序上仍然正确、高效并具备前进性</strong></li>
+</ol>
+
+<p>这点很重要。很多文章会把 “ARM64 spinlock” 直接等同于一份独立的汇编锁实现，但在这个版本里，更准确的说法是：</p>
+
+<ul>
+<li><code>raw_spinlock_t</code> 的底层锁字结构最终落到 <code>arch_spinlock_t</code></li>
+<li><code>arch_spin_lock()</code> 被映射到通用 <code>queued_spin_lock()</code></li>
+<li>真正的 arm64 特化，主要体现在<strong>原子操作、等待循环、内存屏障、WFE/事件流</strong>这些基础设施上</li>
+</ul>
+
+<hr>
+
+<h2>2. 源码导航图</h2>
+
+<p>理解锁实现时，建议按下面顺序读源码：</p>
+
+<h3>2.1 spinlock 相关</h3>
+
+<ul>
+<li><code>arch/arm64/include/asm/spinlock.h</code></li>
+<li><code>arch/arm64/include/asm/spinlock_types.h</code></li>
+<li><code>include/asm-generic/qspinlock_types.h</code></li>
+<li><code>include/asm-generic/qspinlock.h</code></li>
+<li><code>kernel/locking/qspinlock.c</code></li>
+<li><code>kernel/locking/qspinlock.h</code></li>
+<li><code>arch/arm64/include/asm/barrier.h</code></li>
+<li><code>arch/arm64/include/asm/cmpxchg.h</code></li>
+<li><code>arch/arm64/include/asm/rqspinlock.h</code></li>
+</ul>
+
+<h3>2.2 semaphore 相关</h3>
+
+<ul>
+<li><code>include/linux/semaphore.h</code></li>
+<li><code>kernel/locking/semaphore.c</code></li>
+</ul>
+
+<h3>2.3 mutex 相关</h3>
+
+<ul>
+<li><code>include/linux/mutex_types.h</code></li>
+<li><code>include/linux/mutex.h</code></li>
+<li><code>kernel/locking/mutex.c</code></li>
+<li><code>kernel/locking/mutex-debug.c</code></li>
+</ul>
+
+<h3>2.4 锁调试相关</h3>
+
+<ul>
+<li><code>kernel/locking/spinlock_debug.c</code></li>
+<li><code>kernel/locking/lockdep.c</code></li>
+<li><code>kernel/locking/lockdep_proc.c</code></li>
+<li><code>include/trace/events/lock.h</code></li>
+<li><code>Documentation/locking/lockdep-design.rst</code></li>
+<li><code>Documentation/locking/lockstat.rst</code></li>
+<li><code>Documentation/locking/locktorture.rst</code></li>
+<li><code>Documentation/locking/mutex-design.rst</code></li>
+<li><code>tools/perf/Documentation/perf-lock.txt</code></li>
+</ul>
+
+<h3>2.5 SLUB 实战延伸</h3>
+
+<ul>
+<li><code>mm/slub.c</code></li>
+<li><code>arm64_slub_lock_path_analysis.md</code></li>
+</ul>
+
+<hr>
+
+<h2>3. ARM64 锁实现的底层基础：原子、有序访存与等待</h2>
+
+<p>先不谈具体锁类型，先看 ARM64 给锁子系统提供了什么。</p>
+
+<h3>3.1 Acquire / Release 是整个锁实现的根</h3>
+
+<p>在 ARM64 上，锁正确性不能依赖 x86 式的“默认强序”直觉，而必须显式依赖：</p>
+
+<ul>
+<li><code>Acquire</code>：后续内存访问不能越过加锁点向前跑</li>
+<li><code>Release</code>：前面的共享数据写入不能越过解锁点向后跑</li>
+</ul>
+
+<p>当前代码里你会反复看到这些接口：</p>
+
+<ul>
+<li><code>atomic_try_cmpxchg_acquire()</code></li>
+<li><code>atomic_fetch_or_acquire()</code></li>
+<li><code>atomic_long_try_cmpxchg_acquire()</code></li>
+<li><code>atomic_long_try_cmpxchg_release()</code></li>
+<li><code>smp_store_release()</code></li>
+<li><code>smp_load_acquire()</code></li>
+</ul>
+
+<p>这些接口最终会落到 arm64 的 <code>ldar/stlr</code> 或对应的原子序列上。</p>
+
+<h3>3.2 ARM64 的条件等待不是忙等死转，而是借助 <code>wfe</code></h3>
+
+<p><code>arch/arm64/include/asm/barrier.h</code> 里的：</p>
+
+<ul>
+<li><code>smp_cond_load_relaxed()</code></li>
+<li><code>smp_cond_load_acquire()</code></li>
+</ul>
+
+<p>在条件不满足时，会调用：</p>
+
+<ul>
+<li><code>__cmpwait_relaxed()</code></li>
+</ul>
+
+<p>而 <code>__cmpwait_relaxed()</code> 在 <code>arch/arm64/include/asm/cmpxchg.h</code> 中的核心行为是：</p>
+
+<ol>
+<li>先加载当前值</li>
+<li>比较是否仍然等于旧值</li>
+<li>如果还没变化，则执行 <code>wfe</code></li>
+</ol>
+
+<p>这意味着 ARM64 的很多锁等待循环并不是单纯 <code>while (...) cpu_relax()</code>，而是：</p>
+
+<ul>
+<li>先观察共享变量</li>
+<li>未变化则进入更省电、更少总线压力的等待</li>
+<li>等有事件或状态变化再重新检查</li>
+</ul>
+
+<h3>3.3 一个很容易忽视的点：rqspinlock 有 arm64 特化</h3>
+
+<p>普通 <code>spinlock</code> 走通用 <code>qspinlock</code>，但 <code>rqspinlock</code> 在：</p>
+
+<ul>
+<li><code>arch/arm64/include/asm/rqspinlock.h</code></li>
+</ul>
+
+<p>里对 <code>res_smp_cond_load_acquire()</code> 做了 arm64 定制。原因写得很直接：</p>
+
+<ul>
+<li>某些平台上如果没有 <code>arch_timer_evtstrm_available()</code></li>
+<li>仅靠 WFE 型等待可能在“没有新的 store 落到锁字节”时长期不再苏醒</li>
+</ul>
+
+<p>所以这里额外处理了<strong>时间检查</strong>与<strong>事件流可用性</strong>，防止等待线程因为平台事件流特性而“睡死”。</p>
+
+<p>这说明 ARM64 锁实现里最值得看的是：</p>
+
+<ul>
+<li>算法是否正确</li>
+<li>在弱内存序上是否有 acquire/release 对应</li>
+<li>在 WFE 语义下是否保证 forward progress</li>
+</ul>
+
+<hr>
+
+<h2>4. spinlock：ARM64 上的实际实现原理</h2>
+
+<h2>4.1 类型层次</h2>
+
+<p>从类型上看，链路大致是：</p>
+
+<p><code>spinlock_t</code><br>
+-> <code>raw_spinlock_t</code><br>
+-> <code>arch_spinlock_t</code><br>
+-> <code>qspinlock</code> 的 32-bit 锁字</p>
+
+<p><code>include/linux/spinlock_types_raw.h</code> 里可以看到：</p>
+
+<ul>
+<li><code>raw_spinlock_t</code> 内部的 <code>raw_lock</code> 类型就是 <code>arch_spinlock_t</code></li>
+</ul>
+
+<p>而 <code>arch/arm64/include/asm/spinlock_types.h</code> 又直接包含：</p>
+
+<ul>
+<li><code>asm-generic/qspinlock_types.h</code></li>
+</ul>
+
+<p>这已经说明：当前 arm64 的原始自旋锁类型就是<strong>通用 qspinlock 类型</strong>。</p>
+
+<h2>4.2 qspinlock 的 32-bit 锁字布局</h2>
+
+<p><code>include/asm-generic/qspinlock_types.h</code> 把锁压缩成一个 <code>atomic_t val</code>，关键字段如下：</p>
+
+<ul>
+<li><code>locked</code>：低 8 bit，表示是否持锁</li>
+<li><code>pending</code>：下一字节，表示是否有人处于 pending 状态</li>
+<li><code>tail</code>：高位编码 MCS 队列尾指针</li>
+</ul>
+
+<p>在 <code>NR_CPUS < 16K</code> 时，布局可以理解为：</p>
+
+<ul>
+<li>bit 0..7：<code>locked</code></li>
+<li>bit 8：<code>pending</code></li>
+<li>bit 16..17：MCS 节点索引</li>
+<li>bit 18..31：CPU 编号加一</li>
+</ul>
+
+<p>它的设计目标很明确：</p>
+
+<ol>
+<li>保持 <code>spinlock_t</code> 很小，只占 4 字节</li>
+<li>既保留快速无竞争路径</li>
+<li>又在竞争时退化为 MCS 队列锁，避免缓存行疯狂抖动</li>
+</ol>
+
+<h2>4.3 fastpath：先试图一把抢到</h2>
+
+<p><code>include/asm-generic/qspinlock.h</code> 的 <code>queued_spin_lock()</code> 很直接：</p>
+
+<ol>
+<li>先把期望值设成 0</li>
+<li>用 <code>atomic_try_cmpxchg_acquire(&lock->val, &val, _Q_LOCKED_VAL)</code></li>
+<li>若成功，立即拿锁</li>
+<li>若失败，进入 <code>queued_spin_lock_slowpath()</code></li>
+</ol>
+
+<p>这个 fastpath 的特点：</p>
+
+<ul>
+<li>成本极低</li>
+<li>只适合无竞争场景</li>
+<li>使用 acquire 语义，保证临界区读取不会越过加锁点</li>
+</ul>
+
+<h2>4.4 slowpath：pending + MCS 队列</h2>
+
+<p>真正的核心在 <code>kernel/locking/qspinlock.c</code>。</p>
+
+<p>慢路径大致分两阶段：</p>
+
+<h3>阶段 A：先尝试 pending holder 优化</h3>
+
+<p>当锁只有轻微竞争时，代码不会立刻排队，而是：</p>
+
+<ol>
+<li>设置 <code>pending</code> 位</li>
+<li>等待 owner 释放 <code>locked</code></li>
+<li>再通过 <code>clear_pending_set_locked()</code> 接管锁</li>
+</ol>
+
+<p>这样做的目的，是在“只有一个后来者”的情况下，避免过早构建 MCS 队列。</p>
+
+<h3>阶段 B：竞争明显时，进入 MCS 队列</h3>
+
+<p>如果观察到：</p>
+
+<ul>
+<li>锁已被持有</li>
+<li>或者已经存在 pending / tail</li>
+</ul>
+
+<p>那么代码进入 <code>queue:</code> 路径：</p>
+
+<ol>
+<li>取当前 CPU 的 <code>qnodes[]</code> 里的 MCS 节点</li>
+<li>用 <code>encode_tail(cpu, idx)</code> 编码自己的尾指针</li>
+<li>初始化本地节点 <code>node->locked = 0, node->next = NULL</code></li>
+<li>通过 <code>xchg_tail(lock, tail)</code> 原子发布新尾巴</li>
+<li>如果之前已有尾节点，则把自己挂到前驱的 <code>next</code></li>
+<li>在自己的 <code>node->locked</code> 上等待前驱唤醒</li>
+<li>到达队首后，再等待锁字里的 <code>locked/pending</code> 清空</li>
+<li>最终拿到锁</li>
+</ol>
+
+<p>这个设计借鉴了经典 MCS lock，但又做了压缩：</p>
+
+<ul>
+<li>传统 MCS 需要显式 tail 指针和 next 指针</li>
+<li>qspinlock 把 tail 编码进 32-bit 锁字高位</li>
+<li>首等待者不是一直盯着自己的节点，而是能配合 <code>locked/pending</code> 状态走快一点的接力流程</li>
+</ul>
+
+<h2>4.5 为什么 qspinlock 比简单 test-and-set 更适合多核竞争</h2>
+
+<p>如果只是简单 TAS 自旋，所有 CPU 都会反复争同一个 cacheline。</p>
+
+<p>qspinlock 在竞争场景下的优势：</p>
+
+<ol>
+<li><strong>队列化</strong>：后来的 CPU 排队，不再全员直接抢锁字</li>
+<li><strong>局部自旋</strong>：很多等待发生在本地 MCS 节点上，减少共享 cacheline 抖动</li>
+<li><strong>公平性更好</strong>：相比裸 TAS，不容易让某个 CPU 长期饿死</li>
+</ol>
+
+<h2>4.6 ARM64 在 spinlock 中真正负责什么</h2>
+
+<h3>负责 1：等待循环的正确性</h3>
+
+<p><code>qspinlock.c</code> 中很多地方使用：</p>
+
+<ul>
+<li><code>smp_cond_load_acquire()</code></li>
+<li><code>atomic_cond_read_acquire()</code></li>
+</ul>
+
+<p>在 arm64 上，这些等待不是纯忙轮询，而会落到 <code>__cmpwait_relaxed()</code>，内部有 <code>wfe</code>。</p>
+
+<h3>负责 2：解锁的 release 语义</h3>
+
+<p><code>include/asm-generic/qspinlock.h</code> 中：</p>
+
+<pre><code class="language-c">smp_store_release(&amp;lock-&gt;locked, 0);</code></pre>
+
+<p>这保证解锁前的共享数据写入对后继持锁者可见。</p>
+
+<h3>负责 3：前进性</h3>
+
+<p><code>include/asm-generic/qspinlock.h</code> 文档明确强调：</p>
+
+<ul>
+<li>qspinlock 依赖较强的一致性与 forward progress 假设</li>
+<li>对 LL/SC 架构尤其要谨慎</li>
+</ul>
+
+<p>arm64 的实现通过有序原子操作、等待原语和必要的特化，来满足这些要求。</p>
+
+<h2>4.7 qspinlock 关键源码逐行解释</h2>
+
+<p>下面不再只讲概念，而是直接对关键代码做“逐行解释”。</p>
+
+<h3>4.7.1 fastpath 逐行解释</h3>
+
+<p>代码来自 <code>include/asm-generic/qspinlock.h</code>：</p>
+
+<pre><code class="language-c">static __always_inline void queued_spin_lock(struct qspinlock *lock)
+{
+	int val = 0;
+
+	if (likely(atomic_try_cmpxchg_acquire(&amp;lock-&gt;val, &amp;val, _Q_LOCKED_VAL)))
+		return;
+
+	queued_spin_lock_slowpath(lock, val);
+}</code></pre>
+
+<p>逐行看：</p>
+
+<ol>
+<li><code>int val = 0;</code></li>
+</ol>
+<ul>
+<li>这里的含义不是“锁值恒为 0”，而是告诉 <code>cmpxchg</code>：我预期锁当前完全空闲。</li>
+</ul>
+
+<ol>
+<li><code>atomic_try_cmpxchg_acquire(&lock->val, &val, _Q_LOCKED_VAL)</code></li>
+</ol>
+<ul>
+<li>尝试把 <code>lock->val</code> 从 <code>0</code> 原子更新成 <code>_Q_LOCKED_VAL</code>。</li>
+<li>成功说明没有竞争，当前 CPU 直接拿锁。</li>
+<li><code>acquire</code> 非常关键，它把后续临界区访问钉在加锁之后。</li>
+</ul>
+
+<ol>
+<li><code>if (likely(...)) return;</code></li>
+</ol>
+<ul>
+<li>最常见场景是无竞争，直接返回。</li>
+<li>因此这个 fastpath 会被编译器和 CPU 分支预测重点优化。</li>
+</ul>
+
+<ol>
+<li><code>queued_spin_lock_slowpath(lock, val);</code></li>
+</ol>
+<ul>
+<li>失败时进入慢路径。</li>
+<li>注意这里把失败时观测到的 <code>val</code> 也带进去了，这样慢路径不必重新完全从头探测一次状态。</li>
+</ul>
+
+<h3>4.7.2 slowpath 逐行解释：pending 优化段</h3>
+
+<p>代码来自 <code>kernel/locking/qspinlock.c</code>：</p>
+
+<pre><code class="language-c">if (val &amp; ~_Q_LOCKED_MASK)
+	goto queue;
+
+val = queued_fetch_set_pending_acquire(lock);
+
+if (unlikely(val &amp; ~_Q_LOCKED_MASK)) {
+	if (!(val &amp; _Q_PENDING_MASK))
+		clear_pending(lock);
+	goto queue;
+}
+
+if (val &amp; _Q_LOCKED_MASK)
+	smp_cond_load_acquire(&amp;lock-&gt;locked, !VAL);
+
+clear_pending_set_locked(lock);</code></pre>
+
+<p>逐行看：</p>
+
+<ol>
+<li><code>if (val & ~_Q_LOCKED_MASK)</code></li>
+</ol>
+<ul>
+<li>如果当前观测到的不只是 <code>locked</code> 位，还看到了 <code>pending</code> 或 <code>tail</code>，说明竞争已经不轻了。</li>
+<li>这时别走“单后来者优化”，直接去排队更稳妥。</li>
+</ul>
+
+<ol>
+<li><code>val = queued_fetch_set_pending_acquire(lock);</code></li>
+</ol>
+<ul>
+<li>原子地设置 <code>pending</code> 位，并返回旧锁值。</li>
+<li>这个动作表示：“我先占一个待接力资格”。</li>
+</ul>
+
+<ol>
+<li><code>if (unlikely(val & ~_Q_LOCKED_MASK))</code></li>
+</ol>
+<ul>
+<li>设置完 <code>pending</code> 后如果发现已有别的竞争者，说明自己不是唯一后来者。</li>
+<li>继续坚持 pending 模式会让状态机变复杂，所以撤销并转队列路径。</li>
+</ul>
+
+<ol>
+<li><code>if (!(val & _Q_PENDING_MASK)) clear_pending(lock);</code></li>
+</ol>
+<ul>
+<li>只有在旧值里原本没有 <code>pending</code> 的情况下，才说明是当前 CPU 刚刚设上的。</li>
+<li>那么在转队列前，需要把自己刚写进去的 <code>pending</code> 清理掉。</li>
+</ul>
+
+<ol>
+<li><code>if (val & _Q_LOCKED_MASK) smp_cond_load_acquire(&lock->locked, !VAL);</code></li>
+</ol>
+<ul>
+<li>如果 owner 还在持锁，就等待 <code>locked</code> 清零。</li>
+<li>在 ARM64 上，这个等待最终会走到 <code>__cmpwait_relaxed()</code> 和 <code>wfe</code>。</li>
+</ul>
+
+<ol>
+<li><code>clear_pending_set_locked(lock);</code></li>
+</ol>
+<ul>
+<li>owner 已放锁后，pending holder 把状态从 <code>pending</code> 直接切到 <code>locked</code>。</li>
+<li>这是 qspinlock 减少队列构建开销的关键一步。</li>
+</ul>
+
+<h3>4.7.3 slowpath 逐行解释：MCS 入队段</h3>
+
+<p>代码来自 <code>kernel/locking/qspinlock.c</code>：</p>
+
+<pre><code class="language-c">node = this_cpu_ptr(&amp;qnodes[0].mcs);
+idx = node-&gt;count++;
+tail = encode_tail(smp_processor_id(), idx);
+
+node = grab_mcs_node(node, idx);
+node-&gt;locked = 0;
+node-&gt;next = NULL;
+
+smp_wmb();
+old = xchg_tail(lock, tail);
+
+if (old &amp; _Q_TAIL_MASK) {
+	prev = decode_tail(old, qnodes);
+	WRITE_ONCE(prev-&gt;next, node);
+	arch_mcs_spin_lock_contended(&amp;node-&gt;locked);
+}</code></pre>
+
+<p>逐行看：</p>
+
+<ol>
+<li><code>node = this_cpu_ptr(&qnodes[0].mcs);</code></li>
+</ol>
+<ul>
+<li>取当前 CPU 的 qnode 基址。</li>
+<li>qspinlock 给每 CPU 预留了几层嵌套节点，覆盖 task/softirq/hardirq/nmi 这几层上下文。</li>
+</ul>
+
+<ol>
+<li><code>idx = node->count++;</code></li>
+</ol>
+<ul>
+<li>当前 CPU 在本次嵌套深度下取一个节点槽位。</li>
+</ul>
+
+<ol>
+<li><code>tail = encode_tail(smp_processor_id(), idx);</code></li>
+</ol>
+<ul>
+<li>把 <code>cpu + nesting index</code> 压缩编码进 32-bit 锁字尾部格式。</li>
+</ul>
+
+<ol>
+<li><code>node = grab_mcs_node(node, idx);</code></li>
+</ol>
+<ul>
+<li>真正定位到本次排队使用的 MCS 节点。</li>
+</ul>
+
+<ol>
+<li><code>node->locked = 0; node->next = NULL;</code></li>
+</ol>
+<ul>
+<li>初始化本节点，表示我还没被前驱唤醒，且暂时没有后继。</li>
+</ul>
+
+<ol>
+<li><code>smp_wmb();</code></li>
+</ol>
+<ul>
+<li>保证上面对节点的初始化，先于后面的 tail 发布对其他 CPU 可见。</li>
+</ul>
+
+<ol>
+<li><code>old = xchg_tail(lock, tail);</code></li>
+</ol>
+<ul>
+<li>原子交换队列尾指针，把自己挂到队尾。</li>
+<li>返回旧 tail，用来判断自己前面是否已经有人。</li>
+</ul>
+
+<ol>
+<li><code>if (old & _Q_TAIL_MASK)</code></li>
+</ol>
+<ul>
+<li>如果旧 tail 非空，说明自己不是第一个排队者。</li>
+</ul>
+
+<ol>
+<li><code>prev = decode_tail(old, qnodes);</code></li>
+</ol>
+<ul>
+<li>根据旧 tail 反解码出前驱节点地址。</li>
+</ul>
+
+<ol>
+<li><code>WRITE_ONCE(prev->next, node);</code></li>
+</ol>
+<ul>
+<li>把自己链接到前驱的 <code>next</code> 上。</li>
+</ul>
+
+<ol>
+<li><code>arch_mcs_spin_lock_contended(&node->locked);</code></li>
+</ol>
+<ul>
+<li>然后只在自己的本地节点字段上等待前驱唤醒。</li>
+<li>这正是 MCS 锁减少共享 cacheline 争用的本质。</li>
+</ul>
+
+<h2>4.8 qspinlock 时序图与状态迁移图</h2>
+
+<h3>4.8.1 轻度竞争时序图</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+	participant CPU0 as CPU0 owner
+	participant L as qspinlock
+	participant CPU1 as CPU1 waiter
+
+	CPU0-&gt;&gt;L: cmpxchg_acquire(0 -&gt; LOCKED)
+	L--&gt;&gt;CPU0: success
+	CPU1-&gt;&gt;L: cmpxchg_acquire(0 -&gt; LOCKED)
+	L--&gt;&gt;CPU1: fail
+	CPU1-&gt;&gt;L: queued_fetch_set_pending_acquire()
+	CPU1-&gt;&gt;L: smp_cond_load_acquire(&amp;locked, !VAL)
+	CPU0-&gt;&gt;L: smp_store_release(&amp;locked, 0)
+	CPU1-&gt;&gt;L: clear_pending_set_locked()
+	L--&gt;&gt;CPU1: become owner</code></pre>
+
+<h3>4.8.2 重度竞争状态图</h3>
+
+<pre><code class="language-mermaid">stateDiagram-v2
+	[*] --&gt; Unlocked
+	Unlocked --&gt; LockedFast: cmpxchg_acquire
+	LockedFast --&gt; Pending: queued_fetch_set_pending
+	Pending --&gt; LockedFast: clear_pending_set_locked
+	Pending --&gt; Queued: observe contention
+	LockedFast --&gt; Queued: tail/pending already exists
+	Queued --&gt; HeadWaiting: reach queue head
+	HeadWaiting --&gt; LockedFast: set_locked / claim lock
+	LockedFast --&gt; Unlocked: smp_store_release</code></pre>
+
+<hr>
+
+<h2>5. semaphore：本质是“计数 + 等待队列 + 内部自旋锁”</h2>
+
+<h2>5.1 数据结构</h2>
+
+<p><code>include/linux/semaphore.h</code> 中的 <code>struct semaphore</code> 很简单：</p>
+
+<ul>
+<li><code>raw_spinlock_t lock</code>：保护内部状态</li>
+<li><code>unsigned int count</code>：剩余资源数</li>
+<li><code>struct list_head wait_list</code>：等待者链表</li>
+<li>可选 <code>last_holder</code>：配合 hung task 调试</li>
+</ul>
+
+<p>这里有个重要认识：</p>
+
+<p><strong>semaphore 自己不是自旋锁，它是睡眠锁；但它的内部元数据修改，仍然要靠 raw spinlock 串行化。</strong></p>
+
+<p>因此，哪怕你在分析 semaphore，也仍然会间接走到 arm64 的 qspinlock。</p>
+
+<h2>5.2 fastpath：count 大于 0 直接减 1</h2>
+
+<p><code>kernel/locking/semaphore.c</code> 中的 <code>down()</code> / <code>down_interruptible()</code> / <code>down_killable()</code> / <code>down_timeout()</code> 基本模式一致：</p>
+
+<ol>
+<li><code>raw_spin_lock_irqsave(&sem->lock, flags)</code></li>
+<li>若 <code>sem->count > 0</code>，调用 <code>__sem_acquire()</code>，即 <code>count--</code></li>
+<li>否则进入慢路径 <code>__down*()</code></li>
+<li>释放 <code>sem->lock</code></li>
+</ol>
+
+<p>这里为什么用 <code>irqsave</code>？源码注释讲得很清楚：</p>
+
+<ul>
+<li><code>down_trylock()</code> 和 <code>up()</code> 可以在中断上下文调用</li>
+<li>内核里也存在一些“知道一定成功”的 <code>down()</code> 场景</li>
+<li>所以内部 spinlock 需要用 irqsave 版本，避免被本地中断重入破坏</li>
+</ul>
+
+<h2>5.3 slowpath：挂等待队列并睡眠</h2>
+
+<p><code>___down_common()</code> 是核心：</p>
+
+<ol>
+<li>把当前任务包装成 <code>struct semaphore_waiter</code></li>
+<li>挂到 <code>sem->wait_list</code> 尾部</li>
+<li>设置任务状态为 <code>TASK_UNINTERRUPTIBLE</code> / <code>TASK_INTERRUPTIBLE</code> / <code>TASK_KILLABLE</code></li>
+<li>先解开 <code>sem->lock</code></li>
+<li>调用 <code>schedule_timeout()</code> 睡眠</li>
+<li>被唤醒后重新拿回 <code>sem->lock</code></li>
+<li>检查自己是否被 <code>up()</code> 标记为 <code>waiter.up = true</code></li>
+</ol>
+
+<p>这是一种非常典型的“自旋锁保护元数据 + 睡眠等待真实资源”的内核阻塞锁模式。</p>
+
+<h2>5.4 up() 为什么和 mutex_unlock() 语义不同</h2>
+
+<p><code>up()</code> 的语义明显比 mutex 宽松：</p>
+
+<ul>
+<li>它<strong>不要求释放者必须是获取者</strong></li>
+<li>它可以在别的上下文里释放</li>
+<li>它甚至可用于中断上下文</li>
+</ul>
+
+<p>源码也明确写了：</p>
+
+<ul>
+<li>unlike mutexes, <code>up()</code> may be called from any context</li>
+</ul>
+
+<p>因此 semaphore 适合表达“资源计数”或“生产者/消费者放行”，但不适合表达严格所有权互斥。</p>
+
+<h2>5.5 semaphore 的本质特点</h2>
+
+<p>可以把它理解成：</p>
+
+<ul>
+<li>外层语义：计数资源</li>
+<li>内层实现：<code>raw_spinlock + count + wait_list + schedule/wakeup</code></li>
+</ul>
+
+<p>它比 mutex 更宽松，但也更难做严格语义检查，所以现在很多“仅需互斥”的代码更推荐 mutex。</p>
+
+<h2>5.6 semaphore 关键源码逐行解释</h2>
+
+<h3>5.6.1 <code>down()</code> 快路径逐行解释</h3>
+
+<p>代码来自 <code>kernel/locking/semaphore.c</code>：</p>
+
+<pre><code class="language-c">void __sched down(struct semaphore *sem)
+{
+   unsigned long flags;
+
+   might_sleep();
+   raw_spin_lock_irqsave(&amp;sem-&gt;lock, flags);
+   if (likely(sem-&gt;count &gt; 0))
+      __sem_acquire(sem);
+   else
+      __down(sem);
+   raw_spin_unlock_irqrestore(&amp;sem-&gt;lock, flags);
+}</code></pre>
+
+<p>逐行看：</p>
+
+<ol>
+<li><code>might_sleep();</code></li>
+</ol>
+<ul>
+<li><code>down()</code> 语义上允许阻塞，因此这里显式声明：当前路径必须允许睡眠。</li>
+</ul>
+
+<ol>
+<li><code>raw_spin_lock_irqsave(&sem->lock, flags);</code></li>
+</ol>
+<ul>
+<li>先拿内部 raw spinlock，并关本地中断。</li>
+<li>保护的是 <code>count</code> 和 <code>wait_list</code>，不是用户临界区本身。</li>
+</ul>
+
+<ol>
+<li><code>if (likely(sem->count > 0))</code></li>
+</ol>
+<ul>
+<li>资源还有剩余，不必睡眠。</li>
+</ul>
+
+<ol>
+<li><code>__sem_acquire(sem);</code></li>
+</ol>
+<ul>
+<li>实际动作非常简单，就是 <code>count--</code>，并在启用 hung task blocker 时记录 holder。</li>
+</ul>
+
+<ol>
+<li><code>else __down(sem);</code></li>
+</ol>
+<ul>
+<li>资源不足时转慢路径，把当前任务挂入等待队列。</li>
+</ul>
+
+<ol>
+<li><code>raw_spin_unlock_irqrestore(&sem->lock, flags);</code></li>
+</ol>
+<ul>
+<li>最后释放内部自旋锁并恢复中断状态。</li>
+</ul>
+
+<h3>5.6.2 <code>___down_common()</code> 慢路径逐行解释</h3>
+
+<p>代码来自 <code>kernel/locking/semaphore.c</code>：</p>
+
+<pre><code class="language-c">list_add_tail(&amp;waiter.list, &amp;sem-&gt;wait_list);
+waiter.task = current;
+waiter.up = false;
+
+for (;;) {
+   if (signal_pending_state(state, current))
+      goto interrupted;
+   if (unlikely(timeout &lt;= 0))
+      goto timed_out;
+   __set_current_state(state);
+   raw_spin_unlock_irq(&amp;sem-&gt;lock);
+   timeout = schedule_timeout(timeout);
+   raw_spin_lock_irq(&amp;sem-&gt;lock);
+   if (waiter.up)
+      return 0;
+}</code></pre>
+
+<p>逐行看：</p>
+
+<ol>
+<li><code>list_add_tail(&waiter.list, &sem->wait_list);</code></li>
+</ol>
+<ul>
+<li>把当前任务包装成 waiter，放进等待队列尾部。</li>
+</ul>
+
+<ol>
+<li><code>waiter.task = current; waiter.up = false;</code></li>
+</ol>
+<ul>
+<li>记录当前任务，并约定由 <code>up()</code> 将 <code>waiter.up</code> 改成 true 作为唤醒确认。</li>
+</ul>
+
+<ol>
+<li><code>if (signal_pending_state(state, current))</code></li>
+</ol>
+<ul>
+<li>如果是可中断或可杀死的等待，要先检查信号条件。</li>
+</ul>
+
+<ol>
+<li><code>if (unlikely(timeout <= 0))</code></li>
+</ol>
+<ul>
+<li>支持超时获取语义。</li>
+</ul>
+
+<ol>
+<li><code>__set_current_state(state);</code></li>
+</ol>
+<ul>
+<li>把自己标记为真正的睡眠状态，而不是仍处于 RUNNING。</li>
+</ul>
+
+<ol>
+<li><code>raw_spin_unlock_irq(&sem->lock);</code></li>
+</ol>
+<ul>
+<li>睡眠前一定要先放掉内部 spinlock，否则别人永远无法 <code>up()</code>。</li>
+</ul>
+
+<ol>
+<li><code>timeout = schedule_timeout(timeout);</code></li>
+</ol>
+<ul>
+<li>进入调度器，真正阻塞等待。</li>
+</ul>
+
+<ol>
+<li><code>raw_spin_lock_irq(&sem->lock);</code></li>
+</ol>
+<ul>
+<li>被唤醒后重新拿回内部锁，重新检查共享状态。</li>
+</ul>
+
+<ol>
+<li><code>if (waiter.up) return 0;</code></li>
+</ol>
+<ul>
+<li>若 <code>up()</code> 已经点名把资源交给自己，就成功返回。</li>
+</ul>
+
+<hr>
+
+<h2>6. mutex：所有权明确的睡眠互斥锁</h2>
+
+<h2>6.1 数据结构比 semaphore 更复杂</h2>
+
+<p><code>include/linux/mutex_types.h</code> 中，非 <code>PREEMPT_RT</code> 情况下：</p>
+
+<ul>
+<li><code>atomic_long_t owner</code></li>
+<li><code>raw_spinlock_t wait_lock</code></li>
+<li><code>struct optimistic_spin_queue osq</code>（可选）</li>
+<li><code>struct list_head wait_list</code></li>
+</ul>
+
+<p>和 semaphore 相比，多出来的关键点是：</p>
+
+<ol>
+<li><code>owner</code> 明确记录持锁者</li>
+<li>支持 optimistic spinning</li>
+<li>语义严格，调试能力更强</li>
+</ol>
+
+<p><code>owner</code> 的低几位会复用为 flag：</p>
+
+<ul>
+<li><code>MUTEX_FLAG_WAITERS</code></li>
+<li><code>MUTEX_FLAG_HANDOFF</code></li>
+<li><code>MUTEX_FLAG_PICKUP</code></li>
+</ul>
+
+<p>也就是说，mutex 不是简单的 “0/1”，而是一个带状态机的所有权变量。</p>
+
+<h2>6.2 fastpath：owner 从 0 原子改成 current</h2>
+
+<p><code>mutex_lock()</code> 的快路径非常直接：</p>
+
+<ol>
+<li><code>__mutex_trylock_fast()</code></li>
+<li>用 <code>atomic_long_try_cmpxchg_acquire(&lock->owner, &zero, curr)</code></li>
+<li>成功则直接拿到锁</li>
+</ol>
+
+<p>这里的 acquire 语义与 spinlock 一样，保证后续临界区访问不会跑到加锁之前。</p>
+
+<h2>6.3 midpath：optimistic spinning</h2>
+
+<p>这是 mutex 最值得分析的部分之一。</p>
+
+<p>当 mutex 被占用，但持锁者当前仍在 CPU 上运行时，立即睡眠往往不是最优。于是 mutex 会尝试：</p>
+
+<ol>
+<li>判断当前线程是否 <code>need_resched()</code></li>
+<li>看 owner 是否还在 CPU 上执行</li>
+<li>若适合自旋，则进入 <code>mutex_optimistic_spin()</code></li>
+<li>多个 spinner 先通过 <code>osq_lock()</code> 形成 MCS 队列</li>
+<li>只有队首 spinner 才去盯 owner 变化并尝试抢锁</li>
+</ol>
+
+<p>这个设计的意义：</p>
+
+<ul>
+<li>避免所有等待者一起疯狂轮询 owner</li>
+<li>在 owner 快要释放锁时，减少一次真正睡眠/唤醒开销</li>
+</ul>
+
+<p>也就是说，mutex 虽然是睡眠锁，但在实际实现上已经变成了：</p>
+
+<ul>
+<li>无竞争走原子 fastpath</li>
+<li>短竞争先自旋</li>
+<li>长竞争再睡眠</li>
+</ul>
+
+<h2>6.4 slowpath：wait_list + wait_lock + handoff</h2>
+
+<p>如果 optimistic spinning 仍未成功，则进入 <code>__mutex_lock_common()</code>：</p>
+
+<ol>
+<li><code>preempt_disable()</code></li>
+<li>尝试一次 trylock / optimistic spin</li>
+<li>拿 <code>wait_lock</code></li>
+<li>将 waiter 加入 <code>wait_list</code></li>
+<li>设置当前任务状态</li>
+<li><code>schedule_preempt_disabled()</code> 睡眠</li>
+<li>被唤醒后重新检查，必要时再 spin</li>
+<li>真正获得锁后，把 waiter 从队列移除</li>
+</ol>
+
+<p>unlock 端的 <code>__mutex_unlock_slowpath()</code> 则负责：</p>
+
+<ol>
+<li>先尝试 release owner</li>
+<li>若有等待者，则取队列第一个 waiter</li>
+<li>将其唤醒</li>
+<li>必要时通过 <code>__mutex_handoff()</code> 显式移交所有权</li>
+</ol>
+
+<p>这个 handoff 很关键，它解决的是：</p>
+
+<ul>
+<li>唤醒了某个 waiter，但又被其他后来者抢走</li>
+<li>导致队首 waiter 长期拿不到锁</li>
+</ul>
+
+<p>所以 mutex 的公平性与吞吐量之间做了比较细的平衡。</p>
+
+<h2>6.5 mutex 为什么比 semaphore 更适合“纯互斥”</h2>
+
+<p>因为 mutex 具备这些性质：</p>
+
+<ol>
+<li>只有 owner 才能 unlock</li>
+<li>禁止递归加锁</li>
+<li>禁止在中断上下文使用</li>
+<li>能和 lockdep / debug mutex 深度联动</li>
+<li>能利用 optimistic spinning 获得更好的短临界区性能</li>
+</ol>
+
+<p>这就是 <code>Documentation/locking/mutex-design.rst</code> 一直强调“若只是互斥，应优先 mutex”的原因。</p>
+
+<h2>6.6 一个必须记住的特例：PREEMPT_RT</h2>
+
+<p>如果启用 <code>CONFIG_PREEMPT_RT</code>，<code>struct mutex</code> 会切换为 rtmutex 变体。</p>
+
+<p>也就是说：</p>
+
+<ul>
+<li>本文分析的 <code>mutex.c</code> 逻辑主要针对常规非 RT 内核</li>
+<li>RT 内核里，mutex 语义会更靠近优先级继承的 rtmutex</li>
+</ul>
+
+<p>如果你后续要专门研究实时内核，这里要分开看。</p>
+
+<h2>6.7 mutex 关键源码逐行解释</h2>
+
+<h3>6.7.1 <code>mutex_lock()</code> fastpath 逐行解释</h3>
+
+<p>代码来自 <code>kernel/locking/mutex.c</code>：</p>
+
+<pre><code class="language-c">void __sched mutex_lock(struct mutex *lock)
+{
+   might_sleep();
+
+   if (!__mutex_trylock_fast(lock))
+      __mutex_lock_slowpath(lock);
+}</code></pre>
+
+<p>逐行看：</p>
+
+<ol>
+<li><code>might_sleep();</code></li>
+</ol>
+<ul>
+<li>mutex 是睡眠锁，所以调用者必须位于允许睡眠的进程上下文。</li>
+</ul>
+
+<ol>
+<li><code>if (!__mutex_trylock_fast(lock))</code></li>
+</ol>
+<ul>
+<li>先尝试最便宜的 uncontended fastpath。</li>
+</ul>
+
+<ol>
+<li><code>__mutex_lock_slowpath(lock);</code></li>
+</ol>
+<ul>
+<li>一旦有人占锁，就转入更复杂的 optimistic spinning / wait queue 逻辑。</li>
+</ul>
+
+<p>而 <code>__mutex_trylock_fast()</code> 的核心是：</p>
+
+<pre><code class="language-c">unsigned long curr = (unsigned long)current;
+unsigned long zero = 0UL;
+
+if (atomic_long_try_cmpxchg_acquire(&amp;lock-&gt;owner, &amp;zero, curr))
+   return true;</code></pre>
+
+<p>这里逐行含义是：</p>
+
+<ol>
+<li><code>curr</code> 保存当前任务指针。</li>
+<li><code>zero</code> 表示期望锁当前无人持有，也没有任何 flag。</li>
+<li><code>cmpxchg_acquire</code> 成功，就把 owner 从 0 原子切成 current。</li>
+<li>失败时说明不是无竞争场景，需要走慢路径。</li>
+</ol>
+
+<h3>6.7.2 <code>mutex_optimistic_spin()</code> 逐行解释</h3>
+
+<p>代码来自 <code>kernel/locking/mutex.c</code>：</p>
+
+<pre><code class="language-c">if (!waiter) {
+   if (!mutex_can_spin_on_owner(lock))
+      goto fail;
+   if (!osq_lock(&amp;lock-&gt;osq))
+      goto fail;
+}
+
+for (;;) {
+   struct task_struct *owner;
+   owner = __mutex_trylock_or_owner(lock);
+   if (!owner)
+      break;
+   if (!mutex_spin_on_owner(lock, owner, ww_ctx, waiter))
+      goto fail_unlock;
+   cpu_relax();
+}</code></pre>
+
+<p>逐行看：</p>
+
+<ol>
+<li><code>if (!waiter)</code></li>
+</ol>
+<ul>
+<li>只有不是 waitqueue 中正式 waiter 的 spinner，才需要先去竞争 OSQ 的 MCS 队列头资格。</li>
+</ul>
+
+<ol>
+<li><code>mutex_can_spin_on_owner(lock)</code></li>
+</ol>
+<ul>
+<li>判断 owner 是否还在 CPU 上、当前线程是否需要调度等。</li>
+<li>如果 owner 已经不运行了，继续自旋通常得不偿失。</li>
+</ul>
+
+<ol>
+<li><code>osq_lock(&lock->osq)</code></li>
+</ol>
+<ul>
+<li>进入 optimistic spin queue，只允许队首 spinner 真正盯 owner。</li>
+</ul>
+
+<ol>
+<li><code>owner = __mutex_trylock_or_owner(lock);</code></li>
+</ol>
+<ul>
+<li>每轮先试一次能不能直接拿到锁。</li>
+<li>拿不到就返回当前 owner，供后续判断是否继续自旋。</li>
+</ul>
+
+<ol>
+<li><code>if (!owner) break;</code></li>
+</ol>
+<ul>
+<li>owner 为空，说明本轮已经成功拿锁。</li>
+</ul>
+
+<ol>
+<li><code>if (!mutex_spin_on_owner(...))</code></li>
+</ol>
+<ul>
+<li>如果 owner 不在 CPU、需要调度、或者 ww_mutex 条件不允许，就停止自旋。</li>
+</ul>
+
+<ol>
+<li><code>cpu_relax();</code></li>
+</ol>
+<ul>
+<li>继续下一轮自旋，但不做重型同步，只是降低流水线压力。</li>
+</ul>
+
+<h3>6.7.3 <code>__mutex_lock_common()</code> 慢路径逐行解释</h3>
+
+<p>代码来自 <code>kernel/locking/mutex.c</code>：</p>
+
+<pre><code class="language-c">raw_spin_lock_irqsave(&amp;lock-&gt;wait_lock, flags);
+if (__mutex_trylock(lock))
+   goto skip_wait;
+
+__mutex_add_waiter(lock, &amp;waiter, &amp;lock-&gt;wait_list);
+set_current_state(state);
+
+for (;;) {
+   if (__mutex_trylock(lock))
+      goto acquired;
+   if (signal_pending_state(state, current)) {
+      ret = -EINTR;
+      goto err;
+   }
+   raw_spin_unlock_irqrestore_wake(&amp;lock-&gt;wait_lock, flags, &amp;wake_q);
+   schedule_preempt_disabled();
+   raw_spin_lock_irqsave(&amp;lock-&gt;wait_lock, flags);
+}</code></pre>
+
+<p>逐行看：</p>
+
+<ol>
+<li><code>raw_spin_lock_irqsave(&lock->wait_lock, flags);</code></li>
+</ol>
+<ul>
+<li>wait queue 相关元数据必须先由 <code>wait_lock</code> 串行化。</li>
+</ul>
+
+<ol>
+<li><code>if (__mutex_trylock(lock)) goto skip_wait;</code></li>
+</ol>
+<ul>
+<li>拿到 <code>wait_lock</code> 后再试一次，有时刚好在这一瞬间 owner 放锁。</li>
+</ul>
+
+<ol>
+<li><code>__mutex_add_waiter(...)</code></li>
+</ol>
+<ul>
+<li>把当前任务挂入 mutex 等待队列，并设置 <code>WAITERS</code> flag。</li>
+</ul>
+
+<ol>
+<li><code>set_current_state(state);</code></li>
+</ol>
+<ul>
+<li>把任务切换到可睡眠状态。</li>
+</ul>
+
+<ol>
+<li><code>if (__mutex_trylock(lock)) goto acquired;</code></li>
+</ol>
+<ul>
+<li>每次睡醒后第一件事仍然是尝试拿锁。</li>
+</ul>
+
+<ol>
+<li><code>if (signal_pending_state(...))</code></li>
+</ol>
+<ul>
+<li>可中断 mutex 需要处理信号提前退出。</li>
+</ul>
+
+<ol>
+<li><code>raw_spin_unlock_irqrestore_wake(...)</code></li>
+</ol>
+<ul>
+<li>睡眠前放掉 <code>wait_lock</code>，否则 unlock 侧无法推进。</li>
+</ul>
+
+<ol>
+<li><code>schedule_preempt_disabled();</code></li>
+</ol>
+<ul>
+<li>真正挂起，等待被 unlock 端唤醒。</li>
+</ul>
+
+<ol>
+<li><code>raw_spin_lock_irqsave(&lock->wait_lock, flags);</code></li>
+</ol>
+<ul>
+<li>唤醒后重新进入受保护检查区。</li>
+</ul>
+
+<h3>6.7.4 <code>__mutex_unlock_slowpath()</code> 逐行解释</h3>
+
+<p>代码来自 <code>kernel/locking/mutex.c</code>：</p>
+
+<pre><code class="language-c">owner = atomic_long_read(&amp;lock-&gt;owner);
+for (;;) {
+   if (owner &amp; MUTEX_FLAG_HANDOFF)
+      break;
+   if (atomic_long_try_cmpxchg_release(&amp;lock-&gt;owner, &amp;owner,
+         __owner_flags(owner))) {
+      if (owner &amp; MUTEX_FLAG_WAITERS)
+         break;
+      return;
+   }
+}
+
+raw_spin_lock_irqsave(&amp;lock-&gt;wait_lock, flags);
+if (!list_empty(&amp;lock-&gt;wait_list)) {
+   struct mutex_waiter *waiter = list_first_entry(&amp;lock-&gt;wait_list,
+         struct mutex_waiter, list);
+   next = waiter-&gt;task;
+   wake_q_add(&amp;wake_q, next);
+}
+
+if (owner &amp; MUTEX_FLAG_HANDOFF)
+   __mutex_handoff(lock, next);</code></pre>
+
+<p>逐行看：</p>
+
+<ol>
+<li><code>owner = atomic_long_read(&lock->owner);</code></li>
+</ol>
+<ul>
+<li>先读 owner 和 flags 组合状态。</li>
+</ul>
+
+<ol>
+<li><code>if (owner & MUTEX_FLAG_HANDOFF) break;</code></li>
+</ol>
+<ul>
+<li>如果已经进入 handoff 模式，不能简单清零 owner，要把锁交给指定 waiter。</li>
+</ul>
+
+<ol>
+<li><code>atomic_long_try_cmpxchg_release(..., __owner_flags(owner))</code></li>
+</ol>
+<ul>
+<li>常规解锁路径把 owner 指针清掉，但保留必要 flags。</li>
+<li><code>release</code> 语义保证临界区写入先于解锁对外可见。</li>
+</ul>
+
+<ol>
+<li><code>if (owner & MUTEX_FLAG_WAITERS) break;</code></li>
+</ol>
+<ul>
+<li>即使 owner 字段已经成功清掉，只要还有 waiter，也要继续走 slowpath 做唤醒。</li>
+</ul>
+
+<ol>
+<li><code>raw_spin_lock_irqsave(&lock->wait_lock, flags);</code></li>
+</ol>
+<ul>
+<li>串行化 waitqueue 操作。</li>
+</ul>
+
+<ol>
+<li><code>list_first_entry(&lock->wait_list, ...)</code></li>
+</ol>
+<ul>
+<li>选队首 waiter，通常优先唤醒它。</li>
+</ul>
+
+<ol>
+<li><code>wake_q_add(&wake_q, next);</code></li>
+</ol>
+<ul>
+<li>把 waiter 加入批量唤醒队列，减少立即调度开销。</li>
+</ul>
+
+<ol>
+<li><code>if (owner & MUTEX_FLAG_HANDOFF) __mutex_handoff(lock, next);</code></li>
+</ol>
+<ul>
+<li>若启用了 handoff，则不是简单唤醒，而是把 owner 直接移交给 <code>next</code>。</li>
+</ul>
+
+<h2>6.8 mutex 时序图与状态迁移图</h2>
+
+<h3>6.8.1 optimistic spinning + 睡眠时序图</h3>
+
+<pre><code class="language-mermaid">sequenceDiagram
+   participant Owner as owner task
+   participant Waiter as waiter task
+   participant OSQ as optimistic spin queue
+   participant M as mutex.owner/wait_list
+
+   Owner-&gt;&gt;M: owner = current
+   Waiter-&gt;&gt;M: __mutex_trylock_fast()
+   M--&gt;&gt;Waiter: fail
+   Waiter-&gt;&gt;OSQ: osq_lock()
+   Waiter-&gt;&gt;Owner: spin_on_owner()
+   alt owner soon unlocks
+      Owner-&gt;&gt;M: unlock / owner -&gt; 0
+      Waiter-&gt;&gt;M: trylock succeeds
+   else owner not runnable or contention persists
+      Waiter-&gt;&gt;M: enqueue waiter
+      Waiter-&gt;&gt;Waiter: schedule()
+      Owner-&gt;&gt;M: wake first waiter / handoff
+      M--&gt;&gt;Waiter: runnable again
+      Waiter-&gt;&gt;M: acquire mutex
+   end</code></pre>
+
+<h3>6.8.2 mutex owner 状态图</h3>
+
+<pre><code class="language-mermaid">stateDiagram-v2
+   [*] --&gt; Unlocked
+   Unlocked --&gt; Owned: fast cmpxchg(owner=0-&gt;current)
+   Owned --&gt; OwnedWaiters: first waiter sets WAITERS
+   OwnedWaiters --&gt; Spinning: optimistic spin active
+   Spinning --&gt; OwnedWaiters: spin failed, enqueue
+   OwnedWaiters --&gt; Handoff: unlock sees HANDOFF
+   Handoff --&gt; OwnedWaiters: waiter picks up ownership
+   Owned --&gt; Unlocked: fast unlock
+   OwnedWaiters --&gt; Unlocked: slow unlock without handoff</code></pre>
+
+<hr>
+
+<h2>7. 三种锁放在一起对比</h2>
+
+<table>
+<thead><tr>
+<th>维度</th>
+<th>spinlock</th>
+<th>semaphore</th>
+<th>mutex</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>是否睡眠</td>
+<td>否</td>
+<td>是</td>
+<td>是</td>
+</tr>
+<tr>
+<td>是否记录 owner</td>
+<td>调试时可记录</td>
+<td>不要求</td>
+<td>必须有 owner</td>
+</tr>
+<tr>
+<td>是否允许中断上下文用获取接口</td>
+<td>可以，需选对 irq 版本</td>
+<td><code>down_trylock/up</code> 可，阻塞式 <code>down</code> 需谨慎</td>
+<td>不允许</td>
+</tr>
+<tr>
+<td>是否允许非 owner 释放</td>
+<td>不允许</td>
+<td>允许</td>
+<td>不允许</td>
+</tr>
+<tr>
+<td>典型用途</td>
+<td>极短临界区、IRQ/底层元数据</td>
+<td>资源计数、放行</td>
+<td>普通进程上下文互斥</td>
+</tr>
+<tr>
+<td>ARM64 关键点</td>
+<td>qspinlock + WFE 等待</td>
+<td>内部 raw spinlock 仍走 qspinlock</td>
+<td>owner 原子状态机 + OSQ 自旋 + 睡眠队列</td>
+</tr>
+</tbody></table>
+
+<p>如果只需要进程上下文里的互斥，优先级通常是：</p>
+
+<ul>
+<li><code>mutex</code> 优先</li>
+<li>只有明确需要“计数资源”或“非 owner 释放”时才考虑 <code>semaphore</code></li>
+<li>只有绝对不能睡眠，且临界区非常短，才用 <code>spinlock</code></li>
+</ul>
+
+<hr>
+
+<h2>8. 从 ARM64 角度理解这三类锁的统一模型</h2>
+
+<p>虽然三者形态不同，但底层都能归纳为一个统一模型：</p>
+
+<ol>
+<li><strong>先用原子/自旋手段保护锁元数据</strong></li>
+<li><strong>轻度竞争时尽量不睡眠</strong></li>
+<li><strong>重度竞争时进入队列或睡眠</strong></li>
+<li><strong>解锁时用 release 语义向后继发布可见性</strong></li>
+</ol>
+
+<p>具体映射如下：</p>
+
+<ul>
+<li><code>spinlock</code>：完全忙等，但竞争时 MCS 队列化</li>
+<li><code>semaphore</code>：内部元数据靠 raw spinlock，真正等待靠调度器</li>
+<li><code>mutex</code>：原子 fastpath + OSQ 自旋 midpath + 睡眠 slowpath</li>
+</ul>
+
+<p>ARM64 提供的核心能力是：</p>
+
+<ul>
+<li>原子 RMW</li>
+<li>Acquire/Release 内存序</li>
+<li>基于 <code>wfe</code> 的等待优化</li>
+<li>必要时用事件流/时间检查保证等待不会卡死</li>
+</ul>
+
+<hr>
+
+<h2>9. 实验环境建议</h2>
+
+<p>建议在 ARM64 QEMU 或开发板上使用 debug kernel 做实验。建议打开以下配置：</p>
+
+<pre><code class="language-text">CONFIG_SMP=y
+CONFIG_DEBUG_KERNEL=y
+CONFIG_PROVE_LOCKING=y
+CONFIG_LOCK_STAT=y
+CONFIG_DEBUG_SPINLOCK=y
+CONFIG_DEBUG_MUTEXES=y
+CONFIG_DEBUG_ATOMIC_SLEEP=y
+CONFIG_DETECT_HUNG_TASK_BLOCKER=y
+CONFIG_LOCK_TORTURE_TEST=m
+CONFIG_EVENT_TRACING=y
+CONFIG_FUNCTION_TRACER=y
+CONFIG_FTRACE=y
+CONFIG_BPF=y
+CONFIG_BPF_SYSCALL=y</code></pre>
+
+<p>其中：</p>
+
+<ul>
+<li><code>CONFIG_PROVE_LOCKING</code> 会自动选择 <code>LOCKDEP</code>、<code>DEBUG_SPINLOCK</code>、<code>DEBUG_MUTEXES</code> 等</li>
+<li><code>CONFIG_LOCK_STAT</code> 除了 <code>/proc/lock_stat</code> 外，还会启用 <code>perf lock</code> 所需事件</li>
+<li><code>CONFIG_DEBUG_ATOMIC_SLEEP</code> 能抓“拿着 spinlock 去睡眠”这类常见错误</li>
+<li><code>CONFIG_DETECT_HUNG_TASK_BLOCKER</code> 能帮助定位卡住的 semaphore / mutex 持有者</li>
+</ul>
+
+<p>如果只是第一次实验，建议先从这一组开始：</p>
+
+<pre><code class="language-text">CONFIG_DEBUG_KERNEL=y
+CONFIG_PROVE_LOCKING=y
+CONFIG_LOCK_STAT=y
+CONFIG_DEBUG_ATOMIC_SLEEP=y
+CONFIG_LOCK_TORTURE_TEST=m</code></pre>
+
+<hr>
+
+<h2>10. 实验一：用 locktorture 观察自旋锁与 mutex 的竞争特征</h2>
+
+<p><code>Documentation/locking/locktorture.rst</code> 已经给了最直接的现成实验框架。</p>
+
+<h3>10.1 编译模块</h3>
+
+<p>开启：</p>
+
+<pre><code class="language-text">CONFIG_LOCK_TORTURE_TEST=m</code></pre>
+
+<h3>10.2 跑 spinlock 压测</h3>
+
+<pre><code class="language-bash">modprobe locktorture torture_type=spin_lock nwriters_stress=8 stat_interval=10
+dmesg | grep torture</code></pre>
+
+<p>观察点：</p>
+
+<ol>
+<li>总获取次数是否持续增长</li>
+<li>是否出现失败标志</li>
+<li>CPU 数增加后吞吐是否线性恶化</li>
+</ol>
+
+<h3>10.3 跑 mutex 压测</h3>
+
+<pre><code class="language-bash">rmmod locktorture
+modprobe locktorture torture_type=mutex_lock nwriters_stress=8 stat_interval=10
+dmesg | grep torture</code></pre>
+
+<p>观察点：</p>
+
+<ol>
+<li>与 <code>spin_lock</code> 相比，长竞争下是否更平滑</li>
+<li>是否能通过 <code>perf lock contention</code> 看到显著等待热点</li>
+</ol>
+
+<h3>10.4 结论预期</h3>
+
+<ul>
+<li>短临界区、高频竞争下，spinlock 往往延迟更低</li>
+<li>竞争持续且临界区变长时，mutex 通常更可控，因为等待者会睡眠，不会一直烧 CPU</li>
+</ul>
+
+<hr>
+
+<h2>11. 实验二：观察 semaphore 与 mutex 的语义差异</h2>
+
+<p>这个实验不一定要写很大的模块，核心是验证两件事：</p>
+
+<ol>
+<li><code>semaphore</code> 允许非 owner 释放</li>
+<li><code>mutex</code> 不允许</li>
+</ol>
+
+<h3>11.1 semaphore 实验思路</h3>
+
+<p>准备一个二值 semaphore：</p>
+
+<pre><code class="language-c">static DEFINE_SEMAPHORE(test_sem, 1);</code></pre>
+
+<p>线程 A：</p>
+
+<ul>
+<li><code>down_interruptible(&test_sem)</code></li>
+<li>持有一段时间</li>
+</ul>
+
+<p>线程 B：</p>
+
+<ul>
+<li>不执行 <code>down()</code></li>
+<li>直接 <code>up(&test_sem)</code></li>
+</ul>
+
+<p>预期：</p>
+
+<ul>
+<li>从语义上讲这是允许的</li>
+<li>它表达的是“资源计数恢复”，不是严格 owner 互斥</li>
+</ul>
+
+<h3>11.2 mutex 实验思路</h3>
+
+<p>准备一个 mutex：</p>
+
+<pre><code class="language-c">static DEFINE_MUTEX(test_mutex);</code></pre>
+
+<p>线程 A：</p>
+
+<ul>
+<li><code>mutex_lock(&test_mutex)</code></li>
+</ul>
+
+<p>线程 B：</p>
+
+<ul>
+<li>直接 <code>mutex_unlock(&test_mutex)</code></li>
+</ul>
+
+<p>预期：</p>
+
+<ul>
+<li>在 <code>CONFIG_DEBUG_MUTEXES=y</code> 下应触发明显告警</li>
+<li>因为 mutex 明确要求 owner 才能释放</li>
+</ul>
+
+<p>这个实验非常适合帮助你建立“semaphore 不是 mutex 替代品”的直觉。</p>
+
+<hr>
+
+<h2>12. 实验三：在 ARM64 上观察 qspinlock 的竞争热点</h2>
+
+<h3>12.1 开启 lockstat</h3>
+
+<pre><code class="language-bash">echo 1 &gt; /proc/sys/kernel/lock_stat
+cat /proc/lock_stat | head -n 80</code></pre>
+
+<p>参考 <code>Documentation/locking/lockstat.rst</code>，你需要重点看：</p>
+
+<ul>
+<li><code>contentions</code></li>
+<li><code>waittime-*</code></li>
+<li><code>holdtime-*</code></li>
+<li>顶部 contention point</li>
+</ul>
+
+<h3>12.2 寻找典型热点 spinlock</h3>
+
+<pre><code class="language-bash">grep &#x27;:&#x27; /proc/lock_stat | head</code></pre>
+
+<p>如果系统压力够大，常会看到：</p>
+
+<ul>
+<li><code>rq->lock</code></li>
+<li>各类 LRU / zone / mapping 锁</li>
+<li>dentry / inode 相关锁</li>
+</ul>
+
+<h3>12.3 关注 <code>rqspinlock</code></h3>
+
+<p>调度器 <code>rq->lock</code> 在 ARM64 上尤其值得看，因为它对应 <code>rqspinlock</code> 的等待特化。</p>
+
+<p>可以用下面思路观察：</p>
+
+<ol>
+<li>跑高调度压力 workload</li>
+<li>打开 lockstat</li>
+<li>看 <code>rq->lock</code> 的 contention 和 wait time</li>
+<li>再结合 <code>perf lock contention</code> 做排序</li>
+</ol>
+
+<p>这样能把源码里的 <code>rqspinlock</code> 定制与真实热点对应起来。</p>
+
+<hr>
+
+<h2>13. 实验四：用 tracepoint 直接观察锁争用开始与结束</h2>
+
+<p><code>include/trace/events/lock.h</code> 中定义了几类非常有用的事件：</p>
+
+<ul>
+<li><code>lock:contention_begin</code></li>
+<li><code>lock:contention_end</code></li>
+<li><code>lock:lock_acquire</code></li>
+<li><code>lock:lock_release</code></li>
+<li><code>lock:lock_contended</code></li>
+<li><code>lock:lock_acquired</code></li>
+</ul>
+
+<p>其中：</p>
+
+<ul>
+<li><code>contention_begin/end</code> 更偏向“争用区间”</li>
+<li><code>lockdep</code> / <code>lock_stat</code> 相关事件更偏向“锁类和统计”</li>
+</ul>
+
+<h3>13.1 用 tracefs 打开事件</h3>
+
+<pre><code class="language-bash">cd /sys/kernel/tracing
+echo 1 &gt; events/lock/contention_begin/enable
+echo 1 &gt; events/lock/contention_end/enable
+cat trace_pipe</code></pre>
+
+<p>你会看到锁地址和标志位：</p>
+
+<ul>
+<li><code>SPIN</code></li>
+<li><code>MUTEX</code></li>
+<li><code>READ</code></li>
+<li><code>WRITE</code></li>
+</ul>
+
+<h3>13.2 如何把地址对应回具体锁</h3>
+
+<p>有几种方法：</p>
+
+<ol>
+<li>配合 <code>perf lock info</code></li>
+<li>结合 <code>kallsyms</code> 和对象地址</li>
+<li>自己在目标模块里打印锁对象地址</li>
+</ol>
+
+<p>这个方法非常适合分析：</p>
+
+<ul>
+<li>是谁在争</li>
+<li>争用持续多久</li>
+<li>是 spin 类锁还是睡眠类锁</li>
+</ul>
+
+<hr>
+
+<h2>14. 调试锁问题的完整方法论</h2>
+
+<p>这一部分是本文最实用的内容。实际调试锁问题时，建议按下面层次推进。</p>
+
+<h2>14.1 第一层：先抓“违规语义”</h2>
+
+<p>优先打开：</p>
+
+<ul>
+<li><code>CONFIG_PROVE_LOCKING</code></li>
+<li><code>CONFIG_DEBUG_SPINLOCK</code></li>
+<li><code>CONFIG_DEBUG_MUTEXES</code></li>
+<li><code>CONFIG_DEBUG_ATOMIC_SLEEP</code></li>
+</ul>
+
+<p>这几项主要抓的是：</p>
+
+<ul>
+<li>自旋锁未初始化</li>
+<li>同一 CPU / 同一线程递归拿 spinlock</li>
+<li>mutex 非 owner 解锁</li>
+<li>在 atomic context 里调用可能睡眠的接口</li>
+<li>锁顺序反转导致的潜在死锁</li>
+</ul>
+
+<p>如果你正在改内核锁逻辑，第一步不是看性能，而是先把这一层跑干净。</p>
+
+<h2>14.2 第二层：用 lockdep 查锁顺序</h2>
+
+<p><code>lockdep</code> 的核心不是“记录谁持锁”，而是：</p>
+
+<ul>
+<li>构建 lock class</li>
+<li>记录锁依赖图</li>
+<li>判断是否可能形成环</li>
+</ul>
+
+<p>重点接口：</p>
+
+<ul>
+<li><code>/proc/lockdep</code></li>
+<li><code>/proc/lockdep_stats</code></li>
+</ul>
+
+<p>命令：</p>
+
+<pre><code class="language-bash">cat /proc/lockdep_stats
+cat /proc/lockdep | less</code></pre>
+
+<p>调试时要重点看：</p>
+
+<ol>
+<li>某个 lock class 的 <code>FD/BD</code> 是否异常多</li>
+<li>某个类是否出现了不该有的子类</li>
+<li>是否已经形成反向依赖边</li>
+</ol>
+
+<h3>lockdep 最擅长抓什么</h3>
+
+<ul>
+<li>ABBA 死锁</li>
+<li>同类锁递归</li>
+<li>irq-safe / irq-unsafe 混用</li>
+<li>中断上下文与普通上下文的错误嵌套</li>
+</ul>
+
+<h3>lockdep 不擅长抓什么</h3>
+
+<ul>
+<li>性能差但语义合法的锁热点</li>
+<li>极端时序下的饥饿问题</li>
+<li>用户自己没有正确打 lockdep 注解的隐式同步</li>
+</ul>
+
+<p>所以 lockdep 是<strong>正确性工具</strong>，不是性能工具。</p>
+
+<h2>14.3 第三层：用 lockstat / perf lock 查性能热点</h2>
+
+<h3>lockstat</h3>
+
+<p>开启：</p>
+
+<pre><code class="language-bash">echo 1 &gt; /proc/sys/kernel/lock_stat
+cat /proc/lock_stat | less</code></pre>
+
+<p>它适合回答：</p>
+
+<ul>
+<li>哪把锁最常发生争用</li>
+<li>等待时间最长的是谁</li>
+<li>持锁时间最长的是谁</li>
+<li>热点 contention callsite 在哪里</li>
+</ul>
+
+<h3>perf lock</h3>
+
+<p>参考 <code>tools/perf/Documentation/perf-lock.txt</code>，常用命令：</p>
+
+<pre><code class="language-bash">perf lock record -- &lt;your workload&gt;
+perf lock report
+perf lock contention
+perf lock script
+perf lock info</code></pre>
+
+<p>如果系统支持 BPF，<code>perf lock contention --use-bpf</code> 很适合在线抓热点。</p>
+
+<p>例如只看某些类型：</p>
+
+<pre><code class="language-bash">perf lock contention -abY spinlock,mutex,semaphore</code></pre>
+
+<p>它适合回答：</p>
+
+<ul>
+<li>具体 workload 中哪类锁在拖慢吞吐</li>
+<li>每个线程在等哪些锁</li>
+<li>平均等待时间和总等待时间谁最高</li>
+</ul>
+
+<h2>14.4 第四层：用 tracepoint 看时间线</h2>
+
+<p>当你已经知道“有热点”，但还不知道“争用是怎么发生的”时，用 tracepoint：</p>
+
+<ul>
+<li><code>events/lock/contention_begin</code></li>
+<li><code>events/lock/contention_end</code></li>
+</ul>
+
+<p>这一步适合分析：</p>
+
+<ul>
+<li>短时突发争用</li>
+<li>某个阶段性 workload 下的锁竞争波峰</li>
+<li>某个锁是持续热，还是只在特定路径下热</li>
+</ul>
+
+<h2>14.5 第五层：怀疑死锁或长时间卡住时，看 hung task</h2>
+
+<p>建议打开：</p>
+
+<ul>
+<li><code>CONFIG_DETECT_HUNG_TASK_BLOCKER</code></li>
+</ul>
+
+<p>在 semaphore 里，<code>last_holder</code> 可帮助你看到最近持有者。</p>
+
+<p>对于 mutex / semaphore 卡死问题，还建议配合：</p>
+
+<pre><code class="language-bash">echo w &gt; /proc/sysrq-trigger</code></pre>
+
+<p>这会打印阻塞任务栈，通常很适合定位：</p>
+
+<ul>
+<li>谁在等锁</li>
+<li>谁持锁不放</li>
+<li>是不是锁持有路径里又睡眠或阻塞了别的资源</li>
+</ul>
+
+<h2>14.6 第六层：在代码里加断言，而不是靠猜</h2>
+
+<p>推荐在自己修改的关键路径里加：</p>
+
+<ul>
+<li><code>lockdep_assert_held(&lock)</code></li>
+<li><code>lockdep_assert_irqs_disabled()</code></li>
+</ul>
+
+<p>这类断言价值很高，因为它们能把“调用者应该持有某锁”这种隐含约束，变成运行时可验证规则。</p>
+
+<p>如果你在 ARM64 内核里调某个复杂路径，比如页分配、调度或 slab，这种断言比事后读栈更省时间。</p>
+
+<hr>
+
+<h2>15. ARM64 锁调试时最常见的几类坑</h2>
+
+<h2>15.1 误把 semaphore 当 mutex</h2>
+
+<p>常见后果：</p>
+
+<ul>
+<li>以为 unlock 必须由 owner 执行</li>
+<li>以为 lockdep 会像 mutex 一样给出强语义检查</li>
+</ul>
+
+<p>实际上 semaphore 更像“计数资源门票”。</p>
+
+<h2>15.2 在 spinlock 保护区里走到了可睡眠路径</h2>
+
+<p>这是最常见、也最致命的错误之一。建议一定打开：</p>
+
+<ul>
+<li><code>CONFIG_DEBUG_ATOMIC_SLEEP</code></li>
+</ul>
+
+<p>这样当你在：</p>
+
+<ul>
+<li>持有 spinlock</li>
+<li>preempt disabled</li>
+<li>IRQ context</li>
+</ul>
+
+<p>等状态下调用 <code>might_sleep()</code> 路径时，内核会直接报警。</p>
+
+<h2>15.3 只看功能正确，不看锁顺序</h2>
+
+<p>很多代码“单线程测试没问题”，但一上 SMP 就会出现：</p>
+
+<ul>
+<li>A 路径先拿 L1 再拿 L2</li>
+<li>B 路径先拿 L2 再拿 L1</li>
+</ul>
+
+<p>这种问题靠 code review 很容易漏，靠 lockdep 最快。</p>
+
+<h2>15.4 误解 ARM64 上的等待行为</h2>
+
+<p>在 x86 上你可能习惯把等待理解成纯忙等，但 ARM64 很多锁等待路径带有：</p>
+
+<ul>
+<li><code>wfe</code></li>
+<li>事件流依赖</li>
+<li>acquire/release 可见性要求</li>
+</ul>
+
+<p>所以分析“为什么线程没继续转”时，不要只盯 while 循环，还要看：</p>
+
+<ul>
+<li>是否有事件唤醒条件</li>
+<li>是否用了正确的 release store</li>
+<li>是否平台事件流可用</li>
+</ul>
+
+<p><code>rqspinlock</code> 的 arm64 特化就是一个非常典型的例子。</p>
+
+<hr>
+
+<h2>16. 建议的阅读顺序</h2>
+
+<p>如果你打算系统掌握 ARM64 锁实现，建议按这个顺序：</p>
+
+<ol>
+<li><code>include/asm-generic/qspinlock_types.h</code></li>
+<li><code>include/asm-generic/qspinlock.h</code></li>
+<li><code>kernel/locking/qspinlock.c</code></li>
+<li><code>arch/arm64/include/asm/barrier.h</code></li>
+<li><code>arch/arm64/include/asm/cmpxchg.h</code></li>
+<li><code>include/linux/semaphore.h</code></li>
+<li><code>kernel/locking/semaphore.c</code></li>
+<li><code>include/linux/mutex_types.h</code></li>
+<li><code>kernel/locking/mutex.c</code></li>
+<li><code>Documentation/locking/mutex-design.rst</code></li>
+<li><code>Documentation/locking/lockdep-design.rst</code></li>
+<li><code>Documentation/locking/lockstat.rst</code></li>
+</ol>
+
+<p>读完这一轮，你对 ARM64 锁的认识基本会从“会用 API”提升到“能解释实现与定位问题”。</p>
+
+<hr>
+
+<h2>17. 最后的总结</h2>
+
+<p>把本文压缩成几句话：</p>
+
+<ol>
+<li><strong>ARM64 下的 spinlock 主体算法是 qspinlock，不是老式 ticket lock。</strong></li>
+<li><strong>ARM64 的核心贡献是原子操作、Acquire/Release、WFE 等等待原语，而不是重写全部锁算法。</strong></li>
+<li><strong>semaphore 是计数资源语义，mutex 是严格 owner 互斥语义。</strong></li>
+<li><strong>mutex 的实现最复杂，包含 fastpath、optimistic spinning、slowpath、handoff。</strong></li>
+<li><strong>调试锁问题要分层做：先 lockdep 保正确，再 lockstat/perf lock 看性能，再 tracepoint 看时间线。</strong></li>
+</ol>
+
+<p>如果你后面还想继续深入，我建议下一步专门再拆三篇小文档：</p>
+
+<ol>
+<li><code>qspinlock</code> 的逐函数状态机分析</li>
+<li><code>mutex</code> 的 owner flag 和 handoff 时序分析</li>
+<li><code>lockdep</code> 报告的逐字段解读与典型案例</li>
+</ol>
+
+<p>这样你会从“知道原理”进一步进入“能手工推演锁状态迁移”的层次。</p>
+</body>
+</html>

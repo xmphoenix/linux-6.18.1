@@ -1,0 +1,3046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kernel Data Structures Guide</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux Kernel Core Data Structures — Deep Reference (linux-6.18.1)</h1>
+
+<blockquote>All code excerpts are from the actual source tree at <code>/repo/ybzhang/kernel/linux-6.18.1</code>.</blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><a href="#1-linked-lists">1. Linked Lists</a></summary></p>
+
+<ul>
+<li><a href="#struct-definitions">Struct Definitions</a></li>
+<li><a href="#key-api-functions">Key API Functions</a></li>
+<li><a href="#iteration-macros">Iteration Macros</a></li>
+<li><a href="#kernel-usage-examples">Kernel Usage Examples</a></li>
+<li><a href="#核心实现源码逐行注释">核心实现源码逐行注释</a></li>
+<li><a href="#hlist-的设计精妙之处">hlist 的设计精妙之处</a></li>
+<li><a href="#time-complexity">Time Complexity</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#2-red-black-trees">2. Red-Black Trees</a></summary></p>
+
+<ul>
+<li><a href="#struct-definitions-1">Struct Definitions</a></li>
+<li><a href="#key-api-functions-1">Key API Functions</a></li>
+<li><a href="#insert-pattern-caller-implemented">Insert Pattern (Caller-implemented)</a></li>
+<li><a href="lib/rbtree.c#L89">核心实现源码逐行注释 — 红黑树插入修复 ([rbtree.c</a>)](#核心实现源码逐行注释--红黑树插入修复-rbtreeclibrbtreecl89)</li>
+<li><a href="#kernel-usage-examples-red-black-tree">Kernel Usage Examples (Red-Black Tree)</a></li>
+<li><a href="#time-complexity-1">Time Complexity</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#3-xarray--radix-tree">3. XArray / Radix Tree</a></summary></p>
+
+<ul>
+<li><a href="#struct-definitions-2">Struct Definitions</a></li>
+<li><a href="#key-api-functions-2">Key API Functions</a></li>
+<li><a href="include/linux/xarray.h#L1168">内部节点结构 — <code>xa_node</code> ([xarray.h</a>)](#内部节点结构--xa_node-xarrayhincludelinuxxarrayhl1168)</li>
+<li><a href="#legacy-radix-tree-api-wrappers">Legacy Radix Tree API (Wrappers)</a></li>
+<li><a href="#kernel-usage-examples-1">Kernel Usage Examples</a></li>
+<li><a href="#time-complexity-2">Time Complexity</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#4-hash-tables">4. Hash Tables</a></summary></p>
+
+<ul>
+<li><a href="#struct-definition-macro-based">"Struct" Definition (Macro-based)</a></li>
+<li><a href="#key-api-functions-3">Key API Functions</a></li>
+<li><a href="#hash-functions">Hash Functions</a></li>
+<li><a href="#kernel-usage-examples-2">Kernel Usage Examples</a></li>
+<li><a href="#time-complexity-3">Time Complexity</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#5-bitmap">5. Bitmap</a></summary></p>
+
+<ul>
+<li><a href="#struct-definition">"Struct" Definition</a></li>
+<li><a href="#key-api-functions-4">Key API Functions</a></li>
+<li><a href="#kernel-usage-examples-3">Kernel Usage Examples</a></li>
+<li><a href="#time-complexity-4">Time Complexity</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#6-idr--ida">6. IDR / IDA</a></summary></p>
+
+<ul>
+<li><a href="#struct-definitions-3">Struct Definitions</a></li>
+<li><a href="#key-api-functions--idr">Key API Functions — IDR</a></li>
+<li><a href="#key-api-functions--ida">Key API Functions — IDA</a></li>
+<li><a href="#kernel-usage-examples-4">Kernel Usage Examples</a></li>
+<li><a href="#time-complexity-5">Time Complexity</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#7-maple-tree">7. Maple Tree</a></summary></p>
+
+<ul>
+<li><a href="#struct-definitions-4">Struct Definitions</a></li>
+<li><a href="#key-api-functions-5">Key API Functions</a></li>
+<li><a href="#kernel-usage-examples-5">Kernel Usage Examples</a></li>
+<li><a href="#time-complexity-6">Time Complexity</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#8-priority-lists-plist">8. Priority Lists (plist)</a></summary></p>
+
+<ul>
+<li><a href="#struct-definitions-5">Struct Definitions</a></li>
+<li><a href="#key-api-functions-6">Key API Functions</a></li>
+<li><a href="#kernel-usage-examples-6">Kernel Usage Examples</a></li>
+<li><a href="#time-complexity-7">Time Complexity</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#9-fifo-kfifo">9. FIFO (kfifo)</a></summary></p>
+
+<ul>
+<li><a href="#struct-definitions-6">Struct Definitions</a></li>
+<li><a href="#核心实现源码逐行注释--无锁环形缓冲区">核心实现源码逐行注释 — 无锁环形缓冲区</a></li>
+<li><a href="#key-api-functions-7">Key API Functions</a></li>
+<li><a href="#kernel-usage-examples-7">Kernel Usage Examples</a></li>
+<li><a href="#time-complexity-8">Time Complexity</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#10-lru-list">10. LRU List</a></summary></p>
+
+<ul>
+<li><a href="#struct-definitions-7">Struct Definitions</a></li>
+<li><a href="#key-api-functions-8">Key API Functions</a></li>
+<li><a href="#kernel-usage-examples-8">Kernel Usage Examples</a></li>
+<li><a href="#time-complexity-9">Time Complexity</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#11-core-kernel-objects">11. Core Kernel Objects</a></summary></p>
+
+<ul>
+<li><a href="#reading-strategy">Reading Strategy</a></li>
+<li><a href="#process-context">Process Context</a></li>
+<li><a href="#address-space">Address Space</a></li>
+<li><a href="#page-cache">Page Cache</a></li>
+<li><a href="#vfs-object-model">VFS Object Model</a></li>
+<li><a href="#device-security-and-cgroups">Device, Security, and Cgroups</a></li>
+<li><a href="#networking-data-path">Networking Data Path</a></li>
+<li><a href="#block-io-data-path">Block I/O Data Path</a></li>
+<li><a href="#core-object-graph">Core Object Graph</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#summary-comparison-table">Summary Comparison Table</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#architecture-of-relationships">Architecture of Relationships</a></summary></p>
+
+<p></details></p>
+
+<hr>
+
+<h2>1. Linked Lists</h2>
+
+<p><strong>Files</strong>: <code>include/linux/list.h</code>, <code>include/linux/types.h</code></p>
+
+<h3>Struct Definitions</h3>
+
+<pre><code class="language-c">/* include/linux/types.h */
+struct list_head {
+    struct list_head *next, *prev;
+};
+
+struct hlist_head {
+    struct hlist_node *first;
+};
+
+struct hlist_node {
+    struct hlist_node *next, **pprev;
+};</code></pre>
+
+<p><strong>Design</strong>: <code>list_head</code> is a <strong>circular doubly-linked list</strong>. The sentinel node (head) points to itself when empty. Unlike typical linked lists, the struct is <em>embedded inside</em> the container struct, and <code>container_of()</code> recovers the outer object.</p>
+
+<p><code>hlist_head</code> uses a <strong>single pointer</strong> for the head (saves memory in hash tables with millions of buckets). <code>hlist_node</code> uses <code>**pprev</code> (pointer to the pointer that points to this node) to allow O(1) deletion without knowing the head.</p>
+
+<h3>Key API Functions</h3>
+
+<table>
+<thead><tr>
+<th>Function</th>
+<th>Description</th>
+<th>Complexity</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>INIT_LIST_HEAD(list)</code></td>
+<td>Initialize empty list (points to itself)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_add(new, head)</code></td>
+<td>Insert after head (stack)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_add_tail(new, head)</code></td>
+<td>Insert before head (queue)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_del(entry)</code></td>
+<td>Remove entry, poison pointers</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_del_init(entry)</code></td>
+<td>Remove and re-initialize</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_move(list, head)</code></td>
+<td>Delete from current, add to head</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_move_tail(list, head)</code></td>
+<td>Delete from current, add to tail</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_replace(old, new)</code></td>
+<td>Replace old with new in-place</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_splice(list, head)</code></td>
+<td>Join two lists</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_empty(head)</code></td>
+<td>Test if list is empty</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_is_singular(head)</code></td>
+<td>Test if exactly one entry</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_count_nodes(head)</code></td>
+<td>Count all entries</td>
+<td>O(n)</td>
+</tr>
+</tbody></table>
+
+<h3>Iteration Macros</h3>
+
+<pre><code class="language-c">/* Iterate over list entries of a given container type */
+#define list_for_each_entry(pos, head, member)
+    for (pos = list_first_entry(head, typeof(*pos), member);
+         !list_entry_is_head(pos, head, member);
+         pos = list_next_entry(pos, member))
+
+/* Safe against removal during iteration */
+#define list_for_each_entry_safe(pos, n, head, member)
+    for (pos = list_first_entry(head, typeof(*pos), member),
+         n = list_next_entry(pos, member);
+         !list_entry_is_head(pos, head, member);
+         pos = n, n = list_next_entry(n, member))
+
+/* Get the container struct from a list_head pointer */
+#define list_entry(ptr, type, member) container_of(ptr, type, member)</code></pre>
+
+<h3>Kernel Usage Examples</h3>
+
+<ul>
+<li><strong>Task list</strong>: <code>struct task_struct</code> has <code>struct list_head tasks</code> linking all processes</li>
+<li><strong>Module list</strong>: <code>struct module</code> links via <code>list</code> member</li>
+<li><strong>Wait queues</strong>: <code>wait_queue_head</code> uses <code>struct list_head task_list</code></li>
+<li><strong>Block I/O</strong>: <code>struct request_queue</code> maintains queues of <code>struct request</code></li>
+<li><strong>Network</strong>: <code>sk_buff_head</code> wraps a <code>list_head</code> for socket buffer chains</li>
+</ul>
+
+<h3>核心实现源码逐行注释</h3>
+
+<h4><code>__list_add()</code> — 双向链表插入的核心 (<a href="include/linux/list.h#L155">list.h</a>)</h4>
+
+<pre><code class="language-c">/*
+ * Insert a new entry between two known consecutive entries.
+ * 在两个已知的相邻节点之间插入新节点。
+ * 这是内部函数，调用者必须已知 prev/next。
+ */
+static inline void __list_add(struct list_head *new,
+                              struct list_head *prev,
+                              struct list_head *next)
+{
+    if (!__list_add_valid(new, prev, next))  // 完整性校验（CONFIG_LIST_HARDENED）
+        return;                              // 检查 prev-&gt;next==next, next-&gt;prev==prev
+
+    next-&gt;prev = new;          // Step 1: next 的前驱指向 new
+    new-&gt;next = next;          // Step 2: new 的后继指向 next
+    new-&gt;prev = prev;          // Step 3: new 的前驱指向 prev
+    WRITE_ONCE(prev-&gt;next, new); // Step 4: prev 的后继指向 new（WRITE_ONCE 保证原子写入）
+}</code></pre>
+
+<p><strong>为什么最后用 <code>WRITE_ONCE</code>？</strong> 因为其他CPU可能正在无锁遍历链表（通过 <code>list_for_each_entry_rcu</code>），<code>WRITE_ONCE</code> 保证 <code>prev->next</code> 的更新是原子的，不会出现部分写（torn write）。在此之前，new 节点的 <code>next/prev</code> 已经设置好，所以一旦 <code>prev->next</code> 变为 new，遍历者就能看到一个完整连接的节点。</p>
+
+<h4><code>list_add()</code> 和 <code>list_add_tail()</code> — 栈 vs 队列</h4>
+
+<pre><code class="language-c">// 头插法 — 实现栈语义 (LIFO)
+static inline void list_add(struct list_head *new, struct list_head *head)
+{
+    __list_add(new, head, head-&gt;next);  // 插入 head 和 head-&gt;next 之间
+}
+
+// 尾插法 — 实现队列语义 (FIFO)
+static inline void list_add_tail(struct list_head *new, struct list_head *head)
+{
+    __list_add(new, head-&gt;prev, head);  // 插入 head-&gt;prev 和 head 之间
+}</code></pre>
+
+<p><strong>关键理解</strong>: 由于是<strong>循环链表</strong>，<code>head->prev</code> 就是尾节点。所以 <code>list_add_tail</code> 把 new 插入在"尾节点"和"哨兵head"之间，等价于追加到末尾。</p>
+
+<h4><code>__list_del()</code> 和 <code>list_del()</code> — 删除操作 (<a href="include/linux/list.h#L203">list.h</a>)</h4>
+
+<pre><code class="language-c">static inline void __list_del(struct list_head *prev, struct list_head *next)
+{
+    next-&gt;prev = prev;           // 跳过被删节点
+    WRITE_ONCE(prev-&gt;next, next); // 原子写入
+}
+
+static inline void list_del(struct list_head *entry)
+{
+    __list_del_entry(entry);     // 先校验再调用 __list_del(entry-&gt;prev, entry-&gt;next)
+    entry-&gt;next = LIST_POISON1;  // 0x00100100 — 故意设为非法地址
+    entry-&gt;prev = LIST_POISON2;  // 0x00200200 — 再次访问会触发 page fault
+}</code></pre>
+
+<p><strong><code>LIST_POISON</code> 的作用</strong>: 如果删除后的节点被错误地再次使用（use-after-delete），访问这些 poison 地址会触发明显的 kernel oops，便于调试。<code>list_del_init()</code> 则不用 poison，而是重新初始化为指向自身（可安全地再次 <code>list_empty()</code> 检测）。</p>
+
+<h4><code>container_of()</code> — 从嵌入式链表节点获取外层结构体</h4>
+
+<pre><code class="language-c">// include/linux/container_of.h
+#define container_of(ptr, type, member) ({               \
+    void *__mptr = (void *)(ptr);                        \
+    ((type *)(__mptr - offsetof(type, member))); })
+
+// 使用示例：从 list_head 获取 task_struct
+#define list_entry(ptr, type, member) container_of(ptr, type, member)
+
+// 遍历时的典型用法
+struct task_struct *task;
+list_for_each_entry(task, &amp;init_task.tasks, tasks) {
+    // task 指向每个 task_struct
+    // 内部实现：从 list_head* 减去 offsetof(task_struct, tasks) 得到 task_struct*
+}</code></pre>
+
+<p><strong>数学原理</strong>: 如果 <code>list_head</code> 成员在结构体中的偏移是 <code>offset</code>，那么结构体的起始地址 = <code>list_head 指针 - offset</code>。这就是 <code>container_of</code> 的全部魔法。</p>
+
+<h3>hlist 的设计精妙之处</h3>
+
+<pre><code class="language-c">struct hlist_head {
+    struct hlist_node *first;       // 只有一个指针（8字节 vs list_head 的16字节）
+};
+struct hlist_node {
+    struct hlist_node *next;
+    struct hlist_node **pprev;      // 指向&quot;指向自己的指针&quot;
+};</code></pre>
+
+<p><strong>为什么 <code>pprev</code> 是二级指针？</strong> 删除节点时需要修改"前一个节点的 next 指针"：</p>
+<ul>
+<li>如果前一个是 <code>hlist_node</code>，则修改 <code>prev->next</code></li>
+<li>如果前一个是 <code>hlist_head</code>，则修改 <code>head->first</code></li>
+</ul>
+
+<p><code>pprev</code> 统一了这两种情况：它指向的都是"存放指向当前节点的那个指针"的地址。删除时只需：</p>
+<pre><code class="language-c">*(node-&gt;pprev) = node-&gt;next;  // 不管前面是 head 还是 node，都能正确修改</code></pre>
+
+<p><strong>举例 1：删除头节点</strong></p>
+
+<p>假设有这样一个 hlist：</p>
+
+<pre><code class="language-text">head
+ └── first ──→ A ──→ B ──→ NULL</code></pre>
+
+<p>此时各字段关系是：</p>
+
+<pre><code class="language-text">head.first = &amp;A
+A.next     = &amp;B
+A.pprev    = &amp;head.first
+B.next     = NULL
+B.pprev    = &amp;A.next</code></pre>
+
+<p>注意这里最关键的一点：</p>
+
+<pre><code class="language-text">A.pprev 不是“前驱节点地址”
+A.pprev 是 “那个保存了 A 地址的指针变量的地址”
+       = &amp;head.first</code></pre>
+
+<p>所以删除 <code>A</code> 时：</p>
+
+<pre><code class="language-c">*(A.pprev) = A.next;</code></pre>
+
+<p>展开后其实就是：</p>
+
+<pre><code class="language-c">head.first = B;</code></pre>
+
+<p>然后还要修正 <code>B.pprev</code>：</p>
+
+<pre><code class="language-c">B.pprev = &amp;head.first;</code></pre>
+
+<p>删除后链表就变成：</p>
+
+<pre><code class="language-text">head
+ └── first ──→ B ──→ NULL</code></pre>
+
+<p>这说明：<strong>即使删除的是首节点，也不需要专门判断“前面是 head 还是普通节点”</strong>，因为 <code>A.pprev</code> 已经帮你记住了该改哪一个指针。</p>
+
+<p><strong>举例 2：删除中间节点</strong></p>
+
+<p>假设链表是：</p>
+
+<pre><code class="language-text">head
+ └── first ──→ A ──→ B ──→ C ──→ NULL</code></pre>
+
+<p>此时关键字段是：</p>
+
+<pre><code class="language-text">head.first = &amp;A
+A.next     = &amp;B
+A.pprev    = &amp;head.first
+
+B.next     = &amp;C
+B.pprev    = &amp;A.next
+
+C.next     = NULL
+C.pprev    = &amp;B.next</code></pre>
+
+<p>注意 <code>B.pprev = &A.next</code>，意思是：</p>
+
+<pre><code class="language-text">“当前保存 B 地址的那个指针，是 A.next”</code></pre>
+
+<p>所以删除 <code>B</code> 时：</p>
+
+<pre><code class="language-c">*(B.pprev) = B.next;</code></pre>
+
+<p>展开后就是：</p>
+
+<pre><code class="language-c">A.next = C;</code></pre>
+
+<p>然后修正 <code>C.pprev</code>：</p>
+
+<pre><code class="language-c">C.pprev = &amp;A.next;</code></pre>
+
+<p>删除后就变成：</p>
+
+<pre><code class="language-text">head
+ └── first ──→ A ──→ C ──→ NULL</code></pre>
+
+<p><strong>把这两个例子放在一起看，就能理解 <code>pprev</code> 的真正含义</strong>：</p>
+
+<table>
+<thead><tr>
+<th>当前节点</th>
+<th><code>pprev</code> 指向谁</th>
+<th>删除时改写成什么</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>头节点 <code>A</code></td>
+<td><code>&head.first</code></td>
+<td><code>head.first = A.next</code></td>
+</tr>
+<tr>
+<td>中间节点 <code>B</code></td>
+<td><code>&A.next</code></td>
+<td><code>A.next = B.next</code></td>
+</tr>
+</tbody></table>
+
+<p>所以 <code>pprev</code> 的价值不是“保存前驱节点”，而是：</p>
+
+<pre><code class="language-text">直接保存“应该改写哪个指针槽位”</code></pre>
+
+<p>这就是为什么它必须是二级指针：</p>
+
+<ul>
+<li>一级指针 <code>prev</code> 只能告诉你“前驱是谁”</li>
+<li>二级指针 <code>pprev</code> 直接告诉你“要改哪块内存”</li>
+</ul>
+
+<p>从实现上看，内核的 <code>__hlist_del()</code> 就是这么做的：</p>
+
+<pre><code class="language-c">struct hlist_node *next = n-&gt;next;
+struct hlist_node **pprev = n-&gt;pprev;
+
+WRITE_ONCE(*pprev, next);
+if (next)
+    WRITE_ONCE(next-&gt;pprev, pprev);</code></pre>
+
+<p>可以看出，它完全不关心前面是 <code>head</code> 还是普通节点；只要 <code>pprev</code> 是对的，删除逻辑就是统一的。</p>
+
+<p>这让哈希表的每个桶头只占 8 字节而非 16 字节。百万级桶的哈希表能省 ~8MB 内存。</p>
+
+<p><strong>这个链表的应用场景是什么？</strong></p>
+
+<p><code>hlist_node</code> 几乎不是为了“通用链表”设计的，而是为了下面这类场景：</p>
+
+<table>
+<thead><tr>
+<th>场景</th>
+<th>为什么适合 <code>hlist</code></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>哈希表 bucket 链</strong></td>
+<td>bucket 头很多，<code>hlist_head</code> 只有 1 个指针，能明显省内存</td>
+</tr>
+<tr>
+<td><strong>对象挂入协议查找表</strong></td>
+<td>只需要从 bucket 头向后遍历，不需要频繁从尾部反向遍历</td>
+</tr>
+<tr>
+<td><strong>一个对象可能同时属于多个哈希索引</strong></td>
+<td>对象里可嵌多个 <code>hlist_node</code>，分别挂到不同 hash bucket</td>
+</tr>
+<tr>
+<td><strong>需要 O(1) 删除，但不想让 head 也占双指针</strong></td>
+<td><code>pprev</code> 让删除不必先找到前驱节点</td>
+</tr>
+</tbody></table>
+
+<p>它的定位可以概括成一句话：</p>
+
+<pre><code class="language-text">hlist = “为哈希桶优化过的、节省 head 空间的可 O(1) 删除链表”</code></pre>
+
+<h4>为什么哈希表特别喜欢用 <code>hlist</code></h4>
+
+<p>哈希表通常是：</p>
+
+<pre><code class="language-c">bucket array --&gt; [hlist_head, hlist_head, hlist_head, ...]
+                              |
+                              v
+                         node -&gt; node -&gt; node</code></pre>
+
+<p>这里有两个特点：</p>
+
+<ol>
+<li><strong>bucket 数量可能非常大</strong></li>
+<li><strong>每个 bucket 只需要从头往后扫</strong></li>
+</ol>
+
+<p>如果用 <code>list_head</code> 做 bucket 头，每个桶头要 16 字节；<code>hlist_head</code> 只要 8 字节。在几十万、几百万个 bucket 的场景下，这个差异会很可观。</p>
+
+<p>所以 Linux 的通用哈希表接口 <code>hashtable.h</code> 本质上就是：</p>
+
+<pre><code class="language-c">/* A hash table is simply an array of hlist_heads */
+DEFINE_HASHTABLE(name, bits);</code></pre>
+
+<p>也就是说，<strong><code>hlist</code> 最典型的应用场景就是 hash bucket collision chain。</strong></p>
+
+<h4><code>pprev</code> 解决了什么实际问题</h4>
+
+<p>普通单链表删除节点，通常要先找到前驱：</p>
+
+<pre><code class="language-text">prev -&gt; cur -&gt; next</code></pre>
+
+<p>如果没有 <code>prev</code>，删除 <code>cur</code> 就得从头再找一遍，复杂度退化为 O(n)。</p>
+
+<p><code>hlist_node</code> 里的 <code>pprev</code> 直接指向“那个指向我自己的指针”：</p>
+
+<ul>
+<li>如果我是首节点，<code>pprev = &head->first</code></li>
+<li>如果我在中间，<code>pprev = &prev->next</code></li>
+</ul>
+
+<p>所以删除时只要：</p>
+
+<pre><code class="language-c">WRITE_ONCE(*pprev, next);
+if (next)
+    WRITE_ONCE(next-&gt;pprev, pprev);</code></pre>
+
+<p>这就是为什么 <code>hlist</code> 既保留了<strong>单指针 head 的省内存优势</strong>，又保留了<strong>已知节点时 O(1) 删除</strong>的能力。</p>
+
+<h4>内核里的真实使用方式</h4>
+
+<p><strong>1. 通用哈希表</strong></p>
+
+<p>最常见的形式就是：对象里嵌一个 <code>hlist_node</code>，然后用 <code>hash_add()</code> 挂入某个桶：</p>
+
+<pre><code class="language-c">hash_add(slots-&gt;id_hash, &amp;new-&gt;id_node[idx], new-&gt;id);</code></pre>
+
+<p>这种写法的本质是：</p>
+<ul>
+<li><code>slots->id_hash</code> 是 <code>hlist_head</code> 数组</li>
+<li><code>id_node[idx]</code> 是对象内嵌的 <code>hlist_node</code></li>
+<li>同一个对象可以有多个 <code>hlist_node</code>，挂到不同索引体系里</li>
+</ul>
+
+<p><strong>2. 网络协议查找表 / bind hash</strong></p>
+
+<p><code>struct sock_common</code> 里直接嵌了多个 <code>hlist_node</code>：</p>
+
+<pre><code class="language-c">struct sock_common {
+    ...
+    union {
+        struct hlist_node skc_bind_node;
+        struct hlist_node skc_portaddr_node;
+    };
+    ...
+    union {
+        struct hlist_node skc_node;
+        struct hlist_nulls_node skc_nulls_node;
+    };
+    ...
+};</code></pre>
+
+<p>这说明 socket 对象会被挂进不同的协议查找表：</p>
+<ul>
+<li>bind bucket</li>
+<li>port/address bucket</li>
+<li>主协议哈希表</li>
+</ul>
+
+<p>这正是 <code>hlist_node</code> 的强项：<strong>对象本身是主体，链节点只是它在某个哈希索引里的“挂点”。</strong></p>
+
+<p><strong>3. 一个对象有多个“身份索引”</strong></p>
+
+<p>如果一个对象既能按 <code>id</code> 查，又能按 <code>(addr,port)</code> 查，还能按别的 key 查，那么它常常会内嵌多个 <code>hlist_node</code>。</p>
+
+<p>这比单独分配外部链表节点更好，因为：</p>
+<ul>
+<li>少一次内存分配</li>
+<li>少一次间接访问</li>
+<li>删除时直接通过对象内的 node O(1) 脱链</li>
+</ul>
+
+<h4>什么时候不用 <code>hlist</code></h4>
+
+<p>如果你的场景更偏向下面这些需求，就不该优先选 <code>hlist</code>：</p>
+
+<table>
+<thead><tr>
+<th>需求</th>
+<th>更适合的结构</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>需要双向遍历、频繁从尾部操作</td>
+<td><code>list_head</code></td>
+</tr>
+<tr>
+<td>需要按 key 有序</td>
+<td><code>rbtree</code> / <code>xarray</code></td>
+</tr>
+<tr>
+<td>需要 lockless 哈希遍历并区分末尾</td>
+<td><code>hlist_nulls</code></td>
+</tr>
+<tr>
+<td>需要按范围查询</td>
+<td><code>maple tree</code> / <code>rbtree</code></td>
+</tr>
+</tbody></table>
+
+<p>所以 <code>hlist_node</code> 不是“list_head 的缩水版”，而是一个非常明确的工程取舍：</p>
+
+<pre><code class="language-text">我不要循环双向链表的完整能力；
+我只要：桶头更省、从头遍历、已知节点可 O(1) 删除。</code></pre>
+
+<h3>Time Complexity</h3>
+
+<table>
+<thead><tr>
+<th>Operation</th>
+<th>Complexity</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Insert (head/tail)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td>Delete</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td>Search</td>
+<td>O(n)</td>
+</tr>
+<tr>
+<td>Splice (join two lists)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td>Count</td>
+<td>O(n)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>2. Red-Black Trees</h2>
+
+<p><strong>Files</strong>: <code>include/linux/rbtree.h</code>, <code>include/linux/rbtree_types.h</code>, <code>lib/rbtree.c</code></p>
+
+<h3>Struct Definitions</h3>
+
+<pre><code class="language-c">/* include/linux/rbtree_types.h */
+struct rb_node {
+    unsigned long  __rb_parent_color;   /* parent pointer + color bit (LSB) */
+    struct rb_node *rb_right;
+    struct rb_node *rb_left;
+} __attribute__((aligned(sizeof(long))));
+
+struct rb_root {
+    struct rb_node *rb_node;
+};
+
+/* Cached variant: O(1) access to leftmost (minimum) node */
+struct rb_root_cached {
+    struct rb_root rb_root;
+    struct rb_node *rb_leftmost;
+};
+
+#define RB_ROOT      (struct rb_root) { NULL, }
+#define RB_ROOT_CACHED (struct rb_root_cached) { {NULL, }, NULL }</code></pre>
+
+<p><strong>为什么 <code>struct rb_node</code> 还没“定义完”，内部就能写 <code>struct rb_node *rb_left</code>？</strong></p>
+
+<p>这里最容易混淆的是：</p>
+
+<pre><code class="language-c">struct rb_node *rb_left;</code></pre>
+
+<p>这不是“在结构体里嵌入一个 <code>struct rb_node</code> 对象”，而是“在结构体里放一个<strong>指向 <code>struct rb_node</code> 的指针</strong>”。</p>
+
+<p>这两种写法的含义完全不同：</p>
+
+<pre><code class="language-c">/* 合法：成员是指针，指针大小固定，编译器现在就知道大小 */
+struct rb_node {
+        struct rb_node *rb_left;
+};
+
+/* 非法：成员是对象本体，会导致大小无限递归 */
+struct bad_node {
+        struct bad_node child;   // 错误
+};</code></pre>
+
+<h4>为什么指针可以，但对象本体不可以？</h4>
+
+<p>因为编译器计算结构体大小时：</p>
+
+<ul>
+<li><code>struct rb_node *</code> 的大小是固定的，64 位机器上通常就是 8 字节</li>
+<li>但 <code>struct rb_node</code> 本体的大小，必须等整个结构定义结束后才能知道</li>
+</ul>
+
+<p>所以对编译器来说：</p>
+
+<pre><code class="language-text">struct rb_node *rb_left;</code></pre>
+
+<p>只是在说：</p>
+
+<pre><code class="language-text">“这里放一个地址，这个地址将来会指向某个 rb_node”</code></pre>
+
+<p>而不是说：</p>
+
+<pre><code class="language-text">“这里再完整塞一个 rb_node 进去”</code></pre>
+
+<h4>如果真嵌对象本体，会发生什么？</h4>
+
+<p>假设允许下面这种写法：</p>
+
+<pre><code class="language-c">struct bad_node {
+        int key;
+        struct bad_node left;
+        struct bad_node right;
+};</code></pre>
+
+<p>那编译器在算 <code>sizeof(struct bad_node)</code> 时会陷入无限递归：</p>
+
+<pre><code class="language-text">sizeof(bad_node)
+ = sizeof(int)
+ + sizeof(bad_node)
+ + sizeof(bad_node)</code></pre>
+
+<p>这个大小永远算不出来，所以 C 语言禁止“结构体中直接包含自身类型的对象本体”。</p>
+
+<h4>为什么“指向自己类型的指针”是合法的？</h4>
+
+<p>因为指针大小与被指向对象的完整内容无关。</p>
+
+<p>在 64 位系统里，可以把 <code>rb_node</code> 粗略理解成：</p>
+
+<pre><code class="language-text">struct rb_node
+┌──────────────────────────────┐
+│ __rb_parent_color : 8 bytes  │
+├──────────────────────────────┤
+│ rb_right          : 8 bytes  │
+├──────────────────────────────┤
+│ rb_left           : 8 bytes  │
+└──────────────────────────────┘</code></pre>
+
+<p>这里 <code>rb_left</code> / <code>rb_right</code> 里放的只是“另一个节点的地址”，并不是把整个左子树、右子树对象嵌进来。</p>
+
+<p>所以一棵树在内存里的真实关系更像：</p>
+
+<pre><code class="language-text">node_A
+    rb_left  ----&gt; node_B
+    rb_right ----&gt; node_C
+
+node_B
+    rb_left  ----&gt; NULL
+    rb_right ----&gt; NULL</code></pre>
+
+<p>也就是说，树结构是靠<strong>地址引用关系</strong>连起来的，不是靠“对象一层套一层”物理嵌套出来的。</p>
+
+<h4>这和“不完整类型（incomplete type）”有什么关系？</h4>
+
+<p>在 <code>struct rb_node</code> 定义尚未结束时，<code>struct rb_node</code> 对当前作用域来说属于一种<strong>不完整类型</strong>：</p>
+
+<ul>
+<li>你可以声明 <code>struct rb_node *p;</code></li>
+<li>你可以把它作为函数参数指针类型</li>
+<li>但你<strong>不能</strong>在此时做 <code>sizeof(struct rb_node)</code></li>
+<li>也<strong>不能</strong>定义 <code>struct rb_node obj;</code> 作为成员本体</li>
+</ul>
+
+<p>因为：</p>
+
+<pre><code class="language-text">不完整类型可以“被引用”
+不完整类型不能“按值展开”</code></pre>
+
+<h4>用链表举一个完全一样的例子</h4>
+
+<p>这并不是红黑树特例，链表也是同样原理：</p>
+
+<pre><code class="language-c">struct list_head {
+        struct list_head *next, *prev;
+};</code></pre>
+
+<p><code>next</code>/<code>prev</code> 也都是“指向同类型节点的指针”，所以合法。</p>
+
+<p>红黑树只是把这种“自引用指针结构”换成了：</p>
+
+<ul>
+<li>左孩子指针 <code>rb_left</code></li>
+<li>右孩子指针 <code>rb_right</code></li>
+<li>父节点指针（打包在 <code>__rb_parent_color</code> 里）</li>
+</ul>
+
+<p>本质上完全一样。</p>
+
+<p><strong>Design trick</strong>: <code><strong>rb_parent_color</code> stores both the parent pointer AND the red/black color in the least significant bit. This works because <code>rb_node</code> is aligned to <code>sizeof(long)</code>, so the bottom bits of any valid pointer are always 0. The macro <code>rb_parent(r)</code> extracts the parent via <code>(r)-></strong>rb_parent_color & ~3</code>.</p>
+
+<h3>Key API Functions</h3>
+
+<pre><code class="language-c">/* Core operations */
+void rb_insert_color(struct rb_node *, struct rb_root *);
+void rb_erase(struct rb_node *, struct rb_root *);
+
+/* Traversal */
+struct rb_node *rb_next(const struct rb_node *);      /* in-order successor */
+struct rb_node *rb_prev(const struct rb_node *);      /* in-order predecessor */
+struct rb_node *rb_first(const struct rb_root *);     /* leftmost = minimum */
+struct rb_node *rb_last(const struct rb_root *);      /* rightmost = maximum */
+
+/* Link a new node (caller finds position, then calls this + rb_insert_color) */
+static inline void rb_link_node(struct rb_node *node,
+                                struct rb_node *parent,
+                                struct rb_node **rb_link);
+
+/* Fast replacement without rebalance */
+void rb_replace_node(struct rb_node *victim, struct rb_node *new,
+                     struct rb_root *root);
+
+/* Cached (O(1) min) variants */
+static inline void rb_insert_color_cached(struct rb_node *node,
+                                          struct rb_root_cached *root,
+                                          bool leftmost);
+struct rb_node *rb_erase_cached(struct rb_node *node,
+                                struct rb_root_cached *root);
+#define rb_first_cached(root) (root)-&gt;rb_leftmost  /* O(1)! */
+
+/* Safe post-order iteration (for tree destruction) */
+#define rbtree_postorder_for_each_entry_safe(pos, n, root, field)</code></pre>
+
+<h3>Insert Pattern (Caller-implemented)</h3>
+
+<p>The kernel does NOT provide a generic insert function — callers write their own comparison:</p>
+
+<pre><code class="language-c">/* Typical rbtree insertion pattern (from Documentation/core-api/rbtree.rst) */
+void my_insert(struct rb_root *root, struct my_struct *data)
+{
+    struct rb_node **new = &amp;(root-&gt;rb_node), *parent = NULL;
+
+    while (*new) {
+        struct my_struct *this = rb_entry(*new, struct my_struct, node);
+        parent = *new;
+
+        if (data-&gt;key &lt; this-&gt;key)
+            new = &amp;((*new)-&gt;rb_left);
+        else if (data-&gt;key &gt; this-&gt;key)
+            new = &amp;((*new)-&gt;rb_right);
+        else
+            return; /* duplicate */
+    }
+
+    rb_link_node(&amp;data-&gt;node, parent, new);
+    rb_insert_color(&amp;data-&gt;node, root);
+}</code></pre>
+
+<h3>核心实现源码逐行注释 — 红黑树插入修复 (<a href="lib/rbtree.c#L89">rbtree.c</a>)</h3>
+
+<p>红黑树的五条性质确保树的高度 ≤ 2log₂(n+1)：</p>
+<ol>
+<li>节点非红即黑</li>
+<li>根是黑色</li>
+<li>所有叶子（NULL）是黑色</li>
+<li>红色节点的两个子节点都是黑色（不能连续两个红节点）</li>
+<li>从根到叶的每条路径包含相同数量的黑色节点</li>
+</ol>
+
+<h4><code>__rb_insert()</code> — 插入后的颜色修复</h4>
+
+<pre><code class="language-c">static __always_inline void
+__rb_insert(struct rb_node *node, struct rb_root *root,
+    void (*augment_rotate)(struct rb_node *old, struct rb_node *new))
+{
+    struct rb_node *parent = rb_red_parent(node), *gparent, *tmp;
+
+    while (true) {
+        /*
+         * 循环不变量: node 始终是红色的
+         */
+
+        // 情况 0: node 是根节点 → 直接变黑
+        if (unlikely(!parent)) {
+            rb_set_parent_color(node, NULL, RB_BLACK);
+            break;
+        }
+
+        // 如果父节点是黑色，没有违反性质4，结束
+        if (rb_is_black(parent))
+            break;
+
+        gparent = rb_red_parent(parent);  // 祖父节点（必存在，因为父为红不可能是根）
+        tmp = gparent-&gt;rb_right;
+
+        if (parent != tmp) {   /* parent == gparent-&gt;rb_left */
+
+            if (tmp &amp;&amp; rb_is_red(tmp)) {
+                /*
+                 * Case 1 — 叔叔节点是红色 → 颜色翻转
+                 *       G(黑)            g(红)
+                 *      / \              / \
+                 *     p(红) u(红) --&gt;  P(黑) U(黑)
+                 *    /                /
+                 *   n(红)            n(红)
+                 *
+                 * 将父和叔变黑，祖父变红，然后在祖父处继续循环
+                 */
+                rb_set_parent_color(tmp, gparent, RB_BLACK);
+                rb_set_parent_color(parent, gparent, RB_BLACK);
+                node = gparent;
+                parent = rb_parent(node);
+                rb_set_parent_color(node, parent, RB_RED);
+                continue;  // 在更高层继续检查
+            }
+
+            tmp = parent-&gt;rb_right;
+            if (node == tmp) {
+                /*
+                 * Case 2 — 叔叔是黑色，node是右孩子 → 左旋parent
+                 *      G             G
+                 *     / \           / \
+                 *    p   U  --&gt;    n   U
+                 *     \           /
+                 *      n         p
+                 * 旋转后 parent 变成了 node 的子节点
+                 * 继续进入 Case 3
+                 */
+                WRITE_ONCE(parent-&gt;rb_right, tmp = node-&gt;rb_left);
+                WRITE_ONCE(node-&gt;rb_left, parent);
+                if (tmp)
+                    rb_set_parent_color(tmp, parent, RB_BLACK);
+                rb_set_parent_color(parent, node, RB_RED);
+                augment_rotate(parent, node);
+                parent = node;
+                tmp = node-&gt;rb_right;
+            }
+
+            /*
+             * Case 3 — 叔叔是黑色，node是左孩子 → 右旋gparent
+             *        G(黑)          P(黑)
+             *       / \            / \
+             *      p(红) U  --&gt;  n(红) g(红)
+             *     /                     \
+             *    n(红)                   U
+             */
+            WRITE_ONCE(gparent-&gt;rb_left, tmp);
+            WRITE_ONCE(parent-&gt;rb_right, gparent);
+            if (tmp)
+                rb_set_parent_color(tmp, gparent, RB_BLACK);
+            __rb_rotate_set_parents(gparent, parent, root, RB_RED);
+            augment_rotate(gparent, parent);
+            break;  // 修复完成
+        } else {
+            /* 对称情况: parent == gparent-&gt;rb_right */
+            /* 同上三种 Case，方向相反 */
+            ...
+        }
+    }
+}</code></pre>
+
+<p><strong>关键设计点</strong>:</p>
+
+<ol>
+<li><strong><code>__rb_parent_color</code> 的位打包</strong>: <code>rb_node</code> 对齐到 <code>sizeof(long)</code>，所以指针的最低2位始终为0。红黑树利用这两位存储颜色（0=红，1=黑），用一个 <code>unsigned long</code> 同时保存父指针和颜色：</li>
+</ol>
+<pre><code class="language-c">   // 提取父指针: 清除最低2位
+   #define rb_parent(r) ((struct rb_node *)((r)-&gt;__rb_parent_color &amp; ~3))
+   // 设置颜色: 修改最低位
+   #define rb_set_parent_color(rb, p, color) \
+       (rb)-&gt;__rb_parent_color = (unsigned long)(p) | (color)</code></pre>
+
+<ol>
+<li><strong><code>WRITE_ONCE</code> 保证无锁遍历安全</strong>: 旋转过程中的指针修改使用 <code>WRITE_ONCE</code>，使得并发的无锁 lookup（<code>rcu_read_lock</code> 保护）虽然可能miss某些节点，但不会陷入死循环或访问非法内存。</li>
+</ol>
+
+<ol>
+<li><strong>Augmented RB-tree</strong>: <code>augment_rotate</code> 回调在每次旋转后更新增量数据。CFS 调度器用它来维护子树的 <code>min_vruntime</code>。</li>
+</ol>
+
+<h4>删除后的修复 — <code>____rb_erase_color()</code> (<a href="lib/rbtree.c#L230">rbtree.c</a>)</h4>
+
+<p>删除的修复更复杂，有4种情况（+对称的4种=8种）：</p>
+
+<pre><code class="language-c">// 核心逻辑:
+while (true) {
+    sibling = parent-&gt;rb_right;       // 兄弟节点
+    if (node != sibling) {
+        if (rb_is_red(sibling)) {
+            /* Case 1: 兄弟是红色 → 左旋parent
+             *     P               S
+             *    / \             / \
+             *   N   s    --&gt;   p   Sr
+             *      / \        / \
+             *     Sl  Sr     N   Sl
+             * 转化为兄弟为黑的情况 (Case 2/3/4)
+             */
+        }
+        if (!tmp1 || rb_is_black(tmp1)) {
+            if (!tmp2 || rb_is_black(tmp2)) {
+                /* Case 2: 兄弟两子都是黑 → 兄弟变红
+                 * 如果parent是红 → parent变黑，完成
+                 * 如果parent是黑 → 在parent处递归
+                 */
+                rb_set_parent_color(sibling, parent, RB_RED);
+                if (rb_is_red(parent)) { rb_set_black(parent); break; }
+                node = parent; parent = rb_parent(node); continue;
+            }
+            /* Case 3: 兄弟左子红、右子黑 → 右旋兄弟
+             *   (p)           (p)
+             *   / \           / \
+             *  N   S    --&gt;  N   sl
+             *     / \             \
+             *    sl  Sr            S → Sr
+             * 转化为 Case 4
+             */
+        }
+        /* Case 4: 兄弟右子是红色 → 左旋parent
+         *   (p)            (s)
+         *   / \            / \
+         *  N   S    --&gt;   P   Sr
+         *     / \        / \
+         *    (sl) sr    N  (sl)
+         * 修复完成!
+         */
+        break;
+    }
+    // 对称情况...
+}</code></pre>
+
+<h3>Kernel Usage Examples (Red-Black Tree)</h3>
+
+<h3>Time Complexity</h3>
+
+<table>
+<thead><tr>
+<th>Operation</th>
+<th>Complexity</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Insert</td>
+<td>O(log n)</td>
+</tr>
+<tr>
+<td>Delete</td>
+<td>O(log n)</td>
+</tr>
+<tr>
+<td>Search</td>
+<td>O(log n)</td>
+</tr>
+<tr>
+<td>Next/Prev</td>
+<td>O(log n) amortized O(1)</td>
+</tr>
+<tr>
+<td>First (cached)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td>First (uncached)</td>
+<td>O(log n)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>3. XArray / Radix Tree</h2>
+
+<p><strong>Files</strong>: <code>include/linux/xarray.h</code>, <code>include/linux/radix-tree.h</code>, <code>lib/xarray.c</code></p>
+
+<h3>Struct Definitions</h3>
+
+<pre><code class="language-c">/* include/linux/xarray.h */
+struct xarray {
+    spinlock_t   xa_lock;
+    gfp_t        xa_flags;
+    void __rcu  *xa_head;
+};
+
+struct xa_limit {
+    u32 max;
+    u32 min;
+};
+
+/* include/linux/radix-tree.h — radix tree is now an alias for xarray */
+#define radix_tree_root   xarray
+#define radix_tree_node   xa_node</code></pre>
+
+<p><strong>Design</strong>: The XArray is a resizable array-like data structure indexed by <code>unsigned long</code>. Internally it uses a <strong>radix tree</strong> (trie) with a configurable chunk size (typically 6 bits per level = 64 slots per node). It replaces the older <code>radix_tree</code> API.</p>
+
+<p>Special entry encoding in the bottom 2 bits:</p>
+<ul>
+<li><code>00</code>: Pointer entry</li>
+<li><code>10</code>: Internal entry (node pointer, retry, zero, or error)  </li>
+<li><code>x1</code>: Value entry (stores integer in upper bits) or tagged pointer</li>
+</ul>
+
+<h3>Key API Functions</h3>
+
+<pre><code class="language-c">/* Core operations */
+void *xa_load(struct xarray *, unsigned long index);
+void *xa_store(struct xarray *, unsigned long index, void *entry, gfp_t);
+void *xa_erase(struct xarray *, unsigned long index);
+void *xa_store_range(struct xarray *, unsigned long first,
+                     unsigned long last, void *entry, gfp_t);
+void xa_destroy(struct xarray *);
+
+/* Marks (tags) — up to 3 marks per entry */
+bool xa_get_mark(struct xarray *, unsigned long index, xa_mark_t);
+void xa_set_mark(struct xarray *, unsigned long index, xa_mark_t);
+void xa_clear_mark(struct xarray *, unsigned long index, xa_mark_t);
+
+/* Search */
+void *xa_find(struct xarray *xa, unsigned long *index,
+              unsigned long max, xa_mark_t);
+void *xa_find_after(struct xarray *xa, unsigned long *index,
+                    unsigned long max, xa_mark_t);
+
+/* Initialization */
+static inline void xa_init(struct xarray *xa);          /* zero flags */
+static inline void xa_init_flags(struct xarray *xa, gfp_t flags);
+
+/* Value entries — store integers directly */
+static inline void *xa_mk_value(unsigned long v);  /* v &lt;&lt; 1 | 1 */
+static inline unsigned long xa_to_value(const void *entry);
+static inline bool xa_is_value(const void *entry);
+
+/* Iteration */
+#define xa_for_each(xa, index, entry)
+#define xa_for_each_marked(xa, index, entry, filter)
+#define xa_for_each_start(xa, index, entry, start)</code></pre>
+
+<h3>内部节点结构 — <code>xa_node</code> (<a href="include/linux/xarray.h#L1168">xarray.h</a>)</h3>
+
+<pre><code class="language-c">struct xa_node {
+    unsigned char  shift;      /* 每个slot还需要左移的位数 */
+    unsigned char  offset;     /* 在父节点中的slot偏移 */
+    unsigned char  count;      /* 非NULL entry数量 */
+    unsigned char  nr_values;  /* value entry 数量 */
+    struct xa_node __rcu *parent;  /* 父节点，根节点为NULL */
+    struct xarray  *array;     /* 所属的xarray */
+    union {
+        struct list_head private_list;  /* 供使用者自定义 */
+        struct rcu_head  rcu_head;      /* RCU释放时用 */
+    };
+    void __rcu *slots[XA_CHUNK_SIZE];  /* 64个slot (6位索引) */
+    unsigned long tags[XA_MAX_MARKS][XA_MARK_LONGS];  /* 3组标记位图 */
+};</code></pre>
+
+<p><strong>Radix Tree 结构图示</strong>:</p>
+<pre><code>                     xa_head (root)
+                        |
+                    xa_node (shift=12)        ← 处理 bits 12-17
+                   /    |    \
+              slot[0] slot[1] ... slot[63]    ← 每个slot处理6位
+                 |
+            xa_node (shift=6)                 ← 处理 bits 6-11
+           /    |    \
+      slot[0] slot[1] ... slot[63]
+         |
+    xa_node (shift=0)                         ← 处理 bits 0-5
+   /    |    \
+ data  data  data  ...                        ← 叶子节点存储实际指针</code></pre>
+
+<p><strong>索引解析</strong>: 对于 index=0x1234:</p>
+<ul>
+<li>Level 2 (shift=12): slot[(0x1234 >> 12) & 0x3F] = slot[1]</li>
+<li>Level 1 (shift=6):  slot[(0x1234 >> 6) & 0x3F]  = slot[13]</li>
+<li>Level 0 (shift=0):  slot[0x1234 & 0x3F]          = slot[52]</li>
+</ul>
+
+<p><strong>XArray 的特殊编码</strong>:</p>
+<pre><code class="language-c">// 低2位决定entry类型:
+// 00: 普通指针（用户数据）
+// x1: value entry — 整数直接编码在指针中
+static inline void *xa_mk_value(unsigned long v) { return (void *)((v &lt;&lt; 1) | 1); }
+static inline unsigned long xa_to_value(const void *entry) { return (unsigned long)entry &gt;&gt; 1; }
+// 10: internal entry（节点指针、retry、error）
+static inline void *xa_mk_node(const struct xa_node *node) { return (void *)((unsigned long)node | 2); }</code></pre>
+
+<h3>Legacy Radix Tree API (Wrappers)</h3>
+
+<pre><code class="language-c">/* These map directly to xarray operations */
+#define RADIX_TREE(name, mask)   struct radix_tree_root name = RADIX_TREE_INIT(name, mask)
+#define INIT_RADIX_TREE(root, mask)  xa_init_flags(root, mask)
+
+int radix_tree_insert(struct radix_tree_root *, unsigned long index, void *);
+void *radix_tree_delete(struct radix_tree_root *, unsigned long index);
+void *radix_tree_lookup(const struct radix_tree_root *, unsigned long);</code></pre>
+
+<h3>Kernel Usage Examples</h3>
+
+<ul>
+<li><strong>Page cache</strong>: <code>struct address_space</code> uses <code>struct xarray i_pages</code> to map <code>pgoff_t → struct folio *</code></li>
+<li><strong>PID lookup</strong>: <code>struct pid_namespace</code> uses radix tree for PID to task mapping</li>
+<li><strong>Slab allocator</strong>: tracks partial slabs</li>
+<li><strong>IDA/IDR</strong>: built on top of XArray internally</li>
+</ul>
+
+<h3>Time Complexity</h3>
+
+<table>
+<thead><tr>
+<th>Operation</th>
+<th>Complexity</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Load (lookup)</td>
+<td>O(log₆₄ n) ≈ O(1) for 64-bit keys (max ~11 levels)</td>
+</tr>
+<tr>
+<td>Store (insert)</td>
+<td>O(log₆₄ n)</td>
+</tr>
+<tr>
+<td>Erase (delete)</td>
+<td>O(log₆₄ n)</td>
+</tr>
+<tr>
+<td>Find with mark</td>
+<td>O(log₆₄ n)</td>
+</tr>
+<tr>
+<td>Iteration (next)</td>
+<td>Amortized O(1)</td>
+</tr>
+</tbody></table>
+
+<p>For practical purposes with 64-bit indexes, the tree has at most ~11 levels, so these are effectively constant time.</p>
+
+<hr>
+
+<h2>4. Hash Tables</h2>
+
+<p><strong>Files</strong>: <code>include/linux/hashtable.h</code>, <code>include/linux/hash.h</code></p>
+
+<h3>"Struct" Definition (Macro-based)</h3>
+
+<pre><code class="language-c">/* include/linux/hashtable.h */
+/* A hash table is simply an array of hlist_heads */
+#define DEFINE_HASHTABLE(name, bits)
+    struct hlist_head name[1 &lt;&lt; (bits)] =
+        { [0 ... ((1 &lt;&lt; (bits)) - 1)] = HLIST_HEAD_INIT }
+
+#define DECLARE_HASHTABLE(name, bits)
+    struct hlist_head name[1 &lt;&lt; (bits)]
+
+/* Size queries */
+#define HASH_SIZE(name) (ARRAY_SIZE(name))
+#define HASH_BITS(name) ilog2(HASH_SIZE(name))</code></pre>
+
+<p><strong>Design</strong>: Statically-sized chained hash table. Each bucket is an <code>hlist_head</code> (not <code>list_head</code>) to save memory — with many buckets, the 8-byte savings per bucket from using a single pointer instead of two is significant.</p>
+
+<h3>Key API Functions</h3>
+
+<pre><code class="language-c">/* Initialization */
+#define hash_init(hashtable) __hash_init(hashtable, HASH_SIZE(hashtable))
+
+/* Insert: hashes key, adds node to correct bucket */
+#define hash_add(hashtable, node, key)
+    hlist_add_head(node, &amp;hashtable[hash_min(key, HASH_BITS(hashtable))])
+
+/* Delete */
+static inline void hash_del(struct hlist_node *node);     /* hlist_del_init */
+
+/* Test */
+static inline bool hash_hashed(struct hlist_node *node);   /* is in a table? */
+#define hash_empty(hashtable)                               /* all buckets empty? */
+
+/* Iteration */
+#define hash_for_each(name, bkt, obj, member)              /* all entries */
+#define hash_for_each_safe(name, bkt, tmp, obj, member)    /* safe removal */
+#define hash_for_each_possible(name, obj, member, key)     /* same-bucket entries */
+
+/* RCU variants */
+#define hash_add_rcu(hashtable, node, key)
+#define hash_del_rcu(node)
+#define hash_for_each_rcu(name, bkt, obj, member)
+#define hash_for_each_possible_rcu(name, obj, member, key, cond...)</code></pre>
+
+<h3>Hash Functions</h3>
+
+<pre><code class="language-c">/* include/linux/hash.h */
+/* Use hash_32 when possible for fast 32-bit hashing in 64-bit kernels */
+#define hash_min(val, bits)
+    (sizeof(val) &lt;= 4 ? hash_32(val, bits) : hash_long(val, bits))</code></pre>
+
+<h3>Kernel Usage Examples</h3>
+
+<ul>
+<li><strong>PID hash table</strong>: <code>kernel/pid.c</code> — fast PID to <code>struct pid</code> lookup</li>
+<li><strong>Inode cache</strong>: <code>fs/inode.c</code> — <code>inode_hashtable</code> for inode lookup</li>
+<li><strong>Dentry cache</strong>: <code>fs/dcache.c</code> — <code>dentry_hashtable</code></li>
+<li><strong>Futex</strong>: <code>kernel/futex/</code> — hash table of futex queues</li>
+<li><strong>Network</strong>: connection tracking in <code>nf_conntrack</code></li>
+</ul>
+
+<h3>Time Complexity</h3>
+
+<table>
+<thead><tr>
+<th>Operation</th>
+<th>Average</th>
+<th>Worst Case</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Insert (<code>hash_add</code>)</td>
+<td>O(1)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td>Delete (<code>hash_del</code>)</td>
+<td>O(1)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td>Lookup (<code>hash_for_each_possible</code>)</td>
+<td>O(1)</td>
+<td>O(n) (all collide)</td>
+</tr>
+<tr>
+<td>Full iteration (<code>hash_for_each</code>)</td>
+<td>O(n + buckets)</td>
+<td>O(n + buckets)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>5. Bitmap</h2>
+
+<p><strong>Files</strong>: <code>include/linux/bitmap.h</code>, <code>include/linux/types.h</code>, <code>lib/bitmap.c</code></p>
+
+<h3>"Struct" Definition</h3>
+
+<pre><code class="language-c">/* include/linux/types.h */
+#define DECLARE_BITMAP(name, bits)  unsigned long name[BITS_TO_LONGS(bits)]</code></pre>
+
+<p><strong>Design</strong>: A bitmap is simply an array of <code>unsigned long</code> values. <code>BITS_TO_LONGS()</code> computes the minimum number of longs needed. Individual bit operations come from <code>asm/bitops.h</code>, while bulk operations come from <code>lib/bitmap.c</code>.</p>
+
+<h3>Key API Functions</h3>
+
+<pre><code class="language-c">/* Allocation */
+unsigned long *bitmap_alloc(unsigned int nbits, gfp_t flags);
+unsigned long *bitmap_zalloc(unsigned int nbits, gfp_t flags);
+void bitmap_free(const unsigned long *bitmap);
+
+/* Bulk operations */
+void bitmap_zero(unsigned long *dst, unsigned int nbits);     /* clear all */
+void bitmap_fill(unsigned long *dst, unsigned int nbits);     /* set all */
+void bitmap_copy(unsigned long *dst, const unsigned long *src, unsigned int nbits);
+
+/* Logical operations */
+bool bitmap_and(unsigned long *dst, const unsigned long *src1,
+                const unsigned long *src2, unsigned int nbits);
+void bitmap_or(unsigned long *dst, ...);
+void bitmap_xor(unsigned long *dst, ...);
+bool bitmap_andnot(unsigned long *dst, ...);
+void bitmap_complement(unsigned long *dst, ...);
+
+/* Testing */
+bool bitmap_equal(const unsigned long *src1, const unsigned long *src2, unsigned int nbits);
+bool bitmap_intersects(const unsigned long *src1, const unsigned long *src2, unsigned int nbits);
+bool bitmap_subset(const unsigned long *src1, const unsigned long *src2, unsigned int nbits);
+bool bitmap_empty(const unsigned long *src, unsigned int nbits);
+bool bitmap_full(const unsigned long *src, unsigned int nbits);
+
+/* Counting */
+unsigned int bitmap_weight(const unsigned long *src, unsigned int nbits);  /* popcount */
+
+/* Region operations */
+void bitmap_set(unsigned long *map, unsigned int start, int len);
+void bitmap_clear(unsigned long *map, unsigned int start, int len);
+unsigned long bitmap_find_next_zero_area(unsigned long *map, unsigned long size,
+                                         unsigned long start, unsigned int nr,
+                                         unsigned long align_mask);
+
+/* Atomic single-bit operations (from asm/bitops.h) */
+void set_bit(int nr, volatile unsigned long *addr);
+void clear_bit(int nr, volatile unsigned long *addr);
+void change_bit(int nr, volatile unsigned long *addr);
+int test_bit(int nr, const volatile unsigned long *addr);
+int test_and_set_bit(int nr, volatile unsigned long *addr);
+int test_and_clear_bit(int nr, volatile unsigned long *addr);
+
+/* Searching */
+unsigned long find_first_bit(const unsigned long *addr, unsigned long size);
+unsigned long find_first_zero_bit(const unsigned long *addr, unsigned long size);
+unsigned long find_next_bit(const unsigned long *addr, unsigned long size, unsigned long offset);
+unsigned long find_next_zero_bit(const unsigned long *addr, unsigned long size, unsigned long offset);
+
+/* Iteration */
+#define for_each_set_bit(bit, addr, size)
+#define for_each_clear_bit(bit, addr, size)</code></pre>
+
+<h3>Kernel Usage Examples</h3>
+
+<ul>
+<li><strong>CPU masks</strong>: <code>cpumask_t</code> is <code>DECLARE_BITMAP(bits, NR_CPUS)</code> — used everywhere for CPU affinity, online CPUs</li>
+<li><strong>Node masks</strong>: <code>nodemask_t</code> for NUMA nodes</li>
+<li><strong>Page flags</strong>: buddy allocator page bitmaps</li>
+<li><strong>IRQ allocation</strong>: <code>allocated_irqs</code> bitmap in <code>kernel/irq/irqdesc.c</code></li>
+<li><strong>Slab allocator</strong>: free object tracking bitmaps</li>
+</ul>
+
+<h3>Time Complexity</h3>
+
+<table>
+<thead><tr>
+<th>Operation</th>
+<th>Complexity</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>set_bit</code> / <code>clear_bit</code> / <code>test_bit</code></td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>bitmap_zero</code> / <code>bitmap_fill</code></td>
+<td>O(n/BITS_PER_LONG)</td>
+</tr>
+<tr>
+<td><code>bitmap_and/or/xor</code></td>
+<td>O(n/BITS_PER_LONG)</td>
+</tr>
+<tr>
+<td><code>bitmap_weight</code></td>
+<td>O(n/BITS_PER_LONG)</td>
+</tr>
+<tr>
+<td><code>find_first_bit</code></td>
+<td>O(n/BITS_PER_LONG) worst case</td>
+</tr>
+<tr>
+<td><code>find_next_bit</code></td>
+<td>O(n/BITS_PER_LONG) worst case</td>
+</tr>
+<tr>
+<td><code>bitmap_equal</code></td>
+<td>O(n/BITS_PER_LONG)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>6. IDR / IDA</h2>
+
+<p><strong>Files</strong>: <code>include/linux/idr.h</code>, <code>lib/radix-tree.c</code></p>
+
+<h3>Struct Definitions</h3>
+
+<pre><code class="language-c">/* include/linux/idr.h */
+struct idr {
+    struct radix_tree_root  idr_rt;     /* backed by XArray */
+    unsigned int            idr_base;
+    unsigned int            idr_next;
+};
+
+/* IDA — ID Allocator (no pointer storage, just bit allocation) */
+struct ida_bitmap {
+    unsigned long  bitmap[IDA_BITMAP_LONGS];  /* 128 bytes per chunk */
+};
+
+struct ida {
+    struct xarray xa;
+};</code></pre>
+
+<p><strong>Design</strong>: IDR maps integer IDs to pointers (like a sparse array). It's built on top of the radix tree / XArray. IDA is a more memory-efficient variant when you only need to allocate/free IDs without associating data.</p>
+
+<h3>Key API Functions — IDR</h3>
+
+<pre><code class="language-c">/* Static definition */
+#define DEFINE_IDR(name)  struct idr name = IDR_INIT(name)
+
+/* Dynamic init */
+static inline void idr_init(struct idr *idr);
+
+/* Allocate: assigns an unused ID, stores ptr, returns the ID */
+int idr_alloc(struct idr *, void *ptr, int start, int end, gfp_t);
+int idr_alloc_u32(struct idr *, void *ptr, u32 *id, unsigned long max, gfp_t);
+int idr_alloc_cyclic(struct idr *, void *ptr, int start, int end, gfp_t);
+
+/* Lookup */
+void *idr_find(const struct idr *, unsigned long id);
+
+/* Remove */
+void *idr_remove(struct idr *, unsigned long id);
+
+/* Replace entry atomically */
+void *idr_replace(struct idr *, void *, unsigned long id);
+
+/* Iteration */
+#define idr_for_each_entry(idr, entry, id)
+    for (id = 0; ((entry) = idr_get_next(idr, &amp;(id))) != NULL; id += 1U)
+
+/* Destroy all entries */
+void idr_destroy(struct idr *);
+
+/* Locking (delegates to xa_lock) */
+#define idr_lock(idr)       xa_lock(&amp;(idr)-&gt;idr_rt)
+#define idr_unlock(idr)     xa_unlock(&amp;(idr)-&gt;idr_rt)</code></pre>
+
+<h3>Key API Functions — IDA</h3>
+
+<pre><code class="language-c">#define DEFINE_IDA(name)  struct ida name = IDA_INIT(name)
+
+/* Allocate an unused ID */
+static inline int ida_alloc(struct ida *ida, gfp_t gfp);
+int ida_alloc_range(struct ida *, unsigned int min, unsigned int max, gfp_t);
+
+/* Free an ID */
+void ida_free(struct ida *, unsigned int id);
+
+/* Destroy */
+void ida_destroy(struct ida *ida);</code></pre>
+
+<h3>Kernel Usage Examples</h3>
+
+<ul>
+<li><strong>File descriptors</strong>: <code>struct fdtable</code> — mapping fd numbers to <code>struct file *</code></li>
+<li><strong>Minor device numbers</strong>: <code>idr</code> for character/block device minors</li>
+<li><strong>IPC IDs</strong>: <code>struct ipc_ids</code> uses IDR for shmem/semaphore/msgqueue IDs</li>
+<li><strong>DRM</strong>: GEM handle allocation via <code>idr_alloc</code></li>
+<li><strong>Network namespaces</strong>: net device ifindex allocation via IDA</li>
+<li><strong>USB</strong>: URB IDs</li>
+</ul>
+
+<h3>Time Complexity</h3>
+
+<table>
+<thead><tr>
+<th>Operation</th>
+<th>Complexity</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>idr_alloc</code></td>
+<td>O(log₆₄ n)</td>
+</tr>
+<tr>
+<td><code>idr_find</code></td>
+<td>O(log₆₄ n) ≈ O(1)</td>
+</tr>
+<tr>
+<td><code>idr_remove</code></td>
+<td>O(log₆₄ n)</td>
+</tr>
+<tr>
+<td><code>ida_alloc</code></td>
+<td>O(log₆₄ n)</td>
+</tr>
+<tr>
+<td><code>ida_free</code></td>
+<td>O(log₆₄ n)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>7. Maple Tree</h2>
+
+<p><strong>Files</strong>: <code>include/linux/maple_tree.h</code>, <code>lib/maple_tree.c</code></p>
+
+<h3>Struct Definitions</h3>
+
+<pre><code class="language-c">/* include/linux/maple_tree.h */
+struct maple_tree {
+    union {
+        spinlock_t          ma_lock;
+        struct lockdep_map  *ma_external_lock;  /* CONFIG_LOCKDEP */
+    };
+    unsigned int  ma_flags;
+    void __rcu   *ma_root;
+};
+
+/* Node types — B-tree inspired with different slot counts */
+struct maple_range_64 {
+    struct maple_pnode *parent;
+    unsigned long pivot[MAPLE_RANGE64_SLOTS - 1];  /* 15 pivots */
+    union {
+        void __rcu *slot[MAPLE_RANGE64_SLOTS];     /* 16 slots */
+        struct {
+            void __rcu *pad[MAPLE_RANGE64_SLOTS - 1];
+            struct maple_metadata meta;
+        };
+    };
+};
+
+struct maple_arange_64 {       /* Allocation-range variant (tracks gaps) */
+    struct maple_pnode *parent;
+    unsigned long pivot[MAPLE_ARANGE64_SLOTS - 1];  /* 9 pivots */
+    void __rcu *slot[MAPLE_ARANGE64_SLOTS];          /* 10 slots */
+    unsigned long gap[MAPLE_ARANGE64_SLOTS];         /* 10 gap sizes */
+    struct maple_metadata meta;
+};
+
+/* Node sizes on 64-bit: */
+#define MAPLE_NODE_SLOTS     31    /* 256 bytes including -&gt;parent */
+#define MAPLE_RANGE64_SLOTS  16    /* 256 bytes */
+#define MAPLE_ARANGE64_SLOTS 10    /* 240 bytes */
+
+enum maple_type {
+    maple_dense,        /* Dense storage */
+    maple_leaf_64,      /* Leaf with 64-bit pivots */
+    maple_range_64,     /* Internal node with 64-bit pivots */
+    maple_arange_64,    /* Allocation-range node */
+};
+
+/* Iterator / operation state */
+struct ma_state {
+    struct maple_tree *tree;
+    unsigned long index;           /* range start */
+    unsigned long last;            /* range end */
+    struct maple_enode *node;
+    unsigned long min;             /* implied pivot min */
+    unsigned long max;             /* implied pivot max */
+    struct slab_sheaf *sheaf;
+    struct maple_node *alloc;
+    unsigned long node_request;
+    enum maple_status status;
+    unsigned char depth;
+    unsigned char offset;
+    unsigned char mas_flags;
+    unsigned char end;
+    enum store_type store_type;
+};</code></pre>
+
+<p><strong>Design</strong>: The Maple Tree is an <strong>RCU-safe B-tree</strong> variant optimized for storing <strong>ranges</strong> (key → value where keys are <code>unsigned long</code>). Nodes are 256 bytes (cache-line aligned). It replaced the rbtree+linked-list combination previously used for VMA management. The <code>arange</code> variant tracks gaps for efficient free-range allocation (critical for <code>mmap</code>).</p>
+
+<h3>Key API Functions</h3>
+
+<pre><code class="language-c">/* Static/dynamic initialization */
+#define DEFINE_MTREE(name)  struct maple_tree name = MTREE_INIT(name, 0)
+
+/* Core operations */
+void *mtree_load(struct maple_tree *mt, unsigned long index);
+int mtree_insert(struct maple_tree *mt, unsigned long index, void *entry, gfp_t);
+int mtree_insert_range(struct maple_tree *mt, unsigned long first,
+                       unsigned long last, void *entry, gfp_t);
+int mtree_store(struct maple_tree *mt, unsigned long index, void *entry, gfp_t);
+int mtree_store_range(struct maple_tree *mt, unsigned long first,
+                      unsigned long last, void *entry, gfp_t);
+void *mtree_erase(struct maple_tree *mt, unsigned long index);
+
+/* Allocation (find free range) */
+int mtree_alloc_range(struct maple_tree *mt, unsigned long *startp,
+                      void *entry, unsigned long size,
+                      unsigned long min, unsigned long max, gfp_t);
+int mtree_alloc_rrange(struct maple_tree *mt, unsigned long *startp,
+                       void *entry, unsigned long size,
+                       unsigned long min, unsigned long max, gfp_t);
+
+/* Destruction */
+void mtree_destroy(struct maple_tree *mt);
+
+/* Advanced API — maple state based */
+#define MA_STATE(name, mt, first, end)  struct ma_state name = { ... }
+
+void *mas_walk(struct ma_state *mas);
+void *mas_find(struct ma_state *mas, unsigned long max);
+void *mas_find_rev(struct ma_state *mas, unsigned long min);
+int mas_store_gfp(struct ma_state *mas, void *entry, gfp_t gfp);
+void mas_erase(struct ma_state *mas);
+
+/* Iteration */
+#define mas_for_each(__mas, __entry, __max)
+    while (((__entry) = mas_find((__mas), (__max))) != NULL)
+
+#define mas_for_each_rev(__mas, __entry, __min)
+    while (((__entry) = mas_find_rev((__mas), (__min))) != NULL)
+
+/* Locking */
+#define mas_lock(mas)    spin_lock(&amp;((mas)-&gt;tree-&gt;ma_lock))
+#define mas_unlock(mas)  spin_unlock(&amp;((mas)-&gt;tree-&gt;ma_lock))</code></pre>
+
+<h3>Kernel Usage Examples</h3>
+
+<ul>
+<li><strong>VMA management</strong>: <code>struct mm_struct</code> has <code>struct maple_tree mm_mt</code> — <strong>the</strong> primary user. All VMA lookups, insertions, splits, and merges go through the maple tree. This replaced the previous rbtree + linked list.</li>
+<li><strong><code>mmap()</code></strong>: Uses <code>mtree_alloc_range()</code> with <code>MT_FLAGS_ALLOC_RANGE</code> to efficiently find free virtual address ranges.</li>
+<li><strong><code>/proc/pid/maps</code></strong>: Iterates VMAs via <code>mas_for_each()</code></li>
+</ul>
+
+<h3>Time Complexity</h3>
+
+<table>
+<thead><tr>
+<th>Operation</th>
+<th>Complexity</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Load (point lookup)</td>
+<td>O(log n) — B-tree with high fanout</td>
+</tr>
+<tr>
+<td>Insert / Store</td>
+<td>O(log n)</td>
+</tr>
+<tr>
+<td>Erase</td>
+<td>O(log n)</td>
+</tr>
+<tr>
+<td>Alloc range (find gap)</td>
+<td>O(log n) — gap tracking in <code>arange</code> nodes</td>
+</tr>
+<tr>
+<td>Iteration (next)</td>
+<td>Amortized O(1)</td>
+</tr>
+</tbody></table>
+
+<p>The high fanout (10-16 children per node) means the tree is very shallow — typically 3-4 levels for millions of entries, making it significantly faster than rbtrees in practice due to cache locality.</p>
+
+<hr>
+
+<h2>8. Priority Lists (plist)</h2>
+
+<p><strong>Files</strong>: <code>include/linux/plist.h</code>, <code>include/linux/plist_types.h</code>, <code>lib/plist.c</code></p>
+
+<h3>Struct Definitions</h3>
+
+<pre><code class="language-c">/* include/linux/plist_types.h */
+struct plist_head {
+    struct list_head node_list;
+};
+
+struct plist_node {
+    int              prio;
+    struct list_head prio_list;    /* links one node per unique priority */
+    struct list_head node_list;    /* links ALL nodes in sorted order */
+};</code></pre>
+
+<p><strong>Design</strong>: A priority-sorted list implemented as a <strong>list of lists</strong>:</p>
+<ul>
+<li><strong>Tier 1</strong> (<code>prio_list</code>): Links one representative node per unique priority level, sorted by priority.</li>
+<li><strong>Tier 2</strong> (<code>node_list</code>): Links ALL nodes in priority order. Nodes with the same priority are FIFO-ordered.</li>
+</ul>
+
+<pre><code> pl:prio_list (only for plist_node)
+ nl:node_list
+   HEAD|             NODE(S)
+       |
+       ||------------------------------------|
+       ||-&gt;|pl|&lt;-&gt;|pl|&lt;---------------&gt;|pl|&lt;-|
+       |   |10|   |21|   |21|   |21|   |40|   (prio)
+       |   |  |   |  |   |  |   |  |   |  |
+ |-&gt;|nl|&lt;-&gt;|nl|&lt;-&gt;|nl|&lt;-&gt;|nl|&lt;-&gt;|nl|&lt;-&gt;|nl|&lt;-|
+ |-------------------------------------------|</code></pre>
+
+<p><code>INT_MIN</code> is the highest priority, <code>INT_MAX</code> is the lowest.</p>
+
+<h3>Key API Functions</h3>
+
+<pre><code class="language-c">/* Initialization */
+#define PLIST_HEAD(head)  struct plist_head head = PLIST_HEAD_INIT(head)
+static inline void plist_head_init(struct plist_head *head);
+static inline void plist_node_init(struct plist_node *node, int prio);
+
+/* Core operations */
+void plist_add(struct plist_node *node, struct plist_head *head);   /* O(K) insert */
+void plist_del(struct plist_node *node, struct plist_head *head);   /* O(1) remove */
+void plist_requeue(struct plist_node *node, struct plist_head *head);
+
+/* Queries */
+static inline int plist_head_empty(const struct plist_head *head);
+static inline int plist_node_empty(const struct plist_node *node);
+
+/* Access first/last (highest/lowest priority) */
+#define plist_first_entry(head, type, member)
+#define plist_last_entry(head, type, member)
+static inline struct plist_node *plist_first(const struct plist_head *head);
+static inline struct plist_node *plist_last(const struct plist_head *head);
+
+/* Iteration */
+#define plist_for_each(pos, head)
+#define plist_for_each_safe(pos, n, head)
+#define plist_for_each_entry(pos, head, mem)
+#define plist_for_each_entry_safe(pos, n, head, m)</code></pre>
+
+<h3>Kernel Usage Examples</h3>
+
+<ul>
+<li><strong>RT mutex waiters</strong>: <code>struct rt_mutex_waiter</code> uses <code>struct plist_node</code> for priority-inheritance ordered waiting</li>
+<li><strong>PI futexes</strong>: <code>struct futex_pi_state</code> priority waiters</li>
+<li><strong>PM QoS</strong>: <code>struct pm_qos_constraints</code> maintains a plist of QoS requests sorted by value</li>
+</ul>
+
+<h3>Time Complexity</h3>
+
+<table>
+<thead><tr>
+<th>Operation</th>
+<th>Complexity</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>plist_add</code> (insert)</td>
+<td>O(K), K = number of distinct priority levels (1 ≤ K ≤ 99 for RT)</td>
+</tr>
+<tr>
+<td><code>plist_del</code> (remove)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td>Get highest priority (<code>plist_first</code>)</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>plist_requeue</code></td>
+<td>O(K)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>9. FIFO (kfifo)</h2>
+
+<p><strong>Files</strong>: <code>include/linux/kfifo.h</code>, <code>lib/kfifo.c</code></p>
+
+<h3>Struct Definitions</h3>
+
+<pre><code class="language-c">/* include/linux/kfifo.h */
+struct __kfifo {
+    unsigned int  in;       /* write index */
+    unsigned int  out;      /* read index */
+    unsigned int  mask;     /* size - 1 (size must be power of 2) */
+    unsigned int  esize;    /* element size */
+    void         *data;     /* buffer pointer */
+};
+
+/* Statically-sized FIFO (buffer embedded in struct) */
+#define STRUCT_KFIFO(type, size)
+    struct __STRUCT_KFIFO(type, size, 0, type)
+
+/* Dynamically-allocated FIFO (buffer allocated separately) */
+struct kfifo __STRUCT_KFIFO_PTR(unsigned char, 0, void);</code></pre>
+
+<p><strong>Design</strong>: Lock-free single-producer / single-consumer ring buffer. The <code>in</code> and <code>out</code> counters are <code>unsigned int</code> and are allowed to <strong>wrap around</strong> naturally. The difference <code>in - out</code> always gives the correct count thanks to unsigned arithmetic. The <code>mask</code> (size - 1) is used with bitwise AND for O(1) index wrapping. Size must be a power of 2.</p>
+
+<p><strong>Lock-free guarantee</strong>: When there is exactly one reader and one writer, no locking is needed (the <code>in</code> index is only written by the producer, <code>out</code> only by the consumer, and <code>smp_wmb()</code>/<code>smp_rmb()</code> ensure ordering).</p>
+
+<h3>核心实现源码逐行注释 — 无锁环形缓冲区</h3>
+
+<h4><code>__kfifo_in()</code> — 生产者写入 (<a href="lib/kfifo.c#L114">kfifo.c</a>)</h4>
+
+<pre><code class="language-c">unsigned int __kfifo_in(struct __kfifo *fifo,
+        const void *buf, unsigned int len)
+{
+    unsigned int l;
+
+    l = kfifo_unused(fifo);     // 计算空闲空间: size - (in - out)
+    if (len &gt; l)
+        len = l;                // 截断到可用空间
+
+    kfifo_copy_in(fifo, buf, len, fifo-&gt;in);  // 复制数据
+    fifo-&gt;in += len;            // 更新写索引（允许自然溢出!）
+    return len;
+}</code></pre>
+
+<h4><code>kfifo_copy_in()</code> — 处理环绕的数据复制</h4>
+
+<pre><code class="language-c">static void kfifo_copy_in(struct __kfifo *fifo, const void *src,
+        unsigned int len, unsigned int off)
+{
+    unsigned int size = fifo-&gt;mask + 1;   // 实际缓冲区大小
+    unsigned int l;
+
+    off &amp;= fifo-&gt;mask;                    // 等价于 off % size，但用位与更快
+    // ... esize 调整 ...
+    l = min(len, size - off);             // 从 off 到缓冲区尾部的空间
+
+    memcpy(fifo-&gt;data + off, src, l);     // 第一段: off → buffer_end
+    memcpy(fifo-&gt;data, src + l, len - l); // 第二段: buffer_start → 剩余(环绕)
+
+    smp_wmb();  // 写屏障: 确保数据写入对消费者可见后，in 索引才更新
+}</code></pre>
+
+<p><strong>无锁原理深入</strong>:</p>
+
+<pre><code>      写索引 (in)               读索引 (out)
+         ↓                         ↓
+  |---已读---|----待读数据----|---空闲---|
+  0                                    mask+1
+
+  已用空间 = in - out            (无符号减法，自动处理溢出)
+  空闲空间 = size - (in - out)
+
+  关键: in 和 out 是 unsigned int，允许自然溢出到 0。
+  例如: in=0xFFFFFFFE, out=0xFFFFFFFC → in-out=2 (正确!)
+  实际访问时用 &amp; mask 取低位作为数组下标。</code></pre>
+
+<p><strong>内存屏障配对</strong>:</p>
+<ul>
+<li>生产者: 先写数据 → <code>smp_wmb()</code> → 再更新 <code>in</code></li>
+<li>消费者: 先读 <code>in</code>（获取数据范围） → <code>smp_rmb()</code> → 再读数据 → 更新 <code>out</code></li>
+</ul>
+
+<p>这保证了消费者看到 <code>in</code> 更新时，数据一定已经写好了。</p>
+
+<h3>Key API Functions</h3>
+
+<pre><code class="language-c">/* Static definition */
+#define DEFINE_KFIFO(fifo, type, size)          /* embedded buffer, power-of-2 size */
+#define DECLARE_KFIFO(fifo, type, size)
+#define INIT_KFIFO(fifo)
+
+/* Dynamic allocation */
+int kfifo_alloc(fifo, size, gfp_mask);          /* allocate buffer */
+void kfifo_free(fifo);
+
+/* Queries */
+#define kfifo_initialized(fifo)  ((fifo)-&gt;kfifo.mask)
+#define kfifo_size(fifo)         ((fifo)-&gt;kfifo.mask + 1)
+#define kfifo_len(fifo)          ((fifo)-&gt;kfifo.in - (fifo)-&gt;kfifo.out)
+#define kfifo_is_empty(fifo)
+#define kfifo_is_full(fifo)
+#define kfifo_avail(fifo)        /* free space */
+
+/* Put (enqueue) */
+#define kfifo_put(fifo, val)                    /* single element */
+#define kfifo_in(fifo, buf, n)                  /* n elements from buffer */
+#define kfifo_in_spinlocked(fifo, buf, n, lock)
+
+/* Get (dequeue) */
+#define kfifo_get(fifo, val)                    /* single element */
+#define kfifo_out(fifo, buf, n)                 /* n elements to buffer */
+#define kfifo_out_spinlocked(fifo, buf, n, lock)
+#define kfifo_out_peek(fifo, buf, n)            /* peek without consuming */
+
+/* Reset */
+#define kfifo_reset(fifo)       /* dangerous: only when exclusively locked */
+#define kfifo_reset_out(fifo)   /* safe: only from reader thread */
+#define kfifo_skip(fifo)        /* skip one element */
+
+/* I/O helpers */
+#define kfifo_to_user(fifo, to, len, copied)    /* copy to userspace */
+#define kfifo_from_user(fifo, from, len, copied) /* copy from userspace */</code></pre>
+
+<h3>Kernel Usage Examples</h3>
+
+<ul>
+<li><strong>Serial drivers</strong>: <code>uart_port</code> uses kfifo for transmit/receive buffers</li>
+<li><strong>Input subsystem</strong>: <code>input_dev</code> event queue</li>
+<li><strong>Tracing</strong>: ring buffers in ftrace use similar concepts</li>
+<li><strong>Audio</strong>: ALSA PCM buffer management</li>
+<li><strong>USB gadget</strong>: endpoint FIFOs</li>
+</ul>
+
+<h3>Time Complexity</h3>
+
+<table>
+<thead><tr>
+<th>Operation</th>
+<th>Complexity</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>kfifo_put</code> / <code>kfifo_in</code></td>
+<td>O(n) for n elements, O(1) per element</td>
+</tr>
+<tr>
+<td><code>kfifo_get</code> / <code>kfifo_out</code></td>
+<td>O(n) for n elements, O(1) per element</td>
+</tr>
+<tr>
+<td><code>kfifo_len</code> / <code>kfifo_is_empty</code></td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>kfifo_peek</code></td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>kfifo_reset</code></td>
+<td>O(1)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>10. LRU List</h2>
+
+<p><strong>Files</strong>: <code>include/linux/list_lru.h</code>, <code>mm/list_lru.c</code></p>
+
+<h3>Struct Definitions</h3>
+
+<pre><code class="language-c">/* include/linux/list_lru.h */
+struct list_lru_one {
+    struct list_head  list;      /* the actual LRU list */
+    long              nr_items;  /* may become negative during memcg reparenting */
+    spinlock_t        lock;      /* protects all fields above */
+};
+
+struct list_lru_node {
+    /* global list, used for root cgroup in cgroup-aware lrus */
+    struct list_lru_one  lru;
+    atomic_long_t        nr_items;
+} ____cacheline_aligned_in_smp;
+
+struct list_lru {
+    struct list_lru_node  *node;        /* per-NUMA-node lists */
+#ifdef CONFIG_MEMCG
+    struct list_head       list;        /* links all list_lrus together */
+    int                    shrinker_id;
+    bool                   memcg_aware;
+    struct xarray          xa;          /* per-memcg per-node lists */
+#endif
+};
+
+/* Walk callback return values */
+enum lru_status {
+    LRU_REMOVED,        /* item removed from list */
+    LRU_REMOVED_RETRY,  /* removed, but lock was dropped/reacquired */
+    LRU_ROTATE,         /* item referenced, give another pass */
+    LRU_SKIP,           /* item cannot be locked, skip */
+    LRU_RETRY,          /* not freeable, retry */
+    LRU_STOP,           /* stop walking */
+};</code></pre>
+
+<p><strong>Design</strong>: A <strong>NUMA-aware, memcg-aware LRU</strong> infrastructure for kernel caches. Each <code>list_lru</code> maintains separate lists per NUMA node (and optionally per memory cgroup). Items are added at the tail (least recently used) and the shrinker walks from the head (oldest). This enables the memory reclaim subsystem to evict the least-recently-used cached objects efficiently.</p>
+
+<h3>Key API Functions</h3>
+
+<pre><code class="language-c">/* Initialization */
+#define list_lru_init(lru)           __list_lru_init((lru), false, NULL)
+#define list_lru_init_memcg(lru, shrinker)  __list_lru_init((lru), true, shrinker)
+void list_lru_destroy(struct list_lru *lru);
+
+/* Add/Remove */
+bool list_lru_add(struct list_lru *lru, struct list_head *item,
+                  int nid, struct mem_cgroup *memcg);     /* add to tail */
+bool list_lru_add_obj(struct list_lru *lru, struct list_head *item); /* auto-detect node/memcg */
+bool list_lru_del(struct list_lru *lru, struct list_head *item,
+                  int nid, struct mem_cgroup *memcg);
+bool list_lru_del_obj(struct list_lru *lru, struct list_head *item);
+
+/* Counting */
+unsigned long list_lru_count_one(struct list_lru *lru, int nid,
+                                 struct mem_cgroup *memcg);
+unsigned long list_lru_count_node(struct list_lru *lru, int nid);
+
+/* Walk (for shrinkers — iterate and potentially free items) */
+unsigned long list_lru_walk_one(struct list_lru *lru, int nid,
+                                struct mem_cgroup *memcg,
+                                list_lru_walk_cb isolate,
+                                void *cb_arg, unsigned long *nr_to_walk);
+unsigned long list_lru_walk_node(struct list_lru *lru, int nid,
+                                 list_lru_walk_cb isolate,
+                                 void *cb_arg, unsigned long *nr_to_walk);
+
+/* Memory cgroup support */
+int memcg_list_lru_alloc(struct mem_cgroup *memcg, struct list_lru *lru, gfp_t);
+void memcg_reparent_list_lrus(struct mem_cgroup *memcg, struct mem_cgroup *parent);</code></pre>
+
+<h3>Kernel Usage Examples</h3>
+
+<ul>
+<li><strong>Dentry cache</strong>: <code>struct dentry</code> uses <code>d_lru</code> list_head, managed by <code>super_block->s_dentry_lru</code> (a <code>list_lru</code>)</li>
+<li><strong>Inode cache</strong>: <code>struct inode</code> uses <code>i_lru</code> list_head, managed by <code>super_block->s_inode_lru</code></li>
+<li><strong>Shrinker integration</strong>: The shrinker subsystem calls <code>list_lru_walk_one()</code> during memory pressure to reclaim least-recently-used dentries/inodes</li>
+</ul>
+
+<h3>Time Complexity</h3>
+
+<table>
+<thead><tr>
+<th>Operation</th>
+<th>Complexity</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>list_lru_add</code></td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_lru_del</code></td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td><code>list_lru_count_one</code></td>
+<td>O(1) (cached counter)</td>
+</tr>
+<tr>
+<td><code>list_lru_walk_one</code></td>
+<td>O(n) where n = <code>nr_to_walk</code></td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>11. Core Kernel Objects</h2>
+
+<p>The previous chapters focused on <strong>generic containers and indexing primitives</strong>. In real kernel execution paths, those containers are embedded inside a smaller set of <strong>core payload objects</strong>: task descriptors, address spaces, folios, VFS nodes, network packets, block I/O requests, and device-model objects.</p>
+
+<p>This section collects the objects that show up repeatedly in Linux <code>6.18.1</code>, and ties them back to the container chapters above. Read these structs as an <strong>object graph</strong> rather than as isolated definitions.</p>
+
+<h3>Reading Strategy</h3>
+
+<ul>
+<li><code>task_struct</code> is the top-level execution object; from it you can reach memory (<code>mm</code>), credentials (<code>cred</code>), files (<code>files</code>), namespaces (<code>nsproxy</code>), and cgroups (<code>cgroups</code>).</li>
+<li><code>mm_struct</code>, <code>vm_area_struct</code>, <code>folio</code>, and <code>address_space</code> are the current VM/page-cache backbone. In <code>6.18.1</code>, <code>mm_struct.mm_mt</code> is the primary VMA index.</li>
+<li>VFS hot paths usually traverse <code>file -> dentry -> inode -> address_space -> folio</code>.</li>
+<li>Network and block layers use the same pattern: one object carries the <strong>payload</strong> (<code>sk_buff</code>, <code>bio</code>), another carries the <strong>scheduler/dispatch state</strong> (<code>net_device</code>, <code>request</code>, <code>request_queue</code>).</li>
+<li>The container chapters above explain <em>how</em> lookup/queues work; the structs below explain <em>what</em> the kernel is actually moving around.</li>
+</ul>
+
+<h3>Process Context</h3>
+
+<p><strong>Files</strong>: <code>include/linux/sched.h</code>, <code>include/linux/cred.h</code>, <code>include/linux/cgroup-defs.h</code></p>
+
+<h4><code>task_struct</code> — the per-thread execution anchor (<a href="include/linux/sched.h#L819">sched.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/sched.h */
+struct task_struct {
+    struct thread_info        thread_info;
+    void                      *stack;
+    refcount_t                usage;
+    unsigned int              flags;
+    int                       prio, static_prio, normal_prio;
+    struct sched_entity       se;
+    struct sched_rt_entity    rt;
+    struct sched_dl_entity    dl;
+    struct list_head          tasks;
+    struct mm_struct          *mm;
+    struct mm_struct          *active_mm;
+    const struct cred __rcu   *real_cred;
+    const struct cred __rcu   *cred;
+    struct fs_struct          *fs;
+    struct files_struct       *files;
+    struct nsproxy            *nsproxy;
+    struct signal_struct      *signal;
+    struct css_set __rcu      *cgroups;
+};</code></pre>
+
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Why it matters</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>se</code> / <code>rt</code> / <code>dl</code></td>
+<td>Same thread, different scheduler-class embeddings. CFS/RT/DL all hang state directly off <code>task_struct</code>.</td>
+</tr>
+<tr>
+<td><code>tasks</code></td>
+<td>Global process list linkage via <code>list_head</code>. This is one of the most visible real users of the list API from Chapter 1.</td>
+</tr>
+<tr>
+<td><code>mm</code> / <code>active_mm</code></td>
+<td><code>mm</code> is the userspace address space; kernel threads borrow an <code>active_mm</code> even when <code>mm == NULL</code>.</td>
+</tr>
+<tr>
+<td><code>real_cred</code> / <code>cred</code></td>
+<td>Security identity is COW-managed and RCU-visible. Permission checks and file opens flow through these pointers.</td>
+</tr>
+<tr>
+<td><code>files</code>, <code>fs</code>, <code>nsproxy</code></td>
+<td>The task binds together open FDs, cwd/root, and namespace membership.</td>
+</tr>
+<tr>
+<td><code>signal</code>, <code>cgroups</code></td>
+<td>Signal delivery and cgroup resource accounting both attach at the task level.</td>
+</tr>
+</tbody></table>
+
+<p><strong>Why this struct is foundational</strong>: when a tracepoint, crash dump, or scheduler event says “current task”, this is the object being inspected. Almost every subsystem-specific object is reachable from here in one or two pointer hops.</p>
+
+<h3>Address Space</h3>
+
+<p><strong>Files</strong>: <code>include/linux/mm_types.h</code></p>
+
+<h4><code>mm_struct</code> — process virtual address space (<a href="include/linux/mm_types.h#L944">mm_types.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/mm_types.h */
+struct mm_struct {
+    atomic_t                 mm_count;
+    struct maple_tree        mm_mt;
+    unsigned long            mmap_base;
+    unsigned long            task_size;
+    pgd_t                    *pgd;
+    atomic_t                 mm_users;
+    atomic_long_t            pgtables_bytes;
+    int                      map_count;
+    spinlock_t               page_table_lock;
+    struct rw_semaphore      mmap_lock;
+    struct list_head         mmlist;
+    unsigned long            total_vm;
+    unsigned long            data_vm;
+    unsigned long            exec_vm;
+    unsigned long            stack_vm;
+};</code></pre>
+
+<h4><code>vm_area_struct</code> — one contiguous VMA range (<a href="include/linux/mm_types.h#L813">mm_types.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/mm_types.h */
+struct vm_area_struct {
+    unsigned long            vm_start;
+    unsigned long            vm_end;
+    struct mm_struct         *vm_mm;
+    pgprot_t                 vm_page_prot;
+    const vm_flags_t         vm_flags;
+    struct list_head         anon_vma_chain;
+    struct anon_vma          *anon_vma;
+    const struct vm_operations_struct *vm_ops;
+    unsigned long            vm_pgoff;
+    struct file              *vm_file;
+    struct {
+        struct rb_node       rb;
+        unsigned long        rb_subtree_last;
+    } shared;
+};</code></pre>
+
+<table>
+<thead><tr>
+<th>Object</th>
+<th>Key relationship</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>mm_struct.mm_mt</code></td>
+<td>The maple tree is now the primary VMA index. This is the concrete, high-value user of Chapter 7.</td>
+</tr>
+<tr>
+<td><code>mm_struct.pgd</code></td>
+<td>Root of the hardware page tables for the address space.</td>
+</tr>
+<tr>
+<td><code>mm_struct.mmap_lock</code></td>
+<td>Serializes VMA topology changes and many fault-path operations.</td>
+</tr>
+<tr>
+<td><code>vm_area_struct.vm_file</code></td>
+<td>File-backed VMAs bridge memory management and VFS.</td>
+</tr>
+<tr>
+<td><code>vm_area_struct.anon_vma_chain</code></td>
+<td>Anonymous memory, COW, and reverse-mapping paths hang off this linkage.</td>
+</tr>
+<tr>
+<td><code>vm_area_struct.shared.rb</code></td>
+<td>File-backed mappings still participate in per-file interval-tree bookkeeping.</td>
+</tr>
+</tbody></table>
+
+<p><strong>Current-kernel takeaway</strong>: in <code>6.18.1</code>, VMA lookup is no longer conceptually “find rb_node in mm”; it is “search <code>mm_mt</code>, then reason about a <code>vm_area_struct</code>”.</p>
+
+<h3>Page Cache</h3>
+
+<p><strong>Files</strong>: <code>include/linux/mm_types.h</code>, <code>include/linux/fs.h</code></p>
+
+<h4><code>folio</code> — the page-cache and physical-page workhorse (<a href="include/linux/mm_types.h#L375">mm_types.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/mm_types.h */
+struct folio {
+    memdesc_flags_t          flags;
+    struct list_head         lru;
+    struct address_space     *mapping;
+    pgoff_t                  index;
+    void                     *private;
+    atomic_t                 _mapcount;
+    atomic_t                 _refcount;
+    unsigned long            memcg_data;
+};</code></pre>
+
+<h4><code>address_space</code> — page-cache index for an inode/object (<a href="include/linux/fs.h#L506">fs.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/fs.h */
+struct address_space {
+    struct inode             *host;
+    struct xarray            i_pages;
+    struct rw_semaphore      invalidate_lock;
+    atomic_t                 i_mmap_writable;
+    struct rb_root_cached    i_mmap;
+    unsigned long            nrpages;
+    pgoff_t                  writeback_index;
+    const struct address_space_operations *a_ops;
+    errseq_t                 wb_err;
+    spinlock_t               i_private_lock;
+    struct list_head         i_private_list;
+    struct rw_semaphore      i_mmap_rwsem;
+};</code></pre>
+
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Why it matters</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>folio.mapping</code> + <code>folio.index</code></td>
+<td>Identify the folio's owner and slot inside page cache. This pair is the concrete handle for cache lookup and writeback.</td>
+</tr>
+<tr>
+<td><code>folio.lru</code></td>
+<td>Hooks the folio into reclaim policy. This is where VM meets the LRU chapter above.</td>
+</tr>
+<tr>
+<td><code>address_space.i_pages</code></td>
+<td>The page cache itself, implemented as an <code>xarray</code>. This is the primary real-world user of Chapter 3.</td>
+</tr>
+<tr>
+<td><code>address_space.i_mmap</code></td>
+<td>Tracks VMAs mapping the file, which matters for truncation, invalidation, and coherent writeback.</td>
+</tr>
+<tr>
+<td><code>address_space.a_ops</code></td>
+<td>Filesystem/device-specific callbacks for writeback, readahead, dirtying, and migration.</td>
+</tr>
+</tbody></table>
+
+<p><strong>Mental model</strong>: <code>inode</code> owns an <code>address_space</code>; <code>address_space</code> indexes <code>folio</code>s; <code>folio</code>s eventually reach disk, swap, anonymous memory, or reclaim logic.</p>
+
+<h3>VFS Object Model</h3>
+
+<p><strong>Files</strong>: <code>include/linux/fs.h</code>, <code>include/linux/dcache.h</code></p>
+
+<table>
+<thead><tr>
+<th>Object</th>
+<th>Definition</th>
+<th>Selected fields</th>
+<th>Role</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>struct inode</code></td>
+<td><a href="include/linux/fs.h#L793">fs.h</a></td>
+<td><code>i_op</code>, <code>i_sb</code>, <code>i_mapping</code>, <code>i_ino</code>, <code>i_size</code>, <code>i_state</code>, <code>i_rwsem</code>, <code>i_lru</code>, <code>i_dentry</code>, <code>i_count</code>, <code>i_data</code></td>
+<td>Persistent file object: metadata, locking, page cache anchor, and filesystem operations.</td>
+</tr>
+<tr>
+<td><code>struct dentry</code></td>
+<td><a href="include/linux/dcache.h#L92">dcache.h</a></td>
+<td><code>d_hash</code>, <code>d_parent</code>, <code>d_name</code>, <code>d_inode</code>, <code>d_op</code>, <code>d_sb</code>, <code>d_lockref</code>, <code>d_lru</code>, <code>d_children</code>, <code>d_alias</code></td>
+<td>Pathname cache node. It represents a name in a directory, not the file contents themselves.</td>
+</tr>
+<tr>
+<td><code>struct file</code></td>
+<td><a href="include/linux/fs.h#L1211">fs.h</a></td>
+<td><code>f_op</code>, <code>f_mapping</code>, <code>f_inode</code>, <code>f_flags</code>, <code>f_cred</code>, <code>f_path</code>, <code>f_pos</code>, <code>private_data</code>, <code>f_ref</code></td>
+<td>One open instance of a file descriptor. Per-open state lives here.</td>
+</tr>
+<tr>
+<td><code>struct super_block</code></td>
+<td><a href="include/linux/fs.h#L1445">fs.h</a></td>
+<td><code>s_type</code>, <code>s_op</code>, <code>s_root</code>, <code>s_mounts</code>, <code>s_bdev</code>, <code>s_bdi</code>, <code>s_fs_info</code>, <code>s_shrink</code>, <code>s_remove_count</code></td>
+<td>One mounted filesystem instance with its root, writeback, shrinker, and fs-private state.</td>
+</tr>
+</tbody></table>
+
+<pre><code class="language-text">pathname walk:   dentry -&gt; inode
+open file:       file -&gt; f_path.dentry -&gt; dentry
+file contents:   file/inode -&gt; address_space -&gt; i_pages (XArray) -&gt; folio
+filesystem root: super_block -&gt; s_root -&gt; dentry</code></pre>
+
+<p><strong>Two common confusions</strong>:</p>
+
+<ul>
+<li><code>dentry</code> is about <strong>names and topology</strong>; <code>inode</code> is about <strong>object identity and metadata</strong>.</li>
+<li><code>file</code> is not the same thing as <code>inode</code>: multiple open <code>file</code> objects can point at the same <code>inode</code>, each with its own <code>f_pos</code>, flags, and credentials snapshot.</li>
+</ul>
+
+<h3>Device, Security, and Cgroups</h3>
+
+<p><strong>Files</strong>: <code>include/linux/device.h</code>, <code>include/linux/cred.h</code>, <code>include/linux/cgroup-defs.h</code></p>
+
+<h4><code>device</code> — the unified device-model node (<a href="include/linux/device.h#L582">device.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/device.h */
+struct device {
+    struct kobject          kobj;
+    struct device           *parent;
+    const struct bus_type   *bus;
+    struct device_driver    *driver;
+    void                    *platform_data;
+    void                    *driver_data;
+    struct mutex            mutex;
+    struct dev_pm_info      power;
+    const struct dma_map_ops *dma_ops;
+    u64                     *dma_mask;
+    struct device_node      *of_node;
+    struct fwnode_handle    *fwnode;
+    dev_t                   devt;
+    const struct class      *class;
+    void                    (*release)(struct device *dev);
+    struct iommu_group      *iommu_group;
+};</code></pre>
+
+<h4><code>cred</code> — security identity snapshot (<a href="include/linux/cred.h#L111">cred.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/cred.h */
+struct cred {
+    atomic_long_t           usage;
+    kuid_t                  uid, suid, euid, fsuid;
+    kgid_t                  gid, sgid, egid, fsgid;
+    unsigned                securebits;
+    kernel_cap_t            cap_inheritable;
+    kernel_cap_t            cap_permitted;
+    kernel_cap_t            cap_effective;
+    kernel_cap_t            cap_bset;
+    kernel_cap_t            cap_ambient;
+    void                    *security;
+    struct user_namespace   *user_ns;
+    struct group_info       *group_info;
+};</code></pre>
+
+<h4><code>cgroup_subsys_state</code> + <code>css_set</code> — per-task resource-control attachment (<a href="include/linux/cgroup-defs.h#L179">cgroup-defs.h</a>, <a href="include/linux/cgroup-defs.h#L272">cgroup-defs.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/cgroup-defs.h */
+struct cgroup_subsys_state {
+    struct cgroup                   *cgroup;
+    struct cgroup_subsys            *ss;
+    struct percpu_ref               refcnt;
+    struct list_head                sibling;
+    struct list_head                children;
+    int                             id;
+    struct work_struct              destroy_work;
+    struct cgroup_subsys_state      *parent;
+};
+
+struct css_set {
+    struct cgroup_subsys_state      *subsys[CGROUP_SUBSYS_COUNT];
+    refcount_t                      refcount;
+    struct css_set                  *dom_cset;
+    struct cgroup                   *dfl_cgrp;
+    int                             nr_tasks;
+    struct list_head                tasks;
+    struct list_head                mg_tasks;
+    struct hlist_node               hlist;
+    struct list_head                cgrp_links;
+};</code></pre>
+
+<table>
+<thead><tr>
+<th>Object</th>
+<th>What to remember</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>device</code></td>
+<td>Hardware and pseudo-devices are surfaced uniformly through a <code>kobject</code>, bus, class, power-management state, DMA constraints, and firmware nodes.</td>
+</tr>
+<tr>
+<td><code>cred</code></td>
+<td>Permission checks are pointer-based, refcounted, COW-style snapshots. <code>task_struct->cred</code> and <code>file->f_cred</code> are the common observation points.</td>
+</tr>
+<tr>
+<td><code>css_set</code></td>
+<td>Tasks do not store one pointer per controller in <code>task_struct</code>; instead they share a deduplicated <code>css_set</code>, which points to one <code>cgroup_subsys_state</code> per controller.</td>
+</tr>
+</tbody></table>
+
+<h3>Networking Data Path</h3>
+
+<p><strong>Files</strong>: <code>include/linux/skbuff.h</code>, <code>include/linux/netdevice.h</code></p>
+
+<h4><code>sk_buff</code> — packet buffer and metadata envelope (<a href="include/linux/skbuff.h#L885">skbuff.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/skbuff.h */
+struct sk_buff {
+    struct sk_buff          *next;
+    struct sk_buff          *prev;
+    struct net_device       *dev;
+    struct sock             *sk;
+    char                    cb[48] __aligned(8);
+    void                    (*destructor)(struct sk_buff *skb);
+    unsigned int            len, data_len;
+    __u16                   queue_mapping;
+    __u8                    cloned:1;
+    __u32                   priority;
+    int                     skb_iif;
+    __u32                   hash;
+    __be16                  protocol;
+    sk_buff_data_t          tail;
+    sk_buff_data_t          end;
+    unsigned char           *head, *data;
+};</code></pre>
+
+<h4><code>net_device</code> — per-interface networking state (<a href="include/linux/netdevice.h#L2089">netdevice.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/netdevice.h */
+struct net_device {
+    const struct net_device_ops *netdev_ops;
+    const struct header_ops  *header_ops;
+    struct netdev_queue      *_tx;
+    unsigned int             real_num_tx_queues;
+    unsigned int             mtu;
+    struct bpf_prog __rcu    *xdp_prog;
+    struct list_head         ptype_specific;
+    int                      ifindex;
+    unsigned int             real_num_rx_queues;
+    struct netdev_rx_queue   *_rx;
+    rx_handler_func_t __rcu  *rx_handler;
+    char                     name[IFNAMSIZ];
+    struct list_head         dev_list;
+    struct list_head         napi_list;
+    netdev_features_t        features;
+    struct net_device_stats  stats;
+};</code></pre>
+
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Why it matters</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>sk_buff.dev</code> / <code>sk_buff.sk</code></td>
+<td>Tie packet data to the ingress/egress interface and, when applicable, to the socket/protocol stack.</td>
+</tr>
+<tr>
+<td><code>sk_buff.cb[48]</code></td>
+<td>One of the most reused scratch buffers in the kernel; every network layer borrows it for per-hop metadata.</td>
+</tr>
+<tr>
+<td><code>net_device.netdev_ops</code></td>
+<td>Driver-facing transmit/open/stop/control methods.</td>
+</tr>
+<tr>
+<td><code>net_device._tx</code>, <code>_rx</code>, <code>napi_list</code></td>
+<td>Queueing and polling state for the datapath.</td>
+</tr>
+<tr>
+<td><code>net_device.xdp_prog</code></td>
+<td>Shows how modern packet processing attaches eBPF/XDP directly to the device fast path.</td>
+</tr>
+</tbody></table>
+
+<h3>Block I/O Data Path</h3>
+
+<p><strong>Files</strong>: <code>include/linux/blk_types.h</code>, <code>include/linux/blk-mq.h</code>, <code>include/linux/blkdev.h</code></p>
+
+<h4><code>bio</code> — block I/O payload (<a href="include/linux/blk_types.h#L210">blk_types.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/blk_types.h */
+struct bio {
+    struct bio              *bi_next;
+    struct block_device     *bi_bdev;
+    blk_opf_t               bi_opf;
+    unsigned short          bi_flags;
+    blk_status_t            bi_status;
+    struct bvec_iter        bi_iter;
+    bio_end_io_t            *bi_end_io;
+    void                    *bi_private;
+    struct blkcg_gq         *bi_blkg;
+    unsigned short          bi_vcnt;
+    struct bio_vec          *bi_io_vec;
+};</code></pre>
+
+<h4><code>request</code> — scheduler-visible merged request (<a href="include/linux/blk-mq.h#L103">blk-mq.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/blk-mq.h */
+struct request {
+    struct request_queue    *q;
+    struct blk_mq_ctx       *mq_ctx;
+    struct blk_mq_hw_ctx    *mq_hctx;
+    blk_opf_t               cmd_flags;
+    req_flags_t             rq_flags;
+    struct bio              *bio;
+    struct bio              *biotail;
+    struct list_head        queuelist;
+    struct block_device     *part;
+    u64                     start_time_ns;
+    union { struct hlist_node hash; struct llist_node ipi_list; };
+    union { struct rb_node rb_node; struct bio_vec special_vec; };
+    rq_end_io_fn            *end_io;
+};</code></pre>
+
+<h4><code>request_queue</code> — block-layer dispatch and policy hub (<a href="include/linux/blkdev.h#L469">blkdev.h</a>)</h4>
+
+<pre><code class="language-c">/* selected fields from include/linux/blkdev.h */
+struct request_queue {
+    void                    *queuedata;
+    struct elevator_queue   *elevator;
+    const struct blk_mq_ops *mq_ops;
+    struct blk_mq_ctx __percpu *queue_ctx;
+    unsigned long           queue_flags;
+    unsigned int            rq_timeout;
+    unsigned int            queue_depth;
+    unsigned int            nr_hw_queues;
+    struct xarray           hctx_table;
+    spinlock_t              queue_lock;
+    struct gendisk          *disk;
+    struct queue_limits     limits;
+    struct rq_qos           *rq_qos;
+    struct list_head        icq_list;
+    struct list_head        requeue_list;
+    struct blk_mq_tag_set   *tag_set;
+};</code></pre>
+
+<pre><code class="language-text">filesystem / swap / raw block user
+    -&gt; bio
+    -&gt; request (merge, sort, schedule)
+    -&gt; request_queue (blk-mq queues, scheduler, QoS, limits)
+    -&gt; hardware dispatch / driver</code></pre>
+
+<p><strong>Relationship to previous chapters</strong>:</p>
+
+<ul>
+<li><code>bio</code> is the payload carrier.</li>
+<li><code>request</code> embeds list, hash, and rbtree nodes because schedulers and dispatch paths need several simultaneous views of the same I/O.</li>
+<li><code>request_queue.hctx_table</code> is an <code>xarray</code>, so even the modern block layer reuses the generic indexing primitives from earlier chapters.</li>
+</ul>
+
+<h3>Core Object Graph</h3>
+
+<pre><code class="language-text">task_struct
+ ├── mm ----------------------&gt; mm_struct
+ │                               ├── mm_mt (Maple Tree) ---&gt; vm_area_struct
+ │                               ├── pgd -----------------&gt; page tables
+ │                               └── mmap_lock / page_table_lock
+ ├── cred --------------------&gt; cred
+ ├── files -------------------&gt; file
+ │                               ├── f_path -------------&gt; dentry
+ │                               │                          ├── d_parent / d_children
+ │                               │                          └── d_inode -----------&gt; inode
+ │                               │                                                   ├── i_sb ----&gt; super_block
+ │                               │                                                   └── i_mapping -&gt; address_space
+ │                               │                                                                     ├── i_pages (XArray)
+ │                               │                                                                     └── folio
+ ├── signal ------------------&gt; signal_struct
+ ├── cgroups -----------------&gt; css_set ---&gt; cgroup_subsys_state[] ---&gt; cgroup
+ └── nsproxy -----------------&gt; namespaces
+
+net_device &lt;---------------- sk_buff.dev
+   ├── _tx / _rx
+   ├── napi_list
+   └── netdev_ops
+
+bio ---&gt; request ---&gt; request_queue ---&gt; blk-mq hardware queues
+
+device
+ ├── kobj / sysfs identity
+ ├── bus / driver
+ ├── of_node / fwnode
+ └── DMA / IOMMU state</code></pre>
+
+<p><strong>Practical debugging heuristic</strong>: when you are dropped into a subsystem-specific callback, first identify which of the objects above you hold. That immediately tells you which container indices, locks, and refcounts are relevant.</p>
+
+<hr>
+
+<h2>Summary Comparison Table</h2>
+
+<table>
+<thead><tr>
+<th>Data Structure</th>
+<th>Primary Use</th>
+<th>Lookup</th>
+<th>Insert</th>
+<th>Delete</th>
+<th>Memory Per Entry</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>list_head</strong></td>
+<td>General linked list</td>
+<td>O(n)</td>
+<td>O(1)</td>
+<td>O(1)</td>
+<td>2 pointers (16B)</td>
+</tr>
+<tr>
+<td><strong>hlist</strong></td>
+<td>Hash bucket chains</td>
+<td>O(n)</td>
+<td>O(1)</td>
+<td>O(1)</td>
+<td>1 ptr + 1 ptr-to-ptr (16B)</td>
+</tr>
+<tr>
+<td><strong>rbtree</strong></td>
+<td>Ordered key-value</td>
+<td>O(log n)</td>
+<td>O(log n)</td>
+<td>O(log n)</td>
+<td>3 longs (24B)</td>
+</tr>
+<tr>
+<td><strong>XArray</strong></td>
+<td>Sparse array by index</td>
+<td>O(1)*</td>
+<td>O(1)*</td>
+<td>O(1)*</td>
+<td>~shared nodes</td>
+</tr>
+<tr>
+<td><strong>Hash table</strong></td>
+<td>Fast key lookup</td>
+<td>O(1) avg</td>
+<td>O(1)</td>
+<td>O(1)</td>
+<td>hlist_node (16B)</td>
+</tr>
+<tr>
+<td><strong>Bitmap</strong></td>
+<td>Bit flags / sets</td>
+<td>O(1) per bit</td>
+<td>O(1) per bit</td>
+<td>O(1) per bit</td>
+<td>1 bit per entry</td>
+</tr>
+<tr>
+<td><strong>IDR</strong></td>
+<td>Integer ID → pointer</td>
+<td>O(1)*</td>
+<td>O(1)*</td>
+<td>O(1)*</td>
+<td>XArray node slots</td>
+</tr>
+<tr>
+<td><strong>IDA</strong></td>
+<td>Integer ID allocation</td>
+<td>N/A</td>
+<td>O(1)*</td>
+<td>O(1)*</td>
+<td>~1 bit per ID</td>
+</tr>
+<tr>
+<td><strong>Maple Tree</strong></td>
+<td>Range-indexed data</td>
+<td>O(log n)</td>
+<td>O(log n)</td>
+<td>O(log n)</td>
+<td>256B nodes, high fanout</td>
+</tr>
+<tr>
+<td><strong>plist</strong></td>
+<td>Priority queue</td>
+<td>O(1) first</td>
+<td>O(K)</td>
+<td>O(1)</td>
+<td>2 list_heads + int</td>
+</tr>
+<tr>
+<td><strong>kfifo</strong></td>
+<td>SPSC ring buffer</td>
+<td>N/A</td>
+<td>O(1)</td>
+<td>O(1)</td>
+<td>element size</td>
+</tr>
+<tr>
+<td><strong>list_lru</strong></td>
+<td>LRU eviction</td>
+<td>N/A</td>
+<td>O(1)</td>
+<td>O(1)</td>
+<td>list_head (16B)</td>
+</tr>
+</tbody></table>
+
+<p>\* O(1) means O(log₆₄ n) which is bounded by ~11 for 64-bit keys — effectively constant.</p>
+
+<hr>
+
+<h2>Architecture of Relationships</h2>
+
+<pre><code>XArray (xarray.h)
+ ├── Radix Tree (radix-tree.h) — thin compatibility wrapper
+ ├── IDR (idr.h) — integer-to-pointer mapping, built on radix_tree_root = xarray
+ └── IDA (idr.h) — pure ID allocation, built on xarray
+
+list_head (types.h)
+ ├── Hash Table (hashtable.h) — array of hlist_heads (uses hlist variant)
+ ├── Priority List (plist.h) — two-tier list_head structure
+ ├── LRU List (list_lru.h) — per-node/memcg list_head lists
+ └── Used internally by nearly every kernel subsystem
+
+Standalone trees:
+ ├── Red-Black Tree (rbtree.h) — self-balancing BST
+ └── Maple Tree (maple_tree.h) — B-tree for ranges, replaced rbtree for VMAs</code></pre>
+
+</body>
+</html>

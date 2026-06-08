@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Management Architecture</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux ARM64 内存管理架构：三个函数，三层抽象</h1>
+
+<h2>概述</h2>
+
+<p>在 <code>bootmem_init()</code> 中，三个函数按顺序执行，共同构建了 Linux 内核的物理内存管理体系：</p>
+
+<pre><code class="language-c">// arch/arm64/mm/init.c: bootmem_init()
+arch_numa_init();     // 第1步：确定 NUMA 拓扑 —— &quot;内存属于谁&quot;
+sparse_init();        // 第2步：建立稀疏内存模型 —— &quot;如何跟踪每一页&quot;
+zone_sizes_init();    // 第3步：划分内存区域 —— &quot;不同用途的内存如何分类&quot;</code></pre>
+
+<p>这三个函数的本质是：<strong>用三种不同维度的数据结构，对同一块物理内存进行层层抽象管理。</strong></p>
+
+<p><img src="image/memory_management_architecture.svg" alt="内存管理架构图"></p>
+
+<hr>
+
+<h2>1. arch_numa_init() — 拓扑感知：谁的内存离谁近？</h2>
+
+<h3>1.1 解决的问题</h3>
+
+<p>现代多核处理器（特别是服务器）中，不同 CPU 核心访问不同物理内存的速度不一样。例如：</p>
+
+<pre><code>CPU 0-3 访问 DDR Controller 0 的内存 → 10ns (本地)
+CPU 0-3 访问 DDR Controller 1 的内存 → 20ns (跨节点)</code></pre>
+
+<p>如果内核不知道这个"远近关系"，分配内存时可能总是给 CPU 分配"远端"内存，造成系统性能下降。</p>
+
+<h3>1.2 核心数据结构</h3>
+
+<table>
+<thead><tr>
+<th>数据结构</th>
+<th>类型</th>
+<th>作用</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>pg_data_t</code> (pgdat)</td>
+<td><code>struct pglist_data</code></td>
+<td>每个 NUMA 节点一个，是该节点所有内存管理的根</td>
+</tr>
+<tr>
+<td><code>numa_nodes_parsed</code></td>
+<td><code>nodemask_t</code> (位图)</td>
+<td>标记系统中发现了哪些节点</td>
+</tr>
+<tr>
+<td><code>numa_distance[]</code></td>
+<td><code>u8[]</code> (N×N 矩阵)</td>
+<td>记录任意两个节点之间的访问距离</td>
+</tr>
+<tr>
+<td><code>numa_meminfo</code></td>
+<td><code>struct numa_meminfo</code></td>
+<td>临时结构，记录每段物理内存的节点归属</td>
+</tr>
+</tbody></table>
+
+<h3>1.3 做了什么</h3>
+
+<pre><code>arch_numa_init()
+  └── numa_init(of_numa_init)
+        ├── 从 DTB 解析: CPU→节点映射, 内存→节点映射, 距离矩阵
+        ├── numa_cleanup_meminfo(): 和 memblock 对齐
+        ├── numa_register_meminfo(): 把 nid 写入 memblock.memory.regions[]
+        ├── numa_register_nodes(): 为每个节点创建 pgdat（见 1.4 详解）
+        └── setup_node_to_cpumask_map(): CPU→节点映射表</code></pre>
+
+<h3>1.4 pgdat 的创建：<code>numa_register_nodes()</code> 详解</h3>
+
+<p><code>pgdat</code>（<code>pg_data_t</code>）是每个 NUMA 节点的管理根结构，它的创建过程如下：</p>
+
+<pre><code class="language-c">// drivers/base/arch_numa.c
+static int __init numa_register_nodes(void)
+{
+    for_each_node_mask(nid, numa_nodes_parsed) {      // 遍历 DTB 解析到的节点
+        unsigned long start_pfn, end_pfn;
+        get_pfn_range_for_nid(nid, &amp;start_pfn, &amp;end_pfn);  // 取该节点的 PFN 范围
+        setup_node_data(nid, start_pfn, end_pfn);           // 创建 pgdat
+        node_set_online(nid);                               // 标记节点上线
+    }
+    ...
+}</code></pre>
+
+<p><code>setup_node_data()</code> 调用 <code>alloc_node_data()</code> 完成 pgdat 的物理分配：</p>
+
+<pre><code class="language-c">// mm/numa.c
+struct pglist_data *node_data[MAX_NUMNODES];   // 全局指针数组
+// NODE_DATA(nid) 宏展开就是 node_data[nid]
+
+void __init alloc_node_data(int nid)
+{
+    const size_t nd_size = roundup(sizeof(pg_data_t), SMP_CACHE_BYTES);
+
+    // 关键：优先从 nid 节点的本地内存分配 pgdat
+    nd_pa = memblock_phys_alloc_try_nid(nd_size, SMP_CACHE_BYTES, nid);
+    if (!nd_pa)
+        panic(&quot;Cannot allocate %zu bytes for node %d data\n&quot;, nd_size, nid);
+
+    // 验证是否真的分配在本地节点
+    tnid = early_pfn_to_nid(nd_pa &gt;&gt; PAGE_SHIFT);
+    if (tnid != nid)
+        pr_info(&quot;    NODE_DATA(%d) on node %d\n&quot;, nid, tnid);  // 降级警告
+
+    node_data[nid] = __va(nd_pa);               // 物理地址 → 虚拟地址，存入全局数组
+    memset(NODE_DATA(nid), 0, sizeof(pg_data_t)); // 清零（zone 等字段后续初始化）
+}</code></pre>
+
+<p>然后 <code>setup_node_data()</code> 填充身份字段：</p>
+
+<pre><code class="language-c">// drivers/base/arch_numa.c
+static void __init setup_node_data(int nid, u64 start_pfn, u64 end_pfn)
+{
+    alloc_node_data(nid);                                  // 分配内存
+    NODE_DATA(nid)-&gt;node_id = nid;                         // 节点 ID
+    NODE_DATA(nid)-&gt;node_start_pfn = start_pfn;            // 起始 PFN
+    NODE_DATA(nid)-&gt;node_spanned_pages = end_pfn - start_pfn;  // 跨度
+}</code></pre>
+
+<p><strong>为什么 pgdat 要从本地节点分配？</strong></p>
+
+<p><code>pgdat</code> 是该节点上访问最频繁的管理结构（每次页分配/回收都要经过它），如果 pgdat 存储在远端节点的内存上，每次访问都有额外的跨节点延迟：</p>
+
+<pre><code>正确:  CPU@Node0 → 访问 Node0 本地的 pgdat → 10ns（本地访问）
+错误:  CPU@Node0 → 访问 Node1 上分配的 pgdat → 20ns+（跨节点访问）</code></pre>
+
+<p><strong>创建 ≠ 初始化完成</strong>：<code>numa_register_nodes()</code> 只分配内存并设置节点身份字段，此时 <code>pgdat->node_zones[]</code> 全是零。zone 的初始化要等到后面的 <code>zone_sizes_init()</code> 才完成：</p>
+
+<pre><code>numa_register_nodes():  分配 pgdat + 设置 node_id/start_pfn      ← 此处
+        ↓
+sparse_init():          分配 struct page 数组 + VMEMMAP 映射
+        ↓
+zone_sizes_init():      填充 pgdat-&gt;node_zones[]，初始化每个 zone
+        ↓
+memblock_free_all():    空闲页释放到 buddy → zone-&gt;free_area[] 有内容</code></pre>
+
+<h3>1.5 设计思想</h3>
+
+<p><strong>局部性原则（Locality Principle）</strong>：优先从"近"的内存分配。<code>pgdat</code> 是 per-node 的管理根节点，后续的 zone、buddy、slab 分配器都优先在本地节点操作。</p>
+
+<hr>
+
+<h2>2. sparse_init() — 空间效率：如何管理不连续的物理内存？</h2>
+
+<h3>2.1 解决的问题</h3>
+
+<p>内核需要为每一个 4KB 物理页框维护一个 <code>struct page</code> 结构体（约 64 字节）。如果物理地址空间是连续的，用一个大数组即可。但实际情况是：</p>
+
+<pre><code>物理地址空间:
+[RAM][RAM][RAM][HOLE][HOLE][HOLE][RAM][RAM][HOLE]...
+
+如果用平坦数组(FLATMEM):
+  page[0] page[1] page[2] page[3] page[4] page[5] page[6] page[7] page[8]
+                           ↑       ↑       ↑
+                           这三个page从不使用，但占了 3×64 = 192 字节
+
+当物理地址空间有大量空洞时，浪费可达数百 MB。</code></pre>
+
+<h3>2.2 SPARSEMEM 方案</h3>
+
+<p>把物理地址空间切成固定大小的 <strong>section</strong>（ARM64 上 128MB），只为实际有内存的 section 分配 <code>struct page</code> 数组：</p>
+
+<pre><code>物理地址空间 (每格 = 128MB section):
+[sec0][sec1][sec2][    hole    ][sec8][sec9]
+
+FLATMEM:  page[0]~page[N]  全部分配 → 浪费 hole 部分
+SPARSEMEM: 只分配 sec0,1,2,8,9 的 page 数组 → hole 部分跳过，零浪费</code></pre>
+
+<h3>2.3 核心数据结构</h3>
+
+<table>
+<thead><tr>
+<th>数据结构</th>
+<th>作用</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>struct mem_section</code></td>
+<td>每个 128MB section 的描述符，记录该 section 的 <code>struct page</code> 数组位置</td>
+</tr>
+<tr>
+<td><code>mem_section[]</code></td>
+<td>全局 section 数组，通过 section 编号索引</td>
+</tr>
+<tr>
+<td><code>VMEMMAP</code> 区域</td>
+<td>虚拟地址空间中的一段，线性映射到各 section 的 <code>struct page</code> 数组</td>
+</tr>
+</tbody></table>
+
+<h3>2.4 <code>sparse_init()</code> 具体做了什么</h3>
+
+<h4>总体流程</h4>
+
+<pre><code>sparse_init()
+  ├── memblocks_present(): 遍历 memblock，标记哪些 section 有内存 + 记录 nid
+  └── 按 NUMA 节点分组遍历 present section:
+        sparse_init_nid(nid, pnum_begin, pnum_end, map_count)
+          ├── sparse_usage_init():    批量分配 usage 结构（subsection_map + pageblock_flags）
+          ├── sparse_buffer_init():   批量预分配 struct page 数组的物理内存
+          └── for 每个 present section:
+                ├── __populate_section_memmap(): 从预分配缓冲区切出 2MB
+                ├── memmap_boot_pages_add():     统计元数据消耗
+                └── sparse_init_early_section(): 注册到 mem_section 描述符</code></pre>
+
+<h4>第 1 步：<code>memblocks_present()</code> — 扫描并标记</h4>
+
+<p>遍历 memblock 中的所有内存范围，为每段内存覆盖到的 section 调用 <code>memory_present(nid, start, end)</code>：</p>
+
+<pre><code class="language-c">// mm/sparse.c
+static void __init memblocks_present(void)
+{
+    for_each_mem_pfn_range(i, MAX_NUMNODES, &amp;start, &amp;end, &amp;nid)
+        memory_present(nid, start, end);
+}</code></pre>
+
+<p><code>memory_present()</code> 把起始地址向下对齐到 128MB 边界，然后对每个覆盖到的 section：</p>
+<ul>
+<li>初始化二级索引表 <code>mem_section[root]</code>（按需分配一页）</li>
+<li>记录 nid 到 <code>section_mem_map</code> 低位</li>
+<li>设置 <code>SECTION_MARKED_PRESENT</code> 标志</li>
+</ul>
+
+<h4>第 2 步：按节点分组计数</h4>
+
+<pre><code class="language-c">// sparse_init() 内部
+pnum_begin = first_present_section_nr();
+nid_begin = sparse_early_nid(...);
+map_count = 1;
+
+for_each_present_section_nr(pnum_begin + 1, pnum_end) {
+    int nid = sparse_early_nid(...);
+    if (nid == nid_begin) {
+        map_count++;    // 同节点 → 计数累加
+        continue;
+    }
+    // 节点切换 → 处理上一个节点
+    sparse_init_nid(nid_begin, pnum_begin, pnum_end, map_count);
+    nid_begin = nid;
+    pnum_begin = pnum_end;
+    map_count = 1;
+}
+sparse_init_nid(nid_begin, pnum_begin, pnum_end, map_count); // 最后一个节点</code></pre>
+
+<p><code>map_count</code> 是<strong>该节点有多少个 present section</strong>。例如 1GB 连续 RAM = 8 个 section → <code>map_count = 8</code>。这个数量决定了后续批量分配的大小。</p>
+
+<h4>第 3 步：<code>sparse_init_nid()</code> — 每个节点的核心处理</h4>
+
+<h5>① 批量分配 usage 结构</h5>
+
+<pre><code class="language-c">sparse_usage_init(nid, map_count);
+// 从 nid 本地内存一次性分配 map_count 个 mem_section_usage
+// 包含 subsection_map (64-bit) + pageblock_flags
+// 存入 sparse_usagebuf，后续逐个切给每个 section</code></pre>
+
+<h5>② 批量预分配 struct page 数组</h5>
+
+<pre><code class="language-c">sparse_buffer_init(map_count * section_map_size(), nid);
+// section_map_size() = ALIGN(sizeof(struct page) * 32768, 2MB) = 2MB
+// 一次性从 nid 本地内存分配 map_count × 2MB 连续物理内存
+// 例: 8 个 section → 预分配 16MB 连续内存</code></pre>
+
+<p><strong>为什么批量分配？</strong> 保证各 section 的 struct page 数组在物理上连续，减少 TLB 缺失。</p>
+
+<h5>③ 遍历每个 section，切片分发 + 注册</h5>
+
+<pre><code class="language-c">for_each_present_section_nr(pnum_begin, pnum) {
+    if (pnum &gt;= pnum_end) break;
+
+    // 从预分配缓冲区切出 2MB 给该 section 的 struct page 数组
+    map = __populate_section_memmap(pfn, PAGES_PER_SECTION, nid, NULL, NULL);
+    //  └── sparse_buffer_alloc(2MB): 从缓冲区顺序切出
+    //      切不到则 memmap_alloc() 单独分配
+
+    // 统计: 每个 section 消耗 512 页 (2MB) 用于 struct page
+    memmap_boot_pages_add(512);
+
+    // 注册到 mem_section 描述符
+    sparse_init_early_section(nid, map, pnum, 0);
+    //  ├── 从 sparse_usagebuf 切出一个 usage 结构
+    //  └── sparse_init_one_section():
+    //        ms-&gt;section_mem_map = encode(map) | HAS_MEM_MAP | IS_EARLY
+    //        ms-&gt;usage = usage (含 subsection_map + pageblock_flags)
+}</code></pre>
+
+<p>缓冲区切片过程示意（8 个 section）：</p>
+
+<pre><code>struct page 缓冲区 (16MB):
+初始:    [                     16MB                         ]
+         ↑ sparsemap_buf                     sparsemap_buf_end ↑
+
+sec 4:   [2MB 已切][              14MB 剩余                 ]
+sec 5:   [2MB][2MB][              12MB 剩余                 ]
+...
+sec 11:  [2MB][2MB][2MB][2MB][2MB][2MB][2MB][2MB]  全部切完
+
+usage 缓冲区 (8 个 usage):
+初始:    [u0][u1][u2][u3][u4][u5][u6][u7]
+sec 4:   [已分][u1][u2]...    ← u0 给 section 4
+sec 5:   [已分][已分][u2]...  ← u1 给 section 5
+...</code></pre>
+
+<h5>④ 归还剩余 + 失败处理</h5>
+
+<pre><code class="language-c">sparse_buffer_fini();  // 缓冲区有剩余则归还 memblock
+sparse_usage_fini();   // 清理 usage 指针</code></pre>
+
+<p>分配失败时不 panic，而是清除失败 section 的 present 标记（<code>section_mem_map = 0</code>），对应物理内存不可用，但系统可继续启动。</p>
+
+<h4>第 4 步完成后的数据结构变化</h4>
+
+<p><code>sparse_init()</code> 执行前后，以下数据结构发生了变化：</p>
+
+<p><strong><code>mem_section[][]</code> 二级索引表</strong></p>
+
+<table>
+<thead><tr>
+<th>字段</th>
+<th>执行前</th>
+<th>执行后</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>mem_section[root]</code></td>
+<td>已由 <code>memblocks_present()</code> 分配</td>
+<td>不变</td>
+</tr>
+<tr>
+<td><code>ms->section_mem_map</code></td>
+<td>仅有 <code>nid</code> 编码 + <code>MARKED_PRESENT</code> 标志</td>
+<td><strong>新增</strong>: <code>encode(struct page数组)</code> + <code>HAS_MEM_MAP</code> + <code>IS_EARLY</code></td>
+</tr>
+<tr>
+<td><code>ms->usage</code></td>
+<td>NULL</td>
+<td><strong>新增</strong>: 指向 <code>mem_section_usage</code>（含 <code>subsection_map</code> 和 <code>pageblock_flags</code>）</td>
+</tr>
+</tbody></table>
+
+<p><strong>VMEMMAP 虚拟地址空间</strong>（CONFIG_SPARSEMEM_VMEMMAP 时）</p>
+
+<table>
+<thead><tr>
+<th>执行前</th>
+<th>执行后</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>VMEMMAP 区域无页表映射</td>
+<td>每个 present section 的 VMEMMAP 区域建立了页表映射 → <code>VMEMMAP_START + pfn * 64</code> 指向实际的 struct page 物理内存</td>
+</tr>
+</tbody></table>
+
+<p><strong>memblock</strong></p>
+
+<table>
+<thead><tr>
+<th>执行前</th>
+<th>执行后</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>空闲内存较多</td>
+<td>被消耗了一部分，用于 struct page 数组 + usage 结构。1GB RAM 约消耗 16MB + 若干 KB</td>
+</tr>
+</tbody></table>
+
+<p><strong>可用的接口</strong></p>
+
+<table>
+<thead><tr>
+<th>接口</th>
+<th>执行前</th>
+<th>执行后</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>pfn_to_page(pfn)</code></td>
+<td><strong>不可用</strong>（无映射）</td>
+<td><strong>可用</strong> → 返回 VMEMMAP 中的 struct page 指针</td>
+</tr>
+<tr>
+<td><code>page_to_pfn(page)</code></td>
+<td>不可用</td>
+<td><strong>可用</strong> → 反向计算 PFN</td>
+</tr>
+<tr>
+<td><code>pfn_valid(pfn)</code></td>
+<td>只能判断 section 级 present</td>
+<td><strong>可用</strong> → 可查 subsection_map 精确到 2MB</td>
+</tr>
+</tbody></table>
+
+<p><strong>未变化的结构</strong>（仍然等待后续初始化）</p>
+
+<table>
+<thead><tr>
+<th>结构</th>
+<th>状态</th>
+<th>何时初始化</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>pgdat->node_zones[]</code></td>
+<td>全零</td>
+<td><code>zone_sizes_init()</code></td>
+</tr>
+<tr>
+<td><code>struct page</code> 的内容</td>
+<td>未初始化（只分配了内存，内容不确定）</td>
+<td><code>zone_sizes_init()</code> → <code>memmap_init()</code></td>
+</tr>
+<tr>
+<td><code>zone->free_area[]</code></td>
+<td>空</td>
+<td><code>memblock_free_all()</code></td>
+</tr>
+</tbody></table>
+
+<h3>2.5 当内存区间不足 128MB 时：两级粒度机制</h3>
+
+<p>section（128MB）是 struct page 数组分配的最小单位，但现实中物理内存区间未必是 128MB 对齐的整数倍。内核用<strong>两级粒度</strong>来处理这个情况。</p>
+
+<h4>第一级：Section（128MB）—— 整体标记</h4>
+
+<p>在 <code>memory_present()</code> 中，任何被内存覆盖到的 section，<strong>整个 128MB 都会被标记为 present</strong>，并为全部 32768 个页框分配 <code>struct page</code> 数组，哪怕该 section 里只有少量 RAM：</p>
+
+<pre><code class="language-c">// mm/sparse.c: memory_present()
+start &amp;= PAGE_SECTION_MASK;   // 起始地址向下对齐到 128MB 边界
+for (pfn = start; pfn &lt; end; pfn += PAGES_PER_SECTION) {
+    // 整个 section 标记为 present
+    __section_mark_present(ms, section_nr);
+}</code></pre>
+
+<h4>第二级：Subsection（2MB）—— 精确跟踪</h4>
+
+<p><code>struct mem_section_usage</code> 内嵌一个 64 位的位图（64 个 bit，每 bit 对应 2MB），记录该 section 内部哪些 2MB 块实际有 RAM：</p>
+
+<pre><code class="language-c">// include/linux/mmzone.h
+struct mem_section_usage {
+    DECLARE_BITMAP(subsection_map, SUBSECTIONS_PER_SECTION);  // 64 个 bit
+    unsigned long pageblock_flags[0];
+};</code></pre>
+
+<p><code>subsection_map_init()</code> 按 memblock 实际范围逐个 2MB 块置位；<code>pfn_valid()</code> 最终查询该位图：</p>
+
+<pre><code class="language-c">// include/linux/mmzone.h: pfn_valid()
+ret = early_section(ms) || pfn_section_valid(ms, pfn);  // 查 subsection_map</code></pre>
+
+<h4>具体例子</h4>
+
+<pre><code>SECTION_SIZE_BITS = 27 → section  = 2^27 = 128MB = 0x800_0000
+SUBSECTION_SHIFT  = 21 → subsection = 2^21 = 2MB = 0x20_0000
+每个 section = 64 个 subsection
+
+物理内存布局:
+  Region A: 0x8000_0000 ~ 0x8400_0000  (64MB, Section 4 前半段)
+  Region B: 0x8C00_0000 ~ 0x9000_0000  (64MB, Section 5 后半段)
+  空洞:     0x8400_0000 ~ 0x8C00_0000  (128MB)
+
+Section 边界:
+  Section 4: 0x8000_0000 ~ 0x87FF_FFFF (128MB)
+  Section 5: 0x8800_0000 ~ 0x8FFF_FFFF (128MB)</code></pre>
+
+<table>
+<thead><tr>
+<th></th>
+<th>Section 4</th>
+<th>Section 5</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>实际 RAM</td>
+<td>0x8000_0000~0x8400_0000 (64MB)</td>
+<td>0x8C00_0000~0x9000_0000 (64MB)</td>
+</tr>
+<tr>
+<td>整体标记 present</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>struct page 分配量</td>
+<td>全部 32768 个</td>
+<td>全部 32768 个</td>
+</tr>
+<tr>
+<td>subsection_map</td>
+<td><strong>bit 0~31 = 1</strong>（前 64MB 有 RAM）<br>bit 32~63 = 0（空洞）</td>
+<td>bit 0~31 = 0（空洞）<br><strong>bit 32~63 = 1</strong>（后 64MB 有 RAM）</td>
+</tr>
+<tr>
+<td>pfn_valid() 空洞区</td>
+<td>Section 4 后半段返回 0</td>
+<td>Section 5 前半段返回 0</td>
+</tr>
+<tr>
+<td>浪费的 struct page</td>
+<td>16384 个（不进 buddy）</td>
+<td>16384 个（不进 buddy）</td>
+</tr>
+</tbody></table>
+
+<p><strong>subsection bit 计算方法</strong>：</p>
+<pre><code>offset   = RAM起点 - section起点
+bit_start = offset / 2MB
+bit_end   = (RAM终点 - section起点) / 2MB - 1
+
+Section 5 的 Region B:
+  offset   = 0x8C00_0000 - 0x8800_0000 = 0x400_0000 = 64MB
+  bit_start = 64MB / 2MB = 32
+  bit_end   = 128MB / 2MB - 1 = 63
+  → bit 32~63 置 1</code></pre>
+
+<h4>代价边界</h4>
+
+<p>section 内空洞造成的 struct page 浪费上限是固定的：</p>
+
+<pre><code>最大浪费 = PAGES_PER_SECTION × sizeof(struct page)
+         = 32768 × 64 字节
+         = 2MB / 每个 section 最多浪费 2MB 元数据</code></pre>
+
+<p>这 2MB 的代价换来了 <code>pfn_to_page()</code> / <code>page_to_pfn()</code> 永远是 <strong>O(1) 数组索引</strong>，不需要任何范围查找或遍历，是 SPARSEMEM+VMEMMAP 设计的核心权衡。</p>
+
+<h3>2.6 设计思想</h3>
+
+<p><strong>按需分配（On-demand Allocation）</strong>：只为实际存在的内存分配管理结构，跳过物理地址空间中的空洞。这和操作系统的核心理念一致：不为不存在的资源付出成本。</p>
+
+<p><strong>NUMA 感知分配</strong>：<code>struct page</code> 数组从对应节点的本地内存分配，保证 <code>pfn_to_page()</code> 访问时的 NUMA 局部性。这就是为什么 <code>sparse_init()</code> 必须在 <code>arch_numa_init()</code> 之后执行。</p>
+
+<hr>
+
+<h2>3. zone_sizes_init() — 设备兼容：不同地址范围的内存用途不同</h2>
+
+<h3>3.1 解决的问题</h3>
+
+<p>不同外设的 DMA 引擎有不同的地址限制：</p>
+
+<pre><code>ISA 设备:  只能 DMA 到 0 ~ 16MB    (24位地址)
+PCI 设备:  只能 DMA 到 0 ~ 4GB     (32位地址)
+现代设备:  可以 DMA 到任意地址      (64位地址)</code></pre>
+
+<p>如果给 ISA 设备分配了 4GB 以上的内存做 DMA 缓冲区，设备无法访问，直接故障。所以必须按照 DMA 能力把内存分类管理。</p>
+
+<h3>3.2 Zone 划分</h3>
+
+<pre><code class="language-c">// arch/arm64/mm/init.c: zone_sizes_init()
+max_zone_pfns[ZONE_DMA]    = PFN_DOWN(arm64_dma_phys_limit);  // ~4GB
+max_zone_pfns[ZONE_DMA32]  = PFN_DOWN(dma32_phys_limit);      // ~4GB
+max_zone_pfns[ZONE_NORMAL] = max_pfn;                          // 到最高地址
+free_area_init(max_zone_pfns);</code></pre>
+
+<p>ARM64 上的典型 zone 布局：</p>
+
+<pre><code>物理地址空间:
+0 ─────────── 4GB ─────────── end
+│   ZONE_DMA   │  ZONE_NORMAL │
+│  (受限设备)   │  (通用分配)   │</code></pre>
+
+<h3>3.3 <code>CONFIG_ZONE_DMA</code> 和 <code>CONFIG_ZONE_DMA32</code> 的编译条件与历史背景</h3>
+
+<p>代码里用 <code>#ifdef</code> 控制这两段 zone 的编译：</p>
+
+<pre><code class="language-c">// arch/arm64/mm/init.c
+#ifdef CONFIG_ZONE_DMA
+    max_zone_pfns[ZONE_DMA] = PFN_DOWN(arm64_dma_phys_limit);
+#endif
+#ifdef CONFIG_ZONE_DMA32
+    max_zone_pfns[ZONE_DMA32] = PFN_DOWN(dma32_phys_limit);
+#endif</code></pre>
+
+<h4>编译开关的定义</h4>
+
+<pre><code class="language-kconfig"># mm/Kconfig
+config ZONE_DMA
+    bool &quot;Support DMA zone&quot; if ARCH_HAS_ZONE_DMA_SET
+    default y if ARM64 || X86          ← ARM64/x86 默认开启
+
+config ZONE_DMA32
+    bool &quot;Support DMA32 zone&quot; if ARCH_HAS_ZONE_DMA_SET
+    depends on !X86_32                  ← 32 位 x86 不支持
+    default y if ARM64                  ← ARM64 默认开启
+
+# arch/arm64/Kconfig
+select ARCH_HAS_ZONE_DMA_SET if EXPERT  ← 只有 EXPERT 模式才允许用户手动关闭</code></pre>
+
+<p><strong>结论</strong>：ARM64 平台上两个 zone 默认都开启（编译期总是包含相关代码）。只有在 <code>CONFIG_EXPERT</code> 专家模式下，用户才能手动关闭，普通配置无法修改。</p>
+
+<h4>ZONE_DMA 的历史根源：ISA 总线（1980~90 年代）</h4>
+
+<p>ISA（Industry Standard Architecture）总线的 DMA 控制器只有 <strong>24 根地址线</strong>，最多寻址 <strong>16MB</strong>：</p>
+
+<pre><code>ISA DMA 控制器 (24位地址线):
+  寻址上限 = 2^24 = 16MB
+
+  后果: 如果 DMA 缓冲区分配在 16MB 以上 → 设备写到错误地址或直接失败
+  解决: 内核保留 0~16MB 的内存专供这类设备 → 这就是 ZONE_DMA 的起源</code></pre>
+
+<p>现代 ARM64 上 ZONE_DMA 的含义泛化为"平台特定的、受最严格 DMA 限制的内存"，上限从 DTB <code>dma-ranges</code> 动态读取，不再固定为 16MB。</p>
+
+<h4>ZONE_DMA32 的历史根源：32 位 PCI 总线（1990~2000 年代）</h4>
+
+<p>32 位 PCI 设备（网卡、声卡等）有 <strong>32 根地址线</strong>，DMA 寻址上限 <strong>4GB</strong>：</p>
+
+<pre><code>32 位 PCI 设备 (32位地址线):
+  寻址上限 = 2^32 = 4GB
+
+  后果: 当服务器装了超过 4GB 内存时，4GB 以上的内存这些设备无法访问
+  解决: 单独划出一段 0~4GB 的内存池专供 32 位 DMA 设备 → ZONE_DMA32</code></pre>
+
+<h4>两个 Zone 的物理地址范围：首尾相接，不重叠</h4>
+
+<p><strong>关键点</strong>：ZONE_DMA 和 ZONE_DMA32 不是两段独立的地址范围，而是以 <code>zone_dma_limit</code> 为分界点<strong>首尾相接</strong>：</p>
+
+<pre><code>0          zone_dma_limit              4GB                    end
+├──ZONE_DMA──────┤────ZONE_DMA32────────┤──ZONE_NORMAL──────────┤</code></pre>
+
+<p><code>zone_dma_limit</code> 决定了分界线的位置，两者合起来才覆盖 0~4GB：</p>
+
+<table>
+<thead><tr>
+<th><code>zone_dma_limit</code> 值</th>
+<th>ZONE_DMA 范围</th>
+<th>ZONE_DMA32 范围</th>
+<th>适用场景</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>16MB</strong></td>
+<td>0 ~ 16MB</td>
+<td>16MB ~ 4GB</td>
+<td>x86 服务器（ISA 历史遗留）</td>
+</tr>
+<tr>
+<td><strong>1GB</strong></td>
+<td>0 ~ 1GB</td>
+<td>1GB ~ 4GB</td>
+<td>某些 ARM 平台有严格 DMA 约束</td>
+</tr>
+<tr>
+<td><strong>4GB</strong></td>
+<td>0 ~ 4GB</td>
+<td><strong>空</strong></td>
+<td>ARM64 嵌入式（无 dma-ranges 时的默认情况）</td>
+</tr>
+</tbody></table>
+
+<p><strong>两个 zone 同时有内容的典型场景</strong>（x86 服务器，32GB 内存）：</p>
+
+<pre><code>0      16MB          4GB                    32GB
+├─DMA──┤────DMA32────┤──────NORMAL──────────┤
+
+ZONE_DMA:   0~16MB    → ISA 声卡、老设备专用
+ZONE_DMA32: 16MB~4GB  → 32 位 PCI 网卡、显卡等
+ZONE_NORMAL: 4GB~32GB → 现代 NVMe、应用程序等</code></pre>
+
+<p><strong>ARM64 嵌入式（ZONE_DMA32 为空的原因）</strong>：</p>
+
+<pre><code>zone_dma_limit = min(PHYS_ADDR_MAX, U32_MAX=4GB) = 4GB
+ZONE_DMA   = 0 ~ 4GB     ← &quot;吃掉&quot;了 DMA32 本应覆盖的范围
+ZONE_DMA32 = 4GB ~ 4GB   ← 空（两个端点相同）</code></pre>
+
+<p><code>#ifdef</code> 使得这两段代码参与编译，但 <code>max_zone_pfns[ZONE_DMA32]</code> 的值等于 <code>max_zone_pfns[ZONE_DMA]</code>，<code>free_area_init()</code> 判断区间为空，不分配任何内存，<code>/proc/buddyinfo</code> 因此不显示该 zone。</p>
+
+<h3>3.4 Zone 边界是物理地址，且由硬件描述动态决定</h3>
+
+<p>Zone 的划分边界全部是<strong>物理地址</strong>（以 PFN 表示），与虚拟地址无关。更重要的是，这些边界不是内核源码里写死的常量，而是启动时从硬件描述中<strong>动态计算</strong>出来的。</p>
+
+<h4>三个决定来源</h4>
+
+<pre><code>启动时 zone_sizes_init() 的计算流程:
+
+  ①  of_dma_get_max_cpu_address()      ← 读 DTB 的 dma-ranges 属性
+  ②  acpi_iort_dma_get_max_cpu_address() ← 读 ACPI IORT 表（服务器）
+
+  zone_dma_limit = min(①, ②)           ← 取最严格的限制（短板原则）
+
+  ③ 硬编码兜底:
+     if (DRAM 起点 &lt; 4GB):
+         zone_dma_limit = min(zone_dma_limit, U32_MAX=4GB)
+
+  ZONE_DMA 上限 = min(zone_dma_limit, DRAM终点)
+  ZONE_NORMAL   = ZONE_DMA上限 ~ DRAM终点</code></pre>
+
+<h4>来源①：DTB 的 <code>dma-ranges</code>（嵌入式平台主要来源）</h4>
+
+<p><code>of_dma_get_max_cpu_address()</code> 递归遍历整个设备树，读取每个总线节点上的 <code>dma-ranges</code> 属性，找出所有设备里 DMA 能力最弱的那个（短板原则）：</p>
+
+<pre><code class="language-dts">/* DTB 片段示例 */
+soc {
+    /* 这条总线上的设备只能 DMA 到 CPU 物理地址 0x0~2GB */
+    dma-ranges = &lt;0x0  0x0  0x8000_0000&gt;;
+    /*           ^bus  ^cpu  ^size        */
+};
+
+pcie {
+    /* PCIe 控制器可以访问 CPU 物理地址 0x0~4GB */
+    dma-ranges = &lt;0x0 0x0  0x0 0x0  0x1 0x0&gt;;
+};</code></pre>
+
+<p>内核取所有节点中最小的上限作为 <code>zone_dma_limit</code>，保证连能力最弱的设备也能访问 ZONE_DMA 里的内存。</p>
+
+<p>如果 DTB 里没有任何 <code>dma-ranges</code>，<code>of_dma_get_max_cpu_address()</code> 返回 <code>PHYS_ADDR_MAX</code>（视为无限制），走兜底逻辑③。</p>
+
+<h4>来源③：硬编码兜底（你的机器走的是这条）</h4>
+
+<pre><code class="language-c">if (memblock_start_of_DRAM() &lt; U32_MAX)
+    zone_dma_limit = min(zone_dma_limit, U32_MAX);  // 限制到 4GB</code></pre>
+
+<p>只要 DRAM 起点在 4GB 以内，DMA 上限就被压到 4GB。原因是历史遗留：大量老旧外设只有 32 位地址线，无法访问 4GB 以上的内存，内核必须为它们保留这段低地址内存。</p>
+
+<h4>为什么只有 ZONE_DMA（实际案例解析）</h4>
+
+<p>以 <code>/proc/buddyinfo</code> 只显示 DMA 的 1GB 嵌入式机器为例：</p>
+
+<pre><code>已知: 1GB RAM, 物理地址全在 4GB 以内, DTB 无 dma-ranges
+
+① of_dma_get_max_cpu_address()  = PHYS_ADDR_MAX (无限制)
+② acpi 禁用                      = PHYS_ADDR_MAX
+
+zone_dma_limit = PHYS_ADDR_MAX
+
+③ DRAM 起点 &lt; U32_MAX(4GB):
+   zone_dma_limit = min(PHYS_ADDR_MAX, 4GB) = 4GB
+
+ZONE_DMA 上限 = min(4GB, DRAM终点≈1GB) = 1GB = DRAM终点
+ZONE_DMA    = [0, 1GB)  ← 覆盖全部内存
+ZONE_NORMAL = [1GB, 1GB) = 空 → /proc/buddyinfo 不显示</code></pre>
+
+<p>如果这台机器有 8GB RAM（物理地址 0x0 ~ 0x2_0000_0000），超过 4GB 的部分就会进入 ZONE_NORMAL，<code>buddyinfo</code> 才会显示两个 zone。</p>
+
+<h3>3.4 核心数据结构</h3>
+
+<table>
+<thead><tr>
+<th>数据结构</th>
+<th>作用</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>struct zone</code></td>
+<td>每个 zone 的管理结构，嵌在 <code>pgdat->node_zones[]</code> 中</td>
+</tr>
+<tr>
+<td><code>zone->free_area[]</code></td>
+<td><strong>伙伴系统（Buddy System）</strong> 的核心——按 order 组织的空闲页链表</td>
+</tr>
+<tr>
+<td><code>zone->spanned_pages</code></td>
+<td>该 zone 跨越的总页框数（包含空洞）</td>
+</tr>
+<tr>
+<td><code>zone->present_pages</code></td>
+<td>该 zone 中实际存在的页框数</td>
+</tr>
+<tr>
+<td><code>zone->managed_pages</code></td>
+<td>被 buddy 管理的页框数（去掉预留的）</td>
+</tr>
+</tbody></table>
+
+<h3>3.5 <code>zone_sizes_init()</code> → <code>free_area_init()</code> 完整执行分析</h3>
+
+<p><code>zone_sizes_init()</code> 传入 <code>max_zone_pfns[]</code> 后，<code>free_area_init()</code> 分四个阶段执行：</p>
+
+<h4>阶段一：计算全局 zone 地址边界</h4>
+
+<pre><code class="language-c">start_pfn = PHYS_PFN(memblock_start_of_DRAM());  // DRAM 起点 PFN
+
+for (i = 0; i &lt; MAX_NR_ZONES; i++) {
+    if (zone == ZONE_MOVABLE) continue;           // 跳过 MOVABLE
+    end_pfn = max(max_zone_pfn[zone], start_pfn); // 防止边界回退
+    arch_zone_lowest_possible_pfn[zone]  = start_pfn;
+    arch_zone_highest_possible_pfn[zone] = end_pfn;
+    start_pfn = end_pfn;                          // 下一 zone 从此开始
+}</code></pre>
+
+<p><strong>首尾相接原则</strong>：zone 按地址从低到高依次排列，上一个 zone 的终点就是下一个 zone 的起点。<code>lowest == highest</code> 表示该 zone 为空。</p>
+
+<p>以 1GB 嵌入式设备（RAM: 0x4000_0000~0x8000_0000）为例：</p>
+
+<pre><code>max_zone_pfns: [DMA=0x80000, DMA32=0x80000, NORMAL=0x80000]
+start_pfn = 0x40000 (DRAM 起点)
+
+i=0 ZONE_DMA:
+  end_pfn = max(0x80000, 0x40000) = 0x80000
+  lowest[DMA]  = 0x40000
+  highest[DMA] = 0x80000  → 覆盖全部 1GB
+  start_pfn → 0x80000
+
+i=1 ZONE_DMA32:
+  end_pfn = max(0x80000, 0x80000) = 0x80000  ← 相等！
+  lowest[DMA32] = highest[DMA32] = 0x80000   → 空 zone
+
+i=2 ZONE_NORMAL: 同 DMA32，empty
+
+i=3 ZONE_MOVABLE: continue，跳过</code></pre>
+
+<h4>阶段二：subsection_map 精确置位</h4>
+
+<pre><code class="language-c">for_each_mem_pfn_range(i, MAX_NUMNODES, &amp;start_pfn, &amp;end_pfn, &amp;nid) {
+    subsection_map_init(start_pfn, end_pfn - start_pfn);
+}</code></pre>
+
+<p>遍历 memblock 的实际 RAM 范围，按 2MB 粒度在各 section 的 <code>subsection_map</code> 位图中置位。这是 <code>pfn_valid()</code> 精确到 2MB 的基础，在 <code>sparse_init()</code> 分配好 usage 结构后，这里才真正填充内容。</p>
+
+<h4>阶段三：自检验证</h4>
+
+<pre><code class="language-c">mminit_verify_pageflags_layout();</code></pre>
+
+<p>验证 <code>page->flags</code> 中 section/node/zone 三段位域没有互相重叠：</p>
+
+<pre><code class="language-c">// 位重叠检测技巧：OR 结果 vs 加法结果
+or_mask  = (ZONES_MASK &lt;&lt; ZONES_PGSHIFT) | (NODES_MASK &lt;&lt; NODES_PGSHIFT) | ...
+add_mask = (ZONES_MASK &lt;&lt; ZONES_PGSHIFT) + (NODES_MASK &lt;&lt; NODES_PGSHIFT) + ...
+BUG_ON(or_mask != add_mask);  // 有重叠则加法产生进位，两者不等 → panic</code></pre>
+
+<p>若某种配置导致位域超出 64 位或相互覆盖，立即 panic，防止带错误布局继续运行。</p>
+
+<p><code>setup_nr_node_ids()</code> 将 <code>nr_node_ids</code> 从 <code>MAX_NUMNODES=16</code> 缩减为实际节点数（单节点系统 = 1），后续所有节点循环都以此为上限。</p>
+
+<h4>阶段四：per-node 初始化（单节点只进一次）</h4>
+
+<pre><code class="language-c">for_each_node(nid) {      // 单节点: nid=0，只执行一次
+    free_area_init_node(nid);
+    if (pgdat-&gt;node_present_pages)
+        node_set_state(nid, N_MEMORY);
+}</code></pre>
+
+<p><code>free_area_init_node()</code> 的执行链：</p>
+
+<pre><code>free_area_init_node(nid=0)
+  ├── get_pfn_range_for_nid(): 从 memblock 取 PFN 范围
+  │
+  ├── calculate_node_totalpages(): 计算三个页面计数
+  │     对每个 zone:
+  │       spanned = zone 地址跨度（含空洞）
+  │       absent  = 空洞页数
+  │       present = spanned - absent   ← 实际有 RAM 的页数
+  │
+  │     pgdat-&gt;node_spanned_pages = 所有 zone spanned 之和
+  │     pgdat-&gt;node_present_pages = 所有 zone present 之和
+  │
+  └── free_area_init_core(): 初始化每个 zone 内部结构
+        zone_init_internals():
+          zone-&gt;managed_pages = present_pages (临时值)
+          zone-&gt;zone_pgdat    = NODE_DATA(nid)  ← 反向指针
+          zone-&gt;name          = &quot;DMA&quot; / ...
+          spin_lock_init(&amp;zone-&gt;lock)
+          zone_pcp_init()    ← per-CPU 页面缓存（占位初始化，见下文）
+
+        init_currently_empty_zone():
+          zone-&gt;zone_start_pfn = start_pfn
+          zone_init_free_lists():
+            for order 0~10, for migrate_type 0~5:
+              INIT_LIST_HEAD(&amp;free_area[order].free_list[t])
+              nr_free = 0                ← buddy 骨架就绪，但为空
+          zone-&gt;initialized = 1</code></pre>
+
+<h4>spanned / present / managed 三个计数的含义</h4>
+
+<pre><code>node 物理地址空间（有空洞的例子）:
+
+  0x40000  0x60000  (空洞)  0x80000  0xA0000
+  ├──RAM───┤─────HOLE──────┤──RAM───┤
+
+  spanned  = 0xA0000 - 0x40000 = 393216  (含空洞的总跨度)
+  absent   = 0x80000 - 0x60000 = 131072  (空洞页数)
+  present  = 393216 - 131072  = 262144   (实际 RAM 页数)
+  managed  = present - reserved           (buddy 可分配的页数，memblock_free_all 后才正确)
+
+关系: spanned &gt;= present &gt;= managed</code></pre>
+
+<table>
+<thead><tr>
+<th>计数</th>
+<th>谁使用</th>
+<th>用途</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>spanned_pages</code></td>
+<td>热插拔、地址范围计算</td>
+<td>节点覆盖的物理地址跨度</td>
+</tr>
+<tr>
+<td><code>present_pages</code></td>
+<td>kswapd、OOM、<code>/proc/meminfo</code></td>
+<td>实际拥有的物理页数</td>
+</tr>
+<tr>
+<td><code>managed_pages</code></td>
+<td>buddy 分配器、水位线</td>
+<td>buddy 可分配的页数</td>
+</tr>
+</tbody></table>
+
+<p><code>/proc/meminfo</code> 的 <code>MemTotal</code> = 所有节点 <code>present_pages</code> 之和减去预留，不是 <code>spanned_pages</code>。</p>
+
+<h4>执行完成后的状态</h4>
+
+<table>
+<thead><tr>
+<th>数据结构</th>
+<th>状态</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>arch_zone_lowest/highest_possible_pfn[]</code></td>
+<td>每种 zone 的全局地址范围 ✓</td>
+</tr>
+<tr>
+<td><code>zone->zone_start_pfn</code> / <code>spanned/present_pages</code></td>
+<td>填充完毕 ✓</td>
+</tr>
+<tr>
+<td><code>zone->free_area[0~10].free_list[]</code></td>
+<td>空链表，buddy 骨架就绪 ✓</td>
+</tr>
+<tr>
+<td><code>zone->initialized</code></td>
+<td>= 1 ✓</td>
+</tr>
+<tr>
+<td><code>zone->managed_pages</code></td>
+<td>临时值，<code>memblock_free_all()</code> 后才正确</td>
+</tr>
+<tr>
+<td><code>zone->per_cpu_pageset</code></td>
+<td>指向 <code>boot_pageset</code>（占位），PCP 逻辑上被禁用</td>
+</tr>
+<tr>
+<td><code>struct page</code> 的内容</td>
+<td>尚未初始化（由 <code>memmap_init()</code> 负责，在 buddy 接管时执行）</td>
+</tr>
+</tbody></table>
+
+<p><strong>此刻 buddy 骨架完全就绪，但 <code>free_area</code> 里没有任何空闲页。<code>memblock_free_all()</code> 会把 memblock 管理的空闲页逐一释放进链表，buddy 系统才真正开始工作。</strong></p>
+
+<h4>附：<code>calc_nr_kernel_pages()</code> —— 量体裁衣的内存统计</h4>
+
+<p><code>free_area_init()</code> 完成后立即调用此函数，遍历 memblock 所有空闲区间，累计两个 <code>__initdata</code> 变量：</p>
+
+<pre><code class="language-c">static unsigned long nr_kernel_pages;  // NR = Number（数量），低端可直接访问的页数
+static unsigned long nr_all_pages;     // 全部空闲物理内存页数</code></pre>
+
+<blockquote><strong>NR</strong> 是内核中极其常见的前缀，来自拉丁语 <em>numerus</em>，即 "number（数量）"。<br>
+内核到处可见：<code>nr_cpu_ids</code>、<code>NR_ZONES</code>、<code>nr_free</code>、<code>NR_VM_ZONE_STAT_ITEMS</code>……</blockquote>
+
+<p><strong>两者的差异只在 32 位 HIGHMEM 场景：</strong></p>
+
+<pre><code>ARM64 / x86_64（无 HIGHMEM）：
+  nr_kernel_pages == nr_all_pages   ← 全部内存内核均可直接映射
+
+32 位 arm32（有 CONFIG_HIGHMEM）：
+  低于 ZONE_HIGHMEM 起点 → 同时计入两者
+  高于 ZONE_HIGHMEM 起点 → 只计入 nr_all_pages（内核无法直接访问）</code></pre>
+
+<p><strong>1GB 嵌入式设备的计算示例：</strong></p>
+
+<pre><code>memblock 空闲区间: [0x4000_0000, 0x8000_0000)
+  start_pfn = PFN_UP(0x4000_0000)  = 0x40000
+  end_pfn   = PFN_DOWN(0x8000_0000) = 0x80000
+
+  nr_all_pages    += 0x80000 - 0x40000 = 262144 页（= 1GB）
+  nr_kernel_pages += 262144             （无 HIGHMEM，两者相同）</code></pre>
+
+<p><strong>这两个变量之后的用途：</strong></p>
+
+<pre><code>alloc_large_system_hash()      ← 分配 inode cache、dentry cache、pid hash 等哈希表
+  numentries = nr_kernel_pages  ← 以低端内存页数为基准计算哈希桶数量
+  max = nr_all_pages × 4KB / 16 ← 哈希表总大小不超过全部内存的 1/16</code></pre>
+
+<p>这是典型的"先量体裁衣"设计：在分配各种内核固定数据结构之前先精确统计可用内存，哈希表等结构按内存规模自适应——嵌入式 256MB 与服务器 512GB 的哈希桶数量相差几个数量级，绝不写死固定值。</p>
+
+<h4>附：<code>zone_pcp_init()</code> —— PCP 占位初始化</h4>
+
+<p><strong>PCP = Per-CPU Pages（per-CPU 页面缓存/Pageset）</strong></p>
+
+<p>PCP 是每个 CPU 私有的小页面缓冲池，设计目标是绕开 zone 级别的全局 spinlock：</p>
+
+<pre><code>分配路径:  kmalloc → get_free_pages → 先查本 CPU 的 PCP 缓存
+                                      → PCP 空才加锁，从 buddy 批量补充
+释放路径:  kfree   →                 → 先放入 PCP 缓存
+                                      → PCP 超水位才批量归还 buddy</code></pre>
+
+<p>多核系统下，绝大多数内存分配/释放命中 PCP 缓存，无需竞争全局锁，显著提升吞吐量。</p>
+
+<p><strong><code>zone_pcp_init()</code> 的实现：</strong></p>
+
+<pre><code class="language-c">// mm/page_alloc.c
+zone-&gt;per_cpu_pageset   = &amp;boot_pageset;    // 所有 zone 共用同一个临时 pageset
+zone-&gt;per_cpu_zonestats = &amp;boot_zonestats;  // 统计也共用临时对象
+zone-&gt;pageset_high_min  = BOOT_PAGESET_HIGH;  // = 0
+zone-&gt;pageset_high_max  = BOOT_PAGESET_HIGH;  // = 0
+zone-&gt;pageset_batch     = BOOT_PAGESET_BATCH; // = 1</code></pre>
+
+<p><code>BOOT_PAGESET_HIGH = 0</code>、<code>BOOT_PAGESET_BATCH = 1</code> 实际上<strong>把 PCP 缓存完全禁用</strong>：</p>
+
+<pre><code>high = 0  → 缓存上限为 0，放入 1 页立即溢出 → 直接进 buddy
+batch = 1  → 无批量效益，每次只补充/回收 1 页</code></pre>
+
+<p>这样设计是因为此时 <strong>per-CPU 子系统尚未初始化</strong>，所有 zone 必须指向合法指针但不能真正使用缓存。<code>boot_pageset</code> 是一个全局 per-CPU 变量，此时退化为普通全局对象，充当安全占位符。</p>
+
+<p><strong>何时切换到真正的 PCP：</strong></p>
+
+<pre><code>setup_per_cpu_pageset()            ← 内核启动后期调用
+  → 为每个在线 CPU × 每个非空 zone，
+    从对应 NUMA 节点分配独立的 struct per_cpu_pages
+  → zone-&gt;per_cpu_pageset != &amp;boot_pageset  表示 PCP 真正就绪
+  → high 根据 zone 大小动态计算，batch 设为合理的批量大小（通常数十页）</code></pre>
+
+<p><strong><code>struct per_cpu_pages</code> 关键字段：</strong></p>
+
+<pre><code class="language-c">struct per_cpu_pages {
+    int  count;    // 当前缓存的页数
+    int  high;     // 水位上限，超过则批量回收给 buddy
+    int  batch;    // 每次从 buddy 补充/归还的页数
+    struct list_head lists[NR_PCP_LISTS];  // 按 migrate type 分类的页链表
+};</code></pre>
+
+<h4>附：<code>memmap_init()</code> —— struct page 批量填充</h4>
+
+<p><strong><code>memmap_init()</code> 是 buddy 建立前的最后一道工序</strong>：把 <code>sparse_init()</code> 已分配好的 <code>struct page</code> 数组从"裸内存"变成"有内容的页描述符"。</p>
+
+<p><strong>调用链：</strong></p>
+
+<pre><code>memmap_init()
+  ├── for_each_mem_pfn_range()        ← 遍历 memblock 所有 RAM 区间
+  │     for each zone:
+  │       memmap_init_zone_range()    ← 裁剪到 zone 边界内
+  │         ├── memmap_init_range()   ← 处理有 RAM 的 PFN 段
+  │         │     for each pfn:
+  │         │       __init_single_page()          ← 初始化 struct page
+  │         │       if pageblock_aligned(pfn):
+  │         │         init_pageblock_migratetype(MIGRATE_MOVABLE)
+  │         └── init_unavailable_range()  ← 处理空洞 PFN
+  │               __init_single_page() + __SetPageReserved()
+  └── 尾部空洞处理（到 section 对齐边界）
+        init_unavailable_range(hole_pfn, round_up(end_pfn))</code></pre>
+
+<p><strong><code>__init_single_page()</code> 的操作：</strong></p>
+
+<pre><code class="language-c">mm_zero_struct_page(page);           // ① 清零 struct page
+set_page_links(page, zone, nid, pfn); // ② flags 中编码 zone/nid/section
+init_page_count(page);               // ③ _refcount = 1（暂由内核持有，Reserved）
+atomic_set(&amp;page-&gt;_mapcount, -1);   // ④ -1 = 未映射到任何用户进程
+INIT_LIST_HEAD(&amp;page-&gt;lru);         // ⑤ lru/buddy 链表节点初始化</code></pre>
+
+<p>统一策略：<strong>所有 RAM 页一视同仁，全部设为 refcount=1（Reserved），不区分里面装的是内核代码、DTB 还是空白内存。</strong></p>
+
+<p><strong><code>pfn_to_page()</code> 不分配内存，只是指针算术：</strong></p>
+
+<pre><code class="language-c">// include/asm-generic/memory_model.h
+#define pfn_to_page(pfn)   (vmemmap + (pfn))
+
+// arch/arm64/include/asm/pgtable.h
+#define vmemmap   ((struct page *)VMEMMAP_START - (memstart_addr &gt;&gt; PAGE_SHIFT))</code></pre>
+
+<p><code>pfn_to_page(pfn)</code> = 直接下标访问 VMEMMAP 区域，O(1)，零开销。  <br>
+VMEMMAP 背后的物理内存在 <code>sparse_init()</code> 里由 <code>vmemmap_populate()</code> 从 memblock 分配并建立页表——分配和初始化是完全分离的两步。</p>
+
+<p><strong><code>memblock_free_all()</code> 时内容才发生分叉：</strong></p>
+
+<pre><code>memblock.memory[]   = 所有 RAM
+memblock.reserved[] = 内核代码/数据 + 页表 + DTB + initrd
+                    + struct page 数组 + pg_data_t + memblock 元数据
+
+memblock_free_all()
+  → for_each_free_mem_range() 遍历 memory - reserved
+  → 这些页 refcount 降为 0，挂入 buddy free_area
+  → 其余（reserved）继续保持 refcount=1，永不进 buddy</code></pre>
+
+<p>以 1GB 设备为例：</p>
+
+<pre><code>物理地址                    reserved?   memblock_free_all 后的状态
+─────────────────────────────────────────────────────────────────
+0x4000_0000~0x4020_0000   YES (内核)   refcount=1, Reserved, 不进 buddy
+0x4020_0000~0x4021_0000   YES (DTB)    refcount=1, Reserved, 不进 buddy
+0x4021_0000~0x4100_0000   YES (struct page数组) 同上
+0x4100_0000~0x8000_0000   NO  (空闲)   refcount=0, 进 buddy free_area ✓</code></pre>
+
+<h4>附：<code>struct page</code> —— 64 字节的极致压缩</h4>
+
+<p><code>struct page</code> 是一块被多个子系统<strong>分时共用</strong>的内存，没有"owner"字段，持有者身份隐藏在 <code>flags</code> 的 Page* 标志位里，union 的解读由当前持有者按约定决定：</p>
+
+<pre><code class="language-c">struct page {
+    memdesc_flags_t flags;   // PageBuddy / PageSlab / PageAnon / PageReserved...
+                             // flags 里的 bit = 当前持有者的隐式标记
+
+    union {                  // 同一块内存，不同持有者有不同解读
+        struct { buddy_list; private/*=order*/; };   // ① buddy 空闲页
+        struct { lru; mapping; folio_index; private; }; // ② page cache/匿名页
+        struct { pp_magic; pp; dma_addr; };           // ③ 网络 page_pool
+        struct { compound_head; };                    // ④ 复合页尾页
+        struct { zone_device_data; };                 // ⑤ ZONE_DEVICE
+    };
+
+    page_type / _mapcount;   // 4 字节：类型标记 或 页表映射次数
+    _refcount;               // 引用计数：0=buddy空闲 1=单一持有 N=多方共享
+};</code></pre>
+
+<table>
+<thead><tr>
+<th><code>flags</code> 标志</th>
+<th>持有者</th>
+<th>union 当前解读</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>PageBuddy</code></td>
+<td>buddy（空闲）</td>
+<td><code>buddy_list</code> + <code>private=order</code></td>
+</tr>
+<tr>
+<td><code>PageSlab</code></td>
+<td>slab/slub 分配器</td>
+<td>slab 内部元数据</td>
+</tr>
+<tr>
+<td><code>PageAnon</code></td>
+<td>进程匿名页（堆/栈）</td>
+<td><code>mapping</code>=anon_vma，<code>_mapcount</code>=映射次数</td>
+</tr>
+<tr>
+<td><code>PageMappedToDisk</code></td>
+<td>文件 page cache</td>
+<td><code>mapping</code>=address_space，<code>index</code>=文件偏移</td>
+</tr>
+<tr>
+<td><code>PageReserved</code></td>
+<td>内核/固件保留</td>
+<td>不受 buddy 管理</td>
+</tr>
+</tbody></table>
+
+<p><strong><code>_refcount</code> 是持有计数，不是持有者身份：</strong></p>
+
+<pre><code>_refcount = 0    → buddy 空闲页（无人持有）
+_refcount = 1    → 单一持有（内核分配、文件映射...）
+_refcount = N    → N 方共享（共享内存、多进程 mmap 同一文件）</code></pre>
+
+<p><strong>设计精髓</strong>：<code>struct page</code> 只管"这页现在归谁、状态如何"，内容是内核代码还是用户数据，它完全不关心——内容的语义由持有者自己负责。这是<strong>所有权与内容彻底分离</strong>的原则，用 64 字节撑起了整个内存管理体系。</p>
+
+<h4>附：<code>set_high_memory()</code> —— 标定线性映射区上边界</h4>
+
+<pre><code class="language-c">static void __init set_high_memory(void)
+{
+    phys_addr_t highmem = memblock_end_of_DRAM();  // DRAM 终点物理地址
+
+    if (high_memory)   // ARM64 不预设，此处为 NULL
+        return;
+
+    // CONFIG_HIGHMEM 未定义（64 位架构不需要），跳过 ifdef 块
+
+    high_memory = phys_to_virt(highmem - 1) + 1;  // DRAM 终点线性虚拟地址
+}</code></pre>
+
+<p><strong>ARM64 + 1GB 内存（RAM: 0x4000_0000 ~ 0x8000_0000）的执行结果：</strong></p>
+
+<pre><code>memblock_end_of_DRAM()  = 0x8000_0000（物理）
+high_memory             = phys_to_virt(0x8000_0000)
+                        = PAGE_OFFSET + (0x8000_0000 - memstart_addr)
+                        = PAGE_OFFSET + 0x4000_0000
+                        ← 线性映射区中 DRAM 终点对应的虚拟地址</code></pre>
+
+<p><strong><code>high_memory</code> 的含义：内核线性映射区的上边界</strong></p>
+
+<pre><code>PAGE_OFFSET
+│
+├── [PAGE_OFFSET ~ high_memory)  ← 线性映射区：内核可直接解引用、virt_to_phys() 安全
+│     物理 RAM 的 1:1 线性虚拟映射
+│
+├── high_memory                  ← 分界线（= DRAM 终点对应的线性虚拟地址）
+│
+└── [high_memory ~ ...)          ← vmalloc / VMEMMAP / modules 区域，不能直接 virt_to_phys()</code></pre>
+
+<p>使用场景：</p>
+
+<pre><code class="language-c">if ((unsigned long)addr &lt; (unsigned long)high_memory)
+    phys = virt_to_phys(addr);  // 线性映射区，安全
+else
+    /* vmalloc 区域，必须通过页表查找物理地址 */</code></pre>
+
+<p>32 位 ARM（CONFIG_HIGHMEM）：内核虚拟空间只有 1GB，<code>high_memory</code> 被设为 ZONE_HIGHMEM 起点的线性虚拟地址，高于此的物理内存需要 <code>kmap()</code> 临时映射才能访问。ARM64 无此限制，<code>high_memory</code> 就是 DRAM 终点，一行有效代码。</p>
+
+<h3>3.6 NUMA 和 Zone 的数量由什么决定？</h3>
+
+<h4>NUMA 节点数量</h4>
+
+<p>上限由内核配置决定，实际数量由硬件拓扑（DTB/ACPI）描述：</p>
+
+<pre><code>CONFIG_NODES_SHIFT = 4  →  MAX_NUMNODES = 2^4 = 16（编译期上限）
+实际数量 = node_online_map 中的置位数（运行时由硬件决定）</code></pre>
+
+<table>
+<thead><tr>
+<th>场景</th>
+<th>节点数</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>单 SoC 嵌入式（1GB 板子）</td>
+<td>1</td>
+<td>一个 DDR 控制器，所有 CPU 到内存距离一样</td>
+</tr>
+<tr>
+<td>双路服务器（2 CPU socket）</td>
+<td>2</td>
+<td>每个 socket 有独立的 DDR 控制器</td>
+</tr>
+<tr>
+<td>四路服务器（4 CPU socket）</td>
+<td>4</td>
+<td>每个 socket 一个节点</td>
+</tr>
+<tr>
+<td>带 HBM 的处理器（AI 芯片等）</td>
+<td>2+</td>
+<td>HBM 和 DDR 是不同节点（延迟不同）</td>
+</tr>
+</tbody></table>
+
+<p><strong>判断标准</strong>：CPU 到内存有不同的访问延迟路径 → 划分为不同 NUMA 节点。</p>
+
+<h4>Zone 数量</h4>
+
+<p>编译期由 CONFIG 决定上限，运行时看哪些 zone 有内存：</p>
+
+<pre><code class="language-c">// include/linux/mmzone.h
+enum zone_type {
+    ZONE_DMA,      // CONFIG_ZONE_DMA=y 时存在
+    ZONE_DMA32,    // CONFIG_ZONE_DMA32=y 时存在
+    ZONE_NORMAL,   // 永远存在
+    ZONE_MOVABLE,  // 永远存在（需启动参数配置才非空）
+    ZONE_DEVICE,   // CONFIG_ZONE_DEVICE=y 时存在
+    __MAX_NR_ZONES // 当前内核配置: MAX_NR_ZONES = 4
+};</code></pre>
+
+<table>
+<thead><tr>
+<th>Zone</th>
+<th>什么时候有内存</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>ZONE_DMA</td>
+<td>RAM 起点 < DMA 限制地址（通常 < 4GB）</td>
+</tr>
+<tr>
+<td>ZONE_DMA32</td>
+<td>DMA 和 DMA32 限制地址不同时才独立存在</td>
+</tr>
+<tr>
+<td>ZONE_NORMAL</td>
+<td><strong>RAM 超过 DMA 限制地址的部分</strong>。RAM 全在 4GB 以内时为空</td>
+</tr>
+<tr>
+<td>ZONE_HIGHMEM</td>
+<td>仅 32 位架构，RAM 超出内核直映范围（> 896MB）</td>
+</tr>
+<tr>
+<td>ZONE_MOVABLE</td>
+<td>需 <code>kernelcore=</code>/<code>movablecore=</code> 启动参数或内存热插拔</td>
+</tr>
+<tr>
+<td>ZONE_DEVICE</td>
+<td>持久化内存（PMEM）、GPU 显存（HMM）等非常规设备</td>
+</tr>
+</tbody></table>
+
+<h4>实际案例对比：嵌入式 vs 服务器</h4>
+
+<p><strong>嵌入式板子（1GB ARM64）</strong>:</p>
+
+<pre><code>~ # cat /proc/buddyinfo
+Node 0, zone      DMA     27     21     13      4      6      6      5      4      4      5    221
+
+RAM: 1GB，全部 &lt; 4GB
+  → ZONE_DMA 覆盖全部内存，ZONE_DMA32/NORMAL 为空
+  → buddyinfo 只显示一个 zone
+  → order-10 (4MB) 有 221 个空闲块，内存碎片很少</code></pre>
+
+<p><strong>x86 服务器（82GB，物理地址 0~82GB）</strong>:</p>
+
+<pre><code>$ cat /proc/buddyinfo
+Node 0, zone      DMA      1      0      0      1      2      1      1      0      1      1      3
+Node 0, zone    DMA32   7653   8301  14461     73      2      0      0      0      0      1      0
+Node 0, zone   Normal 390435 419125  25979     36      3      3      3      3      1      0      0
+
+$ free -h
+              total    used    free    shared  buff/cache  available
+Mem:           82Gi    17Gi   5.4Gi     5.4Gi       59Gi       58Gi</code></pre>
+
+<p>三个 zone 的内存分布：</p>
+
+<pre><code>物理地址:
+0          16MB          4GB                                      82GB
+├─ZONE_DMA──┤──ZONE_DMA32──┤──────── ZONE_NORMAL ─────────────────┤
+│  ~16MB     │  ~4GB        │  ~78GB（绝大多数内存在这里）         │
+│  极少空闲  │  ~325MB 空闲 │  ~5.1GB 空闲（高度碎片化）          │</code></pre>
+
+<p>各 zone 空闲内存估算（从 buddyinfo 计算）:</p>
+
+<table>
+<thead><tr>
+<th>Zone</th>
+<th>空闲页数</th>
+<th>空闲量</th>
+<th>碎片状况</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>DMA</td>
+<td>~3977 页</td>
+<td>~15.5MB</td>
+<td>正常（zone 本身就小）</td>
+</tr>
+<tr>
+<td>DMA32</td>
+<td>~83227 页</td>
+<td>~325MB</td>
+<td>中等</td>
+</tr>
+<tr>
+<td>Normal</td>
+<td>~1333865 页</td>
+<td>~5.1GB</td>
+<td><strong>严重碎片化</strong>：order-10=0，全是小块</td>
+</tr>
+</tbody></table>
+
+<p>ZONE_NORMAL 碎片严重的原因：<code>buff/cache = 59GB</code>，服务器长期运行，Movable 页频繁分配释放，空闲内存碎成单页（order-0 有 39 万个）和双页（order-1 有 42 万个），几乎无法分配大连续块。</p>
+
+<h4>系统总 zone 实例数</h4>
+
+<p>每个节点各有一套独立的 zone，总数 = <code>在线节点数 × MAX_NR_ZONES</code>。这就是 <code>pgdat->node_zones[MAX_NR_ZONES]</code> 的含义——每个节点自己管理自己的 DMA/DMA32/NORMAL 分区。</p>
+
+<h3>3.7 设计思想</h3>
+
+<p><strong>约束分类（Constraint-based Classification）</strong>：把物理内存按"能被谁使用"分类，使得分配器能快速找到满足约束的内存。当设备请求 DMA 内存时，只需从 <code>ZONE_DMA</code> 分配；普通内存请求则从 <code>ZONE_NORMAL</code> 分配。</p>
+
+<p><strong>分层降级（Fallback）</strong>：zone 之间有降级关系——<code>ZONE_NORMAL</code> 用完时可以从 <code>ZONE_DMA</code> 借用（但反过来不行），保证系统不会因为单个 zone 耗尽而完全无法分配内存。</p>
+
+<hr>
+
+<h2>4. 数据结构的具体抽象与表达</h2>
+
+<p>三个概念（NUMA / Sparse / Zone）各自通过一组核心数据结构来表达，这些结构之间通过指针和索引互相引用，共同构成完整的物理内存管理体系。</p>
+
+<h3>4.1 NUMA：三个数据结构共同表达拓扑</h3>
+
+<p>NUMA 拓扑本身由三个独立的结构表达，它们各司其职：</p>
+
+<h4>① <code>pg_data_t</code>：节点的身份 + zone 的容器（双重角色）</h4>
+
+<p><code>pg_data_t</code> 是一个<strong>双重角色</strong>的结构，要注意区分：</p>
+
+<pre><code class="language-c">// include/linux/mmzone.h
+typedef struct pglist_data {
+    /* ── zone 管理（容器角色）── */
+    struct zone  node_zones[MAX_NR_ZONES]; // 该节点拥有的 zone（DMA/NORMAL等）
+    int          nr_zones;                 // 该节点实际有效的 zone 数量
+
+    /* ── NUMA 节点身份（节点角色）── */
+    int           node_id;            // 节点 ID（0, 1, 2...）
+    unsigned long node_start_pfn;     // 该节点起始页帧号
+    unsigned long node_present_pages; // 该节点实际存在的物理页数
+    unsigned long node_spanned_pages; // 该节点地址范围总页数（含空洞）
+
+    /* ── 分配策略（非 NUMA 拓扑）── */
+    struct zonelist node_zonelists[MAX_ZONELISTS];
+    // ↑ 注意：这不是 NUMA 拓扑描述，而是分配时的 fallback 搜索顺序。
+    //   当本节点内存不足时，按照这个列表的顺序去其他节点借内存。
+    //   它是&quot;分配策略&quot;，不是&quot;硬件拓扑&quot;。
+
+    struct task_struct *kswapd;       // 该节点的内存回收内核线程
+} pg_data_t;</code></pre>
+
+<p><strong>访问方式</strong>：<code>NODE_DATA(nid)</code> 宏返回节点 nid 的 <code>pg_data_t</code> 指针，底层是一个全局数组。</p>
+
+<h4>② <code>numa_distance[]</code>：节点间的访问延迟矩阵</h4>
+
+<p>这才是 NUMA <strong>拓扑距离</strong>的直接表达——一个 N×N 的 <code>u8</code> 矩阵（用一维数组模拟），记录任意两个节点之间的访问代价：</p>
+
+<pre><code class="language-c">// mm/numa_memblks.c
+int  numa_distance_cnt;  // N（系统中节点数）
+u8  *numa_distance;      // 大小 N×N，访问方式:
+                         //   numa_distance[from_nid * N + to_nid]
+                         //   本节点到本节点 = 10（LOCAL_DISTANCE，最快）
+                         //   跨节点访问    ≥ 20（数值越大延迟越高）</code></pre>
+
+<p>分配器查询这个矩阵来决定<strong>从哪个节点分配</strong>代价最小，也决定了 <code>node_zonelists[]</code> 的构建顺序。</p>
+
+<h4>③ <code>nodemask_t</code>：节点的在线状态位图</h4>
+
+<p>用来追踪系统中节点的状态（哪些已上线、哪些可能存在等）：</p>
+
+<pre><code class="language-c">// include/linux/nodemask.h
+#define node_online_map   node_states[N_ONLINE]    // 已上线并可分配的节点
+#define node_possible_map node_states[N_POSSIBLE]  // 理论上可能存在的节点
+// 本质: typedef struct { unsigned long bits[1]; } nodemask_t; (MAX_NUMNODES=16)</code></pre>
+
+<h4>三者关系</h4>
+
+<pre><code>硬件拓扑（静态描述）:          运行时管理（动态管理）:
+  numa_distance[N×N]              nodemask_t (在线状态)
+        │                               │
+        │ 决定 fallback 顺序            │ 决定哪些 pgdat 有效
+        ▼                               ▼
+  pg_data_t [node 0] ←── NODE_DATA(0) ──── pg_data_t [node 1]
+    node_id = 0                              node_id = 1
+    node_zones[]   ← zone 容器               node_zones[]
+    node_zonelists[] ← 分配 fallback 链       node_zonelists[]</code></pre>
+
+<hr>
+
+<h3>4.2 Sparse：用 <code>mem_section</code> 表达内存分段</h3>
+
+<p>SPARSEMEM 把物理地址空间切分为 128MB 的 section，每段用一个 <code>struct mem_section</code> 描述：</p>
+
+<pre><code class="language-c">// include/linux/mmzone.h
+struct mem_section {
+    unsigned long section_mem_map; // 编码后的 struct page 数组起点指针
+                                   // 早期 boot 时还编码了 nid（节点ID）
+    struct mem_section_usage *usage; // 指向 subsection_map 位图和 pageblock_flags
+};
+
+struct mem_section_usage {
+    DECLARE_BITMAP(subsection_map, SUBSECTIONS_PER_SECTION); // 64位图
+                                                              // 每 bit 对应 2MB 子段
+                                                              // 1=有RAM 0=空洞
+    unsigned long pageblock_flags[0]; // 每个 2MB 块的迁移类型（Movable/Unmovable...）
+};</code></pre>
+
+<p><strong>全局索引表</strong>：所有 section 通过二级数组索引（<code>SPARSEMEM_EXTREME</code> 时为指针数组节省空间）：</p>
+
+<pre><code class="language-c">// 非EXTREME模式: 静态二维数组
+extern struct mem_section mem_section[NR_SECTION_ROOTS][SECTIONS_PER_ROOT];
+
+// 查找: pfn → section
+static inline struct mem_section *__nr_to_section(unsigned long nr) {
+    unsigned long root = nr / SECTIONS_PER_ROOT;
+    return &amp;mem_section[root][nr &amp; SECTION_ROOT_MASK];
+}
+
+// 核心访问接口 (O(1))
+pfn_to_page(pfn)  =  VMEMMAP_START + pfn * sizeof(struct page)
+                   // 由 sparse_init() 建立的 VMEMMAP 页表映射实现</code></pre>
+
+<p><strong><code>section_mem_map</code> 的巧妙编码</strong>：这个字段不是直接的指针，而是：</p>
+
+<pre><code>section_mem_map = (struct page 数组基址) - section_nr_to_pfn(section_nr)
+
+因此: pfn_to_page(pfn) = section-&gt;section_mem_map + pfn
+      page_to_pfn(page) = page - section-&gt;section_mem_map
+
+低位 bit 被复用存储标志位（SECTION_MARKED_PRESENT 等）</code></pre>
+
+<hr>
+
+<h3>4.3 Zone：用 <code>struct zone</code> + <code>free_area</code> 表达内存分类</h3>
+
+<p>每个 zone 由 <code>struct zone</code> 描述，嵌入在 <code>pgdat->node_zones[]</code> 数组中：</p>
+
+<pre><code class="language-c">// include/linux/mmzone.h
+struct zone {
+    /* ── 水位线：控制内存回收时机 ── */
+    unsigned long _watermark[NR_WMARK]; // WMARK_MIN / WMARK_LOW / WMARK_HIGH
+    long lowmem_reserve[MAX_NR_ZONES];  // 为低 zone 保留的页数（防止被高 zone 耗尽）
+
+    /* ── 地址范围 ── */
+    unsigned long zone_start_pfn;   // 该 zone 的起始 PFN（物理地址）
+    unsigned long spanned_pages;    // 总 PFN 跨度（含空洞）
+    unsigned long present_pages;    // 实际存在的物理页数（去掉空洞）
+    atomic_long_t managed_pages;    // buddy 管理的页数（去掉预留页）
+
+    /* ── 伙伴系统核心 ── */
+    struct free_area free_area[NR_PAGE_ORDERS]; // order 0~10 的空闲链表
+
+    struct pglist_data *zone_pgdat; // 反向指针回到所属的 pgdat（节点）
+    spinlock_t lock;                // 保护 free_area 的自旋锁
+};</code></pre>
+
+<p><code>free_area</code> 是 buddy 系统的直接载体，每个 order 对应一层：</p>
+
+<pre><code class="language-c">// include/linux/mmzone.h
+struct free_area {
+    struct list_head free_list[MIGRATE_TYPES]; // 按迁移类型分组的空闲页链表
+    unsigned long    nr_free;                  // 该 order 的空闲块总数
+};
+
+// MIGRATE_TYPES 包括:
+// MIGRATE_UNMOVABLE  - 内核数据结构，不可移动
+// MIGRATE_MOVABLE    - 用户页，可迁移（支持内存碎片整理）
+// MIGRATE_RECLAIMABLE - 页缓存，可回收
+// MIGRATE_CMA        - 连续内存分配器预留区</code></pre>
+
+<hr>
+
+<h3>4.4 <code>struct page</code>：每个页框的"身份证"</h3>
+
+<p>每个 4KB 物理页框在 VMEMMAP 中有一个对应的 <code>struct page</code>，大小约 64 字节：</p>
+
+<pre><code class="language-c">// include/linux/mm_types.h
+struct page {
+    memdesc_flags_t flags;  // 关键！高位编码 zone 和 node，低位是页状态标志
+                            //   zone bits: page_zonenum(page) → 所属 zone 编号
+                            //   node bits: page_to_nid(page)  → 所属 NUMA 节点
+                            //   PG_locked / PG_dirty / PG_uptodate / PG_reserved ...
+
+    union {
+        struct {            // 页缓存 / 匿名页
+            struct list_head lru;       // 在 LRU 链表中的位置（页回收用）
+            struct list_head buddy_list;// 空闲时：在 buddy free_list 中
+            struct address_space *mapping; // 指向所属地址空间
+            unsigned long private; // buddy 中存 order，缓存中存 buffer_head
+        };
+        // ... 其他 union 分支（page_pool、compound page 等）
+    };
+
+    atomic_t _mapcount;  // 有多少个用户空间页表项指向本页（-1=无映射）
+    atomic_t _refcount;  // 引用计数（0=空闲，可被 buddy 分配）
+};</code></pre>
+
+<p><code>flags</code> 字段中 zone 和 node 的编码位置（ARM64 64位）：</p>
+
+<pre><code>bit 63 ... [node bits] ... [zone bits] ... [page flags] ... bit 0
+             ↑ node编号       ↑ zone编号      ↑ PG_locked等标志
+
+访问:
+  page_to_nid(page)    = (page-&gt;flags &gt;&gt; NODES_PGSHIFT) &amp; NODES_MASK
+  page_zonenum(page)   = (page-&gt;flags &gt;&gt; ZONES_PGSHIFT) &amp; ZONES_MASK
+  PageLocked(page)     = test_bit(PG_locked, &amp;page-&gt;flags)</code></pre>
+
+<hr>
+
+<h3>4.5 三层数据结构的关系图</h3>
+
+<p>下图展示了 NUMA、Sparse、Zone 三层如何通过数据结构的指针和索引关系结合在一起管理物理内存：</p>
+
+<p><img src="image/numa_sparse_zone_relations.svg" alt="NUMA / Sparse / Zone 三层数据结构关联图"></p>
+
+<hr>
+
+<h2>5. 三层抽象的协作关系</h2>
+
+<h3>4.1 数据结构的层次关系</h3>
+
+<pre><code>pgdat (per-node)                      ← arch_numa_init() 创建
+  └── node_zones[MAX_NR_ZONES]        ← zone_sizes_init() 初始化
+        └── zone-&gt;free_area[]          ← memblock_free_all() 时填充 (buddy)
+              └── free pages           ← 每个 page 有 struct page 描述
+                    │
+                    └── struct page    ← sparse_init() 分配空间 + VMEMMAP 映射</code></pre>
+
+<h3>4.2 一个物理页框的身份描述</h3>
+
+<p>以物理地址 <code>0x8400_0000</code> 为例（假设 4K 页，pfn = 0x84000）：</p>
+
+<pre><code>Q: 这个页框属于哪个 NUMA 节点？
+A: 查 memblock.memory → region-&gt;nid = 0 → Node 0
+
+Q: 这个页框的 struct page 在哪？
+A: pfn_to_page(0x84000) → VMEMMAP_START + 0x84000 * sizeof(struct page)
+   由 sparse_init() 建立的页表映射保证可访问
+
+Q: 这个页框属于哪个 zone？
+A: struct page-&gt;flags 中编码了 zone 信息 → ZONE_DMA (因为 &lt; 4GB)
+   由 zone_sizes_init() → memmap_init() 设置
+
+Q: 这个页框是空闲的还是被占用的？
+A: 查 struct page-&gt;_refcount
+   0 = 空闲（在 buddy 的 free_list 上）
+   &gt;0 = 被占用（被 kmalloc/page cache/用户进程等使用）</code></pre>
+
+<h3>4.3 执行顺序的依赖关系</h3>
+
+<pre><code>arch_numa_init()  ──必须先于──&gt;  sparse_init()  ──必须先于──&gt;  zone_sizes_init()
+      │                               │                              │
+      │ 原因: sparse_init()           │ 原因: zone_sizes_init()      │
+      │ 需要从正确的 NUMA             │ 需要 struct page 数组已      │
+      │ 节点分配 struct page           │ 分配好，才能初始化每个        │
+      │ 数组 (NUMA 局部性)            │ page 的 zone/node 信息        │
+      │                               │                              │
+      v                               v                              v
+  memblock 有 nid              VMEMMAP 映射就绪              struct page 初始化完成</code></pre>
+
+<hr>
+
+<h2>6. 设计思想总结</h2>
+
+<h3>5.1 分层抽象</h3>
+
+<table>
+<thead><tr>
+<th>层次</th>
+<th>抽象维度</th>
+<th>解决的问题</th>
+<th>数据结构</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Node</td>
+<td>拓扑/距离</td>
+<td>访问延迟不均匀</td>
+<td><code>pgdat</code></td>
+</tr>
+<tr>
+<td>Section</td>
+<td>空间/存在性</td>
+<td>物理地址不连续</td>
+<td><code>mem_section</code></td>
+</tr>
+<tr>
+<td>Zone</td>
+<td>功能/约束</td>
+<td>DMA 地址限制</td>
+<td><code>struct zone</code></td>
+</tr>
+<tr>
+<td>Page</td>
+<td>个体/状态</td>
+<td>每页的使用跟踪</td>
+<td><code>struct page</code></td>
+</tr>
+</tbody></table>
+
+<h3>5.2 核心设计原则</h3>
+
+<p><strong>1. 局部性优先（NUMA Awareness）</strong></p>
+
+<p>内存分配优先选择离请求 CPU 最近的节点，减少跨节点访问延迟。这个原则贯穿了从 <code>pgdat</code> 到 <code>slab</code> 的所有分配器层次。</p>
+
+<p><strong>2. 按需分配（No Waste on Absent Memory）</strong></p>
+
+<p>SPARSEMEM 模型只为实际存在的物理内存分配管理结构，物理地址空间的空洞不会浪费一字节。</p>
+
+<p><strong>3. 约束驱动分类（Constraint-Driven Classification）</strong></p>
+
+<p>Zone 的设计来自硬件约束——不同设备能寻址的范围不同。与其在每次分配时检查地址约束，不如提前把内存分类，分配时直接从对应类别取。</p>
+
+<p><strong>4. 渐进式构建（Progressive Bootstrap）</strong></p>
+
+<p>三个函数严格按序执行，每一步都依赖上一步的结果。这种分步构建方式解决了"要管理内存先得有内存来存管理结构"的鸡生蛋问题：</p>
+
+<pre><code>memblock (极简分配器, 不需要 struct page)
+  → 分配 pgdat / mem_section / struct page 数组
+    → buddy system (完整分配器, 基于 struct page)</code></pre>
+
+<p><strong>5. 信息编码到 page->flags（O(1) 查询）</strong></p>
+
+<p><code>struct page->flags</code> 中同时编码了 zone 编号和 node 编号，使得运行时查询一个页框"属于哪个节点、哪个 zone"只需一次位运算，无需查表或遍历。</p>
+
+<hr>
+
+<h2>7. 最难理解的知识点</h2>
+
+<h3>6.1 VMEMMAP 与 SPARSEMEM 的关系</h3>
+
+<p><strong>难点</strong>：<code>pfn_to_page(pfn)</code> 看似是简单的数组索引，但背后的虚拟地址到物理地址的映射是按 section 粒度建立的，空洞 section 没有映射。理解这一点需要同时掌握虚拟地址空间布局、页表映射、和 section 的概念。</p>
+
+<pre><code>VMEMMAP_START + pfn * sizeof(struct page) = 虚拟地址
+  │
+  │ 页表查找 (由 sparse_init() 建立的映射)
+  ▼
+物理地址 → struct page 数据</code></pre>
+
+<h3>6.2 memblock 到 buddy 的交接</h3>
+
+<p><strong>难点</strong>：memblock 和 buddy 是两套独立的分配系统，交接时需要：</p>
+<ol>
+<li>先用 memblock 分配好所有管理结构（pgdat、zone、struct page 数组）</li>
+<li>然后把 memblock 中未预留的空闲页释放给 buddy</li>
+<li>释放后 memblock 退役，buddy 接管</li>
+</ol>
+
+<p>这个"自举"过程涉及多个数据结构的协调，时序稍有错误就会导致内核崩溃。</p>
+
+<h3>6.3 三层抽象的交叉索引</h3>
+
+<p><strong>难点</strong>：一个物理页同时存在于三个维度中——属于某个 node、某个 section、某个 zone。<code>struct page->flags</code> 用位域同时编码了 zone 和 node 信息，<code>pfn_to_page</code> 通过 VMEMMAP 索引，<code>page_to_pfn</code> 通过反向计算。这三套索引机制的交织是最容易混淆的部分。</p>
+
+<h3>6.4 Zone 的 spanned/present/managed 三个计数</h3>
+
+<p><strong>难点</strong>：</p>
+<ul>
+<li><code>spanned_pages</code>：zone 地址范围覆盖的总页框数（包含空洞）</li>
+<li><code>present_pages</code>：实际存在 RAM 的页框数（去掉空洞）</li>
+<li><code>managed_pages</code>：buddy 管理的页框数（去掉预留的）</li>
+</ul>
+
+<p>三者关系：<code>spanned >= present >= managed</code>，容易混淆。</p>
+
+<pre><code>zone 地址范围:   [=============================]  spanned = 100
+实际有 RAM:      [=====]    [=====]    [=====]    present = 60 (去掉 holes)
+buddy 管理:      [===]      [=====]    [===]      managed = 50 (去掉 reserved)</code></pre>
+
+<hr>
+
+<h2>8. 一句话总结</h2>
+
+<blockquote><strong><code>arch_numa_init()</code> 告诉内核"这块内存离哪个 CPU 近"，<code>sparse_init()</code> 告诉内核"怎么找到每一页的账本"，<code>zone_sizes_init()</code> 告诉内核"这块内存能给谁用"。三者协作，使得内核能够高效、正确、节省地管理物理内存。</strong></blockquote>
+
+</body>
+</html>

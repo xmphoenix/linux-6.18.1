@@ -1,0 +1,4483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux Input Subsystem Deep Dive</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux Input 子系统深度分析 (Linux 6.18.1)</h1>
+
+<blockquote>基于 linux-6.18.1 内核源码，全面分析 Input 子系统的关键数据结构、软件框架、初始化路径，并提供带注释的实例。</blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><a href="#1-子系统概述">1. 子系统概述</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#2-关键数据结构">2. 关键数据结构</a></summary></p>
+
+<ul>
+<li><a href="#数据结构关系总览">数据结构关系总览</a></li>
+<li><a href="#21-struct-input_dev--输入设备">2.1 struct input_dev — 输入设备</a></li>
+<li><a href="#22-struct-input_handler--事件处理器">2.2 struct input_handler — 事件处理器</a></li>
+<li><a href="#23-struct-input_handle--设备与处理器的桥梁">2.3 struct input_handle — 设备与处理器的桥梁</a></li>
+<li><a href="#24-struct-input_event--用户空间事件">2.4 struct input_event — 用户空间事件</a></li>
+<li><a href="#25-struct-input_value--内核内部事件">2.5 struct input_value — 内核内部事件</a></li>
+<li><a href="#26-struct-input_id--设备标识">2.6 struct input_id — 设备标识</a></li>
+<li><a href="#27-struct-input_absinfo--绝对轴参数">2.7 struct input_absinfo — 绝对轴参数</a></li>
+<li><a href="#28-struct-evdev--struct-evdev_client--evdev-处理器内部结构">2.8 struct evdev / struct evdev_client — evdev 处理器内部结构</a></li>
+<li><a href="#29-struct-input_device_id--设备匹配表条目">2.9 struct input_device_id — 设备匹配表条目</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#3-软件框架分析">3. 软件框架分析</a></summary></p>
+
+<ul>
+<li><a href="#软件架构总览">软件架构总览</a></li>
+<li><a href="#31-设备注册流程">3.1 设备注册流程</a></li>
+<li><a href="#32-处理器注册流程">3.2 处理器注册流程</a></li>
+<li><a href="#33-设备-处理器匹配机制">3.3 设备-处理器匹配机制</a></li>
+<li><a href="#34-事件流转机制">3.4 事件流转机制</a></li>
+<li><a href="#35-设备打开关闭流程">3.5 设备打开/关闭流程</a></li>
+<li><a href="#36-独占抓取-grab-机制">3.6 独占抓取 (Grab) 机制</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#4-初始化路径">4. 初始化路径</a></summary></p>
+
+<ul>
+<li><a href="#41-input-core-初始化">4.1 Input Core 初始化</a></li>
+<li><a href="#42-完整的设备节点创建路径">4.2 完整的设备节点创建路径</a></li>
+<li><a href="#43-全局数据结构初始状态">4.3 全局数据结构初始状态</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#5-案例分析gpio_keys-驱动">5. 案例分析：gpio_keys 驱动</a></summary></p>
+
+<ul>
+<li><a href="#51-核心数据结构">5.1 核心数据结构</a></li>
+<li><a href="#52-探测函数-probe--驱动初始化入口">5.2 探测函数 (Probe) — 驱动初始化入口</a></li>
+<li><a href="#53-中断处理与事件上报">5.3 中断处理与事件上报</a></li>
+<li><a href="#54-完整事件链路追踪">5.4 完整事件链路追踪</a></li>
+<li><a href="#55-设备树配置示例">5.5 设备树配置示例</a></li>
+<li><a href="#56-用户空间测试程序">5.6 用户空间测试程序</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#附录关键-api-速查">附录：关键 API 速查</a></summary></p>
+
+<ul>
+<li><a href="#设备驱动常用-api">设备驱动常用 API</a></li>
+<li><a href="#handler-常用-api">Handler 常用 API</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#6-qemu-实践实验">6. QEMU 实践实验</a></summary></p>
+
+<ul>
+<li><a href="#61-实验一探索-qemu-virt-默认-input-设备">6.1 实验一：探索 QEMU virt 默认 Input 设备</a></li>
+<li><a href="#62-实验二使用-uinput-创建虚拟输入设备">6.2 实验二：使用 uinput 创建虚拟输入设备</a></li>
+<li><a href="#63-实验三内核模块模拟输入设备">6.3 实验三：内核模块模拟输入设备</a></li>
+<li><a href="#64-实验四使用-evdev-事件监控工具">6.4 实验四：使用 evdev 事件监控工具</a></li>
+<li><a href="#65-实验五eviocgrab-独占抓取实验">6.5 实验五：EVIOCGRAB 独占抓取实验</a></li>
+<li><a href="#66-实验六gdb-追踪事件分发路径">6.6 实验六：GDB 追踪事件分发路径</a></li>
+<li><a href="#67-实验总结与关键观察">6.7 实验总结与关键观察</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#7-面试题精选">7. 面试题精选</a></summary></p>
+
+<ul>
+<li><a href="#71-架构与设计类">7.1 架构与设计类</a></li>
+<li><a href="#72-事件流转类">7.2 事件流转类</a></li>
+<li><a href="#73-设备注册与匹配类">7.3 设备注册与匹配类</a></li>
+<li><a href="#74-并发与同步类">7.4 并发与同步类</a></li>
+<li><a href="#75-实践与调试类">7.5 实践与调试类</a></li>
+<li><a href="#76-高级与深入类">7.6 高级与深入类</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#8-调试指南">8. 调试指南</a></summary></p>
+
+<ul>
+<li><a href="#81-调试工具总览">8.1 调试工具总览</a></li>
+<li><a href="#82-第一步procfssysfs-快速诊断">8.2 第一步：procfs/sysfs 快速诊断</a></li>
+<li><a href="#83-第二步evtest-实时事件监控">8.3 第二步：evtest 实时事件监控</a></li>
+<li><a href="#84-第三步dmesg-内核日志分析">8.4 第三步：dmesg 内核日志分析</a></li>
+<li><a href="#85-第四步dynamic_debug-动态调试">8.5 第四步：dynamic_debug 动态调试</a></li>
+<li><a href="#86-第五步ftrace-函数追踪">8.6 第五步：ftrace 函数追踪</a></li>
+<li><a href="#87-第六步kprobes-动态探测">8.7 第六步：kprobes 动态探测</a></li>
+<li><a href="#88-第七步gdb-内核调试">8.8 第七步：GDB 内核调试</a></li>
+<li><a href="#89-第八步kunit-单元测试">8.9 第八步：KUnit 单元测试</a></li>
+<li><a href="#810-调试决策流程图">8.10 调试决策流程图</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#9-常见问题与解决方案">9. 常见问题与解决方案</a></summary></p>
+
+<ul>
+<li><a href="#91-设备注册类问题">9.1 设备注册类问题</a></li>
+<li><a href="#92-事件丢失类问题">9.2 事件丢失类问题</a></li>
+<li><a href="#93-驱动开发类问题">9.3 驱动开发类问题</a></li>
+<li><a href="#94-多点触摸类问题">9.4 多点触摸类问题</a></li>
+<li><a href="#95-电源管理类问题">9.5 电源管理类问题</a></li>
+<li><a href="#96-性能类问题">9.6 性能类问题</a></li>
+<li><a href="#97-问题速查表">9.7 问题速查表</a></li>
+</ul>
+
+<p></details></p>
+
+<hr>
+
+<h2>1. 子系统概述</h2>
+
+<p>Linux Input 子系统采用<strong>三层架构</strong>，将输入设备驱动与用户空间接口解耦：</p>
+
+<pre><code>┌─────────────────────────────────────────────────────────┐
+│                    用户空间 (User Space)                   │
+│       /dev/input/event0   /dev/input/mouse0   ...        │
+│              read() / poll() / ioctl()                   │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────┐
+│                  事件处理层 (Handler Layer)                │
+│   evdev       mousedev       joydev       input-leds     │
+│  (通用事件)   (鼠标协议)    (游戏手柄)    (LED反馈)        │
+│                                                          │
+│  struct input_handler  ←→  struct input_handle           │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────┐
+│                  输入核心层 (Input Core)                   │
+│               drivers/input/input.c                      │
+│                                                          │
+│  • 设备/处理器注册管理                                     │
+│  • 设备与处理器的匹配连接                                  │
+│  • 事件分发调度                                           │
+│  • /proc/bus/input/ 接口                                 │
+│  • 字符设备主号 13 (INPUT_MAJOR) 管理                     │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────┐
+│                  设备驱动层 (Device Driver Layer)          │
+│  gpio_keys    atkbd     i8042     usbhid    goodix_ts    │
+│  (GPIO按键)  (AT键盘)  (PS/2控制器) (USB HID) (触摸屏)    │
+│                                                          │
+│  struct input_dev                                        │
+└─────────────────────────────────────────────────────────┘</code></pre>
+
+<p><strong>核心源文件分布：</strong></p>
+
+<table>
+<thead><tr>
+<th>文件</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>drivers/input/input.c</code></td>
+<td>Input 核心实现</td>
+</tr>
+<tr>
+<td><code>drivers/input/evdev.c</code></td>
+<td>通用事件设备处理器</td>
+</tr>
+<tr>
+<td><code>drivers/input/mousedev.c</code></td>
+<td>鼠标设备处理器</td>
+</tr>
+<tr>
+<td><code>drivers/input/joydev.c</code></td>
+<td>游戏手柄设备处理器</td>
+</tr>
+<tr>
+<td><code>drivers/input/input-mt.c</code></td>
+<td>多点触摸支持</td>
+</tr>
+<tr>
+<td><code>drivers/input/input-poller.c</code></td>
+<td>轮询式输入设备支持</td>
+</tr>
+<tr>
+<td><code>include/linux/input.h</code></td>
+<td>内核态头文件</td>
+</tr>
+<tr>
+<td><code>include/uapi/linux/input.h</code></td>
+<td>用户空间接口头文件</td>
+</tr>
+<tr>
+<td><code>include/uapi/linux/input-event-codes.h</code></td>
+<td>事件类型与代码定义</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>2. 关键数据结构</h2>
+
+<h3>数据结构关系总览</h3>
+
+<p>下图展示了 Input 子系统核心数据结构之间的引用、内嵌和链表连接关系：</p>
+
+<p><img src="image/linux_input_subsystem_data_structures.svg" alt="Linux Input 子系统关键数据结构关系图"></p>
+
+<p><strong>关系要点：</strong></p>
+<ul>
+<li><code>input_handle</code> 是 <code>input_dev</code> 与 <code>input_handler</code> 之间的<strong>桥梁</strong>，通过双向链表 (<code>d_node</code> / <code>h_node</code>) 分别挂在设备和处理器上</li>
+<li><code>evdev</code> <strong>内嵌</strong>一个 <code>input_handle</code>，每个 <code>/dev/input/eventX</code> 对应一个 <code>evdev</code> 实例</li>
+<li>每个用户进程 <code>open()</code> 设备节点时创建一个 <code>evdev_client</code>，其环形缓冲区存储 <code>struct input_event</code></li>
+<li>内核内部事件使用 <code>struct input_value</code>（无时间戳），传递给用户空间时转换为 <code>struct input_event</code>（含时间戳）</li>
+</ul>
+
+<h3>2.1 struct input_dev — 输入设备</h3>
+
+<blockquote>定义：<code>include/linux/input.h</code></blockquote>
+
+<p>每个物理输入设备（键盘、鼠标、触摸屏等）对应一个 <code>input_dev</code> 实例。</p>
+
+<pre><code class="language-c">struct input_dev {
+    /* ===== 设备标识 ===== */
+    const char *name;       // 设备名称，如 &quot;gpio-keys&quot;
+    const char *phys;       // 物理路径，如 &quot;usb-0000:00:14.0-1/input0&quot;
+    const char *uniq;       // 唯一标识符（如蓝牙设备的 MAC 地址）
+    struct input_id id;     // 设备 ID（bustype, vendor, product, version）
+
+    /* ===== 能力位图 (Capability Bitmaps) ===== */
+    unsigned long propbit[BITS_TO_LONGS(INPUT_PROP_CNT)];   // 设备属性（如 INPUT_PROP_DIRECT）
+    unsigned long evbit[BITS_TO_LONGS(EV_CNT)];             // 支持的事件类型（EV_KEY/EV_REL/EV_ABS...）
+    unsigned long keybit[BITS_TO_LONGS(KEY_CNT)];           // 支持的按键/按钮
+    unsigned long relbit[BITS_TO_LONGS(REL_CNT)];           // 支持的相对轴（鼠标移动）
+    unsigned long absbit[BITS_TO_LONGS(ABS_CNT)];           // 支持的绝对轴（触摸屏坐标）
+    unsigned long mscbit[BITS_TO_LONGS(MSC_CNT)];           // 杂项事件
+    unsigned long ledbit[BITS_TO_LONGS(LED_CNT)];           // LED 指示灯
+    unsigned long sndbit[BITS_TO_LONGS(SND_CNT)];           // 声音效果
+    unsigned long ffbit[BITS_TO_LONGS(FF_CNT)];             // 力反馈效果
+    unsigned long swbit[BITS_TO_LONGS(SW_CNT)];             // 开关（如合盖检测）
+
+    /* ===== 设备当前状态 ===== */
+    unsigned long key[BITS_TO_LONGS(KEY_CNT)];    // 当前按键按下状态
+    unsigned long led[BITS_TO_LONGS(LED_CNT)];    // 当前 LED 状态
+    unsigned long snd[BITS_TO_LONGS(SND_CNT)];    // 当前声音状态
+    unsigned long sw[BITS_TO_LONGS(SW_CNT)];      // 当前开关状态
+
+    /* ===== 键码映射 ===== */
+    void *keycode;                 // 扫描码→键码映射表
+    unsigned int keycodemax;       // 映射表最大索引
+    unsigned int keycodesize;      // 每个键码元素的字节大小
+    int (*getkeycode)(...);        // 获取键码回调
+    int (*setkeycode)(...);        // 设置键码回调
+
+    /* ===== 绝对轴信息 ===== */
+    struct input_absinfo *absinfo; // 绝对轴参数数组（min/max/fuzz/flat/resolution）
+
+    /* ===== 事件队列 ===== */
+    unsigned int num_vals;         // 当前队列中的事件数
+    unsigned int max_vals;         // 队列最大容量
+    struct input_value *vals;      // 事件值缓冲区
+
+    /* ===== 自动重复 ===== */
+    int rep[REP_CNT];              // rep[0]=REP_DELAY(ms), rep[1]=REP_PERIOD(ms)
+    unsigned int repeat_key;       // 正在重复的键码
+    struct timer_list timer;       // 自动重复定时器
+
+    /* ===== 设备操作回调 ===== */
+    int (*open)(struct input_dev *dev);    // 第一个用户打开时调用
+    void (*close)(struct input_dev *dev);  // 最后一个用户关闭时调用
+    int (*flush)(struct input_dev *dev, struct file *file);  // 刷新设备状态
+    int (*event)(struct input_dev *dev, unsigned int type,
+                 unsigned int code, int value);  // 事件反馈（如控制 LED）
+
+    /* ===== 力反馈 ===== */
+    struct ff_device *ff;          // 力反馈设备结构
+
+    /* ===== 轮询支持 ===== */
+    struct input_dev_poller *poller;  // 轮询机制
+
+    /* ===== 多点触摸 ===== */
+    struct input_mt *mt;           // 多点触摸插槽数据
+
+    /* ===== 同步与保护 ===== */
+    spinlock_t event_lock;         // 保护事件处理（中断上下文使用）
+    struct mutex mutex;            // 保护 open/close/flush 操作
+
+    /* ===== 用户与状态追踪 ===== */
+    unsigned int users;            // 打开此设备的 handler 数
+    struct input_handle __rcu *grab;  // 独占抓取的 handle
+    bool going_away;               // 设备正在注销
+    bool inhibited;                // 设备被抑制（事件被忽略）
+
+    /* ===== Linux 设备模型 ===== */
+    struct device dev;             // 内嵌 device 结构
+    struct list_head h_list;       // 附加到此设备的 handle 链表
+    struct list_head node;         // 全局 input_dev_list 链表节点
+
+    /* ===== 时间戳 ===== */
+    ktime_t timestamp[INPUT_CLK_MAX];  // REAL/MONOTONIC/BOOT 时钟时间戳
+};</code></pre>
+
+<p><strong>核心关系：</strong> <code>input_dev</code> 通过 <code>h_list</code> 链表连接多个 <code>input_handle</code>，每个 handle 关联一个 <code>input_handler</code>。</p>
+
+<hr>
+
+<h3>2.2 struct input_handler — 事件处理器</h3>
+
+<blockquote>定义：<code>include/linux/input.h</code></blockquote>
+
+<p>事件处理器实现对输入事件的具体处理逻辑，如将事件传递给用户空间。</p>
+
+<pre><code class="language-c">struct input_handler {
+    void *private;  // 处理器私有数据
+
+    /* ===== 事件处理方法（三选一） ===== */
+    void (*event)(struct input_handle *handle,
+                  unsigned int type, unsigned int code, int value);
+        // 单事件回调（最简单）
+
+    unsigned int (*events)(struct input_handle *handle,
+                           struct input_value *vals, unsigned int count);
+        // 批量事件回调（最高效，如 evdev 使用此接口）
+
+    bool (*filter)(struct input_handle *handle,
+                   unsigned int type, unsigned int code, int value);
+        // 过滤回调（返回 true 表示过滤/丢弃事件）
+
+    /* ===== 设备匹配 ===== */
+    bool (*match)(struct input_handler *handler, struct input_dev *dev);
+        // 在 id_table 匹配成功后的精细匹配
+
+    const struct input_device_id *id_table;
+        // 设备 ID 匹配表（以空条目结尾）
+
+    /* ===== 连接生命周期 ===== */
+    int (*connect)(struct input_handler *handler, struct input_dev *dev,
+                   const struct input_device_id *id);
+        // 设备匹配后的连接回调
+
+    void (*disconnect)(struct input_handle *handle);
+        // 断开连接回调
+
+    void (*start)(struct input_handle *handle);
+        // 连接完成后的启动回调
+
+    /* ===== 标志与属性 ===== */
+    bool passive_observer;   // 仅观察事件，不触发设备 open
+    bool legacy_minors;      // 使用旧版次设备号范围
+    int minor;               // 旧版次设备号起始值
+    const char *name;        // 处理器名称
+
+    /* ===== 链表节点 ===== */
+    struct list_head h_list; // 此处理器拥有的 handle 链表
+    struct list_head node;   // 全局 input_handler_list 链表节点
+};</code></pre>
+
+<p><strong>内核内置处理器：</strong></p>
+
+<table>
+<thead><tr>
+<th>Handler</th>
+<th>名称</th>
+<th>功能</th>
+<th>设备节点</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>evdev</td>
+<td>"evdev"</td>
+<td>通用事件接口</td>
+<td><code>/dev/input/eventX</code></td>
+</tr>
+<tr>
+<td>mousedev</td>
+<td>"mousedev"</td>
+<td>PS/2 鼠标协议</td>
+<td><code>/dev/input/mouseX</code></td>
+</tr>
+<tr>
+<td>joydev</td>
+<td>"joydev"</td>
+<td>游戏手柄接口</td>
+<td><code>/dev/input/jsX</code></td>
+</tr>
+<tr>
+<td>input-leds</td>
+<td>"leds"</td>
+<td>LED 反馈</td>
+<td>sysfs LED 类</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h3>2.3 struct input_handle — 设备与处理器的桥梁</h3>
+
+<blockquote>定义：<code>include/linux/input.h</code></blockquote>
+
+<p><code>input_handle</code> 是 <code>input_dev</code> 和 <code>input_handler</code> 之间的<strong>连接纽带</strong>，一个设备可以有多个 handle（连接多个处理器），一个处理器也可以有多个 handle（处理多个设备）。</p>
+
+<pre><code class="language-c">struct input_handle {
+    void *private;                // 处理器为此连接分配的私有数据
+    int open;                     // 引用计数（open/close 追踪）
+    const char *name;             // 名称（如 &quot;event0&quot;, &quot;mouse0&quot;）
+
+    struct input_dev *dev;        // 指向输入设备
+    struct input_handler *handler;// 指向事件处理器
+
+    unsigned int (*handle_events)(struct input_handle *handle,
+                                  struct input_value *vals,
+                                  unsigned int count);
+        // 由 input core 根据 handler 的方法自动设置
+
+    struct list_head d_node;      // 设备的 h_list 中的节点
+    struct list_head h_node;      // 处理器的 h_list 中的节点
+};</code></pre>
+
+<p><strong>三者的关系图：</strong></p>
+
+<pre><code>  input_dev_list (全局)               input_handler_list (全局)
+  ┌────────┐                          ┌────────────┐
+  │input_dev│                          │input_handler│
+  │ (键盘)  │                          │  (evdev)    │
+  │         │    input_handle          │             │
+  │ h_list ─┼───►┌──────────┐◄────────┼─ h_list     │
+  │         │    │ d_node   │         │             │
+  │         │    │ h_node   │         │             │
+  │         │    │ *dev ────┼─────────┼→            │
+  │         │    │ *handler─┼────►    │             │
+  └────┬───┘    └──────────┘         └─────┬──────┘
+       │                                     │
+       │        input_handle                 │
+  ┌────▼───┐   ┌──────────┐          ┌─────▼──────┐
+  │input_dev│◄──┤ d_node   │──────────┤input_handler│
+  │ (鼠标)  │   │ h_node   │          │ (mousedev)  │
+  └────────┘   └──────────┘          └────────────┘</code></pre>
+
+<hr>
+
+<h3>2.4 struct input_event — 用户空间事件</h3>
+
+<blockquote>定义：<code>include/uapi/linux/input.h</code></blockquote>
+
+<p>用户空间通过 <code>read()</code> 从 <code>/dev/input/eventX</code> 读取的事件结构。</p>
+
+<pre><code class="language-c">struct input_event {
+    __kernel_ulong_t __sec;   // 时间戳（秒）
+    __kernel_ulong_t __usec;  // 时间戳（微秒）
+    __u16 type;               // 事件类型（EV_KEY, EV_REL, EV_ABS 等）
+    __u16 code;               // 事件代码（KEY_A, REL_X, ABS_X 等）
+    __s32 value;              // 事件值（按键: 1=按下/0=释放/2=重复; 轴: 坐标值）
+};</code></pre>
+
+<p><strong>常见事件类型 (<code>type</code>)：</strong></p>
+
+<table>
+<thead><tr>
+<th>类型</th>
+<th>值</th>
+<th>说明</th>
+<th>示例</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>EV_SYN</code></td>
+<td>0x00</td>
+<td>同步事件（事件包分隔符）</td>
+<td><code>SYN_REPORT</code></td>
+</tr>
+<tr>
+<td><code>EV_KEY</code></td>
+<td>0x01</td>
+<td>按键/按钮事件</td>
+<td><code>KEY_A</code>, <code>BTN_LEFT</code></td>
+</tr>
+<tr>
+<td><code>EV_REL</code></td>
+<td>0x02</td>
+<td>相对轴事件</td>
+<td><code>REL_X</code>, <code>REL_WHEEL</code></td>
+</tr>
+<tr>
+<td><code>EV_ABS</code></td>
+<td>0x03</td>
+<td>绝对轴事件</td>
+<td><code>ABS_X</code>, <code>ABS_MT_POSITION_X</code></td>
+</tr>
+<tr>
+<td><code>EV_MSC</code></td>
+<td>0x04</td>
+<td>杂项事件</td>
+<td><code>MSC_SCAN</code></td>
+</tr>
+<tr>
+<td><code>EV_SW</code></td>
+<td>0x05</td>
+<td>开关事件</td>
+<td><code>SW_LID</code>, <code>SW_TABLET_MODE</code></td>
+</tr>
+<tr>
+<td><code>EV_LED</code></td>
+<td>0x11</td>
+<td>LED 事件</td>
+<td><code>LED_NUML</code>, <code>LED_CAPSL</code></td>
+</tr>
+<tr>
+<td><code>EV_REP</code></td>
+<td>0x14</td>
+<td>自动重复参数</td>
+<td><code>REP_DELAY</code>, <code>REP_PERIOD</code></td>
+</tr>
+<tr>
+<td><code>EV_FF</code></td>
+<td>0x15</td>
+<td>力反馈事件</td>
+<td><code>FF_RUMBLE</code></td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h3>2.5 struct input_value — 内核内部事件</h3>
+
+<blockquote>定义：<code>include/linux/input.h</code></blockquote>
+
+<p>内核内部使用的事件表示，不含时间戳，用于高效的批量事件处理。</p>
+
+<pre><code class="language-c">struct input_value {
+    __u16 type;    // 事件类型
+    __u16 code;    // 事件代码
+    __s32 value;   // 事件值
+};</code></pre>
+
+<hr>
+
+<h3>2.6 struct input_id — 设备标识</h3>
+
+<blockquote>定义：<code>include/uapi/linux/input.h</code></blockquote>
+
+<pre><code class="language-c">struct input_id {
+    __u16 bustype;  // 总线类型：BUS_USB, BUS_I2C, BUS_HOST, BUS_BLUETOOTH 等
+    __u16 vendor;   // 厂商 ID
+    __u16 product;  // 产品 ID
+    __u16 version;  // 版本号
+};</code></pre>
+
+<hr>
+
+<h3>2.7 struct input_absinfo — 绝对轴参数</h3>
+
+<blockquote>定义：<code>include/uapi/linux/input.h</code></blockquote>
+
+<pre><code class="language-c">struct input_absinfo {
+    __s32 value;       // 最近报告的值
+    __s32 minimum;     // 最小可能值
+    __s32 maximum;     // 最大可能值
+    __s32 fuzz;        // 模糊阈值（噪声过滤）
+    __s32 flat;        // 死区（在此范围内的值报告为 0）
+    __s32 resolution;  // 分辨率（每毫米单位数或每度/秒单位数）
+};</code></pre>
+
+<hr>
+
+<h3>2.8 struct evdev / struct evdev_client — evdev 处理器内部结构</h3>
+
+<blockquote>定义：<code>drivers/input/evdev.c</code></blockquote>
+
+<pre><code class="language-c">/* evdev 设备实例（每个 /dev/input/eventX 对应一个） */
+struct evdev {
+    int open;                          // 打开计数
+    struct input_handle handle;        // 到 input core 的连接
+    struct evdev_client __rcu *grab;   // 独占抓取的客户端
+    struct list_head client_list;      // 已连接的客户端链表
+    spinlock_t client_lock;            // 保护 client_list
+    struct mutex mutex;                // 结构保护互斥锁
+    struct device dev;                 // 字符设备对应的 device
+    struct cdev cdev;                  // 字符设备结构
+    bool exist;                        // 设备是否仍然存在
+};
+
+/* 每个打开 /dev/input/eventX 的进程对应一个 client */
+struct evdev_client {
+    unsigned int head;                 // 环形缓冲区写位置
+    unsigned int tail;                 // 环形缓冲区读位置
+    unsigned int packet_head;          // 下一个包（SYN_REPORT）的位置
+    spinlock_t buffer_lock;            // 保护 buffer/head/tail
+    wait_queue_head_t wait;            // 阻塞读的等待队列
+    struct fasync_struct *fasync;      // 异步 I/O 信号通知
+    struct evdev *evdev;               // 父 evdev 设备
+    struct list_head node;             // evdev-&gt;client_list 中的节点
+    enum input_clock_type clk_type;    // 时钟类型
+    bool revoked;                      // 访问是否已撤销
+    unsigned long *evmasks[EV_CNT];    // 事件过滤掩码
+    unsigned int bufsize;              // 缓冲区大小
+    struct input_event buffer[];       // 事件环形缓冲区（柔性数组）
+};</code></pre>
+
+<hr>
+
+<h3>2.9 struct input_device_id — 设备匹配表条目</h3>
+
+<blockquote>定义：<code>include/linux/mod_devicetable.h</code></blockquote>
+
+<pre><code class="language-c">struct input_device_id {
+    kernel_ulong_t flags;   // 匹配标志位
+
+    __u16 bustype;          // 总线类型
+    __u16 vendor;           // 厂商 ID
+    __u16 product;          // 产品 ID
+    __u16 version;          // 版本号
+
+    /* 能力位图要求（handler 要求设备具有这些能力） */
+    kernel_ulong_t evbit[INPUT_DEVICE_ID_EV_MAX / BITS_PER_LONG + 1];
+    kernel_ulong_t keybit[INPUT_DEVICE_ID_KEY_MAX / BITS_PER_LONG + 1];
+    kernel_ulong_t relbit[INPUT_DEVICE_ID_REL_MAX / BITS_PER_LONG + 1];
+    kernel_ulong_t absbit[INPUT_DEVICE_ID_ABS_MAX / BITS_PER_LONG + 1];
+    kernel_ulong_t mscbit[INPUT_DEVICE_ID_MSC_MAX / BITS_PER_LONG + 1];
+    kernel_ulong_t ledbit[INPUT_DEVICE_ID_LED_MAX / BITS_PER_LONG + 1];
+    kernel_ulong_t sndbit[INPUT_DEVICE_ID_SND_MAX / BITS_PER_LONG + 1];
+    kernel_ulong_t ffbit[INPUT_DEVICE_ID_FF_MAX / BITS_PER_LONG + 1];
+    kernel_ulong_t swbit[INPUT_DEVICE_ID_SW_MAX / BITS_PER_LONG + 1];
+    kernel_ulong_t propbit[INPUT_DEVICE_ID_PROP_MAX / BITS_PER_LONG + 1];
+
+    kernel_ulong_t driver_info;  // 驱动私有数据
+};</code></pre>
+
+<p><strong>匹配标志位：</strong></p>
+<ul>
+<li><code>INPUT_DEVICE_ID_MATCH_BUS</code> — 匹配 bustype</li>
+<li><code>INPUT_DEVICE_ID_MATCH_VENDOR</code> — 匹配 vendor</li>
+<li><code>INPUT_DEVICE_ID_MATCH_PRODUCT</code> — 匹配 product</li>
+<li><code>INPUT_DEVICE_ID_MATCH_VERSION</code> — 匹配 version</li>
+<li><code>INPUT_DEVICE_ID_MATCH_EVBIT</code> — 匹配事件类型位图</li>
+<li><code>INPUT_DEVICE_ID_MATCH_KEYBIT</code> — 匹配按键位图</li>
+<li>... 以此类推</li>
+</ul>
+
+<hr>
+
+<h2>3. 软件框架分析</h2>
+
+<h3>软件架构总览</h3>
+
+<p>下图展示了 Input 子系统从硬件到用户空间的五层软件架构，以及层间的核心 API 调用关系：</p>
+
+<p><img src="image/linux_input_subsystem_software_arch.svg" alt="Linux Input 子系统软件架构总览"></p>
+
+<h3>3.1 设备注册流程</h3>
+
+<pre><code>驱动程序                         Input Core                        Handler
+  │                                 │                                 │
+  │ input_allocate_device()         │                                 │
+  │ ─────────────────────►          │                                 │
+  │ (分配 input_dev, 初始化锁/链表) │                                 │
+  │                                 │                                 │
+  │ 设置能力位图:                    │                                 │
+  │  set_bit(EV_KEY, dev-&gt;evbit)   │                                 │
+  │  set_bit(KEY_A, dev-&gt;keybit)   │                                 │
+  │                                 │                                 │
+  │ input_register_device(dev)      │                                 │
+  │ ─────────────────────►          │                                 │
+  │                          ┌──────▼──────┐                          │
+  │                          │ 1.EV_SYN 置位│                          │
+  │                          │ 2.清理位图    │                          │
+  │                          │ 3.device_add │                          │
+  │                          │   创建 sysfs │                          │
+  │                          │ 4.加入全局链表│                          │
+  │                          └──────┬──────┘                          │
+  │                                 │                                 │
+  │                          ┌──────▼──────┐                          │
+  │                          │遍历所有handler│                          │
+  │                          │input_attach_ │                          │
+  │                          │  handler()   │                          │
+  │                          └──────┬──────┘                          │
+  │                                 │   input_match_device()          │
+  │                                 │ ──────────────────────►         │
+  │                                 │       匹配 id_table?            │
+  │                                 │ ◄──────────────────────         │
+  │                                 │                                 │
+  │                                 │   handler-&gt;connect()            │
+  │                                 │ ──────────────────────►         │
+  │                                 │         创建 input_handle       │
+  │                                 │         input_register_handle() │
+  │                                 │ ◄──────────────────────         │
+  │                                 │                                 │
+  │                                 │   handler-&gt;start()              │
+  │                                 │ ──────────────────────►         │
+  │                                 │                                 │</code></pre>
+
+<p><strong><code>input_register_device()</code> 关键步骤（<code>drivers/input/input.c</code>）：</strong></p>
+
+<ol>
+<li><strong>能力验证</strong> — 检查声明了 <code>EV_ABS</code> 的设备是否设置了 <code>absinfo</code></li>
+<li><strong>位图标准化</strong> — 强制设置 <code>EV_SYN</code> 位；清除 <code>KEY_RESERVED</code>；清洗无效位</li>
+<li><strong>事件队列分配</strong> — 根据设备能力估算事件队列大小</li>
+<li><strong>自动重复设置</strong> — 如果支持 <code>EV_KEY</code> 且未自定义重复参数，设置默认值</li>
+<li><strong>设备注册</strong> — 调用 <code>device_add()</code> 创建 <code>/sys/class/input/inputX</code></li>
+<li><strong>匹配连接</strong> — 遍历 <code>input_handler_list</code>，调用 <code>input_attach_handler()</code> 尝试匹配</li>
+</ol>
+
+<hr>
+
+<h3>3.2 处理器注册流程</h3>
+
+<pre><code>Handler                          Input Core
+  │                                 │
+  │ input_register_handler(handler) │
+  │ ─────────────────────►          │
+  │                          ┌──────▼──────┐
+  │                          │ 1.验证事件方法│
+  │                          │   (三选一)    │
+  │                          │ 2.初始化 h_list│
+  │                          │ 3.加入全局链表 │
+  │                          └──────┬──────┘
+  │                                 │
+  │                          ┌──────▼──────┐
+  │                          │遍历所有 device│
+  │                          │input_attach_ │
+  │                          │  handler()   │
+  │                          └──────┬──────┘
+  │                                 │
+  │   handler-&gt;connect()            │
+  │ ◄──────────────────────         │
+  │                                 │</code></pre>
+
+<p><strong>要求：</strong> <code>handler</code> 只能定义 <code>event()</code> / <code>events()</code> / <code>filter()</code> 三者之一。</p>
+
+<hr>
+
+<h3>3.3 设备-处理器匹配机制</h3>
+
+<p><strong><code>input_match_device()</code></strong> 执行两级匹配：</p>
+
+<pre><code>第一级：ID Table 匹配
+  ┌─────────────────────────────────────────────────┐
+  │ 遍历 handler-&gt;id_table 的每个条目 id：             │
+  │                                                   │
+  │ 1. 如果 flags 含 MATCH_BUS:                       │
+  │    dev-&gt;id.bustype == id-&gt;bustype ?               │
+  │                                                   │
+  │ 2. 如果 flags 含 MATCH_VENDOR:                    │
+  │    dev-&gt;id.vendor == id-&gt;vendor ?                 │
+  │                                                   │
+  │ 3. 如果 flags 含 MATCH_EVBIT:                     │
+  │    dev-&gt;evbit 是否包含 id-&gt;evbit 的所有位？         │
+  │    (即 handler 要求的能力是设备能力的子集)           │
+  │                                                   │
+  │ 4. 类似检查 keybit, relbit, absbit 等              │
+  └─────────────────────────────────────────────────┘
+                        │ 通过
+                        ▼
+第二级：精细匹配
+  ┌─────────────────────────────────────────────────┐
+  │ 如果 handler-&gt;match 回调存在：                     │
+  │   调用 handler-&gt;match(handler, dev)               │
+  │   返回 true → 匹配成功                            │
+  │   返回 false → 匹配失败                           │
+  └─────────────────────────────────────────────────┘</code></pre>
+
+<p><strong>evdev 的 id_table（匹配所有设备）：</strong></p>
+<pre><code class="language-c">static const struct input_device_id evdev_ids[] = {
+    { .driver_info = 1 },  /* 无 flags → 匹配所有设备 */
+    { },                    /* 终止条目 */
+};</code></pre>
+
+<hr>
+
+<h3>3.4 事件流转机制</h3>
+
+<p>这是 Input 子系统最核心的数据路径：</p>
+
+<pre><code>        驱动层                    Input Core                    Handler 层
+          │                          │                             │
+          │ input_event(dev,         │                             │
+          │  EV_KEY, KEY_A, 1)       │                             │
+          │ ─────────────►           │                             │
+          │                   ┌──────▼──────┐                      │
+          │                   │取 event_lock │                      │
+          │                   │ (spinlock)   │                      │
+          │                   └──────┬──────┘                      │
+          │                          │                             │
+          │                   ┌──────▼──────────────┐              │
+          │                   │input_handle_event()  │              │
+          │                   │                      │              │
+          │                   │ 1.input_get_         │              │
+          │                   │   disposition()      │              │
+          │                   │   判断事件去向:        │              │
+          │                   │  ·PASS_TO_HANDLERS   │              │
+          │                   │  ·PASS_TO_DEVICE     │              │
+          │                   │  ·IGNORE_EVENT       │              │
+          │                   │                      │              │
+          │                   │ 2.input_event_       │              │
+          │                   │   dispose()          │              │
+          │                   │  ·缓存到 dev-&gt;vals[] │              │
+          │                   └──────┬──────────────┘              │
+          │                          │                             │
+          │ input_sync(dev)          │                             │
+          │  = input_event(dev,      │                             │
+          │    EV_SYN, SYN_REPORT,0) │                             │
+          │ ─────────────►           │                             │
+          │                   ┌──────▼──────────────┐              │
+          │                   │disposition = FLUSH    │              │
+          │                   │                      │              │
+          │                   │input_pass_values()   │              │
+          │                   │ 遍历 dev-&gt;h_list:    │              │
+          │                   │                      │              │
+          │                   │ ① 过滤器(filter)     │              │
+          │                   │    在链表头部         │              │
+          │                   │    可丢弃事件         │              │
+          │                   │                      │              │
+          │                   │ ② 普通 handler       │              │
+          │                   │    在链表尾部         │              │
+          │                   │    接收所有未被过滤事件│              │
+          │                   └──────┬──────────────┘              │
+          │                          │                             │
+          │                          │ handle-&gt;handle_events()     │
+          │                          │─────────────────────►       │
+          │                          │                      ┌──────▼──────┐
+          │                          │                      │evdev_events()│
+          │                          │                      │              │
+          │                          │                      │遍历 client:  │
+          │                          │                      │ 写入环形缓冲 │
+          │                          │                      │ 唤醒等待队列 │
+          │                          │                      └──────┬──────┘
+          │                          │                             │
+          │                          │                      ┌──────▼──────┐
+          │                          │                      │用户空间 read()│
+          │                          │                      │从 buffer 取出│
+          │                          │                      │input_event   │
+          │                          │                      └─────────────┘</code></pre>
+
+<p><strong>事件处置判断 (<code>input_get_disposition</code>)：</strong></p>
+
+<table>
+<thead><tr>
+<th>事件类型</th>
+<th>处置逻辑</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>EV_SYN</code> / <code>SYN_REPORT</code></td>
+<td><code>INPUT_FLUSH</code> — 刷新队列到 handler</td>
+</tr>
+<tr>
+<td><code>EV_KEY</code></td>
+<td>检查状态变化：新状态 ≠ 旧状态 → <code>PASS_TO_HANDLERS</code>；相同 → <code>IGNORE</code></td>
+</tr>
+<tr>
+<td><code>EV_ABS</code></td>
+<td>应用 defuzz 去噪→ 值有变化 → <code>PASS_TO_HANDLERS</code></td>
+</tr>
+<tr>
+<td><code>EV_REL</code></td>
+<td>值 ≠ 0 → <code>PASS_TO_HANDLERS</code></td>
+</tr>
+<tr>
+<td><code>EV_LED</code> / <code>EV_SND</code></td>
+<td><code>PASS_TO_HANDLERS</code> + <code>PASS_TO_DEVICE</code>（反馈到设备）</td>
+</tr>
+<tr>
+<td><code>EV_SW</code></td>
+<td>状态变化 → <code>PASS_TO_HANDLERS</code></td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h3>3.5 设备打开/关闭流程</h3>
+
+<pre><code>用户空间 open(&quot;/dev/input/event0&quot;)
+    │
+    ▼
+evdev_open()
+    │
+    ├─ 分配 evdev_client, 初始化环形缓冲
+    ├─ input_open_device(handle)
+    │      │
+    │      ├─ 获取 dev-&gt;mutex
+    │      ├─ handle-&gt;open++
+    │      ├─ 如果非 passive_observer:
+    │      │    dev-&gt;users++
+    │      │    如果 dev-&gt;users == 1 (第一个用户):
+    │      │        调用 dev-&gt;open(dev) ← 驱动的 open 回调
+    │      │        启动轮询 (如果有 poller)
+    │      └─ 释放 dev-&gt;mutex
+    │
+    └─ 将 client 加入 evdev-&gt;client_list
+
+用户空间 close(fd)
+    │
+    ▼
+evdev_release()
+    │
+    ├─ input_close_device(handle)
+    │      │
+    │      ├─ 获取 dev-&gt;mutex
+    │      ├─ 如果被 grab: 释放 grab
+    │      ├─ 如果非 passive_observer:
+    │      │    dev-&gt;users--
+    │      │    如果 dev-&gt;users == 0 (最后一个用户):
+    │      │        停止轮询
+    │      │        调用 dev-&gt;close(dev) ← 驱动的 close 回调
+    │      ├─ handle-&gt;open--
+    │      └─ 释放 dev-&gt;mutex
+    │
+    └─ 从 client_list 移除, 释放 client</code></pre>
+
+<hr>
+
+<h3>3.6 独占抓取 (Grab) 机制</h3>
+
+<pre><code class="language-c">/* 用户空间通过 ioctl 实现独占 */
+ioctl(fd, EVIOCGRAB, 1);  // 获取独占控制
+ioctl(fd, EVIOCGRAB, 0);  // 释放独占控制</code></pre>
+
+<p>当设备被 grab 后，事件<strong>只发送给抓取者</strong>，其他 handler 接收不到事件。这在需要独占输入设备时非常有用（如游戏引擎、输入法切换）。</p>
+
+<hr>
+
+<h2>4. 初始化路径</h2>
+
+<h3>4.1 Input Core 初始化</h3>
+
+<pre><code>内核启动
+  │
+  ▼
+do_initcalls()
+  │
+  ├─ subsys_initcall(input_init)       ← 优先级 4 (较早)
+  │      │
+  │      ▼
+  │  input_init() [drivers/input/input.c]
+  │      │
+  │      ├─ 1. class_register(&amp;input_class)
+  │      │     创建 /sys/class/input/ 目录
+  │      │     input_class.name = &quot;input&quot;
+  │      │     input_class.devnode = input_devnode
+  │      │
+  │      ├─ 2. input_proc_init()
+  │      │     创建 /proc/bus/input/ 目录
+  │      │     创建 /proc/bus/input/devices 文件（只读，列出所有设备）
+  │      │     创建 /proc/bus/input/handlers 文件（只读，列出所有处理器）
+  │      │
+  │      └─ 3. register_chrdev_region(MKDEV(13, 0), 1024, &quot;input&quot;)
+  │            注册字符设备主号 13，次设备号 0-1023
+  │
+  ├─ module_init(evdev_init)           ← 优先级 6 (模块初始化)
+  │      │
+  │      ▼
+  │  evdev_init()
+  │      └─ input_register_handler(&amp;evdev_handler)
+  │            注册 evdev 处理器到 input_handler_list
+  │            遍历已有设备尝试匹配连接
+  │
+  ├─ late_initcall(gpio_keys_init)     ← 优先级 7 (设备驱动)
+  │      │
+  │      ▼
+  │  platform_driver_register(&amp;gpio_keys_device_driver)
+  │      └─ 当 platform_device 匹配时调用 gpio_keys_probe()
+  │            ├─ input_allocate_device()
+  │            ├─ 设置能力位图
+  │            ├─ input_register_device(input)
+  │            │    └─ 触发与 evdev 的匹配连接
+  │            │       └─ 创建 /dev/input/eventX
+  │            └─ 设备就绪，可接收事件
+  │
+  └─ ... 其他输入驱动</code></pre>
+
+<h3>4.2 完整的设备节点创建路径</h3>
+
+<pre><code>input_register_device(dev)
+    │
+    ├─ device_add(&amp;dev-&gt;dev)
+    │    → 创建 /sys/class/input/inputX/
+    │
+    ├─ input_attach_handler(dev, evdev_handler)
+    │    │
+    │    ├─ input_match_device(evdev_handler-&gt;id_table, dev)
+    │    │    → evdev_ids 匹配所有设备（无 flags）→ 匹配成功
+    │    │
+    │    └─ evdev_handler-&gt;connect(handler, dev, id)
+    │         = evdev_connect()
+    │              │
+    │              ├─ 分配 struct evdev
+    │              ├─ minor = input_get_new_minor(EVDEV_MINOR_BASE, EVDEV_MINORS, true)
+    │              │    → 分配次设备号 64-95 范围
+    │              ├─ dev_set_name(&amp;evdev-&gt;dev, &quot;event%d&quot;, dev_no)
+    │              ├─ evdev-&gt;dev.devt = MKDEV(INPUT_MAJOR, minor)
+    │              │    → 如 MKDEV(13, 64) 即 /dev/input/event0
+    │              ├─ evdev-&gt;dev.class = &amp;input_class
+    │              ├─ evdev-&gt;dev.parent = &amp;dev-&gt;dev
+    │              ├─ cdev_init(&amp;evdev-&gt;cdev, &amp;evdev_fops)
+    │              │    → 绑定 evdev 的文件操作 (open/read/write/ioctl/poll)
+    │              ├─ cdev_device_add(&amp;evdev-&gt;cdev, &amp;evdev-&gt;dev)
+    │              │    → 创建字符设备节点
+    │              │    → udev/mdev 收到 uevent 后创建 /dev/input/eventX
+    │              ├─ input_register_handle(&amp;evdev-&gt;handle)
+    │              │    → 将 handle 加入 dev-&gt;h_list 和 handler-&gt;h_list
+    │              └─ return 0
+    │
+    └─ 设备注册完成</code></pre>
+
+<h3>4.3 全局数据结构初始状态</h3>
+
+<pre><code class="language-c">/* drivers/input/input.c */
+
+static LIST_HEAD(input_dev_list);        // 全局设备链表
+static LIST_HEAD(input_handler_list);    // 全局处理器链表
+static DEFINE_IDA(input_ida);            // 次设备号分配器
+static DEFINE_MUTEX(input_mutex);        // 保护两个链表的互斥锁
+
+/* input_class 用于 sysfs 设备类 */
+const struct class input_class = {
+    .name    = &quot;input&quot;,
+    .devnode = input_devnode,   // 返回 &quot;input/%s&quot; 格式的设备节点名
+};</code></pre>
+
+<hr>
+
+<h2>5. 案例分析：gpio_keys 驱动</h2>
+
+<blockquote>源码：<code>drivers/input/keyboard/gpio_keys.c</code></blockquote>
+
+<p><code>gpio_keys</code> 是一个经典的 GPIO 按键驱动，支持设备树配置、去抖动、中断唤醒等特性。以下是带详细中文注释的核心代码分析。</p>
+
+<h3>5.1 核心数据结构</h3>
+
+<pre><code class="language-c">/*
+ * 每个 GPIO 按键的运行时数据
+ */
+struct gpio_button_data {
+    const struct gpio_keys_button *button;  /* 按键配置参数 */
+    struct input_dev *input;                /* 关联的 input 设备 */
+    struct gpio_desc *gpiod;                /* GPIO 描述符 */
+    unsigned short *code;                   /* 指向键码的指针 */
+
+    struct hrtimer release_timer;           /* 按键释放定时器 */
+    struct delayed_work work;               /* 去抖动延迟工作 */
+    struct hrtimer debounce_timer;          /* 去抖动高精度定时器 */
+    unsigned int software_debounce;         /* 软件去抖动时间(ms) */
+
+    unsigned int irq;                       /* 中断号 */
+    spinlock_t lock;                        /* 保护状态的自旋锁 */
+    bool disabled;                          /* 通过 sysfs 禁用 */
+    bool key_pressed;                       /* 当前按键状态 */
+    bool suspended;                         /* 系统休眠状态 */
+};
+
+/*
+ * 驱动整体私有数据
+ */
+struct gpio_keys_drvdata {
+    const struct gpio_keys_platform_data *pdata;  /* 平台数据 */
+    struct input_dev *input;                      /* input 设备 */
+    struct mutex disable_lock;                    /* 保护禁用操作 */
+    unsigned short *keymap;                       /* 键码映射表 */
+    struct gpio_button_data data[];               /* 按键数据(柔性数组) */
+};</code></pre>
+
+<h3>5.2 探测函数 (Probe) — 驱动初始化入口</h3>
+
+<pre><code class="language-c">static int gpio_keys_probe(struct platform_device *pdev)
+{
+    struct device *dev = &amp;pdev-&gt;dev;
+    const struct gpio_keys_platform_data *pdata = dev_get_platdata(dev);
+    struct fwnode_handle *child = NULL;
+    struct gpio_keys_drvdata *ddata;
+    struct input_dev *input;
+    int i, error;
+    int wakeup = 0;
+
+    /* ===== 第一步: 获取平台数据 ===== */
+    /* 支持设备树(DT)和传统平台数据两种方式 */
+    if (!pdata) {
+        pdata = gpio_keys_get_devtree_pdata(dev);
+        if (IS_ERR(pdata))
+            return PTR_ERR(pdata);
+    }
+
+    /* ===== 第二步: 分配驱动私有数据 ===== */
+    /* struct_size 宏安全计算含柔性数组的总大小 */
+    ddata = devm_kzalloc(dev,
+                         struct_size(ddata, data, pdata-&gt;nbuttons),
+                         GFP_KERNEL);
+    if (!ddata)
+        return -ENOMEM;
+
+    /* 分配键码映射表 */
+    ddata-&gt;keymap = devm_kcalloc(dev,
+                                 pdata-&gt;nbuttons, sizeof(ddata-&gt;keymap[0]),
+                                 GFP_KERNEL);
+    if (!ddata-&gt;keymap)
+        return -ENOMEM;
+
+    /* ===== 第三步: 分配 input 设备 ===== */
+    /*
+     * devm_input_allocate_device() 是 input_allocate_device() 的
+     * 资源管理版本，设备销毁时自动释放
+     */
+    input = devm_input_allocate_device(dev);
+    if (!input)
+        return -ENOMEM;
+
+    ddata-&gt;pdata = pdata;
+    ddata-&gt;input = input;
+    mutex_init(&amp;ddata-&gt;disable_lock);
+
+    /* 将私有数据保存到 platform_device */
+    platform_set_drvdata(pdev, ddata);
+
+    /* ===== 第四步: 配置 input 设备属性 ===== */
+    input-&gt;name = pdata-&gt;name ? : pdev-&gt;name;     /* 设备名称 */
+    input-&gt;phys = &quot;gpio-keys/input0&quot;;              /* 物理路径 */
+    input-&gt;dev.parent = dev;                        /* 父设备 */
+    input-&gt;open = gpio_keys_open;                   /* 打开回调 */
+    input-&gt;close = gpio_keys_close;                 /* 关闭回调 */
+
+    /* 设置设备 ID */
+    input-&gt;id.bustype = BUS_HOST;   /* 总线类型：主机内部总线 */
+    input-&gt;id.vendor  = 0x0001;     /* 厂商 ID */
+    input-&gt;id.product = 0x0001;     /* 产品 ID */
+    input-&gt;id.version = 0x0100;     /* 版本号 */
+
+    /* 设置键码映射表 */
+    input-&gt;keycode     = ddata-&gt;keymap;
+    input-&gt;keycodesize = sizeof(ddata-&gt;keymap[0]);
+    input-&gt;keycodemax  = pdata-&gt;nbuttons;
+
+    /* ===== 第五步: 声明设备能力 ===== */
+    /*
+     * 在 evbit 中设置 EV_KEY，声明此设备能产生按键事件。
+     * input core 在注册时会自动设置 EV_SYN。
+     */
+    __set_bit(EV_KEY, input-&gt;evbit);
+
+    /* 如果平台数据指定支持自动重复 */
+    if (pdata-&gt;rep)
+        __set_bit(EV_REP, input-&gt;evbit);
+
+    /* ===== 第六步: 配置每个按键 ===== */
+    for (i = 0; i &lt; pdata-&gt;nbuttons; i++) {
+        const struct gpio_keys_button *button = &amp;pdata-&gt;buttons[i];
+
+        if (!button-&gt;code) {
+            /* 从设备树获取 fwnode */
+            child = device_get_next_child_node(dev, child);
+        }
+
+        /*
+         * gpio_keys_setup_key() 完成：
+         * 1. 获取 GPIO 描述符或 IRQ 号
+         * 2. 配置去抖动参数
+         * 3. 请求中断 (devm_request_any_context_irq)
+         * 4. 设置按键能力: input_set_capability(input, type, code)
+         *    → 等价于 set_bit(code, input-&gt;keybit)
+         */
+        error = gpio_keys_setup_key(pdev, input, ddata,
+                                    button, i, child);
+        if (error) {
+            fwnode_handle_put(child);
+            return error;
+        }
+
+        if (button-&gt;wakeup)
+            wakeup = 1;
+    }
+    fwnode_handle_put(child);
+
+    /* ===== 第七步: 注册 input 设备 ===== */
+    /*
+     * 这是关键调用！
+     * input_register_device() 会:
+     *   1. 将设备加入 input_dev_list
+     *   2. 遍历 input_handler_list 寻找匹配的 handler
+     *   3. evdev 匹配成功 → 调用 evdev_connect()
+     *      → 创建 /dev/input/eventX 设备节点
+     *   4. 其他 handler 如果匹配也会被连接
+     */
+    error = input_register_device(input);
+    if (error) {
+        dev_err(dev, &quot;Unable to register input device, error: %d\n&quot;, error);
+        return error;
+    }
+
+    /* ===== 第八步: 配置唤醒能力 ===== */
+    device_init_wakeup(dev, wakeup);
+
+    return 0;
+}</code></pre>
+
+<h3>5.3 中断处理与事件上报</h3>
+
+<pre><code class="language-c">/*
+ * GPIO 中断处理函数
+ * 在中断上下文中执行，启动去抖动延时
+ */
+static irqreturn_t gpio_keys_gpio_isr(int irq, void *dev_id)
+{
+    struct gpio_button_data *bdata = dev_id;
+
+    BUG_ON(irq != bdata-&gt;irq);
+
+    /*
+     * 不在中断中直接读取 GPIO 和上报事件，
+     * 而是启动去抖动定时器/工作队列，
+     * 等待按键信号稳定后再处理。
+     *
+     * 典型的软件去抖动时间: 5-20ms
+     */
+    if (bdata-&gt;debounce_use_hrtimer)
+        hrtimer_start(&amp;bdata-&gt;debounce_timer,
+                      ms_to_ktime(bdata-&gt;software_debounce),
+                      HRTIMER_MODE_REL);
+    else
+        mod_delayed_work(system_wq, &amp;bdata-&gt;work,
+                         msecs_to_jiffies(bdata-&gt;software_debounce));
+
+    return IRQ_HANDLED;
+}
+
+/*
+ * 去抖动完成后的事件上报
+ */
+static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
+{
+    const struct gpio_keys_button *button = bdata-&gt;button;
+    struct input_dev *input = bdata-&gt;input;
+    unsigned int type = button-&gt;type ?: EV_KEY;   /* 默认为按键事件 */
+    int state;
+
+    /* 读取 GPIO 引脚当前状态 (0 或 1) */
+    state = gpiod_get_value_cansleep(bdata-&gt;gpiod);
+    if (state &lt; 0) {
+        dev_err(input-&gt;dev.parent,
+                &quot;failed to get gpio state: %d\n&quot;, state);
+        return;
+    }
+
+    /*
+     * 通过 input_event() 向 input core 报告事件:
+     *
+     *   input_event(input, EV_KEY, KEY_POWER, 1)  → 按下
+     *   input_event(input, EV_KEY, KEY_POWER, 0)  → 释放
+     *
+     * 内部流程:
+     *   input_event()
+     *     → spin_lock(event_lock)
+     *     → input_handle_event()
+     *       → input_get_disposition()  判断事件去向
+     *       → input_event_dispose()    缓存到 dev-&gt;vals[]
+     *     → spin_unlock(event_lock)
+     */
+    if (type == EV_ABS) {
+        if (state)
+            input_event(input, type, button-&gt;code, button-&gt;value);
+    } else {
+        input_event(input, type, *bdata-&gt;code, state);
+    }
+}
+
+/*
+ * 去抖动工作函数 — 在进程上下文执行
+ */
+static void gpio_keys_debounce_event(struct gpio_button_data *bdata)
+{
+    /* 上报按键事件 */
+    gpio_keys_gpio_report_event(bdata);
+
+    /*
+     * input_sync() 是核心的事件刷新操作:
+     *   等价于 input_event(input, EV_SYN, SYN_REPORT, 0)
+     *
+     * 触发 input_pass_values()：
+     *   遍历 dev-&gt;h_list 中所有 handle，
+     *   调用 handle-&gt;handle_events() 将缓冲区中的事件
+     *   分发到各个 handler（如 evdev）。
+     *
+     * 在 evdev 中:
+     *   evdev_events() → evdev_pass_values()
+     *     → 写入每个 client 的环形缓冲区
+     *     → wake_up_interruptible(&amp;client-&gt;wait)
+     *     → 用户空间的 read()/poll() 返回
+     */
+    input_sync(bdata-&gt;input);
+}</code></pre>
+
+<h3>5.4 完整事件链路追踪</h3>
+
+<p>以下是用户按下 GPIO 按键到用户空间收到事件的完整链路：</p>
+
+<pre><code> ┌─────────────────────────────────────────────────────────────────┐
+ │ 1. 硬件层                                                       │
+ │    用户按下按钮 → GPIO 引脚电平变化 → GIC 触发 IRQ              │
+ └──────────────────────────┬──────────────────────────────────────┘
+                            │
+ ┌──────────────────────────▼──────────────────────────────────────┐
+ │ 2. 中断处理                                                     │
+ │    gpio_keys_gpio_isr()                                        │
+ │    ├─ 在中断上下文执行                                          │
+ │    └─ 启动去抖动: hrtimer_start() 或 mod_delayed_work()         │
+ └──────────────────────────┬──────────────────────────────────────┘
+                            │ (等待 5-20ms 去抖动)
+ ┌──────────────────────────▼──────────────────────────────────────┐
+ │ 3. 去抖动完成                                                   │
+ │    gpio_keys_debounce_event()                                  │
+ │    ├─ gpiod_get_value() → 读取 GPIO 状态                       │
+ │    ├─ input_event(input, EV_KEY, KEY_POWER, 1) → 报告按键      │
+ │    └─ input_sync(input) → 刷新事件到 handler                    │
+ └──────────────────────────┬──────────────────────────────────────┘
+                            │
+ ┌──────────────────────────▼──────────────────────────────────────┐
+ │ 4. Input Core 处理                                              │
+ │    input_event()                                                │
+ │    ├─ spin_lock(&amp;dev-&gt;event_lock)                               │
+ │    ├─ input_handle_event()                                      │
+ │    │   ├─ input_get_disposition() → INPUT_PASS_TO_HANDLERS      │
+ │    │   └─ 缓存 {EV_KEY, KEY_POWER, 1} 到 dev-&gt;vals[]           │
+ │    └─ spin_unlock(&amp;dev-&gt;event_lock)                             │
+ │                                                                 │
+ │    input_sync() → input_event(EV_SYN, SYN_REPORT, 0)           │
+ │    ├─ disposition = INPUT_FLUSH                                 │
+ │    └─ input_pass_values(dev, dev-&gt;vals, count)                  │
+ │        ├─ 检查 dev-&gt;grab (独占抓取)                              │
+ │        └─ 遍历 dev-&gt;h_list:                                     │
+ │            ├─ filter handle → filter() → 可能过滤事件           │
+ │            └─ normal handle → handle_events()                   │
+ └──────────────────────────┬──────────────────────────────────────┘
+                            │
+ ┌──────────────────────────▼──────────────────────────────────────┐
+ │ 5. evdev Handler 处理                                           │
+ │    evdev_events(handle, vals, count)                            │
+ │    └─ 遍历 evdev-&gt;client_list:                                  │
+ │        evdev_pass_values(client, vals, count, time)             │
+ │        ├─ 检查事件掩码过滤 (__evdev_is_filtered)                │
+ │        ├─ client-&gt;buffer[client-&gt;head++] = {                    │
+ │        │      .time = timestamp,                                │
+ │        │      .type = EV_KEY,                                   │
+ │        │      .code = KEY_POWER,                                │
+ │        │      .value = 1                                        │
+ │        │  };                                                    │
+ │        ├─ client-&gt;buffer[client-&gt;head++] = {                    │
+ │        │      .type = EV_SYN, .code = SYN_REPORT, .value = 0   │
+ │        │  };                                                    │
+ │        ├─ client-&gt;packet_head = client-&gt;head                    │
+ │        ├─ wake_up_interruptible(&amp;client-&gt;wait)                  │
+ │        └─ kill_fasync(&amp;client-&gt;fasync, SIGIO, POLL_IN)          │
+ └──────────────────────────┬──────────────────────────────────────┘
+                            │
+ ┌──────────────────────────▼──────────────────────────────────────┐
+ │ 6. 用户空间                                                     │
+ │    read(fd, buf, sizeof(struct input_event) * N)                │
+ │    → evdev_read()                                               │
+ │      ├─ 等待: wait_event_interruptible(client-&gt;wait, ...)       │
+ │      └─ 从 client-&gt;buffer[tail...head] 复制事件到用户 buf       │
+ │                                                                 │
+ │    收到两个 input_event:                                         │
+ │    [0] { type=EV_KEY, code=KEY_POWER, value=1 }  ← 按键按下    │
+ │    [1] { type=EV_SYN, code=SYN_REPORT, value=0 } ← 同步分隔    │
+ └─────────────────────────────────────────────────────────────────┘</code></pre>
+
+<h3>5.5 设备树配置示例</h3>
+
+<pre><code class="language-dts">/* 设备树 (Device Tree) 中的 gpio-keys 节点 */
+gpio-keys {
+    compatible = &quot;gpio-keys&quot;;          /* 匹配驱动名称 */
+
+    /* 电源键 */
+    power-key {
+        label = &quot;Power Key&quot;;           /* 按键标签 */
+        gpios = &lt;&amp;gpio1 3 GPIO_ACTIVE_LOW&gt;;  /* GPIO1_IO03, 低电平有效 */
+        linux,code = &lt;KEY_POWER&gt;;      /* 键码: 116 */
+        debounce-interval = &lt;10&gt;;      /* 去抖动: 10ms */
+        wakeup-source;                 /* 可唤醒系统 */
+    };
+
+    /* 音量加键 */
+    volume-up {
+        label = &quot;Volume Up&quot;;
+        gpios = &lt;&amp;gpio1 5 GPIO_ACTIVE_LOW&gt;;
+        linux,code = &lt;KEY_VOLUMEUP&gt;;   /* 键码: 115 */
+        debounce-interval = &lt;10&gt;;
+    };
+
+    /* 音量减键 */
+    volume-down {
+        label = &quot;Volume Down&quot;;
+        gpios = &lt;&amp;gpio1 6 GPIO_ACTIVE_LOW&gt;;
+        linux,code = &lt;KEY_VOLUMEDOWN&gt;; /* 键码: 114 */
+        debounce-interval = &lt;10&gt;;
+    };
+};</code></pre>
+
+<h3>5.6 用户空间测试程序</h3>
+
+<pre><code class="language-c">/*
+ * 简单的 input 事件读取程序
+ * 编译: gcc -o input_test input_test.c
+ * 运行: ./input_test /dev/input/event0
+ */
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;linux/input.h&gt;
+
+int main(int argc, char *argv[])
+{
+    struct input_event ev;
+    int fd;
+
+    if (argc &lt; 2) {
+        fprintf(stderr, &quot;Usage: %s /dev/input/eventX\n&quot;, argv[0]);
+        return 1;
+    }
+
+    /* 打开 input 事件设备 */
+    fd = open(argv[1], O_RDONLY);
+    if (fd &lt; 0) {
+        perror(&quot;open&quot;);
+        return 1;
+    }
+
+    printf(&quot;Reading events from %s ...\n&quot;, argv[1]);
+
+    /* 循环读取事件 */
+    while (1) {
+        ssize_t n = read(fd, &amp;ev, sizeof(ev));
+        if (n != sizeof(ev)) {
+            perror(&quot;read&quot;);
+            break;
+        }
+
+        /*
+         * 每次 read 返回一个 input_event：
+         * - type: 事件类型
+         * - code: 事件代码
+         * - value: 事件值
+         *
+         * EV_SYN/SYN_REPORT 表示一组事件的结束
+         */
+        printf(&quot;Event: type=%d code=%d value=%d\n&quot;,
+               ev.type, ev.code, ev.value);
+
+        /* 检测到按键事件 */
+        if (ev.type == EV_KEY) {
+            printf(&quot;  Key %d %s\n&quot;, ev.code,
+                   ev.value == 1 ? &quot;PRESSED&quot; :
+                   ev.value == 0 ? &quot;RELEASED&quot; : &quot;REPEATED&quot;);
+        }
+    }
+
+    close(fd);
+    return 0;
+}</code></pre>
+
+<hr>
+
+<h2>附录：关键 API 速查</h2>
+
+<h3>设备驱动常用 API</h3>
+
+<table>
+<thead><tr>
+<th>API</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>input_allocate_device()</code></td>
+<td>分配 input_dev 结构</td>
+</tr>
+<tr>
+<td><code>devm_input_allocate_device()</code></td>
+<td>资源管理版本的分配</td>
+</tr>
+<tr>
+<td><code>input_register_device(dev)</code></td>
+<td>注册 input 设备</td>
+</tr>
+<tr>
+<td><code>input_unregister_device(dev)</code></td>
+<td>注销 input 设备</td>
+</tr>
+<tr>
+<td><code>input_set_capability(dev, type, code)</code></td>
+<td>声明设备能力</td>
+</tr>
+<tr>
+<td><code>input_set_abs_params(dev, axis, min, max, fuzz, flat)</code></td>
+<td>设置绝对轴参数</td>
+</tr>
+<tr>
+<td><code>input_event(dev, type, code, value)</code></td>
+<td>报告输入事件</td>
+</tr>
+<tr>
+<td><code>input_report_key(dev, code, value)</code></td>
+<td>报告按键事件（宏）</td>
+</tr>
+<tr>
+<td><code>input_report_rel(dev, code, value)</code></td>
+<td>报告相对轴事件（宏）</td>
+</tr>
+<tr>
+<td><code>input_report_abs(dev, code, value)</code></td>
+<td>报告绝对轴事件（宏）</td>
+</tr>
+<tr>
+<td><code>input_sync(dev)</code></td>
+<td>发送 SYN_REPORT（刷新事件）</td>
+</tr>
+<tr>
+<td><code>input_mt_init_slots(dev, num, flags)</code></td>
+<td>初始化多点触摸</td>
+</tr>
+<tr>
+<td><code>input_mt_report_slot_state(dev, tool, active)</code></td>
+<td>报告触摸点状态</td>
+</tr>
+</tbody></table>
+
+<h3>Handler 常用 API</h3>
+
+<table>
+<thead><tr>
+<th>API</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>input_register_handler(handler)</code></td>
+<td>注册事件处理器</td>
+</tr>
+<tr>
+<td><code>input_unregister_handler(handler)</code></td>
+<td>注销事件处理器</td>
+</tr>
+<tr>
+<td><code>input_register_handle(handle)</code></td>
+<td>注册设备-处理器连接</td>
+</tr>
+<tr>
+<td><code>input_unregister_handle(handle)</code></td>
+<td>注销连接</td>
+</tr>
+<tr>
+<td><code>input_open_device(handle)</code></td>
+<td>打开设备（增加用户计数）</td>
+</tr>
+<tr>
+<td><code>input_close_device(handle)</code></td>
+<td>关闭设备（减少用户计数）</td>
+</tr>
+<tr>
+<td><code>input_grab_device(handle)</code></td>
+<td>独占抓取设备</td>
+</tr>
+<tr>
+<td><code>input_release_device(handle)</code></td>
+<td>释放独占抓取</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>6. QEMU 实践实验</h2>
+
+<blockquote><strong>环境：</strong> QEMU <code>virt</code> 机型 + ARM64 (Cortex-A57)，使用 <code>launch.sh</code> 启动。<br>
+内核配置要求：<code>CONFIG_INPUT_EVDEV=y</code>，<code>CONFIG_KEYBOARD_GPIO=y</code>，<code>CONFIG_GPIO_PL061=y</code>。</blockquote>
+
+<h3>6.1 实验一：探索 QEMU virt 默认 Input 设备</h3>
+
+<p><strong>目标：</strong> 了解 QEMU virt 机型自动创建了哪些 input 设备，理解设备注册到 input 子系统的过程。</p>
+
+<p><strong>步骤 1 — 启动 QEMU 并查看已注册 Input 设备</strong></p>
+
+<pre><code class="language-bash"># 启动 QEMU（使用现有 launch.sh）
+./launch.sh arm64 run</code></pre>
+
+<p>进入 shell 后执行：</p>
+
+<pre><code class="language-bash"># 查看所有已注册 input 设备
+cat /proc/bus/input/devices
+
+# 典型输出示例（QEMU virt 自带的按键设备）：
+# I: Bus=0019 Vendor=0001 Product=0001 Version=0100
+# N: Name=&quot;gpio-keys&quot;
+# P: Phys=gpio-keys/input0
+# S: Sysfs=/devices/platform/gpio-keys/input/input0
+# U: Uniq=
+# H: Handlers=kbd event0
+# B: PROP=0
+# B: EV=3
+# B: KEY=4000000000000 0</code></pre>
+
+<p><strong>字段解析：</strong></p>
+
+<table>
+<thead><tr>
+<th>字段</th>
+<th>含义</th>
+<th>示例解读</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>I:</code></td>
+<td><code>input_id</code>（bus/vendor/product/version）</td>
+<td>Bus=0019 → <code>BUS_HOST</code></td>
+</tr>
+<tr>
+<td><code>N:</code></td>
+<td><code>input_dev->name</code></td>
+<td>设备名称</td>
+</tr>
+<tr>
+<td><code>P:</code></td>
+<td><code>input_dev->phys</code></td>
+<td>物理路径</td>
+</tr>
+<tr>
+<td><code>H:</code></td>
+<td>已连接的 handler 列表</td>
+<td><code>kbd</code> = 键盘 handler，<code>event0</code> = evdev</td>
+</tr>
+<tr>
+<td><code>B: EV=</code></td>
+<td><code>evbit[]</code> 位图（十六进制）</td>
+<td>0x3 = EV_SYN + EV_KEY</td>
+</tr>
+<tr>
+<td><code>B: KEY=</code></td>
+<td><code>keybit[]</code> 位图</td>
+<td>支持的键码</td>
+</tr>
+</tbody></table>
+
+<p><strong>步骤 2 — 查看已注册 Handler</strong></p>
+
+<pre><code class="language-bash">cat /proc/bus/input/handlers
+
+# 输出示例：
+# N: Number=0 Name=kbd
+# N: Number=1 Name=mousedev Minor=32
+# N: Number=2 Name=evdev Minor=64</code></pre>
+
+<p><strong>步骤 3 — 查看 sysfs 信息</strong></p>
+
+<pre><code class="language-bash"># 列出所有 input 设备
+ls /sys/class/input/
+
+# 查看具体设备属性
+cat /sys/class/input/input0/name
+cat /sys/class/input/input0/phys
+
+# 查看 capabilities（能力位图）
+cat /sys/class/input/input0/capabilities/ev    # 事件类型
+cat /sys/class/input/input0/capabilities/key   # 按键能力
+
+# 查看设备节点（evdev 分配的次设备号）
+ls -la /dev/input/
+# crw-rw---- 1 root root 13, 64 ... event0</code></pre>
+
+<p><strong>理解要点：</strong></p>
+<ul>
+<li>QEMU virt 设备树可能包含 <code>gpio-keys</code> 节点（用于电源按钮）</li>
+<li><code>INPUT_MAJOR = 13</code>，evdev 次设备号从 64 开始</li>
+<li>一个 <code>input_dev</code> 可以同时被多个 handler 处理（如 <code>kbd</code> + <code>evdev</code>）</li>
+</ul>
+
+<hr>
+
+<h3>6.2 实验二：使用 uinput 创建虚拟输入设备</h3>
+
+<p><strong>目标：</strong> 通过 <code>/dev/uinput</code> 在用户空间创建虚拟 input 设备，模拟按键事件，理解事件从设备→core→handler→用户空间的完整路径。</p>
+
+<blockquote><strong>内核配置：</strong> 需要 <code>CONFIG_INPUT_UINPUT=y</code> 或 <code>=m</code>。如果是模块需先 <code>modprobe uinput</code>。</blockquote>
+
+<p><strong>步骤 1 — 在 defconfig 中开启 uinput</strong></p>
+
+<pre><code class="language-bash"># 编辑 defconfig 添加：
+# CONFIG_INPUT_UINPUT=y
+
+# 重新编译内核
+./launch.sh arm64 compile</code></pre>
+
+<p><strong>步骤 2 — 创建虚拟键盘设备并注入事件</strong></p>
+
+<p>将以下程序交叉编译后放入 rootfs：</p>
+
+<pre><code class="language-c">/* uinput_demo.c — 创建虚拟键盘并模拟按键 */
+#include &lt;linux/uinput.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;string.h&gt;
+#include &lt;stdio.h&gt;
+
+/*
+ * 通过 uinput 创建虚拟 input 设备的流程：
+ *   1. open(&quot;/dev/uinput&quot;)
+ *   2. ioctl UI_SET_EVBIT / UI_SET_KEYBIT 声明能力
+ *   3. write struct uinput_setup 设置设备信息
+ *   4. ioctl UI_DEV_CREATE 注册设备
+ *   → input core 分配 input_dev，遍历 handler 匹配
+ *   → evdev 创建 /dev/input/eventX
+ *   5. write struct input_event 注入事件
+ *   6. ioctl UI_DEV_DESTROY 销毁设备
+ */
+
+static void emit(int fd, int type, int code, int val)
+{
+    struct input_event ie = {0};
+    ie.type = type;
+    ie.code = code;
+    ie.value = val;
+    write(fd, &amp;ie, sizeof(ie));
+}
+
+int main(void)
+{
+    int fd;
+    struct uinput_setup usetup = {0};
+
+    /* 1. 打开 uinput 设备 */
+    fd = open(&quot;/dev/uinput&quot;, O_WRONLY | O_NONBLOCK);
+    if (fd &lt; 0) {
+        perror(&quot;open /dev/uinput&quot;);
+        return 1;
+    }
+
+    /*
+     * 2. 声明设备能力
+     *    UI_SET_EVBIT  → 设置 evbit[]
+     *    UI_SET_KEYBIT → 设置 keybit[]
+     *    这些 ioctl 直接操作底层 input_dev 的能力位图
+     */
+    ioctl(fd, UI_SET_EVBIT, EV_KEY);       /* 支持按键事件 */
+    ioctl(fd, UI_SET_KEYBIT, KEY_A);       /* 支持 KEY_A */
+    ioctl(fd, UI_SET_KEYBIT, KEY_B);       /* 支持 KEY_B */
+    ioctl(fd, UI_SET_KEYBIT, KEY_ENTER);   /* 支持 KEY_ENTER */
+
+    /* 3. 设置设备标识信息 → 填充 input_id */
+    usetup.id.bustype = BUS_USB;
+    usetup.id.vendor  = 0x1234;
+    usetup.id.product = 0x5678;
+    strncpy(usetup.name, &quot;QEMU Virtual Keyboard Demo&quot;, UINPUT_MAX_NAME_SIZE - 1);
+
+    ioctl(fd, UI_DEV_SETUP, &amp;usetup);
+
+    /*
+     * 4. 创建设备
+     *    内核执行流程：
+     *    uinput_ioctl → uinput_create_device()
+     *      → input_register_device(udev-&gt;dev)
+     *        → input_attach_handler() 遍历 handler
+     *          → evdev_connect() 创建 /dev/input/eventX
+     */
+    ioctl(fd, UI_DEV_CREATE);
+
+    printf(&quot;Virtual keyboard created! Check /proc/bus/input/devices\n&quot;);
+    printf(&quot;Waiting 2 seconds before sending events...\n&quot;);
+    sleep(2);
+
+    /*
+     * 5. 注入按键事件
+     *    内核路径：
+     *    write() → uinput_write()
+     *      → input_event(udev-&gt;dev, type, code, value)
+     *        → input_handle_event()
+     *          → input_get_disposition() → PASS_TO_HANDLERS
+     *          → input_event_dispose() 缓存到 dev-&gt;vals[]
+     *
+     *    当 EV_SYN/SYN_REPORT 到达时：
+     *      → input_pass_values()
+     *        → evdev_events()
+     *          → 写入每个 evdev_client 的环形缓冲
+     *          → wake_up_interruptible(&amp;client-&gt;wait)
+     */
+    printf(&quot;Pressing KEY_A...\n&quot;);
+    emit(fd, EV_KEY, KEY_A, 1);        /* KEY_A 按下 (value=1) */
+    emit(fd, EV_SYN, SYN_REPORT, 0);  /* 同步：刷新到 handler */
+    usleep(200000);
+
+    emit(fd, EV_KEY, KEY_A, 0);        /* KEY_A 释放 (value=0) */
+    emit(fd, EV_SYN, SYN_REPORT, 0);
+    usleep(200000);
+
+    printf(&quot;Pressing KEY_B...\n&quot;);
+    emit(fd, EV_KEY, KEY_B, 1);
+    emit(fd, EV_SYN, SYN_REPORT, 0);
+    usleep(200000);
+
+    emit(fd, EV_KEY, KEY_B, 0);
+    emit(fd, EV_SYN, SYN_REPORT, 0);
+
+    printf(&quot;Events sent! Sleeping 5s for observation...\n&quot;);
+    sleep(5);
+
+    /* 6. 销毁虚拟设备 */
+    ioctl(fd, UI_DEV_DESTROY);
+    close(fd);
+    printf(&quot;Virtual keyboard destroyed.\n&quot;);
+    return 0;
+}</code></pre>
+
+<p><strong>步骤 3 — 交叉编译并运行</strong></p>
+
+<pre><code class="language-bash"># 交叉编译
+aarch64-linux-gnu-gcc -static -o uinput_demo uinput_demo.c
+
+# 放入 rootfs
+cp uinput_demo /path/to/rootfs/
+
+# 启动 QEMU 后执行
+./uinput_demo &amp;
+
+# 在另一个终端（或同一终端）观察
+cat /proc/bus/input/devices
+# 应该看到新增设备：
+# N: Name=&quot;QEMU Virtual Keyboard Demo&quot;
+# H: Handlers=kbd event1</code></pre>
+
+<p><strong>步骤 4 — 用 hexdump 监听事件</strong></p>
+
+<pre><code class="language-bash"># 在 QEMU shell 中读取 evdev 事件（raw 格式）
+# event1 是 uinput 创建的虚拟设备
+hexdump -C /dev/input/event1 &amp;
+
+# 运行 uinput_demo 后观察 hexdump 输出：
+# 每个 input_event 占 24 字节 (aarch64)：
+#   8 字节 sec + 8 字节 usec + 2 字节 type + 2 字节 code + 4 字节 value</code></pre>
+
+<p><strong>理解要点：</strong></p>
+<ul>
+<li>uinput 是理解整个事件路径最好的工具：可以从用户空间触发完整的 input_event → input_handle_event → evdev_events 流程</li>
+<li><code>EV_SYN/SYN_REPORT</code> 是<strong>事件分发的触发器</strong> — 在此之前事件仅缓存在 <code>dev->vals[]</code></li>
+<li>每个 <code>evdev_client</code> 有独立的环形缓冲，多个进程可以同时 read 同一个 eventX</li>
+</ul>
+
+<hr>
+
+<h3>6.3 实验三：内核模块模拟输入设备</h3>
+
+<p><strong>目标：</strong> 编写内核模块创建 input_dev，使用定时器定期上报事件，深入理解驱动层如何调用 input core API。</p>
+
+<p><strong>步骤 1 — 编写内核模块</strong></p>
+
+<pre><code class="language-c">/* virtual_input_demo.c — 内核模块：创建虚拟输入设备 */
+#include &lt;linux/module.h&gt;
+#include &lt;linux/input.h&gt;
+#include &lt;linux/timer.h&gt;
+#include &lt;linux/jiffies.h&gt;
+
+/*
+ * 实验目的：
+ *   从内核模块层面理解 input_dev 的注册和事件上报流程
+ *   观察 input core 如何将事件分发到 evdev handler
+ *
+ * 调用链：
+ *   timer_callback()
+ *     → input_report_key(dev, KEY_SPACE, 1)
+ *       → input_event(dev, EV_KEY, KEY_SPACE, 1)
+ *         → input_handle_event()
+ *     → input_sync(dev)
+ *       → input_event(dev, EV_SYN, SYN_REPORT, 0)
+ *         → input_pass_values() → 分发到所有 handler
+ */
+
+static struct input_dev *virt_input;
+static struct timer_list event_timer;
+static int key_state;  /* 0=释放, 1=按下 */
+
+static void timer_callback(struct timer_list *t)
+{
+    /* 翻转按键状态 */
+    key_state = !key_state;
+
+    /*
+     * input_report_key() 展开为：
+     *   input_event(dev, EV_KEY, code, !!value)
+     *
+     * input_sync() 展开为：
+     *   input_event(dev, EV_SYN, SYN_REPORT, 0)
+     *
+     * input_event() 内部执行：
+     *   spin_lock_irqsave(&amp;dev-&gt;event_lock, flags)
+     *   input_handle_event(dev, type, code, value)
+     *   spin_unlock_irqrestore(&amp;dev-&gt;event_lock, flags)
+     */
+    input_report_key(virt_input, KEY_SPACE, key_state);
+    input_sync(virt_input);
+
+    pr_info(&quot;virtual_input: KEY_SPACE %s\n&quot;,
+            key_state ? &quot;PRESSED&quot; : &quot;RELEASED&quot;);
+
+    /* 每 2 秒触发一次 */
+    mod_timer(&amp;event_timer, jiffies + msecs_to_jiffies(2000));
+}
+
+static int __init virtual_input_init(void)
+{
+    int err;
+
+    /*
+     * 1. 分配 input_dev
+     *    input_allocate_device() 内部执行：
+     *      kzalloc(sizeof(struct input_dev))
+     *      INIT_LIST_HEAD(&amp;dev-&gt;h_list)
+     *      INIT_LIST_HEAD(&amp;dev-&gt;node)
+     *      spin_lock_init(&amp;dev-&gt;event_lock)
+     *      mutex_init(&amp;dev-&gt;mutex)
+     *      device_initialize(&amp;dev-&gt;dev)
+     */
+    virt_input = input_allocate_device();
+    if (!virt_input) {
+        pr_err(&quot;virtual_input: input_allocate_device() failed\n&quot;);
+        return -ENOMEM;
+    }
+
+    /* 2. 设置设备标识信息 → 填充 input_dev 的 name/id */
+    virt_input-&gt;name = &quot;QEMU Virtual Input Module&quot;;
+    virt_input-&gt;phys = &quot;virtual/input0&quot;;
+    virt_input-&gt;id.bustype = BUS_HOST;
+    virt_input-&gt;id.vendor  = 0x0001;
+    virt_input-&gt;id.product = 0x0001;
+    virt_input-&gt;id.version = 0x0100;
+
+    /*
+     * 3. 声明设备能力
+     *    input_set_capability() 内部执行：
+     *      __set_bit(type, dev-&gt;evbit)  → 设置事件类型
+     *      __set_bit(code, dev-&gt;keybit) → 设置键码（当 type=EV_KEY）
+     */
+    input_set_capability(virt_input, EV_KEY, KEY_SPACE);
+    input_set_capability(virt_input, EV_KEY, KEY_ENTER);
+    input_set_capability(virt_input, EV_KEY, KEY_UP);
+    input_set_capability(virt_input, EV_KEY, KEY_DOWN);
+
+    /*
+     * 4. 注册设备
+     *    input_register_device() 执行：
+     *      → __set_bit(EV_SYN, dev-&gt;evbit)  强制设置 EV_SYN
+     *      → input_estimate_events_per_packet(dev) 估算事件队列大小
+     *      → input_alloc_vals(dev) 分配 dev-&gt;vals[] 缓冲
+     *      → device_add(&amp;dev-&gt;dev) 创建 sysfs: /sys/class/input/inputX
+     *      → list_add_tail(&amp;dev-&gt;node, &amp;input_dev_list) 加入全局链表
+     *      → 遍历 input_handler_list 调用 input_attach_handler()
+     *        → input_match_device() 匹配 evdev 的 id_table
+     *        → evdev_connect() 创建 /dev/input/eventX
+     */
+    err = input_register_device(virt_input);
+    if (err) {
+        pr_err(&quot;virtual_input: input_register_device() failed: %d\n&quot;, err);
+        input_free_device(virt_input);
+        return err;
+    }
+
+    /* 5. 启动定时器，定期上报事件 */
+    timer_setup(&amp;event_timer, timer_callback, 0);
+    mod_timer(&amp;event_timer, jiffies + msecs_to_jiffies(3000));
+
+    pr_info(&quot;virtual_input: module loaded, device registered\n&quot;);
+    return 0;
+}
+
+static void __exit virtual_input_exit(void)
+{
+    del_timer_sync(&amp;event_timer);
+
+    /*
+     * input_unregister_device() 执行：
+     *   → 遍历 dev-&gt;h_list，对每个 handle 调用 handler-&gt;disconnect()
+     *     → evdev_disconnect() 销毁 /dev/input/eventX
+     *   → list_del_init(&amp;dev-&gt;node) 从全局链表移除
+     *   → device_del(&amp;dev-&gt;dev)
+     *   → input_put_device(dev) 释放
+     */
+    input_unregister_device(virt_input);
+
+    pr_info(&quot;virtual_input: module unloaded\n&quot;);
+}
+
+module_init(virtual_input_init);
+module_exit(virtual_input_exit);
+MODULE_LICENSE(&quot;GPL&quot;);
+MODULE_DESCRIPTION(&quot;Virtual Input Device Demo for QEMU&quot;);</code></pre>
+
+<p><strong>步骤 2 — 编写 Makefile 并编译</strong></p>
+
+<pre><code class="language-makefile"># kmodules/virtual_input/Makefile
+obj-m := virtual_input_demo.o
+KDIR  := /repo/ybzhang/kernel/linux-6.18.1
+ARCH  := arm64
+CROSS := aarch64-linux-gnu-
+
+all:
+	make -C $(KDIR) M=$(PWD) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS) modules
+clean:
+	make -C $(KDIR) M=$(PWD) clean</code></pre>
+
+<pre><code class="language-bash">cd kmodules/virtual_input
+make</code></pre>
+
+<p><strong>步骤 3 — QEMU 中加载模块并观察</strong></p>
+
+<pre><code class="language-bash"># 启动 QEMU（kmodules 目录已通过 9p virtfs 共享）
+./launch.sh arm64 run
+
+# 挂载共享目录
+mkdir -p /mnt/kmod
+mount -t 9p -o trans=virtio kmod_mount /mnt/kmod
+
+# 加载模块前，记录当前设备列表
+cat /proc/bus/input/devices
+
+# 加载模块
+insmod /mnt/kmod/virtual_input/virtual_input_demo.ko
+
+# 观察 dmesg — 追踪注册流程
+dmesg | tail -20
+# [   xx.xxx] virtual_input: module loaded, device registered
+# [   xx.xxx] input: QEMU Virtual Input Module as /devices/virtual/input/input1
+
+# 查看新增设备
+cat /proc/bus/input/devices
+# 新增一条：
+# I: Bus=0019 Vendor=0001 Product=0001 Version=0100
+# N: Name=&quot;QEMU Virtual Input Module&quot;
+# H: Handlers=kbd event1
+# B: EV=3
+# B: KEY=10000000000400 0
+
+# 查看 sysfs
+ls /sys/class/input/input1/
+# capabilities  device  event1  id  modalias  name  phys  ...
+
+cat /sys/class/input/input1/capabilities/key
+# 10000000000400 0  → bit 14(KEY_ENTER) + bit 57(KEY_SPACE) 等</code></pre>
+
+<p><strong>步骤 4 — 监听定时器上报的事件</strong></p>
+
+<pre><code class="language-bash"># 方式1：hexdump 直接读 evdev 设备
+hexdump -C /dev/input/event1
+# 每 2 秒打印一组事件（按下 + SYN_REPORT / 释放 + SYN_REPORT）
+
+# 方式2：简单 C 程序读取（参考第5节 evtest 代码）
+
+# 方式3：查看内核日志
+dmesg -w
+# [   xx.xxx] virtual_input: KEY_SPACE PRESSED
+# [   xx.xxx] virtual_input: KEY_SPACE RELEASED</code></pre>
+
+<p><strong>步骤 5 — 卸载模块并观察清理过程</strong></p>
+
+<pre><code class="language-bash">rmmod virtual_input_demo
+
+dmesg | tail -5
+# [   xx.xxx] virtual_input: module unloaded
+
+# 确认设备已从 input 子系统移除
+cat /proc/bus/input/devices
+# 不再包含 &quot;QEMU Virtual Input Module&quot;
+
+ls /dev/input/
+# event1 已不存在</code></pre>
+
+<hr>
+
+<h3>6.4 实验四：使用 evdev 事件监控工具</h3>
+
+<p><strong>目标：</strong> 在 QEMU 中监控所有 input 事件，理解 <code>evdev_client</code> 的环形缓冲机制。</p>
+
+<p><strong>步骤 1 — 编写简易 evtest</strong></p>
+
+<pre><code class="language-c">/* simple_evtest.c — 监听 input 事件 */
+#include &lt;stdio.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;linux/input.h&gt;
+#include &lt;poll.h&gt;
+#include &lt;string.h&gt;
+
+/*
+ * 当用户 open(&quot;/dev/input/eventX&quot;) 时：
+ *   → evdev_open()
+ *     → 分配 evdev_client（含环形缓冲 buffer[]）
+ *     → input_open_device(handle)
+ *       → dev-&gt;users++ (第一次则调用 dev-&gt;open 回调)
+ *     → 将 client 加入 evdev-&gt;client_list
+ *
+ * 当用户 read() 时：
+ *   → evdev_read()
+ *     → 等待 client-&gt;wait（如果 buffer 空）
+ *     → 从 client-&gt;buffer[tail] 取出 input_event
+ *     → copy_to_user()
+ *     → tail++（环形推进）
+ */
+
+static const char *ev_type_name(int type)
+{
+    switch (type) {
+    case EV_SYN: return &quot;EV_SYN&quot;;
+    case EV_KEY: return &quot;EV_KEY&quot;;
+    case EV_REL: return &quot;EV_REL&quot;;
+    case EV_ABS: return &quot;EV_ABS&quot;;
+    case EV_MSC: return &quot;EV_MSC&quot;;
+    case EV_SW:  return &quot;EV_SW&quot;;
+    case EV_LED: return &quot;EV_LED&quot;;
+    case EV_REP: return &quot;EV_REP&quot;;
+    default:     return &quot;UNKNOWN&quot;;
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    struct input_event ev;
+    struct pollfd pfd;
+    int fd;
+
+    if (argc &lt; 2) {
+        fprintf(stderr, &quot;Usage: %s /dev/input/eventX\n&quot;, argv[0]);
+        return 1;
+    }
+
+    fd = open(argv[1], O_RDONLY);
+    if (fd &lt; 0) {
+        perror(&quot;open&quot;);
+        return 1;
+    }
+
+    /* 获取设备名称 — 通过 ioctl EVIOCGNAME */
+    char name[256] = &quot;Unknown&quot;;
+    ioctl(fd, EVIOCGNAME(sizeof(name)), name);
+    printf(&quot;Device: %s\n&quot;, name);
+
+    /* 获取设备 ID — 通过 ioctl EVIOCGID */
+    struct input_id id;
+    ioctl(fd, EVIOCGID, &amp;id);
+    printf(&quot;  Bus: 0x%04x Vendor: 0x%04x Product: 0x%04x Version: 0x%04x\n&quot;,
+           id.bustype, id.vendor, id.product, id.version);
+
+    printf(&quot;Listening for events... (Ctrl+C to stop)\n\n&quot;);
+
+    /*
+     * 使用 poll() 实现非阻塞等待：
+     *   → evdev_poll()
+     *     → poll_wait(file, &amp;client-&gt;wait, wait)
+     *     → 当 client-&gt;head != client-&gt;tail 时返回 POLLIN
+     */
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+
+    while (1) {
+        int ret = poll(&amp;pfd, 1, -1);
+        if (ret &lt;= 0) break;
+
+        ssize_t n = read(fd, &amp;ev, sizeof(ev));
+        if (n != sizeof(ev)) break;
+
+        if (ev.type == EV_SYN &amp;&amp; ev.code == SYN_REPORT) {
+            printf(&quot;---------- SYN_REPORT ----------\n&quot;);
+        } else {
+            printf(&quot;%-8s code=%-4d value=%-6d\n&quot;,
+                   ev_type_name(ev.type), ev.code, ev.value);
+        }
+    }
+
+    close(fd);
+    return 0;
+}</code></pre>
+
+<p><strong>步骤 2 — 编译并运行</strong></p>
+
+<pre><code class="language-bash">aarch64-linux-gnu-gcc -static -o simple_evtest simple_evtest.c
+cp simple_evtest /path/to/rootfs/
+
+# QEMU 内运行
+./simple_evtest /dev/input/event0
+# Device: gpio-keys
+# Bus: 0x0019 Vendor: 0x0001 Product: 0x0001 Version: 0x0100
+# Listening for events...</code></pre>
+
+<p><strong>步骤 3 — 多客户端并发读取实验</strong></p>
+
+<pre><code class="language-bash"># 终端1：后台监听
+./simple_evtest /dev/input/event1 &amp;
+
+# 终端2：再启动一个监听
+./simple_evtest /dev/input/event1 &amp;
+
+# 两个进程都能收到完整事件流！
+# 原因：每个 open() 创建独立的 evdev_client
+#        evdev_events() 遍历 client_list，每个 client 都写入事件
+#
+# 数据路径：
+#   input_pass_values()
+#     → evdev_events()
+#       → list_for_each_entry_rcu(client, &amp;evdev-&gt;client_list, node)
+#           → __pass_event(client, &amp;ev) → 写入 client-&gt;buffer[head++]
+#           → wake_up_interruptible(&amp;client-&gt;wait)</code></pre>
+
+<hr>
+
+<h3>6.5 实验五：EVIOCGRAB 独占抓取实验</h3>
+
+<p><strong>目标：</strong> 理解 <code>input_dev->grab</code> 机制 — 一旦某个 handle 独占设备，其他 handler 无法收到事件。</p>
+
+<pre><code class="language-c">/* grab_demo.c — 独占抓取 input 设备 */
+#include &lt;stdio.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;linux/input.h&gt;
+
+/*
+ * EVIOCGRAB 内核路径：
+ *   evdev_ioctl() → evdev_ioctl_handler()
+ *     → case EVIOCGRAB:
+ *       → input_grab_device(&amp;evdev-&gt;handle)
+ *         → rcu_assign_pointer(dev-&gt;grab, handle)
+ *
+ * 抓取后事件分发路径变化：
+ *   input_pass_values()
+ *     → grab = rcu_dereference(dev-&gt;grab)
+ *     → if (grab)
+ *         仅调用 grab-&gt;handle_events()  ← 只有抓取者收到
+ *       else
+ *         遍历 dev-&gt;h_list 所有 handler  ← 正常广播
+ */
+
+int main(int argc, char *argv[])
+{
+    int fd;
+    struct input_event ev;
+
+    if (argc &lt; 2) {
+        fprintf(stderr, &quot;Usage: %s /dev/input/eventX\n&quot;, argv[0]);
+        return 1;
+    }
+
+    fd = open(argv[1], O_RDONLY);
+    if (fd &lt; 0) { perror(&quot;open&quot;); return 1; }
+
+    /* 获取独占控制 */
+    if (ioctl(fd, EVIOCGRAB, 1) &lt; 0) {
+        perror(&quot;EVIOCGRAB&quot;);
+        close(fd);
+        return 1;
+    }
+    printf(&quot;Device grabbed! Other readers will NOT receive events.\n&quot;);
+    printf(&quot;Reading events for 10 seconds...\n&quot;);
+
+    /* 读取事件（只有本进程能收到） */
+    int count = 0;
+    while (count &lt; 20) {
+        ssize_t n = read(fd, &amp;ev, sizeof(ev));
+        if (n == sizeof(ev)) {
+            if (ev.type != EV_SYN)
+                printf(&quot;  type=%d code=%d value=%d\n&quot;,
+                       ev.type, ev.code, ev.value);
+            count++;
+        }
+    }
+
+    /* 释放独占 */
+    ioctl(fd, EVIOCGRAB, 0);
+    printf(&quot;Device released.\n&quot;);
+
+    close(fd);
+    return 0;
+}</code></pre>
+
+<p><strong>验证步骤：</strong></p>
+
+<pre><code class="language-bash"># 1. 先启动普通监听器
+./simple_evtest /dev/input/event1 &amp;
+
+# 2. 启动独占抓取
+./grab_demo /dev/input/event1
+# → simple_evtest 将不再收到任何事件
+# → grab_demo 独享所有事件
+
+# 3. grab_demo 退出后
+# → simple_evtest 恢复接收事件</code></pre>
+
+<hr>
+
+<h3>6.6 实验六：GDB 追踪事件分发路径</h3>
+
+<p><strong>目标：</strong> 使用 QEMU + GDB 在内核中设置断点，单步追踪事件从 <code>input_event()</code> 到 <code>evdev_events()</code> 的完整路径。</p>
+
+<p><strong>步骤 1 — 启动 QEMU 调试模式</strong></p>
+
+<pre><code class="language-bash">./launch.sh arm64 debug</code></pre>
+
+<p><strong>步骤 2 — GDB 连接并设置断点</strong></p>
+
+<pre><code class="language-bash"># 在另一个终端中
+aarch64-linux-gnu-gdb vmlinux
+
+(gdb) target remote :1234
+
+# 在关键函数设置断点
+(gdb) b input_handle_event
+(gdb) b input_get_disposition
+(gdb) b input_pass_values
+(gdb) b evdev_events
+
+(gdb) c</code></pre>
+
+<p><strong>步骤 3 — 触发事件并追踪</strong></p>
+
+<p>在 QEMU shell 中运行 <code>uinput_demo</code> 或加载 <code>virtual_input_demo.ko</code>，然后观察 GDB 命中断点：</p>
+
+<pre><code>Breakpoint 1, input_handle_event (dev=0xffff..., type=1, code=57, value=1)
+    at drivers/input/input.c:XXX
+
+(gdb) bt
+#0  input_handle_event (dev=..., type=1, code=57, value=1)
+#1  input_event (dev=..., type=1, code=57, value=1)
+#2  timer_callback (t=...)              ← 我们的定时器回调
+#3  call_timer_fn (timer=...)
+...
+
+(gdb) p dev-&gt;name
+$1 = &quot;QEMU Virtual Input Module&quot;
+
+(gdb) p dev-&gt;users
+$2 = 1
+
+# 查看事件缓冲
+(gdb) p dev-&gt;num_vals
+$3 = 0              ← 事件还未缓存
+
+(gdb) c
+# → 命中 input_get_disposition
+
+(gdb) finish         # 查看返回值
+$4 = INPUT_PASS_TO_HANDLERS    ← 事件应传递给 handler
+
+(gdb) c
+# → 当 SYN_REPORT 到达时命中 input_pass_values
+
+(gdb) c
+# → 命中 evdev_events — 事件到达 handler
+Breakpoint 4, evdev_events (handle=0xffff..., vals=0xffff..., count=2)
+
+(gdb) p count
+$5 = 2              ← 1 个 KEY 事件 + 1 个 SYN_REPORT
+
+(gdb) p vals[0]
+$6 = {type = 1, code = 57, value = 1}     ← EV_KEY/KEY_SPACE/1
+
+(gdb) p vals[1]
+$7 = {type = 0, code = 0, value = 0}      ← EV_SYN/SYN_REPORT/0</code></pre>
+
+<p><strong>关键断点函数及其作用：</strong></p>
+
+<table>
+<thead><tr>
+<th>函数</th>
+<th>文件</th>
+<th>作用</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>input_handle_event()</code></td>
+<td>input.c</td>
+<td>事件入口，在 event_lock 保护下执行</td>
+</tr>
+<tr>
+<td><code>input_get_disposition()</code></td>
+<td>input.c</td>
+<td>判断事件去向（PASS/IGNORE/FLUSH）</td>
+</tr>
+<tr>
+<td><code>input_event_dispose()</code></td>
+<td>input.c</td>
+<td>缓存到 dev->vals[] 或立即刷新</td>
+</tr>
+<tr>
+<td><code>input_pass_values()</code></td>
+<td>input.c</td>
+<td>遍历 h_list 分发到各 handler</td>
+</tr>
+<tr>
+<td><code>evdev_events()</code></td>
+<td>evdev.c</td>
+<td>evdev 接收批量事件，写入 client 缓冲</td>
+</tr>
+<tr>
+<td><code>__pass_event()</code></td>
+<td>evdev.c</td>
+<td>写入单个 client 的环形缓冲</td>
+</tr>
+<tr>
+<td><code>evdev_read()</code></td>
+<td>evdev.c</td>
+<td>用户空间 read 取出事件</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h3>6.7 实验总结与关键观察</h3>
+
+<table>
+<thead><tr>
+<th>实验</th>
+<th>核心知识点</th>
+<th>观察手段</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>实验一</td>
+<td>设备注册后的 sysfs/procfs 表现</td>
+<td><code>/proc/bus/input/devices</code>，<code>/sys/class/input/</code></td>
+</tr>
+<tr>
+<td>实验二</td>
+<td>uinput 用户空间虚拟设备 → 完整事件路径</td>
+<td><code>hexdump /dev/input/eventX</code></td>
+</tr>
+<tr>
+<td>实验三</td>
+<td>内核模块 input_dev 注册/事件上报/注销</td>
+<td><code>dmesg</code>，<code>insmod/rmmod</code></td>
+</tr>
+<tr>
+<td>实验四</td>
+<td>evdev_client 环形缓冲，多客户端并发</td>
+<td>多进程同时读同一个 eventX</td>
+</tr>
+<tr>
+<td>实验五</td>
+<td>EVIOCGRAB 独占抓取，事件路由变化</td>
+<td>对比 grab 前后其他读者的行为</td>
+</tr>
+<tr>
+<td>实验六</td>
+<td>GDB 单步追踪内核事件分发完整路径</td>
+<td>断点 + <code>bt</code> + <code>p</code> 变量</td>
+</tr>
+</tbody></table>
+
+<p><strong>事件完整流转路径（所有实验共同验证）：</strong></p>
+
+<pre><code>驱动/uinput                                用户空间
+   │                                          ↑
+   │ input_event(dev, type, code, value)      │ read(fd, &amp;ev, sizeof(ev))
+   ↓                                          │
+┌──────────────────────────────┐    ┌─────────┴──────────┐
+│ input_handle_event()         │    │ evdev_read()        │
+│  → input_get_disposition()   │    │  → copy_to_user()   │
+│  → input_event_dispose()     │    │  → buffer[tail++]   │
+│    → vals[num_vals++] = event│    └─────────┬──────────┘
+│                              │              │
+│ 当 SYN_REPORT:               │    ┌─────────┴──────────┐
+│  → input_pass_values()       │    │ evdev_events()      │
+│    → 检查 dev-&gt;grab          │    │  → for each client: │
+│    → 遍历 dev-&gt;h_list        │    │    buffer[head++]   │
+│    → handle-&gt;handle_events() │───→│    wake_up(wait)    │
+└──────────────────────────────┘    └────────────────────┘
+      Input Core (input.c)              evdev (evdev.c)</code></pre>
+
+<hr>
+
+<hr>
+
+<h2>7. 面试题精选</h2>
+
+<h3>7.1 架构与设计类</h3>
+
+<hr>
+
+<p><strong>Q1：Linux Input 子系统的整体架构是什么？为什么要这样设计？</strong></p>
+
+<p><strong>A：</strong> 三层架构：<strong>设备驱动层 → 输入核心层 (Input Core) → 事件处理层 (Handler)</strong>。</p>
+
+<pre><code>设备驱动层          Input Core            Handler 层           用户空间
+gpio_keys/atkbd → input_event() → evdev/mousedev/joydev → /dev/input/eventX</code></pre>
+
+<p>设计理由：</p>
+<ul>
+<li><strong>解耦</strong>：设备驱动只负责硬件交互和事件上报，不需要知道事件如何传递到用户空间</li>
+<li><strong>复用</strong>：一个设备的事件可以同时被多个 handler 处理（如键盘同时连接 evdev 和 kbd）</li>
+<li><strong>可扩展</strong>：新增设备类型只需写驱动调用 <code>input_event()</code>，无需修改 core 或 handler</li>
+<li><strong>N:M 关系</strong>：N 个设备 × M 个处理器 通过 <code>input_handle</code> 桥接，避免 N×M 的紧耦合</li>
+</ul>
+
+<hr>
+
+<p><strong>Q2：<code>input_dev</code>、<code>input_handler</code>、<code>input_handle</code> 三者的关系是什么？为什么需要 <code>input_handle</code>？</strong></p>
+
+<p><strong>A：</strong></p>
+
+<table>
+<thead><tr>
+<th>结构体</th>
+<th>角色</th>
+<th>实例</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>input_dev</code></td>
+<td>输入设备</td>
+<td>键盘、鼠标、触摸屏</td>
+</tr>
+<tr>
+<td><code>input_handler</code></td>
+<td>事件处理器</td>
+<td>evdev、mousedev、joydev</td>
+</tr>
+<tr>
+<td><code>input_handle</code></td>
+<td>连接桥梁</td>
+<td>每对 (dev, handler) 的关联实例</td>
+</tr>
+</tbody></table>
+
+<p><strong>为什么需要 input_handle：</strong></p>
+
+<p>一个设备可以同时被多个 handler 处理（如键盘同时被 evdev 和 kbd 处理），一个 handler 也可以处理多个设备（如 evdev 处理所有输入设备）。这是 <strong>多对多关系</strong>，需要一个中间表来维护连接。<code>input_handle</code> 就是这个中间表的一行记录。</p>
+
+<pre><code>input_dev (键盘) ──handle_A──→ input_handler (evdev)
+                 ──handle_B──→ input_handler (kbd)
+
+input_dev (鼠标) ──handle_C──→ input_handler (evdev)
+                 ──handle_D──→ input_handler (mousedev)</code></pre>
+
+<p>链表连接方式：</p>
+<ul>
+<li><code>input_dev.h_list</code> 串联该设备的所有 handle（通过 <code>handle.d_node</code>）</li>
+<li><code>input_handler.h_list</code> 串联该处理器的所有 handle（通过 <code>handle.h_node</code>）</li>
+</ul>
+
+<hr>
+
+<p><strong>Q3：evdev 和 mousedev 有什么区别？为什么现代系统主要使用 evdev？</strong></p>
+
+<p><strong>A：</strong></p>
+
+<table>
+<thead><tr>
+<th>对比项</th>
+<th>evdev</th>
+<th>mousedev</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>事件格式</td>
+<td><code>struct input_event</code>（原始、完整）</td>
+<td>PS/2 鼠标协议（3-4字节包）</td>
+</tr>
+<tr>
+<td>事件类型</td>
+<td>支持所有类型（KEY/REL/ABS/...）</td>
+<td>仅鼠标移动和按键</td>
+</tr>
+<tr>
+<td>设备节点</td>
+<td><code>/dev/input/eventX</code></td>
+<td><code>/dev/input/mouseX</code>，<code>/dev/input/mice</code></td>
+</tr>
+<tr>
+<td>匹配设备</td>
+<td>匹配<strong>所有</strong> input 设备</td>
+<td>仅匹配有鼠标能力的设备</td>
+</tr>
+<tr>
+<td>精度</td>
+<td>不丢失信息</td>
+<td>坐标被裁剪为 PS/2 协议范围</td>
+</tr>
+<tr>
+<td>minor 范围</td>
+<td>64-95</td>
+<td>32-63</td>
+</tr>
+</tbody></table>
+
+<p>evdev 是<strong>通用事件接口</strong>，不对事件做任何转换，保留完整的 type/code/value 三元组。现代用户空间框架（libinput、Wayland、X11 evdev 驱动）全部使用 evdev。mousedev 仅为兼容遗留程序保留。</p>
+
+<hr>
+
+<h3>7.2 事件流转类</h3>
+
+<hr>
+
+<p><strong>Q4：一个按键事件从硬件中断到用户空间 <code>read()</code> 返回，经历了哪些步骤？</strong></p>
+
+<p><strong>A：</strong> 以 gpio_keys 为例，完整路径：</p>
+
+<pre><code>① 硬件中断触发
+   → GIC 分发到 CPU → IRQ handler
+
+② gpio_keys_irq_isr() 或 gpio_keys_gpio_work_func()
+   → 读取 GPIO 电平，判断按键状态
+   → input_report_key(input, code, value)  // 宏展开为 input_event()
+   → input_sync(input)                     // 宏展开为 input_event(EV_SYN, SYN_REPORT, 0)
+
+③ input_event() [drivers/input/input.c]
+   → spin_lock_irqsave(&amp;dev-&gt;event_lock)
+   → input_handle_event(dev, type, code, value)
+
+④ input_handle_event()
+   → input_get_disposition(): 判断事件去向
+     EV_KEY + 状态变化 → PASS_TO_HANDLERS
+   → input_event_dispose(): 缓存到 dev-&gt;vals[num_vals++]
+
+⑤ 当 EV_SYN/SYN_REPORT 到达:
+   → input_pass_values(dev, vals, count)
+     → 检查 dev-&gt;grab (独占模式)
+     → 遍历 dev-&gt;h_list 上的每个 handle
+     → 调用 handle-&gt;handle_events(handle, vals, count)
+
+⑥ evdev_events() [drivers/input/evdev.c]
+   → 遍历 evdev-&gt;client_list
+   → 对每个 client:
+     → input_value 转为 input_event（附加时间戳）
+     → 写入 client-&gt;buffer[head++]  (环形缓冲)
+     → wake_up_interruptible(&amp;client-&gt;wait)
+
+⑦ 用户空间 read(fd, &amp;ev, sizeof(ev))
+   → evdev_read()
+     → wait_event_interruptible() 等待事件
+     → 从 buffer[tail++] 取出 input_event
+     → copy_to_user()</code></pre>
+
+<p><strong>关键点：</strong></p>
+<ul>
+<li>③-⑤ 在 <code>event_lock</code> (spinlock) 保护下执行，可在中断上下文运行</li>
+<li>事件先缓存到 <code>dev->vals[]</code>，直到 <code>SYN_REPORT</code> 才批量刷新到 handler</li>
+<li>每个 <code>evdev_client</code> 有独立的环形缓冲，多进程可并发读取</li>
+</ul>
+
+<hr>
+
+<p><strong>Q5：为什么事件不是逐个发送给 handler，而是要等 <code>SYN_REPORT</code> 才批量发送？</strong></p>
+
+<p><strong>A：</strong> 这是<strong>事件原子性</strong>的保证。</p>
+
+<p>一次物理动作可能产生多个事件。比如触摸屏一次移动会产生：</p>
+<pre><code>EV_ABS  ABS_X  500
+EV_ABS  ABS_Y  300
+EV_SYN  SYN_REPORT  0   ← 这一组是一个原子包</code></pre>
+
+<p>如果逐个发送，handler 可能在只收到 X 坐标时就处理，导致坐标不一致。通过<strong>先缓存到 <code>dev->vals[]</code>，遇到 <code>SYN_REPORT</code> 再批量调用 <code>handle_events(handle, vals, count)</code></strong>，handler 收到的是完整的一组事件，可以原子处理。</p>
+
+<p><code>evdev</code> 的 <code>events()</code> 回调也正是利用这一点：它将一组事件整体写入每个 client 的缓冲区，然后设置 <code>packet_head</code> 标记包边界，确保用户空间读到完整的事件包。</p>
+
+<hr>
+
+<p><strong>Q6：<code>input_get_disposition()</code> 对不同事件类型的处理策略有什么不同？</strong></p>
+
+<p><strong>A：</strong></p>
+
+<table>
+<thead><tr>
+<th>事件类型</th>
+<th>处置策略</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>EV_SYN/SYN_REPORT</code></td>
+<td><code>INPUT_FLUSH</code></td>
+<td>触发刷新，将缓存的事件批量发给 handler</td>
+</tr>
+<tr>
+<td><code>EV_KEY</code></td>
+<td>检查状态变化：新值 ≠ 旧值 → <code>PASS_TO_HANDLERS</code>；相同 → <code>IGNORE</code></td>
+<td>防止重复按键事件；同时更新 <code>dev->key[]</code> 位图</td>
+</tr>
+<tr>
+<td><code>EV_ABS</code></td>
+<td>defuzz 去噪后判断：值变化 → <code>PASS</code>；无变化 → <code>IGNORE</code></td>
+<td><code>abs_info->fuzz</code> 消除微小抖动</td>
+</tr>
+<tr>
+<td><code>EV_REL</code></td>
+<td>值 ≠ 0 → <code>PASS</code>；值 = 0 → <code>IGNORE</code></td>
+<td>相对位移为 0 无意义</td>
+</tr>
+<tr>
+<td><code>EV_LED</code>/<code>EV_SND</code></td>
+<td><code>PASS_TO_HANDLERS</code> + <code>PASS_TO_DEVICE</code></td>
+<td>既通知 handler 又回调驱动 <code>dev->event()</code></td>
+</tr>
+<tr>
+<td><code>EV_SW</code></td>
+<td>状态变化 → <code>PASS</code>；无变化 → <code>IGNORE</code></td>
+<td>开关状态去重</td>
+</tr>
+<tr>
+<td><code>EV_FF</code></td>
+<td><code>PASS_TO_DEVICE</code></td>
+<td>力反馈仅发给设备</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<p><strong>Q7：什么是 EVIOCGRAB？它改变了事件分发的哪个环节？</strong></p>
+
+<p><strong>A：</strong> <code>EVIOCGRAB</code> 是 evdev 的 ioctl 命令，实现<strong>独占抓取 (exclusive grab)</strong>。</p>
+
+<pre><code class="language-c">ioctl(fd, EVIOCGRAB, 1);  // 抓取
+ioctl(fd, EVIOCGRAB, 0);  // 释放</code></pre>
+
+<p>内核执行 <code>input_grab_device(handle)</code> 将 <code>dev->grab</code> 设为当前 handle。</p>
+
+<p><strong>影响的环节：</strong> <code>input_pass_values()</code> 中的分发逻辑：</p>
+
+<pre><code class="language-c">// drivers/input/input.c
+handle = rcu_dereference(dev-&gt;grab);
+if (handle) {
+    // 独占模式：仅发给抓取者
+    count = handle-&gt;handle_events(handle, vals, count);
+} else {
+    // 正常模式：遍历 dev-&gt;h_list 发给所有 handler
+    list_for_each_entry_rcu(handle, &amp;dev-&gt;h_list, d_node)
+        count = handle-&gt;handle_events(handle, vals, count);
+}</code></pre>
+
+<p><strong>使用场景：</strong> 游戏引擎独占键盘/手柄，防止输入法拦截按键；安全软件锁定输入设备。</p>
+
+<hr>
+
+<h3>7.3 设备注册与匹配类</h3>
+
+<hr>
+
+<p><strong>Q8：<code>input_register_device()</code> 内部做了哪些关键操作？</strong></p>
+
+<p><strong>A：</strong> 六个关键步骤：</p>
+
+<ol>
+<li><strong>强制设置 <code>EV_SYN</code></strong> — <code>__set_bit(EV_SYN, dev->evbit)</code>，所有设备都必须支持同步事件</li>
+<li><strong>位图清洗</strong> — 清除 <code>KEY_RESERVED</code> 等无效位；如果设置了 <code>EV_ABS</code> 但没有 <code>absinfo</code> 则清除对应位</li>
+<li><strong>事件队列分配</strong> — <code>input_estimate_events_per_packet()</code> 根据能力位图估算每次事件包的大小，分配 <code>dev->vals[]</code> 缓冲</li>
+<li><strong>自动重复设置</strong> — 如果支持 <code>EV_KEY</code> 且未设置重复参数，使用默认值 <code>REP_DELAY=250ms</code>，<code>REP_PERIOD=33ms</code></li>
+<li><strong>设备注册</strong> — <code>device_add(&dev->dev)</code> 创建 sysfs 节点 <code>/sys/class/input/inputX</code></li>
+<li><strong>匹配连接</strong> — 遍历全局 <code>input_handler_list</code>，对每个 handler 调用 <code>input_attach_handler(dev, handler)</code> 尝试匹配和连接</li>
+</ol>
+
+<hr>
+
+<p><strong>Q9：设备和处理器是如何匹配的？匹配算法是什么？</strong></p>
+
+<p><strong>A：</strong> 两级匹配：</p>
+
+<p><strong>第一级 — ID Table 匹配 (<code>input_match_device()</code>)：</strong></p>
+
+<p>遍历 <code>handler->id_table[]</code>，每个条目是 <code>struct input_device_id</code>：</p>
+<ul>
+<li>根据 <code>flags</code> 字段决定匹配哪些项（bustype/vendor/product/version）</li>
+<li>检查能力位图：<code>id->evbit</code> 是否是 <code>dev->evbit</code> 的子集（handler 要求的能力设备都支持）</li>
+<li>同理检查 keybit、relbit、absbit 等</li>
+</ul>
+
+<pre><code class="language-c">// 例：evdev 的 id_table 匹配所有设备
+static const struct input_device_id evdev_ids[] = {
+    { .driver_info = 1 },  // 无 flags → 无条件匹配
+    { },
+};</code></pre>
+
+<p><strong>第二级 — 精细匹配 (<code>handler->match()</code>)：</strong></p>
+
+<p>ID Table 匹配通过后，如果 handler 定义了 <code>match</code> 回调，再做进一步判断。例如 joydev 检查设备是否真的是游戏手柄（有绝对轴 + 按键）。</p>
+
+<p>匹配成功后调用 <code>handler->connect()</code>（如 <code>evdev_connect()</code>），创建 <code>input_handle</code> 并建立双向链表连接。</p>
+
+<hr>
+
+<p><strong>Q10：<code>input_register_device()</code> 和 <code>input_register_handler()</code> 的注册顺序有影响吗？</strong></p>
+
+<p><strong>A：</strong> <strong>没有影响</strong>，两者都会触发匹配。</p>
+
+<ul>
+<li><code>input_register_device()</code> 注册设备时：遍历 <code>input_handler_list</code> 中所有已注册的 handler，尝试匹配</li>
+<li><code>input_register_handler()</code> 注册处理器时：遍历 <code>input_dev_list</code> 中所有已注册的设备，尝试匹配</li>
+</ul>
+
+<p>这种<strong>双向遍历</strong>保证了无论设备和处理器谁先注册，都能完成匹配连接。这在模块化内核中很重要 — evdev 可能在设备驱动之前或之后加载。</p>
+
+<p>全局 <code>input_mutex</code> 互斥锁保护两个链表和匹配过程的线程安全。</p>
+
+<hr>
+
+<h3>7.4 并发与同步类</h3>
+
+<hr>
+
+<p><strong>Q11：Input 子系统中有哪些锁？各自保护什么？</strong></p>
+
+<p><strong>A：</strong></p>
+
+<table>
+<thead><tr>
+<th>锁</th>
+<th>类型</th>
+<th>保护对象</th>
+<th>使用上下文</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>input_mutex</code></td>
+<td>mutex</td>
+<td>全局 <code>input_dev_list</code> 和 <code>input_handler_list</code>；设备注册/注销</td>
+<td>进程上下文</td>
+</tr>
+<tr>
+<td><code>dev->mutex</code></td>
+<td>mutex</td>
+<td><code>open()</code>/<code>close()</code>/<code>flush()</code>操作；<code>dev->users</code> 计数</td>
+<td>进程上下文</td>
+</tr>
+<tr>
+<td><code>dev->event_lock</code></td>
+<td>spinlock</td>
+<td>事件处理路径：<code>input_handle_event()</code>、<code>dev->vals[]</code> 缓冲</td>
+<td>中断/进程上下文</td>
+</tr>
+<tr>
+<td><code>evdev->client_lock</code></td>
+<td>spinlock</td>
+<td><code>evdev->client_list</code> 链表</td>
+<td>中断/进程上下文</td>
+</tr>
+<tr>
+<td><code>client->buffer_lock</code></td>
+<td>spinlock</td>
+<td><code>client->buffer[]</code>、<code>head</code>/<code>tail</code> 指针</td>
+<td>中断/进程上下文</td>
+</tr>
+</tbody></table>
+
+<p><strong>关键设计：</strong> <code>event_lock</code> 是 spinlock 而非 mutex，因为 <code>input_event()</code> 可能在<strong>硬件中断上下文</strong>被调用（如 gpio_keys 的中断处理函数中），中断上下文不允许睡眠，所以必须用 spinlock。</p>
+
+<hr>
+
+<p><strong>Q12：<code>evdev_client</code> 的环形缓冲区溢出时怎么处理？</strong></p>
+
+<p><strong>A：</strong> 当 <code>head</code> 追上 <code>tail</code>（缓冲区满）时，evdev 采用<strong>丢弃旧事件</strong>策略：</p>
+
+<pre><code class="language-c">// drivers/input/evdev.c — __pass_event()
+if (client-&gt;head == client-&gt;tail) {
+    // 缓冲区满 → 跳过最旧的事件包
+    client-&gt;tail = (client-&gt;tail + 1) &amp; (client-&gt;bufsize - 1);
+    // 插入 SYN_DROPPED 事件通知用户空间
+}</code></pre>
+
+<p>用户空间收到 <code>SYN_DROPPED</code> 后应该：</p>
+<ol>
+<li>丢弃当前积累的不完整事件包</li>
+<li>通过 <code>ioctl(EVIOCG*)</code> 重新获取设备当前状态（按键状态、轴位置等）</li>
+<li>从下一个 <code>SYN_REPORT</code> 开始重新处理</li>
+</ol>
+
+<p>缓冲区默认大小约 64 个事件（可通过 <code>EVIOCSBUFSIZE</code> 调整）。</p>
+
+<hr>
+
+<p><strong>Q13：<code>input_event()</code> 可以在中断上下文调用吗？为什么？</strong></p>
+
+<p><strong>A：</strong> <strong>可以</strong>。这是 Input 子系统的重要设计特点。</p>
+
+<pre><code class="language-c">void input_event(struct input_dev *dev, unsigned int type,
+                 unsigned int code, int value)
+{
+    unsigned long flags;
+
+    if (is_event_supported(type, dev-&gt;evbit, EV_MAX)) {
+        spin_lock_irqsave(&amp;dev-&gt;event_lock, flags);  // 禁中断+加锁
+        input_handle_event(dev, type, code, value);
+        spin_unlock_irqrestore(&amp;dev-&gt;event_lock, flags);
+    }
+}</code></pre>
+
+<p>原因：</p>
+<ul>
+<li>很多输入设备驱动在<strong>中断处理函数</strong>或 <strong>threaded IRQ handler</strong> 中调用 <code>input_event()</code> 上报事件</li>
+<li>使用 <code>spin_lock_irqsave()</code> 保证中断安全</li>
+<li>整个事件路径（<code>input_handle_event</code> → <code>input_pass_values</code> → <code>evdev_events</code>）都在 spinlock 保护下执行，不会睡眠</li>
+<li><code>evdev_events()</code> 写入环形缓冲并 <code>wake_up_interruptible()</code>，wake_up 本身在中断上下文是安全的</li>
+</ul>
+
+<hr>
+
+<h3>7.5 实践与调试类</h3>
+
+<hr>
+
+<p><strong>Q14：如何在不修改内核的情况下从用户空间创建虚拟输入设备？</strong></p>
+
+<p><strong>A：</strong> 使用 <strong>uinput</strong> (<code>/dev/uinput</code>)：</p>
+
+<pre><code class="language-c">int fd = open(&quot;/dev/uinput&quot;, O_WRONLY | O_NONBLOCK);
+
+// 1. 声明能力
+ioctl(fd, UI_SET_EVBIT, EV_KEY);
+ioctl(fd, UI_SET_KEYBIT, KEY_A);
+
+// 2. 设置设备信息
+struct uinput_setup setup = {
+    .id = { .bustype = BUS_USB, .vendor = 0x1234, .product = 0x5678 },
+    .name = &quot;My Virtual Keyboard&quot;,
+};
+ioctl(fd, UI_DEV_SETUP, &amp;setup);
+
+// 3. 创建设备 → 内部调用 input_register_device()
+ioctl(fd, UI_DEV_CREATE);
+
+// 4. 注入事件 → 内部调用 input_event()
+struct input_event ev = { .type = EV_KEY, .code = KEY_A, .value = 1 };
+write(fd, &amp;ev, sizeof(ev));
+ev.type = EV_SYN; ev.code = SYN_REPORT; ev.value = 0;
+write(fd, &amp;ev, sizeof(ev));</code></pre>
+
+<p><strong>用途：</strong> 自动化测试、远程输入、无物理设备时的功能验证。</p>
+
+<hr>
+
+<p><strong>Q15：如何判断一个 Input 设备支持哪些事件？</strong></p>
+
+<p><strong>A：</strong> 三种方法：</p>
+
+<p><strong>方法 1 — 读 <code>/proc/bus/input/devices</code>：</strong></p>
+<pre><code class="language-bash">cat /proc/bus/input/devices
+# B: EV=120013   → 支持的事件类型位图（十六进制）
+# B: KEY=...     → 支持的按键位图</code></pre>
+
+<p><strong>方法 2 — 读 sysfs 能力文件：</strong></p>
+<pre><code class="language-bash">cat /sys/class/input/input0/capabilities/ev   # evbit
+cat /sys/class/input/input0/capabilities/key  # keybit
+cat /sys/class/input/input0/capabilities/abs  # absbit</code></pre>
+
+<p><strong>方法 3 — ioctl 查询（编程方式）：</strong></p>
+<pre><code class="language-c">unsigned long evbits[NBITS(EV_MAX)];
+ioctl(fd, EVIOCGBIT(0, sizeof(evbits)), evbits);           // 获取 evbit
+ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(keybits)), keybits);    // 获取 keybit
+ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(absbits)), absbits);    // 获取 absbit
+ioctl(fd, EVIOCGABS(ABS_X), &amp;absinfo);                     // 获取绝对轴参数</code></pre>
+
+<hr>
+
+<p><strong>Q16：如何调试 Input 子系统的事件丢失问题？</strong></p>
+
+<p><strong>A：</strong> 分层排查：</p>
+
+<table>
+<thead><tr>
+<th>排查层次</th>
+<th>方法</th>
+<th>命令/工具</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>驱动层</strong></td>
+<td>确认中断是否触发</td>
+<td><code>cat /proc/interrupts</code>；<code>dmesg</code> 查看驱动日志</td>
+</tr>
+<tr>
+<td><strong>Input Core</strong></td>
+<td>GDB 断点 <code>input_handle_event</code></td>
+<td>检查 <code>input_get_disposition()</code> 返回值是否为 IGNORE</td>
+</tr>
+<tr>
+<td><strong>Handler 层</strong></td>
+<td>检查 <code>SYN_DROPPED</code></td>
+<td>用户程序检查是否收到 <code>SYN_DROPPED</code> 表示缓冲溢出</td>
+</tr>
+<tr>
+<td><strong>用户空间</strong></td>
+<td>使用 evtest</td>
+<td><code>evtest /dev/input/event0</code> 直接监听原始事件</td>
+</tr>
+<tr>
+<td><strong>匹配问题</strong></td>
+<td>确认设备已连接 handler</td>
+<td><code>cat /proc/bus/input/devices</code> 检查 <code>H:</code> 行</td>
+</tr>
+</tbody></table>
+
+<p><strong>常见原因：</strong></p>
+<ul>
+<li><strong>EV_KEY 状态去重</strong>：相同值的按键事件被 <code>input_get_disposition()</code> 判为 <code>IGNORE</code></li>
+<li><strong>EV_ABS defuzz</strong>：<code>absinfo->fuzz</code> 值过大导致微小变化被过滤</li>
+<li><strong>缓冲区溢出</strong>：用户空间读取太慢，环形缓冲满后丢事件（<code>SYN_DROPPED</code>）</li>
+<li><strong>设备被 grab</strong>：其他进程独占了设备，当前进程收不到事件</li>
+<li><strong>设备被 inhibit</strong>：<code>dev->inhibited = true</code> 时所有事件被丢弃</li>
+</ul>
+
+<hr>
+
+<h3>7.6 高级与深入类</h3>
+
+<hr>
+
+<p><strong>Q17：<code>input_handler</code> 的三种事件回调 <code>event()</code>、<code>events()</code>、<code>filter()</code> 有什么区别？</strong></p>
+
+<p><strong>A：</strong> 三选一，只能定义一个：</p>
+
+<table>
+<thead><tr>
+<th>回调</th>
+<th>签名</th>
+<th>特点</th>
+<th>使用者</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>event()</code></td>
+<td><code>void (*event)(handle, type, code, value)</code></td>
+<td>逐事件回调，最简单</td>
+<td>较少使用</td>
+</tr>
+<tr>
+<td><code>events()</code></td>
+<td><code>uint (*events)(handle, vals, count)</code></td>
+<td><strong>批量回调</strong>，一次传入 SYN_REPORT 之前的所有事件</td>
+<td>evdev、mousedev</td>
+</tr>
+<tr>
+<td><code>filter()</code></td>
+<td><code>bool (*filter)(handle, type, code, value)</code></td>
+<td>返回 true 表示<strong>过滤/丢弃</strong>该事件</td>
+<td>自定义过滤器</td>
+</tr>
+</tbody></table>
+
+<p><strong>执行顺序：</strong> Input Core 为它们设置不同的 <code>handle->handle_events</code> 包装函数：</p>
+<ul>
+<li><code>filter</code> handler 被放在 <code>dev->h_list</code> <strong>头部</strong>，优先执行</li>
+<li>普通 handler 放在 <code>dev->h_list</code> <strong>尾部</strong></li>
+<li>filter 返回 true 后，该事件从 vals 数组中移除，后续 handler 看不到</li>
+</ul>
+
+<hr>
+
+<p><strong>Q18：多点触摸 (Multi-Touch, MT) 在 Input 子系统中是如何实现的？</strong></p>
+
+<p><strong>A：</strong> 通过 <strong>MT Protocol B</strong>（slot-based）：</p>
+
+<pre><code class="language-c">// 驱动初始化时
+input_mt_init_slots(input, max_contacts, INPUT_MT_DIRECT);
+
+// 上报触摸事件
+for (i = 0; i &lt; contacts; i++) {
+    input_mt_slot(input, i);                              // 选择 slot
+    input_mt_report_slot_state(input, MT_TOOL_FINGER, true); // 激活
+    input_report_abs(input, ABS_MT_POSITION_X, x[i]);    // X 坐标
+    input_report_abs(input, ABS_MT_POSITION_Y, y[i]);    // Y 坐标
+    input_report_abs(input, ABS_MT_PRESSURE, pressure[i]);
+}
+input_mt_sync_frame(input);   // 标记帧结束
+input_sync(input);            // SYN_REPORT</code></pre>
+
+<p><strong>核心数据结构：</strong> <code>struct input_mt</code> 包含 <code>input_mt_slot[]</code> 数组，每个 slot 跟踪一个触摸点。Protocol B 的优势是只上报<strong>变化的 slot</strong>，减少数据量。</p>
+
+<hr>
+
+<p><strong>Q19：<code>dev->open()</code> 和 <code>dev->close()</code> 回调的触发时机是什么？</strong></p>
+
+<p><strong>A：</strong></p>
+
+<ul>
+<li><strong><code>dev->open()</code></strong>：当<strong>第一个</strong> handler 打开设备时调用（<code>dev->users</code> 从 0 变为 1）</li>
+<li><strong><code>dev->close()</code></strong>：当<strong>最后一个</strong> handler 关闭设备时调用（<code>dev->users</code> 从 1 变为 0）</li>
+</ul>
+
+<pre><code class="language-c">// input_open_device() 中
+if (!dev-&gt;inhibited &amp;&amp; !dev-&gt;users++ &amp;&amp; dev-&gt;open)
+    retval = dev-&gt;open(dev);   // 仅第一个用户触发</code></pre>
+
+<p><strong>用途：</strong> 驱动利用这对回调实现<strong>按需供电</strong>：</p>
+<ul>
+<li><code>open()</code>：使能时钟、上电、启用中断</li>
+<li><code>close()</code>：关闭中断、下电、关时钟</li>
+</ul>
+
+<p>当没有用户空间程序打开设备节点时，设备可以处于低功耗状态。注意 <code>passive_observer</code> 类型的 handler（如 input-leds）不计入 <code>users</code> 计数。</p>
+
+<hr>
+
+<p><strong>Q20：如果让你从零实现一个 input 设备驱动，关键步骤有哪些？</strong></p>
+
+<p><strong>A：</strong> 以 platform 设备为例的标准模板：</p>
+
+<pre><code class="language-c">static int my_input_probe(struct platform_device *pdev)
+{
+    struct input_dev *input;
+    int error;
+
+    // 1. 分配（资源管理版本，设备销毁时自动释放）
+    input = devm_input_allocate_device(&amp;pdev-&gt;dev);
+    if (!input) return -ENOMEM;
+
+    // 2. 设置标识
+    input-&gt;name = &quot;My Input Device&quot;;
+    input-&gt;phys = &quot;my-input/input0&quot;;
+    input-&gt;id.bustype = BUS_HOST;
+
+    // 3. 声明能力
+    input_set_capability(input, EV_KEY, KEY_POWER);
+    // 或批量设置：
+    // __set_bit(EV_ABS, input-&gt;evbit);
+    // input_set_abs_params(input, ABS_X, 0, 1024, 4, 0);
+
+    // 4. 设置回调（可选）
+    input-&gt;open = my_input_open;
+    input-&gt;close = my_input_close;
+
+    // 5. 注册
+    error = input_register_device(input);
+    if (error) return error;  // devm 版本无需手动释放
+
+    // 6. 申请中断（在中断或工作队列中上报事件）
+    devm_request_irq(&amp;pdev-&gt;dev, irq, my_isr, 0, &quot;my-input&quot;, input);
+
+    return 0;
+}
+
+// ISR 中上报事件
+static irqreturn_t my_isr(int irq, void *dev_id)
+{
+    struct input_dev *input = dev_id;
+    input_report_key(input, KEY_POWER, 1);
+    input_sync(input);
+    return IRQ_HANDLED;
+}</code></pre>
+
+<p><strong>易错点：</strong></p>
+<ul>
+<li>忘记 <code>input_sync()</code> → handler 永远收不到事件（事件被缓存但不刷新）</li>
+<li>能力位图不正确 → handler 匹配失败，不会创建设备节点</li>
+<li>在 <code>input_register_device()</code> 后又调用 <code>input_free_device()</code> → double free（注册成功后由 input core 管理生命周期）</li>
+</ul>
+
+<hr>
+
+<hr>
+
+<h2>8. 调试指南</h2>
+
+<blockquote>本节系统总结 Input 子系统的调试方法和工具链，按照<strong>分层排查</strong>的思路组织：从用户空间到内核，从现象到根因。</blockquote>
+
+<h3>8.1 调试工具总览</h3>
+
+<table>
+<thead><tr>
+<th>工具/接口</th>
+<th>层次</th>
+<th>用途</th>
+<th>依赖配置</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>evtest</code></td>
+<td>用户空间</td>
+<td>实时监听 evdev 原始事件</td>
+<td><code>CONFIG_INPUT_EVDEV=y</code></td>
+</tr>
+<tr>
+<td><code>hexdump /dev/input/eventX</code></td>
+<td>用户空间</td>
+<td>裸读事件二进制数据</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>/proc/bus/input/devices</code></td>
+<td>procfs</td>
+<td>查看所有已注册设备和 handler</td>
+<td><code>CONFIG_PROC_FS=y</code></td>
+</tr>
+<tr>
+<td><code>/proc/bus/input/handlers</code></td>
+<td>procfs</td>
+<td>查看所有已注册 handler</td>
+<td><code>CONFIG_PROC_FS=y</code></td>
+</tr>
+<tr>
+<td><code>/sys/class/input/inputX/</code></td>
+<td>sysfs</td>
+<td>查看设备属性、能力位图、inhibit 控制</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>/proc/interrupts</code></td>
+<td>procfs</td>
+<td>确认中断是否触发</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>dmesg</code> / <code>printk</code></td>
+<td>内核日志</td>
+<td>查看驱动注册/错误信息</td>
+<td>—</td>
+</tr>
+<tr>
+<td>dynamic_debug</td>
+<td>内核</td>
+<td>动态启用 <code>dev_dbg()</code>/<code>pr_debug()</code> 输出</td>
+<td><code>CONFIG_DYNAMIC_DEBUG=y</code></td>
+</tr>
+<tr>
+<td>ftrace</td>
+<td>内核</td>
+<td>追踪函数调用链和耗时</td>
+<td><code>CONFIG_FTRACE=y</code></td>
+</tr>
+<tr>
+<td>kprobes / kretprobes</td>
+<td>内核</td>
+<td>动态插入断点不重编译</td>
+<td><code>CONFIG_KPROBES=y</code></td>
+</tr>
+<tr>
+<td>GDB (QEMU)</td>
+<td>内核</td>
+<td>单步调试，查看内核数据结构</td>
+<td><code>-s -S</code> 启动参数</td>
+</tr>
+<tr>
+<td>KUnit 测试</td>
+<td>内核</td>
+<td>Input 子系统单元测试</td>
+<td><code>CONFIG_INPUT_KUNIT_TEST=y</code></td>
+</tr>
+<tr>
+<td>uinput</td>
+<td>用户空间</td>
+<td>创建虚拟设备注入事件</td>
+<td><code>CONFIG_INPUT_UINPUT=y/m</code></td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h3>8.2 第一步：procfs/sysfs 快速诊断</h3>
+
+<p>这是最基本的排查手段，无需任何额外工具。</p>
+
+<p><strong>检查设备是否注册成功：</strong></p>
+
+<pre><code class="language-bash"># 查看所有 input 设备
+cat /proc/bus/input/devices
+
+# 关键字段解析：
+# I: Bus=0019 Vendor=0001 Product=0001 Version=0100  → input_id
+# N: Name=&quot;gpio-keys&quot;                                 → input_dev-&gt;name
+# P: Phys=gpio-keys/input0                            → input_dev-&gt;phys
+# S: Sysfs=/devices/platform/gpio-keys/input/input0   → sysfs 路径
+# U: Uniq=                                            → input_dev-&gt;uniq
+# H: Handlers=kbd event0                              → 已连接的 handler
+# B: PROP=0                                           → propbit[]
+# B: EV=3                                             → evbit[] (0x3 = EV_SYN + EV_KEY)
+# B: KEY=4000000000000 0                              → keybit[]</code></pre>
+
+<p><strong>如果设备不在列表中：</strong></p>
+<ul>
+<li>驱动 probe 可能失败 → 检查 <code>dmesg | grep input</code></li>
+<li>设备树节点可能有误 → 检查 <code>status = "okay"</code> 和 <code>compatible</code> 字符串</li>
+</ul>
+
+<p><strong>如果 Handlers 行为空：</strong></p>
+<ul>
+<li>handler 未加载 → 检查 <code>cat /proc/bus/input/handlers</code> 是否有 evdev</li>
+<li>能力位图不匹配 → 检查 <code>B: EV=</code> 和 <code>B: KEY=</code> 是否正确</li>
+</ul>
+
+<p><strong>检查设备能力位图：</strong></p>
+
+<pre><code class="language-bash"># 通过 sysfs 查看详细能力（每种事件类型独立文件）
+cat /sys/class/input/input0/capabilities/ev    # 事件类型位图
+cat /sys/class/input/input0/capabilities/key   # 按键位图
+cat /sys/class/input/input0/capabilities/abs   # 绝对轴位图
+cat /sys/class/input/input0/capabilities/rel   # 相对轴位图
+
+# 查看设备标识
+cat /sys/class/input/input0/id/bustype
+cat /sys/class/input/input0/id/vendor
+cat /sys/class/input/input0/id/product
+
+# 查看/控制设备 inhibit 状态
+cat /sys/class/input/input0/inhibited    # 0=正常, 1=被抑制
+echo 1 &gt; /sys/class/input/input0/inhibited  # 抑制设备（停止产生事件）
+echo 0 &gt; /sys/class/input/input0/inhibited  # 恢复设备</code></pre>
+
+<p><strong>能力位图解析技巧：</strong></p>
+
+<pre><code class="language-bash"># EV=120013 解析：
+# 二进制: 0001 0010 0000 0000 0001 0011
+# bit 0  = EV_SYN  (0x01)
+# bit 1  = EV_KEY  (0x02)
+# bit 4  = EV_MSC  (0x10)
+# bit 17 = EV_LED
+# bit 20 = EV_REP
+
+# 用 Python 快速解析：
+python3 -c &quot;bits=0x120013; [print(f&#x27;bit {i}&#x27;) for i in range(32) if bits &amp; (1&lt;&lt;i)]&quot;</code></pre>
+
+<hr>
+
+<h3>8.3 第二步：evtest 实时事件监控</h3>
+
+<p><code>evtest</code> 是调试 input 设备最常用的工具，直接读取 evdev 原始事件。</p>
+
+<pre><code class="language-bash"># 列出可用设备
+evtest
+# /dev/input/event0: gpio-keys
+# /dev/input/event1: QEMU Virtual Keyboard
+# Select the device event number: 0
+
+# 指定设备监听
+evtest /dev/input/event0
+
+# 输出示例：
+# Event: time 1234.567890, type 1 (EV_KEY), code 116 (KEY_POWER), value 1
+# Event: time 1234.567890, -------------- SYN_REPORT ------------
+# Event: time 1234.768900, type 1 (EV_KEY), code 116 (KEY_POWER), value 0
+# Event: time 1234.768900, -------------- SYN_REPORT ------------</code></pre>
+
+<p><strong>没有 evtest 时的替代方案：</strong></p>
+
+<pre><code class="language-bash"># 方法1：hexdump 读取原始二进制
+hexdump -C /dev/input/event0
+# 每个 input_event 在 aarch64 上占 24 字节：
+# [8字节 sec][8字节 usec][2字节 type][2字节 code][4字节 value]
+
+# 方法2：用 dd 读取并配合 od 解析
+dd if=/dev/input/event0 bs=24 count=1 2&gt;/dev/null | od -A x -t x1
+
+# 方法3：简易 C 程序（参考 6.4 节的 simple_evtest）</code></pre>
+
+<hr>
+
+<h3>8.4 第三步：dmesg 内核日志分析</h3>
+
+<pre><code class="language-bash"># 查看 input 子系统相关的所有内核日志
+dmesg | grep -iE &#x27;input|evdev|event[0-9]|gpio.key&#x27;
+
+# 典型正常注册日志：
+# [    1.234] input: gpio-keys as /devices/platform/gpio-keys/input/input0
+# [    1.235] input: QEMU Virtual Keyboard as /devices/virtual/input/input1
+
+# 典型错误日志：
+# [    1.234] input: failed to register input device
+# [    1.235] input: handler (xxx) has both event() and events() methods, abort
+# [    1.236] input: input_value: unknown type 99 for XXX</code></pre>
+
+<p><strong>Input Core 的内置诊断（<code>drivers/input/input.c</code>）：</strong></p>
+
+<p>内核代码中有以下自动诊断机制：</p>
+<ul>
+<li><code>input_event()</code> 对无效 type/code 调用 <code>pr_err()</code> + <code>dump_stack()</code> 打印完整调用栈</li>
+<li><code>input_register_handler()</code> 如果 handler 同时定义了多个事件回调会 <code>pr_err()</code> 报错</li>
+<li><code>input_register_device()</code> 检查 <code>EV_ABS</code> 设备必须有 <code>absinfo</code> 数据</li>
+</ul>
+
+<hr>
+
+<h3>8.5 第四步：dynamic_debug 动态调试</h3>
+
+<p>无需重编译内核即可启用 <code>dev_dbg()</code> / <code>pr_debug()</code> 输出。Input Core 在设备注册、注销等关键路径有 <code>dev_dbg()</code> 调用。</p>
+
+<pre><code class="language-bash"># 查看 input.c 中可用的 dynamic debug 点
+cat /sys/kernel/debug/dynamic_debug/control | grep input.c
+
+# 启用 drivers/input/input.c 所有 debug 输出
+echo &#x27;file input.c +p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control
+
+# 启用 evdev.c 所有 debug 输出
+echo &#x27;file evdev.c +p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control
+
+# 启用特定函数的 debug
+echo &#x27;func input_register_device +p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control
+echo &#x27;func input_attach_handler +p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control
+
+# 启用带函数名和行号的输出
+echo &#x27;file input.c +pfl&#x27; &gt; /sys/kernel/debug/dynamic_debug/control
+# +p = 打印, +f = 函数名, +l = 行号
+
+# 关闭
+echo &#x27;file input.c -p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control</code></pre>
+
+<p><strong>启用后在 dmesg 中可看到：</strong></p>
+<pre><code>[  xx.xxx] input input0: dev_dbg: registering input device ...
+[  xx.xxx] input input0: dev_dbg: unregistering input device ...</code></pre>
+
+<hr>
+
+<h3>8.6 第五步：ftrace 函数追踪</h3>
+
+<p>用 ftrace 追踪事件路径中每个函数的调用关系和耗时，适合分析延迟和性能问题。</p>
+
+<p><strong>追踪事件分发路径：</strong></p>
+
+<pre><code class="language-bash"># 1. 设置追踪目标函数
+cd /sys/kernel/debug/tracing
+
+echo 0 &gt; tracing_on
+echo function_graph &gt; current_tracer
+
+# 只追踪 input 子系统相关函数
+echo &#x27;input_*&#x27; &gt; set_ftrace_filter
+echo &#x27;evdev_*&#x27; &gt;&gt; set_ftrace_filter
+
+# 2. 开始追踪
+echo 1 &gt; tracing_on
+
+# 3. 触发事件（按键/运行 uinput_demo 等）
+
+# 4. 停止并查看
+echo 0 &gt; tracing_on
+cat trace</code></pre>
+
+<p><strong>输出示例（function_graph 模式）：</strong></p>
+
+<pre><code> # CPU  DURATION      FUNCTION CALLS
+ # |     |   |         |   |   |   |
+  0)               |  input_event() {
+  0)               |    input_handle_event() {
+  0)   0.420 us    |      input_get_disposition();
+  0)   0.180 us    |      input_event_dispose();
+  0)               |      input_pass_values() {
+  0)               |        evdev_events() {
+  0)   0.310 us    |          __pass_event();
+  0)   0.290 us    |          __pass_event();
+  0)   0.150 us    |          wake_up_interruptible();
+  0)   2.890 us    |        }
+  0)   3.560 us    |      }
+  0)   5.120 us    |    }
+  0)   5.890 us    |  }</code></pre>
+
+<p><strong>追踪设备注册流程：</strong></p>
+
+<pre><code class="language-bash">echo 0 &gt; tracing_on
+echo function_graph &gt; current_tracer
+echo &#x27;input_register_device&#x27; &gt; set_graph_function  # 只展开此函数的调用图
+echo 1 &gt; tracing_on
+
+# 触发设备注册（如 insmod 模块）
+
+echo 0 &gt; tracing_on
+cat trace</code></pre>
+
+<p><strong>使用 trace_printk 测量延迟：</strong></p>
+
+<pre><code class="language-bash"># 追踪 input_event 到 evdev_events 的延迟
+echo 0 &gt; tracing_on
+echo nop &gt; current_tracer
+echo &#x27;p:probe/input_ev input_event type=%x2 code=%x3 value=%x4&#x27; &gt; kprobe_events
+echo &#x27;p:probe/evdev_ev evdev_events count=%x3&#x27; &gt;&gt; kprobe_events
+echo 1 &gt; events/probe/enable
+echo 1 &gt; tracing_on
+
+# 触发事件后
+cat trace_pipe
+# 对比两个探测点的时间戳即可计算延迟</code></pre>
+
+<hr>
+
+<h3>8.7 第六步：kprobes 动态探测</h3>
+
+<p>无需修改源码，可在任意内核函数入口/返回处插入探测。</p>
+
+<pre><code class="language-bash"># 探测 input_handle_event 入口参数
+echo &#x27;p:myprobe/input_evt input_handle_event dev=%x0:u64 type=%x1:u16 code=%x2:u16 value=%x3:s32&#x27; \
+  &gt; /sys/kernel/debug/tracing/kprobe_events
+
+echo 1 &gt; /sys/kernel/debug/tracing/events/myprobe/input_evt/enable
+echo 1 &gt; /sys/kernel/debug/tracing/tracing_on
+
+# 触发事件后查看
+cat /sys/kernel/debug/tracing/trace_pipe
+# myprobe/input_evt: input_handle_event+0x0/0x... dev=ffff... type=1 code=57 value=1</code></pre>
+
+<p><strong>探测 disposition 返回值：</strong></p>
+
+<pre><code class="language-bash"># kretprobe 捕获 input_get_disposition 返回值
+echo &#x27;r:myprobe/disp_ret input_get_disposition $retval:u32&#x27; \
+  &gt; /sys/kernel/debug/tracing/kprobe_events
+
+echo 1 &gt; /sys/kernel/debug/tracing/events/myprobe/disp_ret/enable
+# 返回值含义：
+# 0 = INPUT_IGNORE_EVENT
+# 1 = INPUT_PASS_TO_HANDLERS
+# 2 = INPUT_PASS_TO_DEVICE
+# 3 = INPUT_PASS_TO_ALL
+# 0x80000000 = INPUT_FLUSH</code></pre>
+
+<hr>
+
+<h3>8.8 第七步：GDB 内核调试</h3>
+
+<p>使用 QEMU + GDB 可以设置断点、查看内核数据结构、单步追踪。</p>
+
+<pre><code class="language-bash"># 启动 QEMU 调试模式
+./launch.sh arm64 debug
+
+# 另一终端连接 GDB
+aarch64-linux-gnu-gdb vmlinux
+(gdb) target remote :1234</code></pre>
+
+<p><strong>常用断点和调试命令：</strong></p>
+
+<pre><code class="language-gdb"># ===== 事件路径断点 =====
+b input_handle_event
+b input_get_disposition
+b input_pass_values
+b evdev_events
+b __pass_event
+
+# ===== 注册路径断点 =====
+b input_register_device
+b input_attach_handler
+b input_match_device
+b evdev_connect
+
+# ===== 查看 input_dev 结构体 =====
+# 命中断点后
+p dev-&gt;name
+p dev-&gt;phys
+p dev-&gt;id
+p dev-&gt;users
+p dev-&gt;inhibited
+p dev-&gt;grab
+
+# 查看能力位图
+p/x dev-&gt;evbit[0]       # 事件类型
+p/x dev-&gt;keybit[0]      # 按键能力
+p dev-&gt;num_vals          # 当前缓存的事件数
+p dev-&gt;max_vals          # 缓冲区大小
+
+# ===== 查看 handler 链表 =====
+# 遍历 dev-&gt;h_list（input_handle 链表）
+p dev-&gt;h_list
+p ((struct input_handle *)((char *)dev-&gt;h_list.next - offsetof(struct input_handle, d_node)))-&gt;handler-&gt;name
+
+# ===== 查看 evdev_client 状态 =====
+# 在 evdev_events 断点处
+p client-&gt;head
+p client-&gt;tail
+p client-&gt;bufsize
+p client-&gt;head - client-&gt;tail   # 缓冲区中的事件数
+
+# ===== 查看全局链表 =====
+p input_dev_list
+p input_handler_list</code></pre>
+
+<hr>
+
+<h3>8.9 第八步：KUnit 单元测试</h3>
+
+<p>Linux 6.18.1 Input 子系统自带 KUnit 测试套件，位于 <code>drivers/input/tests/input_test.c</code>。</p>
+
+<pre><code class="language-bash"># 启用 KUnit 测试
+echo &#x27;CONFIG_INPUT_KUNIT_TEST=y&#x27; &gt;&gt; arch/arm64/configs/ybzhang_defconfig
+
+# 内置测试用例：
+#   input_test_polling      — 轮询设备 setup 和 interval 管理
+#   input_test_timestamp    — 时间戳获取和设置
+#   input_test_match_device_id — 设备 ID 匹配逻辑
+#   input_test_grab         — 设备 grab/release 机制
+
+# 运行方式1：启动后自动运行并输出到 dmesg
+dmesg | grep kunit
+
+# 运行方式2：使用 kunit.py 工具
+cd tools/testing/kunit
+./kunit.py run --kconfig_add CONFIG_INPUT_KUNIT_TEST=y input</code></pre>
+
+<hr>
+
+<h3>8.10 调试决策流程图</h3>
+
+<pre><code>问题现象
+  │
+  ├─ 设备节点不存在 (/dev/input/eventX 找不到)
+  │    │
+  │    ├─ cat /proc/bus/input/devices → 设备在列表中？
+  │    │    ├─ 不在 → 驱动 probe 失败 → dmesg 查看错误
+  │    │    │         → 设备树/平台数据 → compatible 是否正确？
+  │    │    │         → CONFIG_KEYBOARD_GPIO=y ？
+  │    │    │
+  │    │    └─ 在列表中但 H: 行为空 → handler 未匹配
+  │    │         → cat /proc/bus/input/handlers → evdev 在吗？
+  │    │         → CONFIG_INPUT_EVDEV=y ？
+  │    │         → 检查 B: EV= 能力位图是否正确
+  │    │
+  │    └─ ls -la /dev/input/ → 文件权限？
+  │         → udev 规则是否正确？
+  │         → mknod 手动创建测试
+  │
+  ├─ 设备存在但无事件输出
+  │    │
+  │    ├─ cat /proc/interrupts → 中断有计数增加？
+  │    │    ├─ 无增加 → 硬件问题 / 中断未配置
+  │    │    │         → GPIO 电平是否变化？
+  │    │    │         → 中断号是否正确？
+  │    │    │
+  │    │    └─ 有增加 → 驱动/core 层问题
+  │    │         → 启用 dynamic_debug: echo &#x27;file input.c +p&#x27; &gt; ...
+  │    │         → ftrace 追踪 input_handle_event
+  │    │         → kprobe 检查 disposition 返回值
+  │    │
+  │    ├─ cat /sys/class/input/input0/inhibited → 是否被抑制？
+  │    │    → echo 0 &gt; inhibited 取消抑制
+  │    │
+  │    └─ 设备是否被 grab？
+  │         → 检查是否有其他进程独占了设备
+  │
+  ├─ 有事件但部分丢失
+  │    │
+  │    ├─ 看到 SYN_DROPPED → 缓冲区溢出
+  │    │    → 用户程序 read 太慢
+  │    │    → 增大缓冲区: ioctl(fd, EVIOCSBUFSIZE, bigger_size)
+  │    │
+  │    ├─ EV_KEY 重复按下但只收到一次 → 状态去重
+  │    │    → input_get_disposition() 判定 IGNORE
+  │    │    → 驱动应先发 value=0 再发 value=1
+  │    │
+  │    └─ EV_ABS 微小变化无事件 → defuzz 过滤
+  │         → 检查 absinfo-&gt;fuzz 值是否过大
+  │         → input_set_abs_params(dev, axis, min, max, fuzz, flat)
+  │
+  └─ 延迟高 / 性能问题
+       │
+       ├─ ftrace function_graph 追踪事件路径耗时
+       ├─ 检查 client_list 长度（过多 client 增加分发开销）
+       └─ 检查是否在 event_lock 自旋锁下做了耗时操作</code></pre>
+
+<hr>
+
+<h2>9. 常见问题与解决方案</h2>
+
+<h3>9.1 设备注册类问题</h3>
+
+<hr>
+
+<p><strong>问题 1：<code>/dev/input/eventX</code> 设备节点未创建</strong></p>
+
+<p><strong>现象：</strong> 驱动 probe 成功但 <code>/dev/input/</code> 下找不到对应的设备节点。</p>
+
+<p><strong>排查：</strong></p>
+<pre><code class="language-bash"># 1. 确认设备已在 input core 注册
+cat /proc/bus/input/devices
+# 如果看不到设备 → probe 失败
+
+# 2. 如果设备在列表但 H: 行为空
+cat /proc/bus/input/handlers
+# 检查 evdev handler 是否加载
+
+# 3. 确认 evdev 已加载
+lsmod | grep evdev
+# 或 zcat /proc/config.gz | grep INPUT_EVDEV</code></pre>
+
+<p><strong>根因与解决：</strong></p>
+
+<table>
+<thead><tr>
+<th>根因</th>
+<th>解决方案</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>CONFIG_INPUT_EVDEV</code> 未开启</td>
+<td>内核配置添加 <code>CONFIG_INPUT_EVDEV=y</code></td>
+</tr>
+<tr>
+<td>evdev 编译为模块但未加载</td>
+<td><code>modprobe evdev</code></td>
+</tr>
+<tr>
+<td>能力位图为空（忘记 <code>set_bit</code>）</td>
+<td>驱动中必须设置至少一种事件类型的能力</td>
+</tr>
+<tr>
+<td>udev/mdev 未运行</td>
+<td>手动 <code>mknod /dev/input/event0 c 13 64</code> 或启动 udevd</td>
+</tr>
+<tr>
+<td><code>input_register_device()</code> 返回错误</td>
+<td>检查 dmesg 错误信息，常见：absinfo 缺失</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<p><strong>问题 2：<code>input_register_device()</code> 返回 <code>-EINVAL</code></strong></p>
+
+<p><strong>现象：</strong> 驱动 probe 时注册设备失败。</p>
+
+<p><strong>常见原因：</strong></p>
+
+<pre><code class="language-c">/* 原因1：声明了 EV_ABS 但未设置 absinfo */
+__set_bit(EV_ABS, dev-&gt;evbit);
+__set_bit(ABS_X, dev-&gt;absbit);
+// 错误！缺少：
+// input_set_abs_params(dev, ABS_X, 0, 1024, 0, 0);
+
+/* input core 会检查：如果设备有 EV_ABS 位但对应轴没有 absinfo，
+ * 则清除该位并打印警告。如果清除后 absbit 为空但 EV_ABS 仍然设置，
+ * 则会产生不一致。 */
+
+/* 原因2：input_dev 为 NULL 或未正确初始化 */
+struct input_dev *dev = NULL;
+input_register_device(dev);  // → crash
+
+/* 原因3：重复注册同一个 input_dev */
+input_register_device(dev);  // 第一次成功
+input_register_device(dev);  // 第二次失败或 crash</code></pre>
+
+<p><strong>解决：</strong> 使用 <code>input_set_abs_params()</code> 而非手动设置 absbit；确保 <code>input_allocate_device()</code> 成功。</p>
+
+<hr>
+
+<p><strong>问题 3：设备注册成功但 handler 未匹配</strong></p>
+
+<p><strong>现象：</strong> <code>/proc/bus/input/devices</code> 中设备存在但 <code>H:</code> 行为空。</p>
+
+<p><strong>排查：</strong></p>
+<pre><code class="language-bash"># 查看设备能力
+cat /sys/class/input/input0/capabilities/ev
+# 输出 0 → 设备没有任何能力，handler 无法匹配
+
+# 正确值示例：
+# 3 → EV_SYN + EV_KEY
+# 120013 → EV_SYN + EV_KEY + EV_MSC + EV_LED + EV_REP</code></pre>
+
+<p><strong>根因：</strong> 驱动忘记设置能力位图。修复示例：</p>
+<pre><code class="language-c">/* 必须在 input_register_device() 之前设置 */
+input_set_capability(dev, EV_KEY, KEY_POWER);  // 正确方式
+// 或
+__set_bit(EV_KEY, dev-&gt;evbit);
+__set_bit(KEY_POWER, dev-&gt;keybit);</code></pre>
+
+<hr>
+
+<h3>9.2 事件丢失类问题</h3>
+
+<hr>
+
+<p><strong>问题 4：按键事件未到达用户空间</strong></p>
+
+<p><strong>现象：</strong> 硬件按键按下，中断触发，但 <code>evtest</code> 无输出。</p>
+
+<p><strong>分层排查脚本：</strong></p>
+
+<pre><code class="language-bash">#!/bin/sh
+# input_diag.sh — Input 事件丢失快速排查
+DEVICE=&quot;input0&quot;
+EVENT=&quot;event0&quot;
+
+echo &quot;=== 1. 设备信息 ===&quot;
+cat /proc/bus/input/devices | grep -A 8 &quot;$DEVICE&quot;
+
+echo &quot;\n=== 2. 中断计数 ===&quot;
+grep gpio /proc/interrupts
+
+echo &quot;\n=== 3. 设备状态 ===&quot;
+echo &quot;inhibited: $(cat /sys/class/input/$DEVICE/inhibited 2&gt;/dev/null || echo N/A)&quot;
+
+echo &quot;\n=== 4. 能力位图 ===&quot;
+for cap in ev key rel abs; do
+    echo &quot;  $cap: $(cat /sys/class/input/$DEVICE/capabilities/$cap 2&gt;/dev/null)&quot;
+done
+
+echo &quot;\n=== 5. 监听事件（5秒）===&quot;
+timeout 5 hexdump -C /dev/input/$EVENT 2&gt;/dev/null || echo &quot;无事件或设备不存在&quot;</code></pre>
+
+<p><strong>各层排查要点：</strong></p>
+
+<table>
+<thead><tr>
+<th>层</th>
+<th>检查点</th>
+<th>方法</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>硬件/中断</td>
+<td>中断是否触发</td>
+<td><code>cat /proc/interrupts</code> 前后对比</td>
+</tr>
+<tr>
+<td>驱动</td>
+<td><code>input_event()</code> 是否被调用</td>
+<td>kprobe on <code>input_event</code></td>
+</tr>
+<tr>
+<td>Input Core</td>
+<td>disposition 是否为 IGNORE</td>
+<td>kretprobe on <code>input_get_disposition</code></td>
+</tr>
+<tr>
+<td>evdev</td>
+<td><code>evdev_events()</code> 是否被调用</td>
+<td>kprobe on <code>evdev_events</code></td>
+</tr>
+<tr>
+<td>用户空间</td>
+<td><code>read()</code> 是否返回数据</td>
+<td>strace 用户程序</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<p><strong>问题 5：收到 <code>SYN_DROPPED</code> 事件</strong></p>
+
+<p><strong>现象：</strong> 用户程序收到 <code>type=0, code=3, value=0</code> (即 <code>EV_SYN/SYN_DROPPED</code>)。</p>
+
+<p><strong>含义：</strong> evdev_client 的环形缓冲区溢出，部分事件被丢弃。</p>
+
+<p><strong>原因：</strong></p>
+<ul>
+<li>用户程序 <code>read()</code> 速度跟不上事件产生速度</li>
+<li>缓冲区默认较小（约 64 个 input_event）</li>
+<li>触摸屏等高频设备容易触发</li>
+</ul>
+
+<p><strong>解决方案：</strong></p>
+
+<pre><code class="language-c">/* 方案1：增大缓冲区（用户程序中） */
+unsigned int bufsize = 1024;  // 增大到 1024 个事件
+ioctl(fd, EVIOCSBUFSIZE, bufsize);
+
+/* 方案2：使用 poll/epoll 及时读取 */
+struct pollfd pfd = { .fd = fd, .events = POLLIN };
+while (1) {
+    poll(&amp;pfd, 1, -1);
+    /* 立即读取所有可用事件 */
+    while (read(fd, &amp;ev, sizeof(ev)) == sizeof(ev)) {
+        process_event(&amp;ev);
+    }
+}
+
+/* 方案3：处理 SYN_DROPPED 后重新同步状态 */
+if (ev.type == EV_SYN &amp;&amp; ev.code == SYN_DROPPED) {
+    /* 丢弃当前不完整的事件包 */
+    /* 通过 ioctl 重新获取设备当前状态 */
+    ioctl(fd, EVIOCGKEY(sizeof(key_state)), key_state);  // 按键状态
+    ioctl(fd, EVIOCGABS(ABS_X), &amp;abs_x);                 // 绝对轴值
+    /* 从下一个 SYN_REPORT 开始重新处理 */
+}</code></pre>
+
+<hr>
+
+<p><strong>问题 6：EV_KEY 相同按键重复上报无效</strong></p>
+
+<p><strong>现象：</strong> 驱动连续上报 <code>input_report_key(dev, KEY_A, 1)</code> 多次，但用户空间只收到第一次。</p>
+
+<p><strong>根因：</strong> <code>input_get_disposition()</code> 的<strong>状态去重</strong>逻辑。</p>
+
+<pre><code class="language-c">// drivers/input/input.c — input_get_disposition()
+case EV_KEY:
+    if (!!test_bit(code, dev-&gt;key) == !!value)  // 新值 == 旧值
+        return INPUT_IGNORE_EVENT;               // → 被丢弃！</code></pre>
+
+<p>内核维护 <code>dev->key[]</code> 位图记录每个键的当前按下状态。如果上报的值和当前状态相同，事件被判定为重复并丢弃。</p>
+
+<p><strong>解决方案：</strong></p>
+<pre><code class="language-c">/* 正确方式：按下和释放成对上报 */
+input_report_key(dev, KEY_A, 1);  // 按下
+input_sync(dev);
+/* ... 等待 ... */
+input_report_key(dev, KEY_A, 0);  // 释放
+input_sync(dev);
+input_report_key(dev, KEY_A, 1);  // 再次按下 → 有效！
+input_sync(dev);
+
+/* 错误方式：连续按下无释放 */
+input_report_key(dev, KEY_A, 1);  // 有效
+input_sync(dev);
+input_report_key(dev, KEY_A, 1);  // 被 IGNORE！
+input_sync(dev);</code></pre>
+
+<hr>
+
+<p><strong>问题 7：EV_ABS 微小变化不产生事件</strong></p>
+
+<p><strong>现象：</strong> 触摸屏或传感器轴值微小变化时无事件输出。</p>
+
+<p><strong>根因：</strong> <code>absinfo->fuzz</code> 去噪阈值过大。</p>
+
+<pre><code class="language-c">// drivers/input/input.c — input_defuzz_abs_event()
+// 如果 |新值 - 旧值| &lt; fuzz，则新值被替换为旧值 → 无变化 → IGNORE</code></pre>
+
+<p><strong>解决方案：</strong></p>
+<pre><code class="language-c">/* 调小 fuzz 值 */
+input_set_abs_params(dev, ABS_X, 0, 4096, 2, 0);  // fuzz=2 (小值)
+// 不要设置过大的 fuzz，如 fuzz=100 会过滤掉 100 以内的变化
+
+/* 用户空间可通过 ioctl 查看/验证 */
+struct input_absinfo absinfo;
+ioctl(fd, EVIOCGABS(ABS_X), &amp;absinfo);
+printf(&quot;fuzz=%d flat=%d\n&quot;, absinfo.fuzz, absinfo.flat);</code></pre>
+
+<hr>
+
+<h3>9.3 驱动开发类问题</h3>
+
+<hr>
+
+<p><strong>问题 8：忘记调用 <code>input_sync()</code></strong></p>
+
+<p><strong>现象：</strong> 驱动上报了事件但用户空间完全无输出。</p>
+
+<p><strong>根因：</strong> 事件被缓存在 <code>dev->vals[]</code> 中但从未刷新到 handler。</p>
+
+<pre><code class="language-c">/* 错误示例 */
+input_report_key(dev, KEY_A, 1);  // → 缓存到 dev-&gt;vals[0]
+// 缺少 input_sync(dev);           // → 永远不会触发 input_pass_values()
+
+/* 正确示例 */
+input_report_key(dev, KEY_A, 1);  // → 缓存到 dev-&gt;vals[0]
+input_sync(dev);                   // → EV_SYN/SYN_REPORT → input_pass_values()</code></pre>
+
+<p><strong>调试确认：</strong></p>
+<pre><code class="language-bash"># kprobe 确认 input_event 被调用但 input_pass_values 未被调用
+echo &#x27;p:probe/ie input_event type=%x1:u16&#x27; &gt; /sys/kernel/debug/tracing/kprobe_events
+echo &#x27;p:probe/pv input_pass_values&#x27; &gt;&gt; /sys/kernel/debug/tracing/kprobe_events
+echo 1 &gt; /sys/kernel/debug/tracing/events/probe/enable
+echo 1 &gt; /sys/kernel/debug/tracing/tracing_on
+# 如果只看到 ie 探测点但没有 pv → 确认缺少 input_sync()</code></pre>
+
+<hr>
+
+<p><strong>问题 9：<code>input_register_device()</code> 后调用 <code>input_free_device()</code> 导致 crash</strong></p>
+
+<p><strong>现象：</strong> 驱动卸载时内核 panic 或 use-after-free。</p>
+
+<p><strong>根因：</strong> 生命周期管理错误。</p>
+
+<pre><code class="language-c">/* 错误代码 */
+dev = input_allocate_device();
+input_register_device(dev);
+// ... 后续某处 ...
+input_free_device(dev);  // ← 错误！注册后不能调用 free
+
+/* 正确做法 */
+// 注册成功 → 由 input_unregister_device() 管理释放
+// 注册失败 → 调用 input_free_device()
+
+ret = input_register_device(dev);
+if (ret) {
+    input_free_device(dev);  // 仅在注册失败时释放
+    return ret;
+}
+// 注册成功后，卸载时调用 input_unregister_device(dev)</code></pre>
+
+<p><strong>最佳实践：</strong> 使用 <code>devm_input_allocate_device()</code> + <code>input_register_device()</code>，由设备资源管理自动处理释放。</p>
+
+<hr>
+
+<p><strong>问题 10：在中断上下文调用了可能睡眠的函数</strong></p>
+
+<p><strong>现象：</strong> <code>BUG: sleeping function called from invalid context</code> 或 <code>scheduling while atomic</code>。</p>
+
+<p><strong>根因：</strong> 在硬中断或 <code>event_lock</code> 持有期间调用了可能睡眠的操作。</p>
+
+<pre><code class="language-c">/* 错误示例 */
+static irqreturn_t my_isr(int irq, void *data)
+{
+    struct input_dev *dev = data;
+    int value = read_hw_register();  // OK，I/O 操作
+    
+    mutex_lock(&amp;my_mutex);           // ← 错误！中断上下文不能获取 mutex
+    input_report_key(dev, KEY_A, value);
+    input_sync(dev);
+    mutex_unlock(&amp;my_mutex);
+    return IRQ_HANDLED;
+}
+
+/* 正确做法1：使用 threaded IRQ */
+devm_request_threaded_irq(&amp;pdev-&gt;dev, irq, NULL, my_thread_fn,
+                          IRQF_ONESHOT, &quot;my-input&quot;, dev);
+// threaded handler 运行在进程上下文，可以使用 mutex
+
+/* 正确做法2：使用工作队列延迟处理 */
+static irqreturn_t my_isr(int irq, void *data)
+{
+    schedule_work(&amp;my_work);  // 延迟到进程上下文
+    return IRQ_HANDLED;
+}</code></pre>
+
+<hr>
+
+<h3>9.4 多点触摸类问题</h3>
+
+<hr>
+
+<p><strong>问题 11：MT (Multi-Touch) 事件乱序或触摸点混淆</strong></p>
+
+<p><strong>现象：</strong> 多指触摸时触摸点 ID 不稳定或坐标互相串扰。</p>
+
+<p><strong>根因与解决：</strong></p>
+
+<table>
+<thead><tr>
+<th>根因</th>
+<th>解决</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>使用了 Protocol A（已过时）</td>
+<td>迁移到 Protocol B（slot-based）</td>
+</tr>
+<tr>
+<td>slot 编号不连续</td>
+<td>确保 slot 编号从 0 开始连续分配</td>
+</tr>
+<tr>
+<td>忘记 <code>input_mt_sync_frame()</code></td>
+<td>每帧结束必须调用</td>
+</tr>
+<tr>
+<td>触摸点释放未上报</td>
+<td>必须对不活跃 slot 调用 <code>input_mt_report_slot_state(dev, 0, false)</code></td>
+</tr>
+</tbody></table>
+
+<pre><code class="language-c">/* 正确的 MT Protocol B 上报流程 */
+for (i = 0; i &lt; MAX_CONTACTS; i++) {
+    input_mt_slot(input, i);  // 选择 slot
+    
+    if (contact_active[i]) {
+        input_mt_report_slot_state(input, MT_TOOL_FINGER, true);
+        input_report_abs(input, ABS_MT_POSITION_X, x[i]);
+        input_report_abs(input, ABS_MT_POSITION_Y, y[i]);
+    } else {
+        input_mt_report_slot_state(input, MT_TOOL_FINGER, false);  // 必须！
+    }
+}
+input_mt_sync_frame(input);  // 必须！标记帧结束
+input_sync(input);</code></pre>
+
+<hr>
+
+<h3>9.5 电源管理类问题</h3>
+
+<hr>
+
+<p><strong>问题 12：休眠唤醒后 input 设备不工作</strong></p>
+
+<p><strong>现象：</strong> 系统从 suspend 恢复后，按键/触摸屏无响应。</p>
+
+<p><strong>常见原因：</strong></p>
+
+<pre><code class="language-c">/* 原因1：驱动 resume 时未重新启用中断 */
+static int my_input_resume(struct device *dev)
+{
+    // 忘记重新 enable_irq()
+    return 0;
+}
+
+/* 原因2：硬件需要重新初始化但驱动未处理 */
+static int my_input_resume(struct device *dev)
+{
+    // I2C 触摸屏可能需要重新发送配置寄存器
+    write_config_registers(ts);  // 必须！
+    enable_irq(ts-&gt;irq);
+    return 0;
+}
+
+/* 原因3：GPIO 控制器状态在休眠后丢失 */
+// 需要在 resume 中重新配置 GPIO 方向和中断触发方式</code></pre>
+
+<p><strong>唤醒设备配置：</strong></p>
+<pre><code class="language-c">/* 使 input 设备成为唤醒源 */
+device_init_wakeup(&amp;pdev-&gt;dev, true);
+
+/* 在 suspend 回调中保留中断 */
+static int my_input_suspend(struct device *dev)
+{
+    if (device_may_wakeup(dev))
+        enable_irq_wake(irq);    // 保留中断用于唤醒
+    else
+        disable_irq(irq);        // 非唤醒源则禁用
+    return 0;
+}</code></pre>
+
+<hr>
+
+<h3>9.6 性能类问题</h3>
+
+<hr>
+
+<p><strong>问题 13：Input 事件延迟高</strong></p>
+
+<p><strong>排查步骤：</strong></p>
+
+<pre><code class="language-bash"># 1. 测量中断到事件分发的延迟
+echo 0 &gt; /sys/kernel/debug/tracing/tracing_on
+echo function_graph &gt; /sys/kernel/debug/tracing/current_tracer
+echo input_event &gt; /sys/kernel/debug/tracing/set_graph_function
+echo 1 &gt; /sys/kernel/debug/tracing/tracing_on
+# 触发事件后查看 DURATION 列
+
+# 2. 检查 client 数量（每个 client 都要遍历写入）
+ls -la /proc/*/fd/ 2&gt;/dev/null | grep &#x27;input/event&#x27; | wc -l
+# 过多进程打开同一设备会增加 evdev_events() 的遍历开销
+
+# 3. 检查是否有 filter handler
+cat /proc/bus/input/handlers
+# filter handler 在链表头部优先执行，可能增加延迟</code></pre>
+
+<p><strong>优化方向：</strong></p>
+
+<table>
+<thead><tr>
+<th>场景</th>
+<th>优化</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>高频设备（触摸屏 >100Hz）</td>
+<td>驱动使用 <code>events()</code> 批量回调而非 <code>event()</code> 逐个</td>
+</tr>
+<tr>
+<td>过多 client</td>
+<td>关闭不需要的监听程序</td>
+</tr>
+<tr>
+<td>defuzz 计算开销</td>
+<td>合理设置 fuzz 值，避免 0（每次都上报）</td>
+</tr>
+<tr>
+<td>自动重复定时器</td>
+<td>适当增大 <code>REP_PERIOD</code> 减少高频重复事件</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h3>9.7 问题速查表</h3>
+
+<table>
+<thead><tr>
+<th>#</th>
+<th>问题</th>
+<th>关键症状</th>
+<th>快速定位</th>
+<th>解决方案</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>设备节点不存在</td>
+<td><code>/dev/input/eventX</code> 缺失</td>
+<td><code>cat /proc/bus/input/devices</code></td>
+<td>检查 CONFIG、驱动 probe、udev</td>
+</tr>
+<tr>
+<td>2</td>
+<td>注册失败</td>
+<td>dmesg 报错 <code>-EINVAL</code></td>
+<td>检查 absinfo 是否设置</td>
+<td><code>input_set_abs_params()</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>handler 未匹配</td>
+<td><code>H:</code> 行为空</td>
+<td>检查能力位图</td>
+<td>正确设置 <code>evbit[]</code>/<code>keybit[]</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>无事件输出</td>
+<td>evtest 无打印</td>
+<td><code>cat /proc/interrupts</code></td>
+<td>检查中断+驱动 <code>input_event()</code> 调用</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>SYN_DROPPED</code></td>
+<td>事件包不完整</td>
+<td>用户程序检查 SYN_DROPPED</td>
+<td>增大缓冲区 / 加快读取</td>
+</tr>
+<tr>
+<td>6</td>
+<td>重复按键无效</td>
+<td>只收到首次按下</td>
+<td>kretprobe disposition</td>
+<td>确保按下/释放成对上报</td>
+</tr>
+<tr>
+<td>7</td>
+<td>微小变化无事件</td>
+<td>ABS 值变化但无输出</td>
+<td>检查 <code>absinfo->fuzz</code></td>
+<td>减小 fuzz 值</td>
+</tr>
+<tr>
+<td>8</td>
+<td>事件全无</td>
+<td>驱动调用了 input_event</td>
+<td>检查是否有 <code>input_sync()</code></td>
+<td>添加 <code>input_sync()</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td>卸载 crash</td>
+<td>use-after-free panic</td>
+<td>检查 free/unregister 顺序</td>
+<td>用 <code>devm_</code> API</td>
+</tr>
+<tr>
+<td>10</td>
+<td>中断上下文 sleep</td>
+<td>BUG scheduling while atomic</td>
+<td>检查 ISR 代码</td>
+<td>用 threaded IRQ</td>
+</tr>
+<tr>
+<td>11</td>
+<td>MT 触摸点乱</td>
+<td>坐标串扰</td>
+<td>检查 Protocol B 流程</td>
+<td>正确使用 slot + sync_frame</td>
+</tr>
+<tr>
+<td>12</td>
+<td>休眠后不工作</td>
+<td>resume 后无响应</td>
+<td>检查 suspend/resume 回调</td>
+<td>重新初始化硬件+中断</td>
+</tr>
+<tr>
+<td>13</td>
+<td>延迟高</td>
+<td>事件到达慢</td>
+<td>ftrace function_graph</td>
+<td>减少 client 数/优化 handler</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<blockquote><strong>总结：</strong> Linux Input 子系统通过三层架构（设备驱动层 → Input Core → Handler 层）实现了输入设备与用户空间接口的完全解耦。<code>input_dev</code> 描述设备能力，<code>input_handler</code> 实现事件处理，<code>input_handle</code> 连接两者。事件通过 <code>input_event()</code> → <code>input_pass_values()</code> → <code>handler->events()</code> 的路径从驱动流向用户空间。evdev 作为通用处理器为每个设备创建 <code>/dev/input/eventX</code> 节点，用户程序通过标准文件 I/O 读取 <code>struct input_event</code> 即可获取输入事件。</blockquote>
+
+</body>
+</html>

@@ -1,0 +1,3475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ftrace Deep Dive</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux Kernel Ftrace 实现原理深度分析</h1>
+
+<blockquote>基于 Linux 6.18.1 内核源码 / ARM64 架构</blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><b>1. 概述</b></summary></p>
+
+<ul>
+<li>1.1 <a href="#11-核心能力">核心能力</a></li>
+<li>1.2 <a href="#12-设计哲学">设计哲学</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>2. 用户视角</b></summary></p>
+
+<ul>
+<li>2.1 <a href="#21-tracefs-文件接口一览">tracefs 文件接口一览</a></li>
+<li>2.2 <a href="#22-tracefs-挂载与访问">tracefs 挂载与访问</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>3. 编译插桩与启动初始化</b></summary></p>
+
+<ul>
+<li>3.1 <a href="#31-gcc-编译选项与-nop-占位">GCC 编译选项与 NOP 占位</a></li>
+<li>3.2 <a href="#32-<strong>mcount_loc-section--地址收集"><code></strong>mcount_loc</code> Section — 地址收集</a></li>
+<li>3.3 <a href="#33-地址调整ftrace_call_adjust">地址调整：<code>ftrace_call_adjust()</code></a></li>
+<li>3.4 <a href="#34-内核启动序列">内核启动序列</a></li>
+<li>3.5 <a href="#35-ftrace_init-详解"><code>ftrace_init()</code> 详解</a></li>
+<li>3.6 <a href="#36-ftrace_process_locs--构建追踪记录"><code>ftrace_process_locs()</code> — 构建追踪记录</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>4. 软件架构与核心数据结构</b></summary></p>
+
+<ul>
+<li>4.1 <a href="#41-软件架构总览">软件架构总览</a></li>
+<li>4.2 <a href="#42-struct-ftrace_ops--追踪操作回调"><code>struct ftrace_ops</code> — 追踪操作回调</a></li>
+<li>4.3 <a href="#43-struct-dyn_ftrace--可追踪函数记录"><code>struct dyn_ftrace</code> — 可追踪函数记录</a></li>
+<li>4.4 <a href="#44-struct-ftrace_page--记录页"><code>struct ftrace_page</code> — 记录页</a></li>
+<li>4.5 <a href="#45-struct-ftrace_hash--ftrace_ops_hash--过滤哈希表"><code>struct ftrace_hash</code> / <code>ftrace_ops_hash</code> — 过滤哈希表</a></li>
+<li>4.6 <a href="#46-struct-trace_array--追踪实例"><code>struct trace_array</code> — 追踪实例</a></li>
+<li>4.7 <a href="#47-struct-tracer--追踪器插件"><code>struct tracer</code> — 追踪器插件</a></li>
+<li>4.8 <a href="#48-struct-trace_buffer--ring_buffer_per_cpu--ring-buffer"><code>struct trace_buffer</code> / <code>ring_buffer_per_cpu</code> — Ring Buffer</a></li>
+<li>4.9 <a href="#49-数据结构关系总结">数据结构关系总结</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>5. Ftrace 子系统关键机制</b></summary></p>
+
+<ul>
+<li>5.1 <a href="#51-动态代码修改引擎">动态代码修改引擎</a></li>
+<li>5.1.1 <a href="#511-修改流程总览">修改流程总览</a></li>
+<li>5.1.2 <a href="#512-arm64-代码修改实现">ARM64 代码修改实现</a></li>
+<li>5.1.3 <a href="#513-指令修改前后对比">指令修改前后对比</a></li>
+<li>5.1.4 <a href="#514-arm64-call_ops-优化">ARM64 CALL_OPS 优化</a></li>
+<li>5.2 <a href="#52-运行时追踪路径">运行时追踪路径</a></li>
+<li>5.2.1 <a href="#521-热路径hot-path">热路径（Hot Path）</a></li>
+<li>5.2.2 <a href="#522-function_trace_call-实现"><code>function_trace_call()</code> 实现</a></li>
+<li>5.2.3 <a href="#523-update_ftrace_function--全局追踪函数选择"><code>update_ftrace_function()</code> — 全局追踪函数选择</a></li>
+<li>5.3 <a href="#53-过滤机制">过滤机制</a></li>
+<li>5.3.1 <a href="#531-过滤架构">过滤架构</a></li>
+<li>5.3.2 <a href="#532-过滤逻辑">过滤逻辑</a></li>
+<li>5.3.3 <a href="#533-哈希查找">哈希查找</a></li>
+<li>5.4 <a href="#54-ring-buffer-机制">Ring Buffer 机制</a></li>
+<li>5.4.1 <a href="#541-结构概览">结构概览</a></li>
+<li>5.4.2 <a href="#542-写入路径lock-free">写入路径（Lock-free）</a></li>
+<li>5.4.3 <a href="#543-读取路径">读取路径</a></li>
+<li>5.4.4 <a href="#544-reader-page-swap-机制">Reader Page Swap 机制</a></li>
+<li>5.5 <a href="#55-function-graph-tracer">Function Graph Tracer</a></li>
+<li>5.6 <a href="#56-trace-eventstracepoints">Trace Events（Tracepoints）</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>6. 使用场景与能解决的问题</b></summary></p>
+
+<ul>
+<li>6.1 <a href="#61-典型使用场景">典型使用场景</a></li>
+<li>6.2 <a href="#62-ftrace-能解决哪些问题">ftrace 能解决哪些问题</a></li>
+<li>6.3 <a href="#63-ftrace-vs-其他追踪工具对比">ftrace vs 其他追踪工具对比</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>7. 内核编译配置选项</b></summary></p>
+
+<ul>
+<li>7.1 <a href="#71-最小可用配置">最小可用配置</a></li>
+<li>7.2 <a href="#72-推荐完整配置">推荐完整配置</a></li>
+<li>7.3 <a href="#73-arm64-架构特有选项">ARM64 架构特有选项</a></li>
+<li>7.4 <a href="#74-各-tracer-所需配置汇总">各 Tracer 所需配置汇总</a></li>
+<li>7.5 <a href="#75-配置检查与验证">配置检查与验证</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>8. Ftrace 用法详解</b></summary></p>
+
+<ul>
+<li>8.1 <a href="#81-基本函数追踪">基本函数追踪</a></li>
+<li>8.2 <a href="#82-function-graph-追踪">Function Graph 追踪</a></li>
+<li>8.3 <a href="#83-trace-event-使用">Trace Event 使用</a></li>
+<li>8.4 <a href="#84-高级用法多实例与-pid-过滤">高级用法：多实例与 PID 过滤</a></li>
+<li>8.5 <a href="#85-kprobe--fprobe-动态探针">kprobe / fprobe 动态探针</a></li>
+<li>8.6 <a href="#86-延迟追踪器">延迟追踪器</a></li>
+<li>8.7 <a href="#87-histogram-triggers">Histogram Triggers</a></li>
+<li>8.8 <a href="#88-boottime-tracing">Boottime Tracing</a></li>
+<li>8.9 <a href="#89-echo-function--current_tracer-完整执行路径"><code>echo function > current_tracer</code> 完整执行路径</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>9. 实际案例</b></summary></p>
+
+<ul>
+<li>9.1 <a href="#91-案例一定位系统调用延迟抖动">案例一：定位系统调用延迟抖动</a></li>
+<li>9.2 <a href="#92-案例二追踪中断关闭导致的实时性问题">案例二：追踪中断关闭导致的实时性问题</a></li>
+<li>9.3 <a href="#93-案例三分析驱动初始化失败">案例三：分析驱动初始化失败</a></li>
+<li>9.4 <a href="#94-案例四内存分配慢路径分析">案例四：内存分配慢路径分析</a></li>
+<li>9.5 <a href="#95-案例五网络收包路径性能分析">案例五：网络收包路径性能分析</a></li>
+<li>9.6 <a href="#96-案例六调度延迟问题排查">案例六：调度延迟问题排查</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>10. QEMU 实践案例</b></summary></p>
+
+<ul>
+<li>10.1 <a href="#101-qemu-环境准备">QEMU 环境准备</a></li>
+<li>10.2 <a href="#102-实验一function-tracer-基础--追踪-sys_write-调用链">实验一：function tracer 基础 — 追踪 sys_write 调用链</a></li>
+<li>10.3 <a href="#103-实验二function_graph--分析-fork-完整调用树和耗时">实验二：function_graph — 分析 fork 完整调用树和耗时</a></li>
+<li>10.4 <a href="#104-实验三trace-events--追踪调度切换与中断">实验三：Trace Events — 追踪调度切换与中断</a></li>
+<li>10.5 <a href="#105-实验四kprobe-动态探针--捕获函数参数与返回值">实验四：kprobe 动态探针 — 捕获函数参数与返回值</a></li>
+<li>10.6 <a href="#106-实验五多实例追踪--隔离不同子系统">实验五：多实例追踪 — 隔离不同子系统</a></li>
+<li>10.7 <a href="#107-实验六histogram-trigger--统计调度延迟分布">实验六：Histogram Trigger — 统计调度延迟分布</a></li>
+<li>10.8 <a href="#108-实验七stack-trace--定位函数调用来源">实验七：Stack Trace — 定位函数调用来源</a></li>
+<li>10.9 <a href="#109-实验八追踪内核模块函数">实验八：追踪内核模块函数</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>11. Ftrace 面试经典问题与解答</b></summary></p>
+
+<ul>
+<li>11.1 <a href="#111-基础概念类">基础概念类</a></li>
+<li>11.2 <a href="#112-实现原理类">实现原理类</a></li>
+<li>11.3 <a href="#113-使用实践类">使用实践类</a></li>
+<li>11.4 <a href="#114-性能与设计类">性能与设计类</a></li>
+<li>11.5 <a href="#115-综合分析类">综合分析类</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><b>12. 参考索引</b></summary></p>
+
+<ul>
+<li>12.1 <a href="#121-关键源文件索引">关键源文件索引</a></li>
+</ul>
+
+<p></details></p>
+
+<hr>
+
+<h2>1. 概述</h2>
+
+<p>Ftrace (Function Tracer) 是 Linux 内核内建的追踪框架，最初由 Steven Rostedt 开发。它提供了一套完整的基础设施，用于追踪内核函数调用、测量延迟、分析性能问题。</p>
+
+<h3>1.1 核心能力</h3>
+
+<table>
+<thead><tr>
+<th>功能</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>函数追踪</strong></td>
+<td>追踪任意内核函数的调用和返回</td>
+</tr>
+<tr>
+<td><strong>Function Graph</strong></td>
+<td>可视化函数调用层级和耗时</td>
+</tr>
+<tr>
+<td><strong>Trace Events</strong></td>
+<td>基于 tracepoint 的结构化事件追踪</td>
+</tr>
+<tr>
+<td><strong>动态过滤</strong></td>
+<td>运行时选择追踪哪些函数</td>
+</tr>
+<tr>
+<td><strong>延迟分析</strong></td>
+<td>irqsoff/preemptoff/wakeup 延迟追踪器</td>
+</tr>
+<tr>
+<td><strong>kprobe/fprobe</strong></td>
+<td>基于 ftrace 的动态探针</td>
+</tr>
+<tr>
+<td><strong>BPF 集成</strong></td>
+<td>BPF 程序可挂载到 ftrace 追踪点</td>
+</tr>
+</tbody></table>
+
+<h3>1.2 设计哲学</h3>
+
+<ul>
+<li><strong>零开销原则</strong>：未启用时对性能几乎零影响（NOP 指令）</li>
+<li><strong>动态修改</strong>：运行时通过 text patching 启用/禁用追踪</li>
+<li><strong>Per-CPU 无锁</strong>：Ring Buffer 使用 per-CPU 设计，写入路径无锁</li>
+<li><strong>可插拔 Tracer</strong>：tracer 作为插件注册，可动态切换</li>
+</ul>
+
+<hr>
+
+<h2>2. 用户视角</h2>
+
+<blockquote>理解 ftrace 先从用户能看到什么开始——所有交互都通过 tracefs 文件系统完成。</blockquote>
+
+<h3>2.1 tracefs 文件接口一览</h3>
+
+<table>
+<thead><tr>
+<th>tracefs 路径</th>
+<th>功能</th>
+<th>对应代码</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>current_tracer</code></td>
+<td>设置/查看当前 tracer</td>
+<td><code>trace.c</code></td>
+</tr>
+<tr>
+<td><code>available_tracers</code></td>
+<td>列出可用 tracer</td>
+<td><code>trace.c</code></td>
+</tr>
+<tr>
+<td><code>tracing_on</code></td>
+<td>启用/禁用写入 ring buffer</td>
+<td><code>trace.c</code></td>
+</tr>
+<tr>
+<td><code>trace</code></td>
+<td>读取 trace 输出（快照式）</td>
+<td><code>trace.c</code></td>
+</tr>
+<tr>
+<td><code>trace_pipe</code></td>
+<td>流式读取（消费型，阻塞）</td>
+<td><code>trace.c</code></td>
+</tr>
+<tr>
+<td><code>set_ftrace_filter</code></td>
+<td>设置函数白名单过滤</td>
+<td><code>ftrace.c</code></td>
+</tr>
+<tr>
+<td><code>set_ftrace_notrace</code></td>
+<td>设置函数黑名单</td>
+<td><code>ftrace.c</code></td>
+</tr>
+<tr>
+<td><code>set_ftrace_pid</code></td>
+<td>设置 PID 过滤</td>
+<td><code>ftrace.c</code></td>
+</tr>
+<tr>
+<td><code>available_filter_functions</code></td>
+<td>列出所有可追踪函数</td>
+<td><code>ftrace.c</code></td>
+</tr>
+<tr>
+<td><code>events/</code></td>
+<td>Trace event 控制目录</td>
+<td><code>trace_events.c</code></td>
+</tr>
+<tr>
+<td><code>per_cpu/cpuN/</code></td>
+<td>Per-CPU 数据</td>
+<td><code>trace.c</code></td>
+</tr>
+</tbody></table>
+
+<h3>2.2 tracefs 挂载与访问</h3>
+
+<pre><code class="language-bash"># 默认挂载点（大多数发行版已自动挂载）
+mount -t tracefs nodev /sys/kernel/tracing
+
+# 也可通过旧兼容路径访问
+ls /sys/kernel/debug/tracing/
+
+# 查看当前支持的追踪器
+cat /sys/kernel/tracing/available_tracers
+# → function function_graph nop ...
+
+# 查看可追踪函数数量
+wc -l /sys/kernel/tracing/available_filter_functions</code></pre>
+
+<hr>
+
+<h2>3. 编译插桩与启动初始化</h2>
+
+<h3>3.1 GCC 编译选项与 NOP 占位</h3>
+
+<p>内核使用 <code>-fpatchable-function-entry=N</code> 编译选项（ARM64），在每个函数入口前插入 N 个 NOP 指令。</p>
+
+<p>对于 ARM64 + <code>CONFIG_DYNAMIC_FTRACE_WITH_CALL_OPS</code>，编译器生成：</p>
+
+<pre><code>addr+00:  NOP        // Literal (first 32 bits) — 存放 ftrace_ops 指针低32位
+addr+04:  NOP        // Literal (last 32 bits)  — 存放 ftrace_ops 指针高32位
+addr+08:  func: [BTI C]  // 可选的 BTI 指令
+addr+0C:  NOP        // → 运行时改为 MOV X9, LR
+addr+10:  NOP        // → 运行时改为 BL ftrace_caller</code></pre>
+
+<h3>3.2 <code>__mcount_loc</code> Section — 地址收集</h3>
+
+<p>链接器将所有插桩点地址收集到 <code>__mcount_loc</code> section 中：</p>
+
+<pre><code class="language-c">// vmlinux.lds.h 定义
+__start_mcount_loc = .;
+KEEP(*(__mcount_loc))
+__stop_mcount_loc = .;</code></pre>
+
+<p>这些地址在 <code>ftrace_init()</code> 中被遍历处理。</p>
+
+<h3>3.3 地址调整：<code>ftrace_call_adjust()</code></h3>
+
+<pre><code class="language-c">// arch/arm64/kernel/ftrace.c
+unsigned long ftrace_call_adjust(unsigned long addr)
+{
+    // 对于 CALL_OPS：跳过 literal NOPs、BTI、第一个 NOP
+    // 返回 BL 指令的地址（即将被修改的位置）
+    addr += 2 * AARCH64_INSN_SIZE;  // 跳过 literal
+    if (aarch64_insn_is_bti(insn))
+        addr += AARCH64_INSN_SIZE;  // 跳过 BTI
+    addr += AARCH64_INSN_SIZE;      // 跳过 MOV X9,LR 位置
+    return addr;
+}</code></pre>
+
+<h3>3.4 内核启动序列</h3>
+
+<pre><code>start_kernel()                    // init/main.c
+  ├── early_trace_init()          // 初始化 ring buffer 和 trace_array
+  │     ├── tracer_alloc_buffers()
+  │     └── init_events()
+  ├── ftrace_init()               // 核心 ftrace 初始化
+  │     ├── ftrace_dyn_arch_init()
+  │     ├── ftrace_process_locs() // 构建 dyn_ftrace 记录
+  │     └── set_ftrace_early_filters()
+  └── trace_init()                // 创建 tracefs 文件系统
+        └── tracer_init_tracefs()</code></pre>
+
+<h3>3.5 <code>ftrace_init()</code> 详解</h3>
+
+<pre><code class="language-c">// kernel/trace/ftrace.c:7933
+void __init ftrace_init(void)
+{
+    extern unsigned long __start_mcount_loc[];
+    extern unsigned long __stop_mcount_loc[];
+    unsigned long count;
+
+    // 1. 架构相关初始化
+    ftrace_dyn_arch_init();
+
+    // 2. 计算可追踪函数数量
+    count = __stop_mcount_loc - __start_mcount_loc;
+
+    // 3. 处理所有插桩位置，构建 dyn_ftrace 记录
+    ftrace_process_locs(NULL, __start_mcount_loc, __stop_mcount_loc);
+
+    // 4. 启用 ftrace
+    ftrace_enabled = 1;
+
+    // 5. 应用启动时过滤器
+    set_ftrace_early_filters();
+}</code></pre>
+
+<h3>3.6 <code>ftrace_process_locs()</code> — 构建追踪记录</h3>
+
+<pre><code class="language-c">// kernel/trace/ftrace.c:7130
+static int ftrace_process_locs(struct module *mod,
+                               unsigned long *start, unsigned long *end)
+{
+    // 1. 排序 mcount 地址（若非编译时排序）
+    sort(start, count, sizeof(*start), ftrace_cmp_ips, NULL);
+
+    // 2. 分配 ftrace_page 页面
+    start_pg = ftrace_allocate_pages(count);
+
+    // 3. 遍历每个地址，创建 dyn_ftrace 记录
+    while (p &lt; end) {
+        addr = ftrace_call_adjust(*p++);  // 架构相关地址调整
+        rec = &amp;pg-&gt;records[pg-&gt;index++];
+        rec-&gt;ip = addr;
+
+        // 4. 初始化每个调用点（NOP → MOV X9,LR）
+        ftrace_init_nop(mod, rec);
+    }
+}</code></pre>
+
+<hr>
+
+<h2>4. 软件架构与核心数据结构</h2>
+
+<h3>4.1 软件架构总览</h3>
+
+<p><img src="image/ftrace_architecture.svg" alt="Ftrace 软件架构图"></p>
+
+<pre><code>┌─────────────────────────────────────────────────────────────────┐
+│ 用户空间：tracefs 文件接口 / trace-cmd / perf ftrace            │
+├─────────────────────────────────────────────────────────────────┤
+│ tracefs VFS 层：trace.c / ftrace.c 中的 file_operations        │
+├─────────────────────────────────────────────────────────────────┤
+│ Tracer 框架层：struct tracer (function/function_graph/irqsoff) │
+│                trace_array / array_buffer / trace_events        │
+├─────────────────────────────────────────────────────────────────┤
+│ Ftrace 核心引擎：ftrace_ops 管理 / 动态记录 / 过滤 / 代码修改  │
+│                  ftrace.c (7900+ 行核心代码)                    │
+├─────────────────────────────────────────────────────────────────┤
+│ Ring Buffer 层：ring_buffer.c (lock-free per-cpu ring buffer)  │
+├─────────────────────────────────────────────────────────────────┤
+│ 架构相关层：arch/arm64/kernel/ftrace.c + entry-ftrace.S        │
+│            text patching / ftrace_caller 汇编入口               │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+
+<p>以下按自底向上的顺序介绍各层核心数据结构。</p>
+
+<p><img src="image/ftrace_data_structures.svg" alt="Ftrace 数据结构关系图"></p>
+
+<h3>4.2 <code>struct ftrace_ops</code> — 追踪操作回调</h3>
+
+<p>这是 ftrace 最核心的数据结构，代表一个注册的追踪回调。</p>
+
+<pre><code class="language-c">// include/linux/ftrace.h
+struct ftrace_ops {
+    ftrace_func_t           func;          // 回调函数
+    struct ftrace_ops __rcu *next;          // RCU 链表
+    unsigned long           flags;          // FTRACE_OPS_FL_* 标志
+    void                    *private;       // 私有数据（通常指向 trace_array）
+    ftrace_func_t           saved_func;     // PID 过滤时保存原始 func
+
+    // CONFIG_DYNAMIC_FTRACE
+    struct ftrace_ops_hash  local_hash;     // 本地哈希（filter/notrace）
+    struct ftrace_ops_hash  *func_hash;     // 指向活跃哈希
+    unsigned long           trampoline;     // 跳板地址
+    unsigned long           trampoline_size;
+    struct list_head        list;
+    struct list_head        subop_list;     // 子 ops 链表
+    ftrace_ops_func_t       ops_func;
+    struct ftrace_ops       *managed;       // 父 ops（若为 SUBOP）
+    unsigned long           direct_call;    // 直接调用地址
+};</code></pre>
+
+<p><strong>关键标志位</strong>：</p>
+
+<table>
+<thead><tr>
+<th>标志</th>
+<th>含义</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>FTRACE_OPS_FL_ENABLED</code></td>
+<td>ops 已启用</td>
+</tr>
+<tr>
+<td><code>FTRACE_OPS_FL_DYNAMIC</code></td>
+<td>动态分配的 ops</td>
+</tr>
+<tr>
+<td><code>FTRACE_OPS_FL_SAVE_REGS</code></td>
+<td>需要保存完整寄存器</td>
+</tr>
+<tr>
+<td><code>FTRACE_OPS_FL_IPMODIFY</code></td>
+<td>可修改 IP（live patching）</td>
+</tr>
+<tr>
+<td><code>FTRACE_OPS_FL_PID</code></td>
+<td>受 PID 过滤影响</td>
+</tr>
+<tr>
+<td><code>FTRACE_OPS_FL_RCU</code></td>
+<td>仅在 RCU 读侧调用</td>
+</tr>
+<tr>
+<td><code>FTRACE_OPS_FL_DIRECT</code></td>
+<td>直接调用（跳过 ftrace 框架）</td>
+</tr>
+<tr>
+<td><code>FTRACE_OPS_FL_SUBOP</code></td>
+<td>子操作，由 managed ops 管控</td>
+</tr>
+</tbody></table>
+
+<h3>4.3 <code>struct dyn_ftrace</code> — 可追踪函数记录</h3>
+
+<pre><code class="language-c">// include/linux/ftrace.h
+struct dyn_ftrace {
+    unsigned long   ip;     // mcount 调用点地址
+    unsigned long   flags;  // 引用计数 + 状态标志
+    struct dyn_arch_ftrace arch;  // 架构相关数据
+};</code></pre>
+
+<p><code>flags</code> 字段编码：</p>
+<ul>
+<li><strong>低 <code>FTRACE_REF_MAX_BITS</code> 位</strong>：引用计数（有多少 ftrace_ops 追踪此函数）</li>
+<li><strong>高位标志</strong>：</li>
+<li><code>FTRACE_FL_ENABLED</code> — 当前已启用</li>
+<li><code>FTRACE_FL_REGS</code> — 需要保存寄存器</li>
+<li><code>FTRACE_FL_CALL_OPS</code> — 使用 per-callsite ops（ARM64）</li>
+<li><code>FTRACE_FL_CALL_OPS_EN</code> — CALL_OPS 已激活</li>
+<li><code>FTRACE_FL_TOUCHED</code> — 曾被修改过</li>
+<li><code>FTRACE_FL_MODIFIED</code> — 当前已被修改</li>
+</ul>
+
+<h3>4.4 <code>struct ftrace_page</code> — 记录页</h3>
+
+<pre><code class="language-c">// kernel/trace/ftrace.c:1117
+struct ftrace_page {
+    struct ftrace_page  *next;      // 下一页
+    struct dyn_ftrace   *records;   // dyn_ftrace 数组
+    int                 index;      // 当前页内记录数
+    int                 order;      // 页面 order
+};</code></pre>
+
+<p>全局链表：<code>ftrace_pages_start → page1 → page2 → ... → NULL</code></p>
+
+<h3>4.5 <code>struct ftrace_hash</code> / <code>ftrace_ops_hash</code> — 过滤哈希表</h3>
+
+<pre><code class="language-c">// kernel/trace/trace.h
+struct ftrace_hash {
+    unsigned long       size_bits;      // 哈希大小（2^size_bits 个桶）
+    struct hlist_head   *buckets;       // 哈希桶数组
+    unsigned long       count;          // 条目数
+    unsigned long       flags;          // FTRACE_HASH_FL_MOD
+    struct rcu_head     rcu;
+};</code></pre>
+
+<pre><code class="language-c">// include/linux/ftrace.h
+struct ftrace_ops_hash {
+    struct ftrace_hash __rcu *notrace_hash;  // 不追踪的函数
+    struct ftrace_hash __rcu *filter_hash;   // 要追踪的函数
+    struct mutex             regex_lock;
+};</code></pre>
+
+<h3>4.6 <code>struct trace_array</code> — 追踪实例</h3>
+
+<pre><code class="language-c">// kernel/trace/trace.h
+struct trace_array {
+    struct list_head    list;           // 全局实例链表
+    char                *name;          // 实例名称
+    struct array_buffer array_buffer;   // 主缓冲区
+    struct array_buffer max_buffer;     // 最大延迟快照缓冲区
+    int                 buffer_disabled;
+    struct tracer       *current_trace; // 当前活跃 tracer
+    unsigned int        trace_flags;    // 追踪选项
+    struct ftrace_ops   *ops;           // 关联的 ftrace_ops
+    struct fgraph_ops   *gops;          // function_graph ops
+    struct trace_pid_list __rcu *function_pids;
+    struct dentry       *dir;           // tracefs 目录
+    struct list_head    events;         // event 文件链表
+    // ...
+};</code></pre>
+
+<h3>4.7 <code>struct tracer</code> — 追踪器插件</h3>
+
+<pre><code class="language-c">// kernel/trace/trace.h
+struct tracer {
+    const char      *name;              // &quot;function&quot;, &quot;function_graph&quot; 等
+    int             (*init)(struct trace_array *tr);
+    void            (*reset)(struct trace_array *tr);
+    void            (*start)(struct trace_array *tr);
+    void            (*stop)(struct trace_array *tr);
+    void            (*print_header)(struct seq_file *m);
+    enum print_line_t (*print_line)(struct trace_iterator *iter);
+    struct tracer   *next;              // tracer 注册链表
+    struct tracer_flags *flags;
+    int             enabled;
+};</code></pre>
+
+<h3>4.8 <code>struct trace_buffer</code> / <code>ring_buffer_per_cpu</code> — Ring Buffer</h3>
+
+<pre><code class="language-c">// kernel/trace/ring_buffer.c
+struct trace_buffer {
+    unsigned        flags;
+    int             cpus;
+    atomic_t        record_disabled;
+    struct ring_buffer_per_cpu **buffers;  // per-CPU 缓冲区数组
+    u64             (*clock)(void);       // 时间源
+    unsigned int    subbuf_size;
+    unsigned int    subbuf_order;
+    unsigned int    max_data_size;
+};</code></pre>
+
+<pre><code class="language-c">// kernel/trace/ring_buffer.c
+struct ring_buffer_per_cpu {
+    int                     cpu;
+    struct trace_buffer     *buffer;
+    struct list_head        *pages;         // 环形页链表
+    struct buffer_page      *head_page;     // 读头
+    struct buffer_page      *tail_page;     // 写尾
+    struct buffer_page      *commit_page;   // 已提交
+    struct buffer_page      *reader_page;   // 读者专用页
+    local_t                 entries;        // 条目数
+    local_t                 overrun;        // 溢出数
+    unsigned long           nr_pages;
+    rb_time_t               write_stamp;    // 写时间戳
+};</code></pre>
+
+<h3>4.9 数据结构关系总结</h3>
+
+<pre><code>ftrace_trace_arrays (全局链表)
+  └── trace_array
+       ├── array_buffer
+       │    ├── trace_buffer (ring buffer)
+       │    │    └── ring_buffer_per_cpu[N]
+       │    │         ├── buffer_page 环形链表 (head/tail/commit)
+       │    │         └── ring_buffer_event[] (实际 trace 数据)
+       │    └── trace_array_cpu __percpu (per-CPU 状态)
+       │
+       ├── current_trace → struct tracer (function/function_graph/...)
+       │
+       └── ops → struct ftrace_ops
+                  ├── func (回调函数指针)
+                  ├── next → ops_B → ... → ftrace_list_end
+                  └── func_hash → ftrace_ops_hash
+                       ├── filter_hash → ftrace_hash
+                       │    └── buckets[] → ftrace_func_entry {ip}
+                       └── notrace_hash → ftrace_hash
+
+ftrace_pages_start (全局链表)
+  └── ftrace_page → ftrace_page → ...
+       └── records[] → dyn_ftrace {ip, flags}</code></pre>
+
+<hr>
+
+<h2>5. Ftrace 子系统关键机制</h2>
+
+<h3>5.1 动态代码修改引擎</h3>
+
+<h4>5.1.1 修改流程总览</h4>
+
+<p>当用户启用追踪（如 <code>echo function > current_tracer</code>）时：</p>
+
+<pre><code>register_ftrace_function(ops)
+  → ftrace_startup(ops, command)
+    → ftrace_hash_rec_enable(ops)          // 更新 dyn_ftrace 引用计数
+    → ftrace_run_update_code(command)      // 触发代码修改
+      → arch_ftrace_update_code(command)
+        → ftrace_replace_code()            // 遍历所有记录
+          → ftrace_update_record()         // 决定 MAKE_CALL/MAKE_NOP
+          → ftrace_make_call(rec, addr)    // ARM64: NOP → BL
+          → ftrace_make_nop(mod, rec, addr) // ARM64: BL → NOP</code></pre>
+
+<h4>5.1.2 ARM64 代码修改实现</h4>
+
+<pre><code class="language-c">// arch/arm64/kernel/ftrace.c
+int ftrace_make_call(struct dyn_ftrace *rec, unsigned long addr)
+{
+    unsigned long pc = rec-&gt;ip;
+
+    // 1. 更新 per-callsite ops 指针（CALL_OPS 模式）
+    ftrace_rec_update_ops(rec);
+
+    // 2. 找到可达的目标地址（可能使用 PLT）
+    ftrace_find_callable_addr(rec, NULL, &amp;addr);
+
+    // 3. NOP → BL ftrace_caller
+    old = aarch64_insn_gen_nop();
+    new = aarch64_insn_gen_branch_imm(pc, addr, AARCH64_INSN_BRANCH_LINK);
+    return ftrace_modify_code(pc, old, new, true);
+}</code></pre>
+
+<h4>5.1.3 指令修改前后对比</h4>
+
+<pre><code>   禁用状态 (Disabled):              启用状态 (Enabled):
+   ┌─────────────────────┐          ┌─────────────────────┐
+   │ [ops 指针 literal]  │          │ [ops 指针 literal]  │
+   │ MOV X9, LR          │          │ MOV X9, LR          │
+   │ NOP                 │  ──→     │ BL ftrace_caller    │
+   │ &lt;function prologue&gt; │          │ &lt;function prologue&gt; │
+   └─────────────────────┘          └─────────────────────┘</code></pre>
+
+<h4>5.1.4 ARM64 CALL_OPS 优化</h4>
+
+<p><strong>传统模式 vs CALL_OPS 模式</strong>：</p>
+
+<table>
+<thead><tr>
+<th>对比项</th>
+<th>传统模式</th>
+<th>CALL_OPS 模式</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>ops 获取方式</td>
+<td>全局 <code>function_trace_op</code></td>
+<td>从函数前 literal pool 读取</td>
+</tr>
+<tr>
+<td>多 ops 开销</td>
+<td>遍历链表</td>
+<td>仅遍历当前函数关联的 ops</td>
+</tr>
+<tr>
+<td>配置宏</td>
+<td>—</td>
+<td><code>CONFIG_DYNAMIC_FTRACE_WITH_CALL_OPS</code></td>
+</tr>
+</tbody></table>
+
+<p><strong>literal pool 写入</strong>：</p>
+
+<pre><code class="language-c">// arch/arm64/kernel/ftrace.c
+static int ftrace_rec_set_ops(const struct dyn_ftrace *rec,
+                              const struct ftrace_ops *ops)
+{
+    unsigned long literal = ALIGN_DOWN(rec-&gt;ip - 12, 8);
+    return aarch64_insn_write_literal_u64((void *)literal,
+                                          (unsigned long)ops);
+}</code></pre>
+
+<p><strong>内存布局</strong>：</p>
+
+<pre><code>literal+0: [ftrace_ops 指针低32位]   ← ftrace_rec_set_ops() 写入
+literal+4: [ftrace_ops 指针高32位]
+func+0:    MOV X9, LR               ← ftrace_init_nop() 写入
+func+4:    BL ftrace_caller          ← ftrace_make_call() 写入
+func+8:    &lt;function body...&gt;</code></pre>
+
+<hr>
+
+<h3>5.2 运行时追踪路径</h3>
+
+<h4>5.2.1 热路径（Hot Path）</h4>
+
+<pre><code>被追踪函数入口
+  │
+  ├── MOV X9, LR           // 保存原始 LR 到 X9
+  ├── BL ftrace_caller      // 跳转到 ftrace 入口（汇编）
+  │
+  ▼ ftrace_caller (entry-ftrace.S)
+  │
+  ├── 保存 ftrace_regs (x0-x8, fp, lr, sp, pc)
+  ├── [CALL_OPS] 从 literal pool 加载 ops 指针
+  ├── 调用 ops-&gt;func(ip, parent_ip, ops, fregs)
+  │     │
+  │     ├── 单 ops: 直接调用 ops-&gt;func
+  │     └── 多 ops: ftrace_ops_list_func() 遍历链表
+  │           │
+  │           └── function_trace_call(ip, parent_ip, ops, fregs)
+  │                 │
+  │                 ├── trace_function(tr, ip, parent_ip, trace_ctx)
+  │                 │     │
+  │                 │     ├── ring_buffer_lock_reserve() // 预留空间
+  │                 │     ├── 填充 ftrace_entry {ip, parent_ip}
+  │                 │     └── ring_buffer_unlock_commit() // 提交
+  │                 │
+  │                 └── [可选] ftrace_trace_stack() // 栈追踪
+  │
+  ├── 恢复寄存器
+  └── RET 到原始调用者</code></pre>
+
+<h4>5.2.2 <code>function_trace_call()</code> 实现</h4>
+
+<pre><code class="language-c">// kernel/trace/trace_functions.c
+static void function_trace_call(unsigned long ip, unsigned long parent_ip,
+                                struct ftrace_ops *op, struct ftrace_regs *fregs)
+{
+    struct trace_array *tr = op-&gt;private;
+    struct trace_array_cpu *data;
+    int bit, pc;
+
+    // 递归保护
+    bit = ftrace_test_recursion_trylock(ip, parent_ip);
+    if (bit &lt; 0) return;
+
+    data = this_cpu_ptr(tr-&gt;array_buffer.data);
+    if (atomic_read(&amp;data-&gt;disabled)) goto out;
+
+    pc = preempt_count();
+    trace_function(tr, ip, parent_ip, trace_ctx);
+
+out:
+    ftrace_test_recursion_unlock(bit);
+}</code></pre>
+
+<h4>5.2.3 <code>update_ftrace_function()</code> — 全局追踪函数选择</h4>
+
+<pre><code class="language-c">// kernel/trace/ftrace.c
+static void update_ftrace_function(void)
+{
+    if (ops_list == &amp;ftrace_list_end) {
+        func = ftrace_stub;                    // 无追踪
+    } else if (ops_list-&gt;next == &amp;ftrace_list_end) {
+        func = ftrace_ops_get_list_func(ops);  // 单 ops：直接调用
+    } else {
+        func = ftrace_ops_list_func;           // 多 ops：遍历链表
+    }
+    ftrace_trace_function = func;
+}</code></pre>
+
+<hr>
+
+<h3>5.3 过滤机制</h3>
+
+<h4>5.3.1 过滤架构</h4>
+
+<pre><code>用户写入 set_ftrace_filter
+  → ftrace_filter_write()
+    → ftrace_regex_write() // 解析正则/glob
+      → ftrace_match_records() // 匹配 dyn_ftrace
+        → add_hash_entry() // 添加到 filter_hash
+  → ftrace_hash_move_and_update_ops()
+    → ftrace_hash_rec_enable/disable()
+    → ftrace_run_update_code() // 修改代码</code></pre>
+
+<h4>5.3.2 过滤逻辑</h4>
+
+<pre><code>对每个 dyn_ftrace 记录：
+  if (filter_hash 为空)
+      追踪所有函数（除了 notrace_hash 中的）
+  else
+      仅追踪 filter_hash 中的函数
+
+  if (ip 在 notrace_hash 中)
+      不追踪此函数</code></pre>
+
+<h4>5.3.3 哈希查找</h4>
+
+<pre><code class="language-c">// kernel/trace/ftrace.c
+struct ftrace_func_entry *
+ftrace_lookup_ip(struct ftrace_hash *hash, unsigned long ip)
+{
+    if (ftrace_hash_empty(hash))
+        return NULL;
+    
+    key = hash_long(ip, hash-&gt;size_bits);
+    hhd = &amp;hash-&gt;buckets[key];
+    
+    hlist_for_each_entry_rcu_notrace(entry, hhd, hlist) {
+        if (entry-&gt;ip == ip)
+            return entry;
+    }
+    return NULL;
+}</code></pre>
+
+<hr>
+
+<h3>5.4 Ring Buffer 机制</h3>
+
+<h4>5.4.1 结构概览</h4>
+
+<pre><code>trace_buffer
+  └── buffers[cpu]  (ring_buffer_per_cpu)
+       ├── pages → buffer_page 环形链表
+       │    ├── page1 → page2 → page3 → ... → page1
+       │    └── 每页包含 buffer_data_page + ring_buffer_event[]
+       ├── head_page   — 读者当前读取位置
+       ├── tail_page   — 写者当前写入位置
+       ├── commit_page — 已提交的最新页
+       └── reader_page — 读者专用页（swap 机制）</code></pre>
+
+<h4>5.4.2 写入路径（Lock-free）</h4>
+
+<pre><code class="language-c">ring_buffer_lock_reserve(buffer, length)
+  → 获取 per-cpu buffer
+  → 在 tail_page 上预留 length 字节
+  → 返回 ring_buffer_event*
+
+// 调用者填充数据...
+
+ring_buffer_unlock_commit(buffer)
+  → 更新 commit 指针
+  → 更新时间戳</code></pre>
+
+<h4>5.4.3 读取路径</h4>
+
+<pre><code>cat /sys/kernel/tracing/trace
+  → tracing_read()
+    → trace_iterator 遍历所有 CPU buffer
+      → ring_buffer_peek() / ring_buffer_consume()
+        → 使用 reader_page 与 head_page swap 实现无锁读取</code></pre>
+
+<h4>5.4.4 Reader Page Swap 机制</h4>
+
+<pre><code>写者视角:                    读者视角:
+┌──────┐                    reader_page
+│page1 │←head               ┌──────┐
+│page2 │                    │empty │
+│page3 │←tail               └──────┘
+│page4 │                         │
+└──┬───┘                         │ swap
+   │                             ▼
+   └──→ page1                reader_page 与 head_page 交换
+                             读者获得满页，空页插回环形链表</code></pre>
+
+<hr>
+
+<h3>5.5 Function Graph Tracer</h3>
+
+<p>Function Graph Tracer 追踪函数的进入和返回，可以测量函数执行时间。</p>
+
+<pre><code>1. 函数进入时：记录 entry 事件，修改栈上返回地址
+   原始 LR → return_to_handler
+
+2. 函数返回时：跳转到 return_to_handler
+   → 记录 exit 事件（含执行时间）
+   → 恢复原始返回地址
+   → 返回到真正的调用者</code></pre>
+
+<p><strong>关键文件</strong>：</p>
+<ul>
+<li><code>kernel/trace/fgraph.c</code> — Function Graph 核心实现</li>
+<li><code>kernel/trace/trace_functions_graph.c</code> — 输出格式化</li>
+<li><code>arch/arm64/kernel/entry-ftrace.S</code> — ARM64 汇编入口</li>
+</ul>
+
+<hr>
+
+<h3>5.6 Trace Events（Tracepoints）</h3>
+
+<p><strong>TRACE_EVENT 宏</strong>：</p>
+
+<pre><code class="language-c">TRACE_EVENT(sched_switch,
+    TP_PROTO(bool preempt, struct task_struct *prev, struct task_struct *next, ...),
+    TP_ARGS(preempt, prev, next, ...),
+    TP_STRUCT__entry(
+        __array(char, prev_comm, TASK_COMM_LEN)
+        __field(pid_t, prev_pid)
+        // ...
+    ),
+    TP_fast_assign(
+        memcpy(__entry-&gt;prev_comm, prev-&gt;comm, TASK_COMM_LEN);
+        __entry-&gt;prev_pid = prev-&gt;pid;
+    ),
+    TP_printk(&quot;prev_comm=%s ...&quot;, __entry-&gt;prev_comm, ...)
+);</code></pre>
+
+<p><strong>事件架构</strong>：</p>
+
+<pre><code>TRACE_EVENT 宏展开
+  ├── 定义 tracepoint（静态 key + 回调链）
+  ├── 定义 trace_event_class（事件类模板）
+  ├── 定义 trace_event_call（事件实例）
+  └── 注册到 trace_events.c 框架
+       └── 创建 tracefs events/ 目录</code></pre>
+
+<hr>
+
+<h2>6. 使用场景与能解决的问题</h2>
+
+<h3>6.1 典型使用场景</h3>
+
+<table>
+<thead><tr>
+<th>场景</th>
+<th>说明</th>
+<th>推荐 Tracer / 方法</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>函数调用追踪</strong></td>
+<td>确认某个函数是否被调用、被谁调用、调用频率</td>
+<td><code>function</code> tracer + <code>set_ftrace_filter</code></td>
+</tr>
+<tr>
+<td><strong>函数调用关系分析</strong></td>
+<td>可视化函数调用树、查看完整调用链</td>
+<td><code>function_graph</code> tracer</td>
+</tr>
+<tr>
+<td><strong>函数耗时测量</strong></td>
+<td>精确测量单个函数或调用子树的执行时间</td>
+<td><code>function_graph</code> tracer</td>
+</tr>
+<tr>
+<td><strong>中断/抢占延迟分析</strong></td>
+<td>定位关中断或关抢占时间过长的代码路径</td>
+<td><code>irqsoff</code> / <code>preemptoff</code> tracer</td>
+</tr>
+<tr>
+<td><strong>调度延迟分析</strong></td>
+<td>任务从唤醒到实际运行的延迟</td>
+<td><code>wakeup</code> / <code>wakeup_rt</code> tracer</td>
+</tr>
+<tr>
+<td><strong>内核事件追踪</strong></td>
+<td>调度切换、内存分配、I/O 操作等内核事件</td>
+<td>Trace Events (<code>events/</code> 目录)</td>
+</tr>
+<tr>
+<td><strong>动态探针</strong></td>
+<td>在任意函数入口/返回点插入探针，获取参数和返回值</td>
+<td>kprobe / fprobe events</td>
+</tr>
+<tr>
+<td><strong>驱动调试</strong></td>
+<td>追踪驱动初始化流程、中断处理、DMA 操作</td>
+<td><code>function_graph</code> + 事件过滤</td>
+</tr>
+<tr>
+<td><strong>启动流程分析</strong></td>
+<td>内核启动阶段的函数调用和耗时</td>
+<td>Boottime Tracing</td>
+</tr>
+<tr>
+<td><strong>硬件延迟检测</strong></td>
+<td>SMI、NMI 等硬件引入的延迟</td>
+<td><code>hwlat</code> / <code>osnoise</code> tracer</td>
+</tr>
+<tr>
+<td><strong>用户态与内核态联合分析</strong></td>
+<td>系统调用路径追踪</td>
+<td>syscall events + uprobe events</td>
+</tr>
+<tr>
+<td><strong>性能热点定位</strong></td>
+<td>函数调用频率统计</td>
+<td>Function Profiler</td>
+</tr>
+</tbody></table>
+
+<h3>6.2 ftrace 能解决哪些问题</h3>
+
+<h4>问题一：「系统卡顿但不知道卡在哪」</h4>
+
+<p><strong>症状</strong>：应用延迟突然升高，但 CPU 利用率不高。</p>
+
+<p><strong>ftrace 方案</strong>：</p>
+<ol>
+<li>用 <code>irqsoff</code> tracer 检查是否有长时间关中断</li>
+<li>用 <code>preemptoff</code> tracer 检查是否有长时间关抢占</li>
+<li>用 <code>wakeup_rt</code> tracer 检查实时任务调度延迟</li>
+<li>用 <code>function_graph</code> 追踪怀疑的慢路径</li>
+</ol>
+
+<h4>问题二：「函数行为不符合预期」</h4>
+
+<p><strong>症状</strong>：代码逻辑看起来正确，但运行结果异常。</p>
+
+<p><strong>ftrace 方案</strong>：</p>
+<ol>
+<li>用 <code>function</code> tracer 确认函数是否被调用</li>
+<li>用 kprobe event 获取函数入口参数值</li>
+<li>用 <code>function_graph</code> + <code>funcgraph-retval</code> 查看返回值</li>
+<li>用 trace event filter 缩小范围到特定条件</li>
+</ol>
+
+<h4>问题三：「驱动初始化失败但无日志」</h4>
+
+<p><strong>症状</strong>：设备探测失败，dmesg 无有用信息。</p>
+
+<p><strong>ftrace 方案</strong>：</p>
+<ol>
+<li>使用 Boottime Tracing 在启动阶段追踪 <code>probe</code> 相关函数</li>
+<li>用 <code>function_graph</code> 追踪 <code>platform_driver_register</code> 调用链</li>
+<li>用 kprobe event 捕获 <code>device_add</code>/<code>driver_probe_device</code> 的参数和返回值</li>
+</ol>
+
+<h4>问题四：「内存分配偶发慢」</h4>
+
+<p><strong>症状</strong>：<code>kmalloc</code>/<code>alloc_pages</code> 偶尔耗时很长。</p>
+
+<p><strong>ftrace 方案</strong>：</p>
+<ol>
+<li>用 <code>function_graph</code> 追踪 <code>__alloc_pages</code> 调用树</li>
+<li>启用 <code>kmem</code> trace events（<code>mm_page_alloc</code>、<code>mm_page_free</code>）</li>
+<li>用 histogram trigger 统计分配耗时分布</li>
+</ol>
+
+<h4>问题五：「网络丢包但找不到位置」</h4>
+
+<p><strong>症状</strong>：网络包在内核协议栈某处被丢弃。</p>
+
+<p><strong>ftrace 方案</strong>：</p>
+<ol>
+<li>启用 <code>net</code> 和 <code>skb</code> trace events（<code>kfree_skb</code>、<code>net_dev_xmit</code>）</li>
+<li>用 <code>kfree_skb</code> event 的 <code>reason</code> 字段定位丢包原因</li>
+<li>用 <code>function_graph</code> 追踪 <code>netif_receive_skb</code> 调用链</li>
+</ol>
+
+<h4>问题六：「锁竞争导致性能下降」</h4>
+
+<p><strong>症状</strong>：多核系统负载上去后性能不线性增长。</p>
+
+<p><strong>ftrace 方案</strong>：</p>
+<ol>
+<li>启用 <code>lock</code> trace events（<code>lock_acquire</code>、<code>lock_contended</code>）</li>
+<li>用 histogram trigger 按锁地址聚合竞争次数</li>
+<li>用 <code>function_graph</code> 追踪持锁期间的函数调用</li>
+</ol>
+
+<h3>6.3 ftrace vs 其他追踪工具对比</h3>
+
+<table>
+<thead><tr>
+<th>对比维度</th>
+<th>ftrace</th>
+<th>perf</th>
+<th>eBPF/bpftrace</th>
+<th>SystemTap</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>内核内建</strong></td>
+<td>是</td>
+<td>是</td>
+<td>需要 BPF 支持</td>
+<td>需要额外模块</td>
+</tr>
+<tr>
+<td><strong>使用方式</strong></td>
+<td>tracefs 文件接口</td>
+<td>命令行工具</td>
+<td>C/脚本</td>
+<td>脚本</td>
+</tr>
+<tr>
+<td><strong>开销</strong></td>
+<td>极低（动态 NOP）</td>
+<td>采样式，低</td>
+<td>低（JIT 编译）</td>
+<td>中等</td>
+</tr>
+<tr>
+<td><strong>函数追踪</strong></td>
+<td>原生支持</td>
+<td>有限</td>
+<td>通过 ftrace</td>
+<td>支持</td>
+</tr>
+<tr>
+<td><strong>调用图</strong></td>
+<td>function_graph</td>
+<td>采样式</td>
+<td>需要编程</td>
+<td>支持</td>
+</tr>
+<tr>
+<td><strong>延迟分析</strong></td>
+<td>专用 tracer</td>
+<td>支持</td>
+<td>需要编程</td>
+<td>支持</td>
+</tr>
+<tr>
+<td><strong>事件聚合</strong></td>
+<td>histogram trigger</td>
+<td>原生支持</td>
+<td>原生支持</td>
+<td>支持</td>
+</tr>
+<tr>
+<td><strong>嵌入式适用性</strong></td>
+<td>高（无额外依赖）</td>
+<td>需要工具链</td>
+<td>需要较新内核</td>
+<td>复杂</td>
+</tr>
+<tr>
+<td><strong>学习成本</strong></td>
+<td>低</td>
+<td>中等</td>
+<td>中高</td>
+<td>高</td>
+</tr>
+</tbody></table>
+
+<blockquote><strong>建议</strong>：在嵌入式和实时系统中，ftrace 通常是首选，因为它零额外依赖、开销可控、操作简单。在需要复杂聚合和编程化分析时，配合 eBPF 使用。</blockquote>
+
+<hr>
+
+<h2>7. 内核编译配置选项</h2>
+
+<blockquote>以下基于 Linux 6.18.1 / ARM64 架构。不同架构和内核版本可能略有差异。</blockquote>
+
+<h3>7.1 最小可用配置</h3>
+
+<p>启用 ftrace 最基本的函数追踪功能，需要以下配置：</p>
+
+<pre><code class="language-kconfig"># 基础设施（通常自动选中）
+CONFIG_TRACING_SUPPORT=y          # 追踪基础支持
+CONFIG_FTRACE=y                   # Ftrace 总开关（menuconfig &quot;Tracers&quot;）
+CONFIG_TRACING=y                  # 追踪框架（自动选中 RING_BUFFER, TRACEPOINTS 等）
+
+# 函数追踪（核心功能）
+CONFIG_FUNCTION_TRACER=y          # 函数追踪器
+CONFIG_DYNAMIC_FTRACE=y           # 动态 ftrace（NOP patching，默认=y）
+
+# 通常需要的符号支持
+CONFIG_KALLSYMS=y                 # 内核符号表（自动选中）
+CONFIG_KALLSYMS_ALL=y             # 导出所有符号（推荐）</code></pre>
+
+<p><strong>最小配置的 <code>menuconfig</code> 路径</strong>：</p>
+
+<pre><code>Kernel hacking
+  └─ Tracers  [*]                           # CONFIG_FTRACE
+      └─ Kernel Function Tracer  [*]        # CONFIG_FUNCTION_TRACER</code></pre>
+
+<h3>7.2 推荐完整配置</h3>
+
+<p>用于日常内核开发和调试的推荐配置：</p>
+
+<pre><code class="language-kconfig"># ===== 核心追踪 =====
+CONFIG_FTRACE=y
+CONFIG_FUNCTION_TRACER=y
+CONFIG_FUNCTION_GRAPH_TRACER=y        # 函数调用图 + 耗时
+CONFIG_FUNCTION_GRAPH_RETVAL=y        # 函数返回值追踪
+CONFIG_DYNAMIC_FTRACE=y
+CONFIG_DYNAMIC_FTRACE_WITH_ARGS=y     # 通过 ftrace_regs 访问参数
+
+# ===== 延迟追踪器 =====
+CONFIG_IRQSOFF_TRACER=y               # 中断关闭延迟追踪
+CONFIG_PREEMPT_TRACER=y               # 抢占关闭延迟追踪（需要 CONFIG_PREEMPTION=y）
+CONFIG_SCHED_TRACER=y                 # 调度延迟追踪
+
+# ===== 事件追踪 =====
+CONFIG_EVENT_TRACING=y                # 事件追踪框架（通常自动选中）
+CONFIG_FTRACE_SYSCALLS=y              # 系统调用追踪
+CONFIG_ENABLE_DEFAULT_TRACERS=y       # 默认追踪器
+
+# ===== 动态探针 =====
+CONFIG_KPROBES=y                      # kprobe 支持
+CONFIG_KPROBE_EVENTS=y                # kprobe 事件（动态探针）
+CONFIG_FPROBE=y                       # fprobe（基于 ftrace 的高效探针）
+CONFIG_FPROBE_EVENTS=y                # fprobe 事件
+CONFIG_UPROBE_EVENTS=y                # 用户态探针
+
+# ===== 快照与高级功能 =====
+CONFIG_TRACER_SNAPSHOT=y              # 快照缓冲区
+CONFIG_STACK_TRACER=y                 # 最大栈深度追踪
+CONFIG_HIST_TRIGGERS=y                # 直方图触发器
+CONFIG_FUNCTION_PROFILER=y            # 函数调用频率统计
+
+# ===== 硬件/OS 噪声 =====
+CONFIG_HWLAT_TRACER=y                 # 硬件延迟检测
+CONFIG_OSNOISE_TRACER=y               # OS 噪声追踪
+CONFIG_TIMERLAT_TRACER=y              # 定时器延迟追踪
+
+# ===== 启动追踪 =====
+CONFIG_BOOTTIME_TRACING=y             # 启动阶段追踪
+
+# ===== BPF 集成 =====
+CONFIG_BPF_EVENTS=y                   # BPF 挂载 ftrace 追踪点
+
+# ===== 符号支持 =====
+CONFIG_KALLSYMS=y
+CONFIG_KALLSYMS_ALL=y
+CONFIG_DEBUG_INFO=y                   # 调试信息（配合 addr2line）
+CONFIG_DEBUG_INFO_BTF=y               # BTF 类型信息（kprobe 参数名访问）</code></pre>
+
+<h3>7.3 ARM64 架构特有选项</h3>
+
+<p>ARM64 在 <code>arch/arm64/Kconfig</code> 中提供以下 ftrace 相关能力声明：</p>
+
+<pre><code class="language-kconfig"># ARM64 自动声明的能力（无需手动配置）
+config ARM64
+    select HAVE_FUNCTION_TRACER
+    select HAVE_FUNCTION_GRAPH_TRACER
+    select HAVE_FUNCTION_GRAPH_FREGS
+    select HAVE_DYNAMIC_FTRACE
+    select HAVE_DYNAMIC_FTRACE_WITH_ARGS
+    select HAVE_DYNAMIC_FTRACE_WITH_DIRECT_CALLS
+    select HAVE_DYNAMIC_FTRACE_WITH_CALL_OPS
+    select HAVE_FTRACE_REGS_HAVING_PT_REGS
+    select HAVE_SYSCALL_TRACEPOINTS
+    select HAVE_BUILDTIME_MCOUNT_SORT
+
+# ARM64 使用 patchable-function-entry 方式插桩
+config FTRACE_MCOUNT_USE_PATCHABLE_FUNCTION_ENTRY
+    bool
+    default y    # ARM64 默认使用此方式</code></pre>
+
+<p><strong>ARM64 CALL_OPS 优化</strong>：</p>
+
+<pre><code class="language-kconfig"># ARM64 支持 per-callsite ops 指针，自动启用
+CONFIG_DYNAMIC_FTRACE_WITH_CALL_OPS=y
+# → 每个函数前有 8 字节 literal pool 存放 ftrace_ops 指针
+# → 避免全局链表遍历，多 ops 场景性能更好</code></pre>
+
+<h3>7.4 各 Tracer 所需配置汇总</h3>
+
+<table>
+<thead><tr>
+<th>Tracer / 功能</th>
+<th>必需配置</th>
+<th>可选增强</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>function</code></td>
+<td><code>FUNCTION_TRACER</code>, <code>DYNAMIC_FTRACE</code></td>
+<td><code>FUNCTION_TRACE_ARGS</code></td>
+</tr>
+<tr>
+<td><code>function_graph</code></td>
+<td><code>FUNCTION_GRAPH_TRACER</code></td>
+<td><code>FUNCTION_GRAPH_RETVAL</code>, <code>FUNCTION_GRAPH_RETADDR</code></td>
+</tr>
+<tr>
+<td><code>irqsoff</code></td>
+<td><code>IRQSOFF_TRACER</code></td>
+<td><code>TRACER_SNAPSHOT</code></td>
+</tr>
+<tr>
+<td><code>preemptoff</code></td>
+<td><code>PREEMPT_TRACER</code>, <code>PREEMPTION</code></td>
+<td><code>TRACER_SNAPSHOT</code></td>
+</tr>
+<tr>
+<td><code>preemptirqsoff</code></td>
+<td><code>IRQSOFF_TRACER</code>, <code>PREEMPT_TRACER</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>wakeup</code> / <code>wakeup_rt</code></td>
+<td><code>SCHED_TRACER</code></td>
+<td><code>TRACER_SNAPSHOT</code></td>
+</tr>
+<tr>
+<td><code>hwlat</code></td>
+<td><code>HWLAT_TRACER</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>osnoise</code> / <code>timerlat</code></td>
+<td><code>OSNOISE_TRACER</code>, <code>TIMERLAT_TRACER</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Trace Events</td>
+<td><code>EVENT_TRACING</code></td>
+<td><code>FTRACE_SYSCALLS</code></td>
+</tr>
+<tr>
+<td>kprobe events</td>
+<td><code>KPROBES</code>, <code>KPROBE_EVENTS</code></td>
+<td><code>PROBE_EVENTS_BTF_ARGS</code></td>
+</tr>
+<tr>
+<td>fprobe events</td>
+<td><code>FPROBE</code>, <code>FPROBE_EVENTS</code></td>
+<td><code>PROBE_EVENTS_BTF_ARGS</code></td>
+</tr>
+<tr>
+<td>uprobe events</td>
+<td><code>UPROBE_EVENTS</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Stack Tracer</td>
+<td><code>STACK_TRACER</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Function Profiler</td>
+<td><code>FUNCTION_PROFILER</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Histogram</td>
+<td><code>HIST_TRIGGERS</code></td>
+<td><code>SYNTH_EVENTS</code></td>
+</tr>
+<tr>
+<td>Boottime Tracing</td>
+<td><code>BOOTTIME_TRACING</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>BPF 集成</td>
+<td><code>BPF_EVENTS</code>, <code>BPF_SYSCALL</code></td>
+<td><code>BPF_KPROBE_OVERRIDE</code></td>
+</tr>
+<tr>
+<td>blktrace</td>
+<td><code>BLK_DEV_IO_TRACE</code></td>
+<td>—</td>
+</tr>
+</tbody></table>
+
+<h3>7.5 配置检查与验证</h3>
+
+<p>编译内核后，验证 ftrace 是否正确启用：</p>
+
+<pre><code class="language-bash"># 1. 检查 .config 中的关键选项
+grep -E &#x27;CONFIG_(FTRACE|FUNCTION_TRACER|DYNAMIC_FTRACE|FUNCTION_GRAPH)=&#x27; .config
+
+# 2. 启动后检查 tracefs 是否可用
+ls /sys/kernel/tracing/
+
+# 3. 查看可用的 tracer
+cat /sys/kernel/tracing/available_tracers
+# 期望输出包含: function function_graph ...
+
+# 4. 查看可追踪函数数量
+wc -l /sys/kernel/tracing/available_filter_functions
+# ARM64 典型值：40000~80000 个函数
+
+# 5. 检查事件目录
+ls /sys/kernel/tracing/events/ | head -20
+# 应包含 sched, irq, block, net, kmem 等
+
+# 6. 检查 kprobe 支持
+cat /sys/kernel/tracing/kprobe_events 2&gt;/dev/null &amp;&amp; echo &quot;kprobe OK&quot;
+
+# 7. 检查动态 ftrace 状态
+cat /sys/kernel/tracing/enabled_functions</code></pre>
+
+<p><strong>常见问题排查</strong>：</p>
+
+<table>
+<thead><tr>
+<th>问题</th>
+<th>原因</th>
+<th>解决方案</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>/sys/kernel/tracing</code> 不存在</td>
+<td><code>CONFIG_FTRACE=n</code> 或未挂载</td>
+<td>启用 FTRACE，或 <code>mount -t tracefs nodev /sys/kernel/tracing</code></td>
+</tr>
+<tr>
+<td><code>available_tracers</code> 只有 <code>nop</code></td>
+<td>未启用具体 tracer</td>
+<td>启用 <code>CONFIG_FUNCTION_TRACER</code> 等</td>
+</tr>
+<tr>
+<td><code>available_filter_functions</code> 为空</td>
+<td><code>CONFIG_DYNAMIC_FTRACE=n</code></td>
+<td>启用 DYNAMIC_FTRACE</td>
+</tr>
+<tr>
+<td><code>function_graph</code> 不可用</td>
+<td>架构不支持或未配置</td>
+<td>确认 <code>HAVE_FUNCTION_GRAPH_TRACER</code> 和 <code>FUNCTION_GRAPH_TRACER=y</code></td>
+</tr>
+<tr>
+<td>kprobe event 创建失败</td>
+<td>未启用 kprobe 或函数在 notrace 列表</td>
+<td>启用 <code>KPROBE_EVENTS</code>，检查函数是否可探测</td>
+</tr>
+<tr>
+<td>Boottime Tracing 无效</td>
+<td>未配置</td>
+<td>启用 <code>BOOTTIME_TRACING</code>，需要 <code>BOOT_CONFIG</code></td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>8. Ftrace 用法详解</h2>
+
+<h3>8.1 基本函数追踪</h3>
+
+<pre><code class="language-bash"># 开启 function tracer
+echo function &gt; /sys/kernel/tracing/current_tracer
+
+# 只追踪指定函数（支持 glob 通配）
+echo &#x27;schedule*&#x27; &gt; /sys/kernel/tracing/set_ftrace_filter
+
+# 追加更多函数（注意 &gt;&gt; 不是 &gt;）
+echo &#x27;wake_up*&#x27; &gt;&gt; /sys/kernel/tracing/set_ftrace_filter
+
+# 排除某些函数
+echo &#x27;schedule_idle&#x27; &gt; /sys/kernel/tracing/set_ftrace_notrace
+
+# 开始追踪
+echo 1 &gt; /sys/kernel/tracing/tracing_on
+
+# 读取结果
+cat /sys/kernel/tracing/trace
+
+# 停止并清理
+echo 0 &gt; /sys/kernel/tracing/tracing_on
+echo nop &gt; /sys/kernel/tracing/current_tracer</code></pre>
+
+<h3>8.2 Function Graph 追踪</h3>
+
+<pre><code class="language-bash"># 开启 function_graph tracer（显示调用树和耗时）
+echo function_graph &gt; /sys/kernel/tracing/current_tracer
+
+# 限制追踪深度
+echo 3 &gt; /sys/kernel/tracing/max_graph_depth
+
+# 只追踪指定函数的调用图
+echo &#x27;do_sys_open&#x27; &gt; /sys/kernel/tracing/set_graph_function
+
+echo 1 &gt; /sys/kernel/tracing/tracing_on
+# ... 执行操作 ...
+echo 0 &gt; /sys/kernel/tracing/tracing_on
+
+cat /sys/kernel/tracing/trace</code></pre>
+
+<p>输出示例：</p>
+
+<pre><code> # CPU  DURATION                  FUNCTION CALLS
+ # |     |   |                     |   |   |   |
+  0)               |  do_sys_open() {
+  0)   0.541 us    |    getname();
+  0)               |    do_filp_open() {
+  0)   0.312 us    |      path_openat();
+  0)   1.024 us    |    }
+  0)   2.108 us    |  }</code></pre>
+
+<h3>8.3 Trace Event 使用</h3>
+
+<pre><code class="language-bash"># 查看可用事件
+ls /sys/kernel/tracing/events/
+
+# 启用某个事件
+echo 1 &gt; /sys/kernel/tracing/events/sched/sched_switch/enable
+
+# 设置事件过滤条件
+echo &#x27;prev_pid == 1234&#x27; &gt; /sys/kernel/tracing/events/sched/sched_switch/filter
+
+# 读取结果
+echo 1 &gt; /sys/kernel/tracing/tracing_on
+cat /sys/kernel/tracing/trace_pipe   # 流式消费读取
+
+# 停止
+echo 0 &gt; /sys/kernel/tracing/events/sched/sched_switch/enable</code></pre>
+
+<h3>8.4 高级用法：多实例与 PID 过滤</h3>
+
+<pre><code class="language-bash"># 创建独立追踪实例（不干扰全局 trace）
+mkdir /sys/kernel/tracing/instances/my_trace
+echo function &gt; /sys/kernel/tracing/instances/my_trace/current_tracer
+
+# PID 过滤：只追踪指定进程
+echo 1234 &gt; /sys/kernel/tracing/set_ftrace_pid
+echo function &gt; /sys/kernel/tracing/current_tracer
+
+# 清理实例
+rmdir /sys/kernel/tracing/instances/my_trace</code></pre>
+
+<h3>8.5 kprobe / fprobe 动态探针</h3>
+
+<p><strong>kprobe event — 在任意函数入口/返回插入探针</strong>：</p>
+
+<pre><code class="language-bash"># 在 do_sys_openat2 入口插入探针，获取第二个参数（文件名指针）
+echo &#x27;p:myopen do_sys_openat2 filename=+0(%x1):string&#x27; &gt; /sys/kernel/tracing/kprobe_events
+
+# 如果启用了 BTF，可以直接用参数名
+echo &#x27;p:myopen do_sys_openat2 filename=+0($arg2):string&#x27; &gt; /sys/kernel/tracing/kprobe_events
+
+# 启用探针
+echo 1 &gt; /sys/kernel/tracing/events/kprobes/myopen/enable
+
+# 读取结果
+cat /sys/kernel/tracing/trace_pipe
+# 输出示例:
+# cat-1234 [001] .... 123.456: myopen: (do_sys_openat2+0x0/0x1c0) filename=&quot;/etc/passwd&quot;
+
+# 清理
+echo 0 &gt; /sys/kernel/tracing/events/kprobes/myopen/enable
+echo &#x27;-:myopen&#x27; &gt;&gt; /sys/kernel/tracing/kprobe_events</code></pre>
+
+<p><strong>kretprobe — 获取函数返回值</strong>：</p>
+
+<pre><code class="language-bash"># 在函数返回时捕获返回值
+echo &#x27;r:myret do_sys_openat2 ret=$retval&#x27; &gt; /sys/kernel/tracing/kprobe_events
+echo 1 &gt; /sys/kernel/tracing/events/kprobes/myret/enable
+cat /sys/kernel/tracing/trace_pipe
+# 输出示例:
+# cat-1234 [001] .... 123.789: myret: (ksys_open+0x70/0xa0 &lt;- do_sys_openat2) ret=3</code></pre>
+
+<p><strong>fprobe event（推荐，性能更好）</strong>：</p>
+
+<pre><code class="language-bash"># fprobe 基于 ftrace 实现，可同时探测多个函数
+echo &#x27;f:myfprobe vfs_read count=$arg3&#x27; &gt; /sys/kernel/tracing/dynamic_events
+echo 1 &gt; /sys/kernel/tracing/events/fprobes/myfprobe/enable
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<h3>8.6 延迟追踪器</h3>
+
+<p><strong>irqsoff — 追踪最长关中断时间</strong>：</p>
+
+<pre><code class="language-bash">echo irqsoff &gt; /sys/kernel/tracing/current_tracer
+echo 0 &gt; /sys/kernel/tracing/tracing_max_latency  # 重置最大值
+echo 1 &gt; /sys/kernel/tracing/tracing_on
+
+# 等待一段时间...
+
+echo 0 &gt; /sys/kernel/tracing/tracing_on
+cat /sys/kernel/tracing/trace</code></pre>
+
+<p>输出示例：</p>
+
+<pre><code># tracer: irqsoff
+#
+# irqsoff latency trace v1.1.5 on 6.18.1
+# latency: 42 us, #4/4, CPU#2 | (M:preempt VP:0, KP:0, SP:0 HP:0)
+#    -----------------
+#    | task: kworker/2:1-156 (uid:0 nice:0 policy:0 rt_prio:0)
+#    -----------------
+#  =&gt; started at: _raw_spin_lock_irqsave
+#  =&gt; ended at:   _raw_spin_unlock_irqrestore
+#
+#                    _------=&gt; CPU#
+#                   / _-----=&gt; irqs-off
+#                  | / _----=&gt; need-resched
+#                  || / _---=&gt; hardirq/softirq
+#                  ||| / _--=&gt; preempt-depth
+#                  |||| /
+#  cmd     pid     ||||| time  |   caller
+   kworker-156     2d..1    0us+: _raw_spin_lock_irqsave
+   kworker-156     2d..1   42us : _raw_spin_unlock_irqrestore
+   kworker-156     2d..1   43us : trace_hardirqs_on</code></pre>
+
+<p><strong>preemptoff — 追踪最长关抢占时间</strong>：</p>
+
+<pre><code class="language-bash">echo preemptoff &gt; /sys/kernel/tracing/current_tracer
+echo 0 &gt; /sys/kernel/tracing/tracing_max_latency
+echo 1 &gt; /sys/kernel/tracing/tracing_on
+# ... 操作 ...
+cat /sys/kernel/tracing/trace</code></pre>
+
+<p><strong>wakeup_rt — 追踪实时任务调度延迟</strong>：</p>
+
+<pre><code class="language-bash">echo wakeup_rt &gt; /sys/kernel/tracing/current_tracer
+echo 0 &gt; /sys/kernel/tracing/tracing_max_latency
+echo 1 &gt; /sys/kernel/tracing/tracing_on
+# ... 运行实时应用 ...
+echo 0 &gt; /sys/kernel/tracing/tracing_on
+cat /sys/kernel/tracing/trace
+# 输出最长的唤醒-调度延迟及完整调用栈</code></pre>
+
+<h3>8.7 Histogram Triggers</h3>
+
+<pre><code class="language-bash"># 统计 sched_switch 事件中各任务的切换次数
+echo &#x27;hist:key=next_comm:val=hitcount:sort=hitcount.descending&#x27; &gt; \
+    /sys/kernel/tracing/events/sched/sched_switch/trigger
+
+# 查看结果
+cat /sys/kernel/tracing/events/sched/sched_switch/hist
+# 输出示例:
+# { next_comm: swapper/0 } hitcount: 12345
+# { next_comm: kworker/0:1 } hitcount: 6789
+# { next_comm: my_app } hitcount: 2345
+
+# 统计函数执行时间分布（需要 function_graph 事件）
+echo &#x27;hist:key=common_pid:val=hitcount:sort=hitcount&#x27; &gt; \
+    /sys/kernel/tracing/events/sched/sched_wakeup/trigger
+
+# 清除 trigger
+echo &#x27;!hist:key=next_comm:val=hitcount&#x27; &gt; \
+    /sys/kernel/tracing/events/sched/sched_switch/trigger</code></pre>
+
+<p><strong>跨事件延迟测量</strong>：</p>
+
+<pre><code class="language-bash"># 测量从 sched_wakeup 到 sched_switch 的延迟
+echo &#x27;hist:keys=pid:ts0=common_timestamp.usecs&#x27; &gt; \
+    /sys/kernel/tracing/events/sched/sched_wakeup/trigger
+
+echo &#x27;hist:keys=next_pid:wakeup_lat=common_timestamp.usecs-$ts0:sort=wakeup_lat&#x27; &gt; \
+    /sys/kernel/tracing/events/sched/sched_switch/trigger
+
+cat /sys/kernel/tracing/events/sched/sched_switch/hist</code></pre>
+
+<h3>8.8 Boottime Tracing</h3>
+
+<p>在内核启动阶段追踪驱动初始化等流程（需要 <code>CONFIG_BOOTTIME_TRACING=y</code>）：</p>
+
+<pre><code># 添加到 bootconfig（附加到 initrd）
+ftrace {
+    tracer = function_graph;
+    options = funcgraph-proc;
+    buffer_size = 64m;
+    event.sched.sched_process_exec.enable;
+    tracing_on = 1;
+}</code></pre>
+
+<pre><code class="language-bash"># 方法一：通过内核命令行
+# 在 bootloader 中添加:
+trace_event=initcall:* ftrace=function_graph ftrace_filter=&quot;*_probe *_init&quot;
+
+# 方法二：通过 bootconfig 附加到 initrd
+scripts/bootconfig -a my_bootconfig /path/to/initrd.img
+
+# 启动后查看结果
+cat /sys/kernel/tracing/trace &gt; /tmp/boot_trace.txt</code></pre>
+
+<h3>8.9 <code>echo function > current_tracer</code> 完整执行路径</h3>
+
+<blockquote>串联从用户操作到内核代码修改的完整链路：</blockquote>
+
+<pre><code>tracing_set_tracer()                     // trace.c
+  → tracer_init(t, tr)                   // 调用 tracer-&gt;init()
+    → function_trace_init(tr)            // trace_functions.c
+      → tr-&gt;ops-&gt;func = function_trace_call
+      → register_ftrace_function(tr-&gt;ops)
+        → __register_ftrace_function(ops)
+          → add_ftrace_ops(&amp;ftrace_ops_list, ops)
+          → update_ftrace_function()
+        → ftrace_startup(ops, command)
+          → ftrace_hash_rec_enable(ops)
+          → ftrace_run_update_code()     // 修改所有匹配函数的代码
+            → NOP → BL ftrace_caller</code></pre>
+
+<hr>
+
+<h2>9. 实际案例</h2>
+
+<h3>9.1 案例一：定位系统调用延迟抖动</h3>
+
+<p><strong>问题描述</strong>：嵌入式设备上 <code>read()</code> 系统调用偶发耗时 >10ms，正常应 <1ms。</p>
+
+<p><strong>排查步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/bash
+# Step 1: 用 function_graph 追踪 read 系统调用路径
+cd /sys/kernel/tracing
+echo 0 &gt; tracing_on
+echo function_graph &gt; current_tracer
+echo 10 &gt; max_graph_depth
+echo &#x27;ksys_read&#x27; &gt; set_graph_function
+
+# Step 2: 只追踪目标进程
+PID=$(pidof my_app)
+echo $PID &gt; set_ftrace_pid
+
+# Step 3: 增大缓冲区避免丢失
+echo 8192 &gt; buffer_size_kb
+
+# Step 4: 开始追踪
+echo 1 &gt; tracing_on
+
+# Step 5: 等待问题复现...
+sleep 30
+
+# Step 6: 停止并保存
+echo 0 &gt; tracing_on
+cat trace &gt; /tmp/read_latency.txt
+
+# Step 7: 找出耗时最长的调用
+grep -E &#x27;(^#|[0-9]+ us|[0-9]+ ms)&#x27; /tmp/read_latency.txt | head -50</code></pre>
+
+<p><strong>分析输出</strong>：</p>
+
+<pre><code>  0)               |  ksys_read() {
+  0)               |    vfs_read() {
+  0)               |      ext4_file_read_iter() {
+  0)               |        filemap_read() {
+  0) ! 11234 us    |          filemap_get_pages();   ← 这里！页缓存未命中
+  0)   0.312 us    |          touch_atime();
+  0) ! 11240 us    |        }
+  0) ! 11242 us    |      }
+  0) ! 11244 us    |    }
+  0) ! 11246 us    |  }</code></pre>
+
+<p><strong>结论</strong>：<code>filemap_get_pages()</code> 触发了磁盘 I/O（页缓存未命中），导致延迟抖动。解决方案：预读优化或使用 <code>posix_fadvise()</code> 提示。</p>
+
+<h3>9.2 案例二：追踪中断关闭导致的实时性问题</h3>
+
+<p><strong>问题描述</strong>：RT 应用偶发超时，怀疑有代码路径长时间关中断。</p>
+
+<p><strong>排查步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/bash
+cd /sys/kernel/tracing
+
+# Step 1: 使用 irqsoff tracer
+echo irqsoff &gt; current_tracer
+echo 0 &gt; tracing_max_latency   # 清零，只记录新的最大值
+
+# Step 2: 开始追踪
+echo 1 &gt; tracing_on
+
+# Step 3: 运行负载，等待问题复现
+stress-ng --cpu 4 --io 2 --timeout 60s &amp;
+wait
+
+# Step 4: 停止并查看
+echo 0 &gt; tracing_on
+cat trace</code></pre>
+
+<p><strong>分析输出</strong>：</p>
+
+<pre><code># irqsoff latency trace v1.1.5 on 6.18.1
+# latency: 156 us, #8/8, CPU#1
+#    -----------------
+#    | task: my_driver_irq-89
+#    -----------------
+#  =&gt; started at: my_driver_transfer
+#  =&gt; ended at:   my_driver_complete
+#
+  my_driver-89   1d..1    0us : _raw_spin_lock_irqsave &lt;my_driver_transfer&gt;
+  my_driver-89   1d..1   45us : memcpy_fromio           ← MMIO 拷贝耗时
+  my_driver-89   1d..1  120us : memcpy_fromio           ← 又一次大块拷贝
+  my_driver-89   1d..1  156us : _raw_spin_unlock_irqrestore &lt;my_driver_complete&gt;</code></pre>
+
+<p><strong>结论</strong>：驱动在持有 spinlock（关中断）时做了大块 MMIO 拷贝。解决方案：将数据拷贝移到 spinlock 外，或使用 threaded IRQ。</p>
+
+<h3>9.3 案例三：分析驱动初始化失败</h3>
+
+<p><strong>问题描述</strong>：平台设备驱动 probe 失败，dmesg 只有 "probe failed" 无详细信息。</p>
+
+<p><strong>排查步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/bash
+cd /sys/kernel/tracing
+
+# Step 1: 使用 kprobe 追踪 probe 函数的返回值
+# 追踪所有 platform_driver 的 probe 调用
+echo &#x27;p:probe_entry platform_probe dev=%x0&#x27; &gt; kprobe_events
+echo &#x27;r:probe_ret platform_probe ret=$retval&#x27; &gt;&gt; kprobe_events
+
+# Step 2: 追踪更细粒度的子函数
+echo &#x27;p:clk_get __clk_get name=+0(%x0):string&#x27; &gt;&gt; kprobe_events
+echo &#x27;r:clk_ret __clk_get ret=$retval&#x27; &gt;&gt; kprobe_events
+
+# Step 3: 启用
+echo 1 &gt; events/kprobes/enable
+echo 1 &gt; tracing_on
+
+# Step 4: 触发驱动加载
+echo my_device &gt; /sys/bus/platform/drivers/my_driver/bind
+
+# Step 5: 查看结果
+echo 0 &gt; tracing_on
+cat trace</code></pre>
+
+<p><strong>分析输出</strong>：</p>
+
+<pre><code>  modprobe-2345  [000] ....  45.123: probe_entry: (platform_probe+0x0) dev=ffff0000c1234000
+  modprobe-2345  [000] ....  45.124: clk_get: (__clk_get+0x0) name=&quot;pll_audio&quot;
+  modprobe-2345  [000] ....  45.124: clk_ret: (__clk_get+0x0 &lt;- clk_get) ret=-2
+  modprobe-2345  [000] ....  45.125: probe_ret: (platform_probe+0x0) ret=-2</code></pre>
+
+<p><strong>结论</strong>：<code>clk_get("pll_audio")</code> 返回 <code>-ENOENT</code>（-2），时钟未在设备树中定义。修复设备树后问题解决。</p>
+
+<h3>9.4 案例四：内存分配慢路径分析</h3>
+
+<p><strong>问题描述</strong>：系统运行一段时间后，<code>kmalloc</code> 偶发耗时超过 100ms。</p>
+
+<p><strong>排查步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/bash
+cd /sys/kernel/tracing
+
+# Step 1: 追踪内存分配事件
+echo 1 &gt; events/kmem/mm_page_alloc/enable
+echo 1 &gt; events/kmem/mm_page_alloc_zone_locked/enable
+echo 1 &gt; events/vmscan/mm_vmscan_direct_reclaim_begin/enable
+echo 1 &gt; events/vmscan/mm_vmscan_direct_reclaim_end/enable
+echo 1 &gt; events/compaction/mm_compaction_begin/enable
+echo 1 &gt; events/compaction/mm_compaction_end/enable
+
+# Step 2: 用 function_graph 追踪慢路径
+echo function_graph &gt; current_tracer
+echo &#x27;__alloc_pages&#x27; &gt; set_graph_function
+echo 8 &gt; max_graph_depth
+
+# Step 3: 增大缓冲区
+echo 16384 &gt; buffer_size_kb
+
+# Step 4: 追踪
+echo 1 &gt; tracing_on
+sleep 120   # 等待问题复现
+echo 0 &gt; tracing_on
+
+# Step 5: 查找慢分配
+grep -B5 &#x27;direct_reclaim\|compaction&#x27; trace | head -40</code></pre>
+
+<p><strong>分析输出</strong>：</p>
+
+<pre><code>  my_app-3456  [002] ....  300.123: mm_vmscan_direct_reclaim_begin: order=0
+  my_app-3456  [002] ....  300.123:   | __alloc_pages() {
+  my_app-3456  [002] ....  300.123:   |   __alloc_pages_slowpath() {
+  my_app-3456  [002] ....  300.123:   |     wake_all_kswapds() ...
+  my_app-3456  [002] ....  300.230:   |     __perform_reclaim() {       ← 107ms!
+  my_app-3456  [002] ....  300.230:   |       try_to_free_pages() ...
+  my_app-3456  [002] ....  300.230:   |     }
+  my_app-3456  [002] ....  300.231: mm_vmscan_direct_reclaim_end: nr_reclaimed=32</code></pre>
+
+<p><strong>结论</strong>：内存不足触发 direct reclaim（同步回收），<code>__perform_reclaim()</code> 耗时 107ms。解决方案：调整 <code>vm.min_free_kbytes</code> 提前触发 kswapd 异步回收，或增加物理内存。</p>
+
+<h3>9.5 案例五：网络收包路径性能分析</h3>
+
+<p><strong>问题描述</strong>：网络吞吐低于预期，怀疑软中断处理有瓶颈。</p>
+
+<p><strong>排查步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/bash
+cd /sys/kernel/tracing
+
+# Step 1: 追踪 NAPI 和网络收包事件
+echo 1 &gt; events/napi/napi_poll/enable
+echo 1 &gt; events/net/netif_receive_skb/enable
+echo 1 &gt; events/net/net_dev_xmit/enable
+echo 1 &gt; events/irq/softirq_entry/enable
+echo 1 &gt; events/irq/softirq_exit/enable
+
+# Step 2: 过滤只看 NET_RX_SOFTIRQ (vec=3)
+echo &#x27;vec == 3&#x27; &gt; events/irq/softirq_entry/filter
+echo &#x27;vec == 3&#x27; &gt; events/irq/softirq_exit/filter
+
+# Step 3: 用 histogram 统计 NAPI poll 处理量
+echo &#x27;hist:key=dev_name:val=hitcount,work:sort=hitcount.descending&#x27; &gt; \
+    events/napi/napi_poll/trigger
+
+# Step 4: 追踪
+echo 1 &gt; tracing_on
+iperf3 -c target_ip -t 10   # 产生网络负载
+echo 0 &gt; tracing_on
+
+# Step 5: 查看 NAPI 统计
+cat events/napi/napi_poll/hist</code></pre>
+
+<p><strong>结论示例</strong>：如果某个网卡的 NAPI work 总是等于 budget（默认 64），说明网络流量高，NAPI 处理不过来。解决方案：调整 <code>net.core.netdev_budget</code> 或启用 GRO/XDP。</p>
+
+<h3>9.6 案例六：调度延迟问题排查</h3>
+
+<p><strong>问题描述</strong>：实时音频应用偶发出现 underrun，怀疑调度延迟导致。</p>
+
+<p><strong>排查步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/bash
+cd /sys/kernel/tracing
+
+# Step 1: 使用 wakeup_rt tracer
+echo wakeup_rt &gt; current_tracer
+echo 0 &gt; tracing_max_latency
+
+# Step 2: 设置追踪选项
+echo 1 &gt; options/latency-format
+echo 1 &gt; options/function-trace
+
+# Step 3: 开始追踪
+echo 1 &gt; tracing_on
+
+# Step 4: 运行音频应用（RT 优先级）
+chrt -f 80 /usr/bin/audio_processor &amp;
+sleep 60
+
+# Step 5: 查看最大调度延迟
+echo 0 &gt; tracing_on
+cat tracing_max_latency
+# 如果 &gt;500us，说明有调度延迟问题
+
+# Step 6: 查看延迟发生时的完整调用栈
+cat trace</code></pre>
+
+<p><strong>同时用 Histogram 统计延迟分布</strong>：</p>
+
+<pre><code class="language-bash"># 用 sched events 测量唤醒到运行的延迟
+echo &#x27;hist:keys=pid:ts0=common_timestamp.usecs if comm==&quot;audio_processo&quot;&#x27; &gt; \
+    events/sched/sched_wakeup/trigger
+
+echo &#x27;hist:keys=next_pid:wakeup_lat=common_timestamp.usecs-$ts0:sort=wakeup_lat if next_comm==&quot;audio_processo&quot;&#x27; &gt; \
+    events/sched/sched_switch/trigger
+
+# 运行一段时间后查看
+cat events/sched/sched_switch/hist</code></pre>
+
+<p><strong>结论示例</strong>：如果 trace 显示 RT 任务被唤醒后等待了 2ms 才调度运行，且期间 CPU 在执行非 RT 的内核路径（如 softirq），则需要配置 <code>PREEMPT_RT</code> 或将 softirq 线程化。</p>
+
+<hr>
+
+<h2>10. QEMU 实践案例</h2>
+
+<blockquote>以下实验基于本仓库的 QEMU 环境：ARM64 / virt 平台 / cortex-a57 / 4 SMP / 1GB RAM。<br>
+启动命令：<code>./launch.sh arm64 run</code></blockquote>
+
+<h3>10.1 QEMU 环境准备</h3>
+
+<p><strong>确认内核配置</strong>：</p>
+
+<pre><code class="language-bash"># 在 QEMU 内执行，确认 ftrace 可用
+mount -t tracefs nodev /sys/kernel/tracing 2&gt;/dev/null
+cat /sys/kernel/tracing/available_tracers
+# 期望输出: function function_graph nop ...
+
+# 确认可追踪函数
+wc -l /sys/kernel/tracing/available_filter_functions
+
+# 确认事件支持
+ls /sys/kernel/tracing/events/ | head -10</code></pre>
+
+<p><strong>实验通用的重置脚本</strong>（每次实验前执行）：</p>
+
+<pre><code class="language-bash">#!/bin/sh
+# reset_ftrace.sh — 重置 ftrace 到干净状态
+cd /sys/kernel/tracing
+echo 0 &gt; tracing_on
+echo nop &gt; current_tracer
+echo &gt; set_ftrace_filter
+echo &gt; set_ftrace_notrace
+echo &gt; set_ftrace_pid
+echo &gt; set_graph_function
+echo &gt; kprobe_events 2&gt;/dev/null
+echo 0 &gt; events/enable
+echo &gt; trace
+echo 1408 &gt; buffer_size_kb
+echo &quot;ftrace reset done&quot;</code></pre>
+
+<hr>
+
+<h3>10.2 实验一：function tracer 基础 — 追踪 sys_write 调用链</h3>
+
+<p><strong>目标</strong>：理解 function tracer 的基本工作方式，追踪 <code>write()</code> 系统调用涉及的内核函数。</p>
+
+<p><strong>步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/sh
+# lab1_function_tracer.sh
+cd /sys/kernel/tracing
+
+# 1. 重置
+echo 0 &gt; tracing_on
+echo nop &gt; current_tracer
+echo &gt; trace
+
+# 2. 设置 function tracer
+echo function &gt; current_tracer
+
+# 3. 只追踪 vfs_write 和 ksys_write 相关函数
+echo &#x27;ksys_write&#x27; &gt; set_ftrace_filter
+echo &#x27;vfs_write&#x27; &gt;&gt; set_ftrace_filter
+echo &#x27;new_sync_write&#x27; &gt;&gt; set_ftrace_filter
+echo &#x27;__arm64_sys_write&#x27; &gt;&gt; set_ftrace_filter
+
+# 4. 只追踪当前 shell 进程
+echo $$ &gt; set_ftrace_pid
+
+# 5. 开始追踪
+echo 1 &gt; tracing_on
+
+# 6. 触发 write 系统调用
+echo &quot;Hello ftrace!&quot; &gt; /dev/null
+
+# 7. 停止追踪
+echo 0 &gt; tracing_on
+
+# 8. 查看结果
+cat trace</code></pre>
+
+<p><strong>预期输出</strong>：</p>
+
+<pre><code># tracer: function
+#
+#                                _-----=&gt; irqs-off/BH-disabled
+#                               / _----=&gt; need-resched
+#                              | / _---=&gt; hardirq/softirq
+#                              || / _--=&gt; preempt-depth
+#                              ||| / _-=&gt; migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+              sh-120     [002] .....   xxx.xxx: __arm64_sys_write &lt;-invoke_syscall
+              sh-120     [002] .....   xxx.xxx: ksys_write &lt;-__arm64_sys_write
+              sh-120     [002] .....   xxx.xxx: vfs_write &lt;-ksys_write
+              sh-120     [002] .....   xxx.xxx: new_sync_write &lt;-vfs_write</code></pre>
+
+<p><strong>思考题</strong>：</p>
+<ol>
+<li>为什么输出中的 FUNCTION 列右边还有 <code><-xxx</code> 的标注？它表示什么？</li>
+<li>如果去掉 <code>set_ftrace_pid</code> 的过滤会发生什么？</li>
+<li><code>echo 'ksys*' > set_ftrace_filter</code> 使用 glob 通配能匹配到哪些函数？</li>
+</ol>
+
+<hr>
+
+<h3>10.3 实验二：function_graph — 分析 fork 完整调用树和耗时</h3>
+
+<p><strong>目标</strong>：使用 function_graph 可视化 <code>fork()</code> 的完整内核调用树，测量各函数耗时。</p>
+
+<p><strong>步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/sh
+# lab2_function_graph.sh
+cd /sys/kernel/tracing
+
+# 1. 重置
+echo 0 &gt; tracing_on
+echo nop &gt; current_tracer
+echo &gt; trace
+echo &gt; set_graph_function
+
+# 2. 设置 function_graph tracer
+echo function_graph &gt; current_tracer
+
+# 3. 限制追踪深度（避免输出太多）
+echo 5 &gt; max_graph_depth
+
+# 4. 只追踪 kernel_clone 的调用图
+echo &#x27;kernel_clone&#x27; &gt; set_graph_function
+
+# 5. 开始追踪
+echo 1 &gt; tracing_on
+
+# 6. 触发 fork — 运行一个简单命令（sh fork+exec）
+ls /proc &gt; /dev/null
+
+# 7. 停止追踪
+echo 0 &gt; tracing_on
+
+# 8. 查看调用图
+cat trace</code></pre>
+
+<p><strong>预期输出</strong>：</p>
+
+<pre><code># tracer: function_graph
+#
+# CPU  DURATION                  FUNCTION CALLS
+# |     |   |                     |   |   |   |
+  1)               |  kernel_clone() {
+  1)               |    copy_process() {
+  1)   0.520 us    |      dup_task_struct();
+  1)               |      copy_creds() {
+  1)   0.208 us    |        prepare_creds();
+  1)   0.520 us    |      }
+  1)               |      sched_fork() {
+  1)   0.312 us    |        __sched_fork();
+  1)   0.729 us    |      }
+  1)               |      copy_mm() {
+  1)   2.916 us    |        dup_mm();
+  1)   3.229 us    |      }
+  1)               |      copy_files() {
+  1)   0.416 us    |        dup_fd();
+  1)   0.729 us    |      }
+  1)  12.500 us    |    }
+  1)   0.312 us    |    wake_up_new_task();
+  1)  13.125 us    |  }</code></pre>
+
+<p><strong>进阶实验</strong>：</p>
+
+<pre><code class="language-bash"># 去掉深度限制看完整调用树
+echo 0 &gt; max_graph_depth
+
+# 启用函数返回值（需要 CONFIG_FUNCTION_GRAPH_RETVAL=y）
+echo 1 &gt; options/funcgraph-retval
+
+# 启用进程名显示
+echo 1 &gt; options/funcgraph-proc</code></pre>
+
+<p><strong>思考题</strong>：</p>
+<ol>
+<li><code>!</code> 标记的时间（如 <code>! 11234 us</code>）表示什么含义？</li>
+<li><code>+</code> 标记又表示什么？（提示：参考 <code>trace_functions_graph.c</code> 中的阈值定义）</li>
+<li><code>set_graph_function</code> 和 <code>set_ftrace_filter</code> 的区别是什么？</li>
+</ol>
+
+<hr>
+
+<h3>10.4 实验三：Trace Events — 追踪调度切换与中断</h3>
+
+<p><strong>目标</strong>：使用 trace events 追踪进程调度切换和中断，不使用 function tracer。</p>
+
+<p><strong>步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/sh
+# lab3_trace_events.sh
+cd /sys/kernel/tracing
+
+# 1. 重置
+echo 0 &gt; tracing_on
+echo nop &gt; current_tracer
+echo 0 &gt; events/enable
+echo &gt; trace
+
+# 2. 启用调度相关事件
+echo 1 &gt; events/sched/sched_switch/enable
+echo 1 &gt; events/sched/sched_wakeup/enable
+
+# 3. 启用中断事件
+echo 1 &gt; events/irq/irq_handler_entry/enable
+echo 1 &gt; events/irq/irq_handler_exit/enable
+
+# 4. 增大缓冲区避免丢数据
+echo 4096 &gt; buffer_size_kb
+
+# 5. 开始追踪
+echo 1 &gt; tracing_on
+
+# 6. 产生一些负载
+ls / &gt; /dev/null
+cat /proc/interrupts &gt; /dev/null
+
+# 7. 停止
+echo 0 &gt; tracing_on
+
+# 8. 查看结果
+head -50 trace</code></pre>
+
+<p><strong>预期输出</strong>：</p>
+
+<pre><code>#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+              sh-120     [000] d..2.   150.123: sched_switch: prev_comm=sh prev_pid=120 ... ==&gt; next_comm=ls next_pid=135 ...
+          &lt;idle&gt;-0       [001] d.h1.   150.124: irq_handler_entry: irq=30 name=arch_timer
+          &lt;idle&gt;-0       [001] d.h1.   150.124: irq_handler_exit: irq=30 ret=handled
+          &lt;idle&gt;-0       [001] d..2.   150.125: sched_wakeup: comm=ksoftirqd/1 pid=17 ...</code></pre>
+
+<p><strong>进阶：添加事件过滤条件</strong>：</p>
+
+<pre><code class="language-bash"># 只看 CPU 0 上的调度切换
+echo &#x27;common_cpu == 0&#x27; &gt; events/sched/sched_switch/filter
+
+# 只看特定进程被调度走的事件
+echo &#x27;prev_comm == &quot;my_app&quot;&#x27; &gt; events/sched/sched_switch/filter
+
+# 只看 arch_timer 中断
+echo &#x27;name == &quot;arch_timer&quot;&#x27; &gt; events/irq/irq_handler_entry/filter
+
+# 同时使用 trace_pipe 流式查看
+cat trace_pipe &amp;
+echo 1 &gt; tracing_on
+# ... Ctrl+C 停止</code></pre>
+
+<p><strong>思考题</strong>：</p>
+<ol>
+<li><code>trace</code> 和 <code>trace_pipe</code> 的区别是什么？各自适合什么场景？</li>
+<li>Trace Events 和 function tracer 可以同时使用吗？</li>
+<li><code>d..2.</code> 这些标志字段各代表什么含义？</li>
+</ol>
+
+<hr>
+
+<h3>10.5 实验四：kprobe 动态探针 — 捕获函数参数与返回值</h3>
+
+<p><strong>目标</strong>：在不修改内核代码的情况下，使用 kprobe 捕获 <code>do_sys_openat2()</code> 的文件名参数和返回值。</p>
+
+<p><strong>步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/sh
+# lab4_kprobe.sh
+cd /sys/kernel/tracing
+
+# 1. 重置
+echo 0 &gt; tracing_on
+echo &gt; kprobe_events
+echo &gt; trace
+
+# 2. 在 do_sys_openat2 入口创建探针，获取 filename 参数
+#    ARM64 calling convention: x0=dfd, x1=filename(struct filename*)
+#    struct filename 的 name 字段偏移为 0（第一个成员是 const char *name）
+echo &#x27;p:myopen do_sys_openat2 dfd=%x0 fname=+0(+0(%x1)):string&#x27; &gt; kprobe_events
+
+# 3. 在 do_sys_openat2 返回时获取返回值（fd 或错误码）
+echo &#x27;r:myopen_ret do_sys_openat2 fd=$retval&#x27; &gt;&gt; kprobe_events
+
+# 4. 查看已注册的探针
+cat kprobe_events
+
+# 5. 启用探针
+echo 1 &gt; events/kprobes/myopen/enable
+echo 1 &gt; events/kprobes/myopen_ret/enable
+
+# 6. 开始追踪
+echo 1 &gt; tracing_on
+
+# 7. 触发文件打开操作
+cat /proc/version &gt; /dev/null
+ls /tmp &gt; /dev/null 2&gt;&amp;1
+
+# 8. 停止追踪
+echo 0 &gt; tracing_on
+
+# 9. 查看结果
+cat trace</code></pre>
+
+<p><strong>预期输出</strong>：</p>
+
+<pre><code>              sh-120   [001] .....   200.123: myopen: (do_sys_openat2+0x0/0x1b0) dfd=0xffffffffffffff9c fname=&quot;/proc/version&quot;
+              sh-120   [001] .....   200.123: myopen_ret: (ksys_open+0x6c/0xa0 &lt;- do_sys_openat2) fd=3
+              ls-142   [002] .....   200.456: myopen: (do_sys_openat2+0x0/0x1b0) dfd=0xffffffffffffff9c fname=&quot;/tmp&quot;
+              ls-142   [002] .....   200.456: myopen_ret: (ksys_open+0x6c/0xa0 &lt;- do_sys_openat2) fd=3</code></pre>
+
+<p><strong>进阶：使用过滤条件</strong>：</p>
+
+<pre><code class="language-bash"># 只追踪 sh 进程的 open
+echo &#x27;common_comm == &quot;sh&quot;&#x27; &gt; events/kprobes/myopen/filter
+
+# 只追踪打开失败的情况（返回值 &lt; 0，即 fd 为大数，因为 unsigned 表示）
+echo &#x27;fd &gt; 0xfffffffffffff000&#x27; &gt; events/kprobes/myopen_ret/filter</code></pre>
+
+<p><strong>清理</strong>：</p>
+
+<pre><code class="language-bash">echo 0 &gt; events/kprobes/enable
+echo &gt; kprobe_events</code></pre>
+
+<p><strong>思考题</strong>：</p>
+<ol>
+<li><code>%x0</code> 和 <code>$retval</code> 的语法分别代表什么？</li>
+<li><code>+0(+0(%x1)):string</code> 这个表达式如何解析？（两层解引用 + 类型转换）</li>
+<li>kprobe 和 ftrace function tracer 的实现机制有什么区别？</li>
+</ol>
+
+<hr>
+
+<h3>10.6 实验五：多实例追踪 — 隔离不同子系统</h3>
+
+<p><strong>目标</strong>：创建多个追踪实例，同时追踪不同子系统而互不干扰。</p>
+
+<p><strong>步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/sh
+# lab5_multi_instance.sh
+cd /sys/kernel/tracing
+
+# 1. 创建两个独立实例
+mkdir -p instances/sched_trace
+mkdir -p instances/mm_trace
+
+# 2. 实例 A — 追踪调度
+cd instances/sched_trace
+echo 1 &gt; events/sched/sched_switch/enable
+echo 1 &gt; events/sched/sched_wakeup/enable
+echo 2048 &gt; buffer_size_kb
+
+# 3. 实例 B — 追踪内存分配
+cd /sys/kernel/tracing/instances/mm_trace
+echo 1 &gt; events/kmem/mm_page_alloc/enable
+echo 1 &gt; events/kmem/mm_page_free/enable
+echo 2048 &gt; buffer_size_kb
+
+# 4. 同时启动
+echo 1 &gt; /sys/kernel/tracing/instances/sched_trace/tracing_on
+echo 1 &gt; /sys/kernel/tracing/instances/mm_trace/tracing_on
+
+# 5. 产生负载
+dd if=/dev/zero of=/dev/null bs=4096 count=100 2&gt;/dev/null
+ls /proc &gt; /dev/null
+
+# 6. 停止
+echo 0 &gt; /sys/kernel/tracing/instances/sched_trace/tracing_on
+echo 0 &gt; /sys/kernel/tracing/instances/mm_trace/tracing_on
+
+# 7. 分别查看结果
+echo &quot;=== Scheduling Events ===&quot;
+head -20 /sys/kernel/tracing/instances/sched_trace/trace
+
+echo &quot;&quot;
+echo &quot;=== Memory Events ===&quot;
+head -20 /sys/kernel/tracing/instances/mm_trace/trace
+
+# 8. 清理
+echo 0 &gt; /sys/kernel/tracing/instances/sched_trace/events/enable
+echo 0 &gt; /sys/kernel/tracing/instances/mm_trace/events/enable
+rmdir /sys/kernel/tracing/instances/sched_trace
+rmdir /sys/kernel/tracing/instances/mm_trace</code></pre>
+
+<p><strong>要点</strong>：</p>
+<ul>
+<li>每个实例有独立的 ring buffer，互不影响</li>
+<li>全局 <code>current_tracer</code> 不影响实例，实例使用 events</li>
+<li>实例通过 <code>mkdir</code> 创建、<code>rmdir</code> 销毁（需先禁用所有 events）</li>
+</ul>
+
+<p><strong>思考题</strong>：</p>
+<ol>
+<li>实例和全局 trace 的 ring buffer 是共享还是独立的？</li>
+<li><code>function</code> tracer 能在实例中使用吗？（提示：和全局 <code>current_tracer</code> 的关系）</li>
+<li>什么场景下需要用多实例？</li>
+</ol>
+
+<hr>
+
+<h3>10.7 实验六：Histogram Trigger — 统计调度延迟分布</h3>
+
+<p><strong>目标</strong>：使用 histogram trigger 统计进程从唤醒到实际运行的调度延迟分布。</p>
+
+<p><strong>步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/sh
+# lab6_histogram.sh
+cd /sys/kernel/tracing
+
+# 1. 重置
+echo 0 &gt; tracing_on
+echo &gt; trace
+echo 0 &gt; events/enable
+
+# 2. 在 sched_wakeup 事件上记录唤醒时间戳
+echo &#x27;hist:keys=pid:ts0=common_timestamp.usecs&#x27; &gt; \
+    events/sched/sched_wakeup/trigger
+
+# 3. 在 sched_switch 事件上计算延迟
+echo &#x27;hist:keys=next_pid:wakeup_lat=common_timestamp.usecs-$ts0:sort=wakeup_lat&#x27; &gt; \
+    events/sched/sched_switch/trigger
+
+# 4. 开始
+echo 1 &gt; tracing_on
+
+# 5. 产生多种负载来观察不同延迟
+for i in $(seq 1 20); do
+    ls /proc &gt; /dev/null
+    cat /proc/version &gt; /dev/null
+done
+
+# 6. 停止并查看直方图
+echo 0 &gt; tracing_on
+
+echo &quot;=== Wakeup Latency Distribution ===&quot;
+cat events/sched/sched_switch/hist</code></pre>
+
+<p><strong>预期输出</strong>：</p>
+
+<pre><code># event histogram
+#
+# trigger info: hist:keys=next_pid:vals=wakeup_lat:sort=wakeup_lat:size=2048 [active]
+#
+
+{ next_pid:        120 } hitcount:         15  wakeup_lat:        234
+{ next_pid:         17 } hitcount:          8  wakeup_lat:        456
+{ next_pid:        135 } hitcount:          5  wakeup_lat:       1023
+{ next_pid:         42 } hitcount:          3  wakeup_lat:       2567
+
+Totals:
+    Hits: 31
+    Entries: 4
+    Dropped: 0</code></pre>
+
+<p><strong>进阶：按时间区间分桶</strong>：</p>
+
+<pre><code class="language-bash"># 清除旧 trigger
+echo &#x27;!hist:keys=next_pid:wakeup_lat=common_timestamp.usecs-$ts0&#x27; &gt; \
+    events/sched/sched_switch/trigger
+
+# 用对数分桶显示延迟分布（需要 5.10+ 内核）
+echo &#x27;hist:keys=next_pid.log2:vals=hitcount:sort=hitcount&#x27; &gt; \
+    events/sched/sched_switch/trigger</code></pre>
+
+<p><strong>清理</strong>：</p>
+
+<pre><code class="language-bash">echo &#x27;!hist:keys=pid:ts0=common_timestamp.usecs&#x27; &gt; events/sched/sched_wakeup/trigger
+echo &#x27;!hist:keys=next_pid:wakeup_lat=common_timestamp.usecs-$ts0:sort=wakeup_lat&#x27; &gt; events/sched/sched_switch/trigger</code></pre>
+
+<p><strong>思考题</strong>：</p>
+<ol>
+<li>Histogram trigger 的数据存储在哪里？（ring buffer 还是独立结构？）</li>
+<li><code>$ts0</code> 变量的作用域是什么？</li>
+<li>如何用 histogram trigger 实现类似 <code>perf sched latency</code> 的功能？</li>
+</ol>
+
+<hr>
+
+<h3>10.8 实验七：Stack Trace — 定位函数调用来源</h3>
+
+<p><strong>目标</strong>：追踪特定函数被调用时的完整内核栈，定位调用来源。</p>
+
+<p><strong>步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/sh
+# lab7_stacktrace.sh
+cd /sys/kernel/tracing
+
+# 1. 重置
+echo 0 &gt; tracing_on
+echo nop &gt; current_tracer
+echo &gt; trace
+
+# 2. 设置 function tracer，启用栈追踪选项
+echo function &gt; current_tracer
+echo 1 &gt; options/func_stack_trace
+
+# 3. 只追踪 __alloc_pages 来分析谁在分配内存
+echo &#x27;__alloc_pages&#x27; &gt; set_ftrace_filter
+
+# 4. 开始追踪（只抓少量数据，因为栈追踪开销大）
+echo 1 &gt; tracing_on
+
+# 5. 触发内存分配
+cat /proc/meminfo &gt; /dev/null
+
+# 6. 立即停止
+echo 0 &gt; tracing_on
+
+# 7. 查看结果（含完整调用栈）
+cat trace</code></pre>
+
+<p><strong>预期输出</strong>：</p>
+
+<pre><code>              cat-150   [001] .....   300.123: __alloc_pages &lt;-alloc_pages_mpol
+              cat-150   [001] .....   300.123: &lt;stack trace&gt;
+ =&gt; __alloc_pages
+ =&gt; alloc_pages_mpol
+ =&gt; folio_alloc
+ =&gt; __filemap_get_folio
+ =&gt; filemap_get_pages
+ =&gt; filemap_read
+ =&gt; vfs_read
+ =&gt; ksys_read
+ =&gt; __arm64_sys_read
+ =&gt; invoke_syscall
+ =&gt; el0_svc_common
+ =&gt; do_el0_svc
+ =&gt; el0_svc
+ =&gt; el0t_64_sync_handler
+ =&gt; el0t_64_sync</code></pre>
+
+<p><strong>要点</strong>：</p>
+<ul>
+<li><code>func_stack_trace</code> 选项开销极大，务必配合 <code>set_ftrace_filter</code> 使用</li>
+<li>栈追踪对定位「谁调用了这个函数」非常有价值</li>
+<li>QEMU 上的栈追踪完整可靠（无 KASLR 干扰）</li>
+</ul>
+
+<p><strong>思考题</strong>：</p>
+<ol>
+<li><code>func_stack_trace</code> 的实现原理是什么？（提示：<code>ftrace_trace_stack()</code>）</li>
+<li>为什么一定要配合过滤使用？</li>
+<li>从调用栈可以看出这次内存分配的完整请求路径是什么？</li>
+</ol>
+
+<hr>
+
+<h3>10.9 实验八：追踪内核模块函数</h3>
+
+<p><strong>目标</strong>：使用 ftrace 追踪动态加载的内核模块中的函数。</p>
+
+<p><strong>步骤</strong>：</p>
+
+<pre><code class="language-bash">#!/bin/sh
+# lab8_module_trace.sh
+
+# 0. 挂载 9p 共享目录（QEMU 启动时已配置）
+mkdir -p /mnt/kmod
+mount -t 9p -o trans=virtio kmod_mount /mnt/kmod 2&gt;/dev/null
+
+# 1. 加载测试模块（假设已编译放在 kmodules 目录）
+insmod /mnt/kmod/my_test_module.ko
+
+cd /sys/kernel/tracing
+
+# 2. 查看模块的可追踪函数
+grep &#x27;\[my_test_module\]&#x27; available_filter_functions
+# 输出示例:
+# my_module_init [my_test_module]
+# my_module_read [my_test_module]
+# my_module_write [my_test_module]
+
+# 3. 设置追踪（用 :mod: 语法过滤整个模块）
+echo &#x27;:mod:my_test_module&#x27; &gt; set_ftrace_filter
+
+# 4. 开启 function_graph
+echo function_graph &gt; current_tracer
+echo 1 &gt; tracing_on
+
+# 5. 触发模块操作
+cat /dev/my_test_device &gt; /dev/null 2&gt;&amp;1
+echo &quot;test&quot; &gt; /dev/my_test_device 2&gt;&amp;1
+
+# 6. 停止
+echo 0 &gt; tracing_on
+cat trace
+
+# 7. 清理
+echo nop &gt; current_tracer
+rmmod my_test_module 2&gt;/dev/null</code></pre>
+
+<p><strong>要点</strong>：</p>
+<ul>
+<li><code>:mod:module_name</code> 语法可过滤整个模块的所有函数</li>
+<li>模块加载时 ftrace 自动扫描并注册模块中的可追踪函数</li>
+<li><code>available_filter_functions</code> 中模块函数用 <code>[module_name]</code> 标记</li>
+</ul>
+
+<p><strong>思考题</strong>：</p>
+<ol>
+<li>模块加载时 ftrace 如何发现模块中的函数？（提示：<code>ftrace_module_notify</code>）</li>
+<li>如果模块卸载时 ftrace 还在追踪它的函数，会发生什么？</li>
+<li><code>:mod:</code> 语法在代码中是如何解析的？</li>
+</ol>
+
+<hr>
+
+<h2>11. Ftrace 面试经典问题与解答</h2>
+
+<h3>11.1 基础概念类</h3>
+
+<hr>
+
+<p><strong>Q1：什么是 ftrace？它和 strace/ltrace 有什么区别？</strong></p>
+
+<p><strong>A</strong>：ftrace 是 Linux 内核内建的追踪框架，用于追踪<strong>内核态</strong>函数调用、事件和延迟。</p>
+
+<table>
+<thead><tr>
+<th>工具</th>
+<th>追踪对象</th>
+<th>实现方式</th>
+<th>开销</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>ftrace</strong></td>
+<td>内核函数、内核事件</td>
+<td>编译插桩 + 动态 NOP patching</td>
+<td>极低（未启用时零开销）</td>
+</tr>
+<tr>
+<td><strong>strace</strong></td>
+<td>系统调用接口</td>
+<td>ptrace 系统调用</td>
+<td>高（每次 syscall 两次上下文切换）</td>
+</tr>
+<tr>
+<td><strong>ltrace</strong></td>
+<td>用户态库函数</td>
+<td>PLT hook / breakpoint</td>
+<td>中等</td>
+</tr>
+</tbody></table>
+
+<p>关键区别：ftrace 追踪的是<strong>内核内部</strong>函数调用链，可以看到系统调用进入内核后的完整执行路径；strace 只能看到系统调用的入口和返回值。</p>
+
+<hr>
+
+<p><strong>Q2：ftrace 的零开销原则是如何实现的？</strong></p>
+
+<p><strong>A</strong>：通过 <strong>Dynamic Ftrace</strong> 机制：</p>
+
+<ol>
+<li><strong>编译期</strong>：GCC 使用 <code>-fpatchable-function-entry</code> 在每个函数入口插入 NOP 指令</li>
+<li><strong>启动期</strong>：<code>ftrace_init()</code> 将所有 NOP 地址记录到 <code>dyn_ftrace</code> 数组中</li>
+<li><strong>运行态</strong>：</li>
+</ol>
+<ul>
+<li><strong>未追踪时</strong>：函数入口是 NOP，CPU 直接跳过，几乎零开销</li>
+<li><strong>启用追踪时</strong>：通过 text patching 将 NOP 替换为 <code>BL ftrace_caller</code>（ARM64）</li>
+<li><strong>禁用时</strong>：再改回 NOP</li>
+</ul>
+
+<p>核心代码路径：<code>ftrace_make_call()</code> / <code>ftrace_make_nop()</code> → <code>aarch64_insn_patch_text_nosync()</code></p>
+
+<hr>
+
+<p><strong>Q3：tracefs 和 debugfs 是什么关系？</strong></p>
+
+<p><strong>A</strong>：</p>
+<ul>
+<li><strong>tracefs</strong> 是 ftrace 专用的虚拟文件系统，挂载点为 <code>/sys/kernel/tracing</code></li>
+<li>早期（~2014年前）ftrace 通过 debugfs 暴露接口（<code>/sys/kernel/debug/tracing/</code>）</li>
+<li>后来独立出 tracefs，因为追踪功能不应该依赖 debug 配置</li>
+<li>现代内核中 debugfs 下的 <code>tracing/</code> 目录是向后兼容的自动挂载（<code>CONFIG_TRACEFS_AUTOMOUNT_DEPRECATED</code>）</li>
+<li><strong>推荐始终使用</strong> <code>/sys/kernel/tracing/</code></li>
+</ul>
+
+<hr>
+
+<h3>11.2 实现原理类</h3>
+
+<hr>
+
+<p><strong>Q4：描述 ARM64 上 ftrace 的函数入口布局（CALL_OPS 模式）。</strong></p>
+
+<p><strong>A</strong>：</p>
+
+<pre><code>func-12: [ftrace_ops 指针低 32 位]   ← literal pool
+func-8:  [ftrace_ops 指针高 32 位]   ← literal pool
+func-4:  BTI C                       ← 可选（Branch Target Identification）
+func+0:  MOV X9, LR                  ← 保存返回地址
+func+4:  NOP / BL ftrace_caller      ← 追踪开关点
+func+8:  &lt;function body ...&gt;</code></pre>
+
+<ul>
+<li><strong>禁用时</strong>：<code>func+4</code> 是 NOP，函数正常执行</li>
+<li><strong>启用时</strong>：<code>func+4</code> 改为 <code>BL ftrace_caller</code></li>
+<li><strong>CALL_OPS 优化</strong>：<code>ftrace_caller</code> 汇编入口直接从 <code>func-12</code> 读取 <code>ftrace_ops</code> 指针，避免全局变量查找</li>
+<li><code>MOV X9, LR</code> 保存原始返回地址，因为 <code>BL</code> 会覆盖 LR</li>
+</ul>
+
+<p>关键源码：<code>arch/arm64/kernel/ftrace.c</code> 和 <code>arch/arm64/kernel/entry-ftrace.S</code></p>
+
+<hr>
+
+<p><strong>Q5：<code>ftrace_ops</code> 是什么？多个追踪器同时工作时如何调度？</strong></p>
+
+<p><strong>A</strong>：</p>
+
+<p><code>ftrace_ops</code> 是追踪回调的注册单元，每个追踪使用者注册一个：</p>
+
+<pre><code class="language-c">struct ftrace_ops {
+    ftrace_func_t func;           // 回调函数
+    struct ftrace_ops_hash local_hash;  // 过滤 hash
+    unsigned long flags;
+    // ...
+};</code></pre>
+
+<p><strong>多 ops 调度</strong>：</p>
+<ul>
+<li>所有注册的 <code>ftrace_ops</code> 形成单链表：<code>ftrace_ops_list → ops_A → ops_B → ftrace_list_end</code></li>
+<li><strong>单 ops 优化</strong>：如果只有一个 ops，<code>ftrace_trace_function</code> 直接指向 <code>ops->func</code></li>
+<li><strong>多 ops</strong>：<code>ftrace_trace_function</code> 指向 <code>ftrace_ops_list_func()</code>，遍历链表依次调用</li>
+<li><strong>CALL_OPS 优化</strong>（ARM64）：每个函数调用点存储自己关联的 <code>ftrace_ops</code> 指针，无需遍历全局链表</li>
+</ul>
+
+<p>选择逻辑在 <code>update_ftrace_function()</code> 中：</p>
+
+<pre><code class="language-c">if (只有一个 ops) → 直接调用 ops-&gt;func
+else              → 使用 ftrace_ops_list_func 遍历</code></pre>
+
+<hr>
+
+<p><strong>Q6：Ring Buffer 如何做到写入路径无锁？</strong></p>
+
+<p><strong>A</strong>：三个关键设计：</p>
+
+<ol>
+<li><strong>Per-CPU 隔离</strong>：每个 CPU 有独立的 <code>ring_buffer_per_cpu</code>，写入时不跨 CPU 竞争</li>
+<li><strong>原子预留</strong>：使用 <code>local_t</code> 原子操作预留写入空间（<code>local_add_return()</code>），不需要锁</li>
+<li><strong>Reader Page Swap</strong>：读者不直接读写者的页，而是通过 swap 获取一个满页：</li>
+</ol>
+<ul>
+<li>写者持续写入环形页链表</li>
+<li>读者用空闲的 <code>reader_page</code> 与 <code>head_page</code> 交换</li>
+<li>交换使用 <code>cmpxchg</code> 原子操作保证一致性</li>
+</ul>
+
+<pre><code>写入: tail_page 上 local_add_return() 预留空间 → 填充数据 → 更新 commit
+读取: reader_page ↔ head_page 原子交换 → 读者获得满页</code></pre>
+
+<p>关键代码：<code>kernel/trace/ring_buffer.c</code> 中的 <code>rb_reserve_next_event()</code> 和 <code>rb_buffer_peek()</code></p>
+
+<hr>
+
+<p><strong>Q7：<code>ftrace_modify_code()</code> 如何保证多核安全？</strong></p>
+
+<p><strong>A</strong>：ARM64 上代码修改需要处理指令缓存一致性：</p>
+
+<ol>
+<li><strong>单指令原子性</strong>：ARM64 指令是 4 字节对齐的，单条指令修改是原子的（<code>aarch64_insn_write()</code>）</li>
+<li><strong>stop_machine 时机</strong>：某些复杂修改场景使用 <code>stop_machine()</code> 暂停所有 CPU</li>
+<li><strong>指令缓存刷新</strong>：修改后必须执行：</li>
+</ol>
+<ul>
+<li>数据缓存写回（<code>DC CVAU</code>）</li>
+<li>指令缓存失效（<code>IC IVAU</code>）</li>
+<li>指令同步屏障（<code>ISB</code>）</li>
+</ul>
+<ol>
+<li><strong>CALL_OPS literal 写入</strong>：8 字节 ops 指针写入使用 <code>aarch64_insn_write_literal_u64()</code>，需要确保两个 4 字节写入的原子性</li>
+</ol>
+
+<p>关键代码：<code>arch/arm64/kernel/patching.c</code> → <code>__aarch64_insn_write()</code></p>
+
+<hr>
+
+<h3>11.3 使用实践类</h3>
+
+<hr>
+
+<p><strong>Q8：如何用 ftrace 追踪某个特定进程的所有内核函数调用？</strong></p>
+
+<p><strong>A</strong>：</p>
+
+<pre><code class="language-bash">cd /sys/kernel/tracing
+echo 0 &gt; tracing_on
+
+# 设置 function tracer
+echo function &gt; current_tracer
+
+# 设置 PID 过滤（假设目标 PID = 1234）
+echo 1234 &gt; set_ftrace_pid
+
+# 可选：进一步缩小到感兴趣的函数
+echo &#x27;vfs_*&#x27; &gt; set_ftrace_filter
+
+# 开始
+echo 1 &gt; tracing_on
+
+# ... 目标进程执行 ...
+
+echo 0 &gt; tracing_on
+cat trace</code></pre>
+
+<p><strong>原理</strong>：<code>set_ftrace_pid</code> 写入时会设置 <code>trace_array->function_pids</code>（<code>trace_pid_list</code>），在 <code>function_trace_call()</code> 中通过 <code>trace_ignore_this_task()</code> 检查当前进程是否匹配。</p>
+
+<p><strong>注意</strong>：</p>
+<ul>
+<li>PID 过滤只影响 function tracer，不影响 trace events</li>
+<li>可以写入多个 PID（每行一个，或追加 <code>>></code>）</li>
+<li>如果需要追踪新 fork 的子进程，设置 <code>options/function-fork</code></li>
+</ul>
+
+<hr>
+
+<p><strong>Q9：<code>set_ftrace_filter</code> 支持哪些语法？</strong></p>
+
+<p><strong>A</strong>：</p>
+
+<table>
+<thead><tr>
+<th>语法</th>
+<th>示例</th>
+<th>含义</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>精确匹配</td>
+<td><code>schedule</code></td>
+<td>只匹配 <code>schedule</code></td>
+</tr>
+<tr>
+<td>前缀通配</td>
+<td><code>sched*</code></td>
+<td>匹配 <code>schedule</code>, <code>scheduler_tick</code>, ...</td>
+</tr>
+<tr>
+<td>后缀通配</td>
+<td><code>*_irq</code></td>
+<td>匹配 <code>do_IRQ</code>, <code>local_irq_enable</code>, ...</td>
+</tr>
+<tr>
+<td>中间通配</td>
+<td><code><em>alloc</em></code></td>
+<td>匹配含 <code>alloc</code> 的所有函数</td>
+</tr>
+<tr>
+<td>模块过滤</td>
+<td><code>:mod:ext4</code></td>
+<td>匹配 ext4 模块的所有函数</td>
+</tr>
+<tr>
+<td>追加</td>
+<td><code>echo 'func' >> set_ftrace_filter</code></td>
+<td>追加到已有过滤（<code>>></code> vs <code>></code>）</td>
+</tr>
+<tr>
+<td>命令语法</td>
+<td><code>echo 'func:traceoff' > set_ftrace_filter</code></td>
+<td>触发 func 时关闭追踪</td>
+</tr>
+</tbody></table>
+
+<p><strong>命令语法支持的 action</strong>：</p>
+<ul>
+<li><code>traceon</code> / <code>traceoff</code> — 在追踪到此函数时自动开启/关闭追踪</li>
+<li><code>snapshot</code> — 自动保存快照</li>
+<li><code>stacktrace</code> — 记录调用栈</li>
+<li><code>dump</code> / <code>cpudump</code> — 输出 ring buffer 内容</li>
+</ul>
+
+<p>代码实现：<code>ftrace_regex_write()</code> → <code>ftrace_match_records()</code> 使用 <code>glob_match()</code></p>
+
+<hr>
+
+<p><strong>Q10：如何用 ftrace 分析一个函数执行了多长时间？</strong></p>
+
+<p><strong>A</strong>：三种方法：</p>
+
+<p><strong>方法一：function_graph tracer（最直接）</strong></p>
+
+<pre><code class="language-bash">echo function_graph &gt; current_tracer
+echo &#x27;target_function&#x27; &gt; set_graph_function
+echo 1 &gt; tracing_on
+# ... 触发调用 ...
+cat trace
+# DURATION 列直接显示耗时</code></pre>
+
+<p><strong>方法二：kprobe + kretprobe 计时</strong></p>
+
+<pre><code class="language-bash">echo &#x27;p:entry target_function&#x27; &gt; kprobe_events
+echo &#x27;r:exit target_function lat=$common_timestamp&#x27; &gt;&gt; kprobe_events
+# 通过入口和返回的时间戳差值计算</code></pre>
+
+<p><strong>方法三：trace event + histogram trigger</strong></p>
+
+<pre><code class="language-bash"># 如果目标函数有对应的 trace event
+echo &#x27;hist:keys=common_pid:ts0=common_timestamp.usecs&#x27; &gt; events/xxx/entry/trigger
+echo &#x27;hist:keys=common_pid:lat=common_timestamp.usecs-$ts0&#x27; &gt; events/xxx/exit/trigger</code></pre>
+
+<p>最推荐 <strong>方法一</strong>，直接输出耗时，无需后处理。</p>
+
+<hr>
+
+<h3>11.4 性能与设计类</h3>
+
+<hr>
+
+<p><strong>Q11：ftrace 启用后对系统性能的影响有多大？</strong></p>
+
+<p><strong>A</strong>：</p>
+
+<table>
+<thead><tr>
+<th>状态</th>
+<th>开销</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>完全禁用</strong>（<code>CONFIG_FTRACE=n</code>）</td>
+<td>0</td>
+<td>无插桩代码</td>
+</tr>
+<tr>
+<td><strong>编译启用但未激活</strong>（NOP 状态）</td>
+<td>~0.5-1%</td>
+<td>每个函数入口多 1-2 条 NOP 指令</td>
+</tr>
+<tr>
+<td><strong>function tracer 全局开启</strong></td>
+<td>10-30%</td>
+<td>每个函数调用都经过 ftrace_caller</td>
+</tr>
+<tr>
+<td><strong>function tracer + 过滤</strong></td>
+<td>1-5%</td>
+<td>只有被过滤的函数有额外开销</td>
+</tr>
+<tr>
+<td><strong>function_graph</strong></td>
+<td>15-40%</td>
+<td>需要修改返回地址，进入和返回各一次回调</td>
+</tr>
+<tr>
+<td><strong>trace events</strong></td>
+<td>极低</td>
+<td>基于 static key，未启用时仅一条 NOP/分支</td>
+</tr>
+</tbody></table>
+
+<p><strong>优化建议</strong>：</p>
+<ul>
+<li>生产环境建议编译启用 <code>DYNAMIC_FTRACE</code>，但不激活 — NOP 几乎零开销</li>
+<li>使用过滤（<code>set_ftrace_filter</code>）将影响范围缩到最小</li>
+<li>Trace events 优于 function tracer 用于持续监控</li>
+<li>增大 ring buffer（<code>buffer_size_kb</code>）避免丢数据</li>
+</ul>
+
+<hr>
+
+<p><strong>Q12：为什么 ftrace 使用 ring buffer 而不是简单的线性缓冲区？</strong></p>
+
+<p><strong>A</strong>：</p>
+
+<ol>
+<li><strong>写入不阻塞</strong>：环形缓冲区写满时覆盖旧数据，保证写入路径不会因缓冲区满而阻塞（对内核追踪至关重要，不能因为追踪影响正常执行）</li>
+<li><strong>保留最新数据</strong>：出问题时通常关注最近发生的事件，ring buffer 天然保留最新数据</li>
+<li><strong>Per-CPU 无锁设计</strong>：每个 CPU 独立的 ring buffer 避免跨核竞争，适合高频写入场景</li>
+<li><strong>Reader Page Swap</strong>：读者获取一整页数据，不干扰写者的环形链表，实现读写分离</li>
+<li><strong>snapshot 支持</strong>：可以瞬间获取当前 buffer 的快照，不丢失正在写入的数据</li>
+</ol>
+
+<p><strong>线性缓冲区的问题</strong>：写满后要么停止追踪（丢失后续事件），要么阻塞写入者（影响被追踪代码的行为）——两种都不可接受。</p>
+
+<hr>
+
+<p><strong>Q13：ftrace 的过滤机制为什么使用哈希表？</strong></p>
+
+<p><strong>A</strong>：</p>
+
+<p>因为 ftrace 的过滤判断在<strong>每次函数调用的热路径</strong>上执行：</p>
+
+<pre><code class="language-c">// 简化的过滤逻辑
+if (filter_hash 非空 &amp;&amp; ip 不在 filter_hash 中)
+    return;  // 不追踪
+if (ip 在 notrace_hash 中)
+    return;  // 不追踪</code></pre>
+
+<ul>
+<li>可追踪函数数量可达 40000-80000 个</li>
+<li>过滤列表可能包含数千个函数</li>
+<li>每次函数调用都需要查询 — 必须 <strong>O(1)</strong> 查找</li>
+<li>哈希表查找平均 O(1)，远优于线性搜索 O(n) 或二分查找 O(log n)</li>
+</ul>
+
+<p>实现细节：</p>
+<ul>
+<li><code>ftrace_hash</code> 使用 <code>hash_long(ip, size_bits)</code> 映射</li>
+<li>每个桶是 <code>hlist</code>（内核标准哈希链表）</li>
+<li>使用 RCU 保护读路径无锁</li>
+</ul>
+
+<hr>
+
+<h3>11.5 综合分析类</h3>
+
+<hr>
+
+<p><strong>Q14：描述 <code>echo function > current_tracer</code> 从用户态到内核代码修改的完整路径。</strong></p>
+
+<p><strong>A</strong>：</p>
+
+<pre><code>用户态: write(fd, &quot;function\n&quot;, 9)
+  │
+  ▼ VFS 层
+  tracing_set_trace_write()           // trace.c — tracefs 文件 write 操作
+    → tracing_set_tracer()
+       │
+       ├── 查找 tracer: 遍历 trace_types 链表，找到 name==&quot;function&quot; 的 tracer
+       │
+       ├── 停止旧 tracer:
+       │   old_tracer-&gt;reset(tr)       // 清理旧追踪状态
+       │
+       ├── 初始化新 tracer:
+       │   tracer_init(t, tr)
+       │   → function_trace_init(tr)   // trace_functions.c
+       │     ├── tr-&gt;ops-&gt;func = function_trace_call
+       │     └── register_ftrace_function(tr-&gt;ops)
+       │         │
+       │         ├── __register_ftrace_function(ops)
+       │         │   ├── add_ftrace_ops(&amp;ftrace_ops_list, ops)  // 链表挂载
+       │         │   └── update_ftrace_function()               // 选择全局回调
+       │         │
+       │         └── ftrace_startup(ops, command)
+       │             ├── ftrace_hash_rec_enable(ops)    // 更新 dyn_ftrace 引用计数
+       │             └── ftrace_run_update_code()       // 触发代码修改
+       │                 → arch_ftrace_update_code()
+       │                   → ftrace_replace_code()
+       │                     遍历 ftrace_pages_start:
+       │                     for each dyn_ftrace rec:
+       │                       if (rec 引用计数 &gt; 0)
+       │                         ftrace_make_call(rec)  // NOP → BL ftrace_caller
+       │                       else
+       │                         ftrace_make_nop(rec)   // BL → NOP
+       │
+       └── tr-&gt;current_trace = t       // 记录当前活跃 tracer</code></pre>
+
+<p>关键点：</p>
+<ul>
+<li>tracefs 文件操作 → tracer 初始化 → ops 注册 → 代码修改，四步完成</li>
+<li>代码修改是遍历所有 <code>dyn_ftrace</code> 记录，按引用计数决定 NOP/BL</li>
+<li>整个过程在 <code>ftrace_lock</code> mutex 保护下串行执行</li>
+</ul>
+
+<hr>
+
+<p><strong>Q15：如果让你设计一个内核追踪框架，你会如何设计？和 ftrace 的设计有什么异同？</strong></p>
+
+<p><strong>A</strong>：这是一个开放性问题，好的回答应涵盖以下关键设计决策：</p>
+
+<p><strong>1. 插桩方式</strong>：</p>
+<ul>
+<li>ftrace 选择：编译期插入 NOP + 运行期 text patching</li>
+<li>替代方案：hardware breakpoint（慢、数量有限）、软件断点 INT3（x86 可用，但 overhead 大）</li>
+<li>权衡：编译插桩需要重新编译，但性能最好</li>
+</ul>
+
+<p><strong>2. 数据缓冲区</strong>：</p>
+<ul>
+<li>ftrace 选择：per-CPU ring buffer + reader page swap</li>
+<li>必须考虑：无锁写入（追踪在中断/NMI上下文也要工作）、溢出策略（覆盖 vs 丢弃）</li>
+<li>关键约束：写入路径绝不能 sleep 或获取可能死锁的锁</li>
+</ul>
+
+<p><strong>3. 过滤机制</strong>：</p>
+<ul>
+<li>ftrace 选择：哈希表 + 正则/glob 匹配</li>
+<li>必须考虑：过滤判断在热路径上，必须高效</li>
+<li>进阶：CALL_OPS 将 ops 绑定到每个调用点，彻底消除运行时过滤开销</li>
+</ul>
+
+<p><strong>4. 用户接口</strong>：</p>
+<ul>
+<li>ftrace 选择：虚拟文件系统（tracefs）</li>
+<li>替代：ioctl、netlink、系统调用</li>
+<li>tracefs 的优点：shell 脚本即可使用，无需额外工具</li>
+</ul>
+
+<p><strong>5. 可扩展性</strong>：</p>
+<ul>
+<li>ftrace 选择：tracer 插件注册机制 + trace event 框架</li>
+<li>新功能（如 BPF 集成）可以作为新的 ftrace_ops 注册，不改变核心框架</li>
+</ul>
+
+<hr>
+
+<p><strong>Q16：解释 ftrace 中的递归保护机制。</strong></p>
+
+<p><strong>A</strong>：</p>
+
+<p><strong>问题</strong>：ftrace 回调函数（如 <code>function_trace_call()</code>）本身会调用其他内核函数。如果这些函数也被追踪，就会无限递归。</p>
+
+<p><strong>解决方案</strong>：<code>ftrace_test_recursion_trylock()</code> / <code>ftrace_test_recursion_unlock()</code></p>
+
+<pre><code class="language-c">// 简化实现逻辑
+static inline int ftrace_test_recursion_trylock(unsigned long ip,
+                                                 unsigned long parent_ip)
+{
+    // 使用 current_thread_info 中的 trace_recursion 位图
+    // 不同上下文（normal、softirq、irq、nmi）使用不同的位
+    int bit = trace_ctx &amp; trace_recursion_mask;
+    
+    if (current-&gt;trace_recursion &amp; (1 &lt;&lt; bit))
+        return -1;  // 已在追踪中，跳过
+    
+    current-&gt;trace_recursion |= (1 &lt;&lt; bit);
+    return bit;
+}</code></pre>
+
+<p>关键设计：</p>
+<ul>
+<li>使用<strong>执行上下文</strong>（普通/softirq/hardirq/NMI）区分递归层级</li>
+<li>同一上下文内不允许递归，不同上下文可以嵌套追踪</li>
+<li>通过位操作实现，极低开销</li>
+<li>保证即使在 NMI 中触发追踪也不会死循环</li>
+</ul>
+
+<hr>
+
+<p><strong>Q17：trace events 和 function tracer 在实现上的本质区别是什么？</strong></p>
+
+<p><strong>A</strong>：</p>
+
+<table>
+<thead><tr>
+<th>维度</th>
+<th>function tracer</th>
+<th>trace events</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>插桩位置</strong></td>
+<td>函数入口（编译器生成）</td>
+<td>代码中手动放置的 tracepoint</td>
+</tr>
+<tr>
+<td><strong>粒度</strong></td>
+<td>函数级别</td>
+<td>任意代码位置</td>
+</tr>
+<tr>
+<td><strong>开关机制</strong></td>
+<td>NOP ↔ BL（text patching）</td>
+<td>static key（jump label）分支优化</td>
+</tr>
+<tr>
+<td><strong>数据内容</strong></td>
+<td>ip + parent_ip</td>
+<td>自定义结构化字段</td>
+</tr>
+<tr>
+<td><strong>性能开销</strong></td>
+<td>每个被追踪函数都有开销</td>
+<td>只有 tracepoint 命中点有开销</td>
+</tr>
+<tr>
+<td><strong>可过滤字段</strong></td>
+<td>函数名</td>
+<td>事件的任意字段</td>
+</tr>
+<tr>
+<td><strong>使用场景</strong></td>
+<td>通用函数调用追踪</td>
+<td>特定内核事件的结构化记录</td>
+</tr>
+</tbody></table>
+
+<p><strong>static key 原理</strong>（trace events 的开关）：</p>
+<pre><code class="language-c">// 禁用时（默认）：编译器生成的跳转指令跳过 tracepoint
+if (static_key_false(&amp;__tracepoint_sched_switch.key))
+    __DO_TRACE(...)   // 被跳过
+
+// 启用时：运行时修改跳转指令，使其 fall through 到 tracepoint 代码</code></pre>
+
+<p>这比 ftrace 的 NOP patching 更轻量——只需修改一条跳转指令的目标。</p>
+
+<hr>
+
+<h2>12. 参考索引</h2>
+
+<h3>12.1 关键源文件索引</h3>
+
+<table>
+<thead><tr>
+<th>文件</th>
+<th>职责</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>kernel/trace/ftrace.c</code></td>
+<td>Ftrace 核心引擎（7900+ 行）</td>
+</tr>
+<tr>
+<td><code>kernel/trace/trace.c</code></td>
+<td>Tracer 框架、tracefs 接口</td>
+</tr>
+<tr>
+<td><code>kernel/trace/trace.h</code></td>
+<td>核心数据结构定义</td>
+</tr>
+<tr>
+<td><code>kernel/trace/trace_functions.c</code></td>
+<td>function tracer 实现</td>
+</tr>
+<tr>
+<td><code>kernel/trace/trace_functions_graph.c</code></td>
+<td>function_graph 输出格式</td>
+</tr>
+<tr>
+<td><code>kernel/trace/fgraph.c</code></td>
+<td>function_graph 核心</td>
+</tr>
+<tr>
+<td><code>kernel/trace/ring_buffer.c</code></td>
+<td>Ring Buffer 实现</td>
+</tr>
+<tr>
+<td><code>kernel/trace/trace_events.c</code></td>
+<td>Trace Event 框架</td>
+</tr>
+<tr>
+<td><code>kernel/trace/trace_output.c</code></td>
+<td>输出格式化</td>
+</tr>
+<tr>
+<td><code>kernel/trace/trace_kprobe.c</code></td>
+<td>kprobe event</td>
+</tr>
+<tr>
+<td><code>kernel/trace/trace_fprobe.c</code></td>
+<td>fprobe event</td>
+</tr>
+<tr>
+<td><code>kernel/trace/fprobe.c</code></td>
+<td>fprobe 核心</td>
+</tr>
+<tr>
+<td><code>kernel/trace/trace_irqsoff.c</code></td>
+<td>IRQ off 延迟追踪器</td>
+</tr>
+<tr>
+<td><code>kernel/trace/trace_events_filter.c</code></td>
+<td>事件过滤器</td>
+</tr>
+<tr>
+<td><code>kernel/trace/ftrace_internal.h</code></td>
+<td>内部接口声明</td>
+</tr>
+<tr>
+<td><code>include/linux/ftrace.h</code></td>
+<td>公共 API 和数据结构</td>
+</tr>
+<tr>
+<td><code>include/linux/ring_buffer.h</code></td>
+<td>Ring Buffer 公共 API</td>
+</tr>
+<tr>
+<td><code>arch/arm64/kernel/ftrace.c</code></td>
+<td>ARM64 代码修改实现</td>
+</tr>
+<tr>
+<td><code>arch/arm64/kernel/entry-ftrace.S</code></td>
+<td>ARM64 汇编入口</td>
+</tr>
+</tbody></table>
+
+</body>
+</html>

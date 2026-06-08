@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vm Area Add Early Analysis</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>vm_area_add_early() 函数深度解析</h1>
+
+<h2>1. 函数概述</h2>
+
+<p><code>vm_area_add_early()</code> 是 Linux 内核启动早期使用的函数，用于在 <code>vmalloc_init()</code> 初始化之前，将固定的内核虚拟地址区域（如内核镜像的 <code>.text</code>、<code>.rodata</code>、<code>.data</code> 等段）注册到一个临时的有序单链表 <code>vmlist</code> 中。</p>
+
+<p>这样做的目的是：<strong>告诉后续的 <code>vmalloc</code> 分配器，这些地址已经被占用了，不要再分配出去。</strong></p>
+
+<h3>调用链</h3>
+
+<pre><code>paging_init()
+  └── declare_kernel_vmas()
+        └── declare_vma()        × 5 (5个内核段)
+              └── vm_area_add_early()</code></pre>
+
+<h2>2. 源码分析</h2>
+
+<h3>2.1 核心数据结构</h3>
+
+<pre><code class="language-c">// include/linux/vmalloc.h
+struct vm_struct {
+    struct vm_struct    *next;      // 链表指针（侵入式链表的关键）
+    void                *addr;      // 虚拟地址起始
+    unsigned long       size;       // 区域大小
+    unsigned long       flags;      // 标志位
+    struct page         **pages;
+    unsigned int        nr_pages;
+    phys_addr_t         phys_addr;
+    const void          *caller;
+    unsigned long       requested_size;
+};</code></pre>
+
+<p><strong>关键点</strong>：<code>struct vm_struct</code> 的第一个成员就是 <code>next</code> 指针。这意味着每个节点自身就包含了链表连接信息——这就是 Linux 内核中经典的<strong>侵入式链表（intrusive linked list）</strong>设计。</p>
+
+<h3>2.2 链表头指针</h3>
+
+<pre><code class="language-c">// mm/vmalloc.c
+static struct vm_struct *vmlist __initdata;</code></pre>
+
+<p><code>vmlist</code> 是一个<strong>裸指针</strong>，充当链表的头指针：</p>
+
+<ul>
+<li>它<strong>不是</strong>一个链表结构体，<strong>就是</strong>一个普通的 <code>struct vm_struct *</code> 指针</li>
+<li>初始值为 <code>NULL</code>（BSS 段自动清零），表示空链表</li>
+<li><code>__initdata</code> 标记表示它只在启动阶段使用，启动完成后会被释放</li>
+</ul>
+
+<h3>2.3 函数源码</h3>
+
+<pre><code class="language-c">// mm/vmalloc.c
+void __init vm_area_add_early(struct vm_struct *vm)
+{
+    struct vm_struct *tmp, **p;
+
+    BUG_ON(vmap_initialized);
+    for (p = &amp;vmlist; (tmp = *p) != NULL; p = &amp;tmp-&gt;next) {
+        if (tmp-&gt;addr &gt;= vm-&gt;addr) {
+            BUG_ON(tmp-&gt;addr &lt; vm-&gt;addr + vm-&gt;size);
+            break;
+        } else
+            BUG_ON(tmp-&gt;addr + tmp-&gt;size &gt; vm-&gt;addr);
+    }
+    vm-&gt;next = *p;
+    *p = vm;
+}</code></pre>
+
+<h3>2.4 逐行解读</h3>
+
+<table>
+<thead><tr>
+<th>行</th>
+<th>代码</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>struct vm_struct <em>tmp, </em>*p;</code></td>
+<td><code>tmp</code> 是当前遍历到的节点；<code>p</code> 是<strong>二级指针</strong>，指向"存放节点指针的那个变量"</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>BUG_ON(vmap_initialized);</code></td>
+<td>断言：此函数只能在 <code>vmalloc_init()</code> 之前调用</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>p = &vmlist;</code></td>
+<td><code>p</code> 初始指向链表头指针变量自身的地址</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>(tmp = *p) != NULL</code></td>
+<td>取出 <code>p</code> 指向的指针值赋给 <code>tmp</code>，如果为 NULL 则停止</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>p = &tmp->next</code></td>
+<td>迭代步进：<code>p</code> 移动到当前节点的 <code>next</code> 字段的地址</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>tmp->addr >= vm->addr</code></td>
+<td>找到第一个地址 >= 新节点的已有节点</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>BUG_ON(tmp->addr < vm->addr + vm->size)</code></td>
+<td>重叠检测：新节点尾部不能超过已有节点头部</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>BUG_ON(tmp->addr + tmp->size > vm->addr)</code></td>
+<td>重叠检测：已有节点尾部不能超过新节点头部</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>vm->next = *p;</code></td>
+<td>新节点的 next 指向原来 <code>p</code> 位置上的节点（可能是 NULL）</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>*p = vm;</code></td>
+<td>将新节点写入 <code>p</code> 指向的位置——完成插入</td>
+</tr>
+</tbody></table>
+
+<h2>3. 二级指针技巧详解</h2>
+
+<p>这是本函数最精妙的设计。<code>p</code> 是 <code>struct vm_struct <em>*</code>，始终指向某个"存放 <code>struct vm_struct </em></code> 的内存位置"：</p>
+
+<pre><code>情况1: p = &amp;vmlist
+       p 指向 vmlist 变量本身
+       *p = vm 等价于 vmlist = vm （修改链表头）
+
+情况2: p = &amp;tmp-&gt;next
+       p 指向某个节点的 next 字段
+       *p = vm 等价于 tmp-&gt;next = vm （在中间/尾部插入）</code></pre>
+
+<p><strong>好处</strong>：不需要 <code>if (vmlist == NULL)</code> 这样的特殊分支，头部、中间、尾部插入都用相同的两行代码完成。</p>
+
+<h2>4. 完整插入过程举例</h2>
+
+<p>以 3 个节点为例，故意不按地址顺序插入来展示排序插入能力：</p>
+
+<pre><code>vm_A: addr=0x1000, size=0x500
+vm_B: addr=0x2000, size=0x300
+vm_C: addr=0x1800, size=0x200  (地址在A和B之间，但第三个插入)</code></pre>
+
+<h3>4.1 插入 vm_A —— 空链表，成为 head</h3>
+
+<p><strong>初始状态</strong>：<code>vmlist = NULL</code></p>
+
+<pre><code>执行步骤:
+  p = &amp;vmlist           // p 指向 vmlist 变量(地址假设 0xF000)
+  tmp = *p = NULL       // 取出 vmlist 的值
+  tmp != NULL? → false  // 循环条件不满足，不进入循环体
+                        // 注意: p = &amp;tmp-&gt;next 根本不执行!
+
+  vm-&gt;next = *p;        // vm_A.next = NULL
+  *p = vm;              // vmlist = &amp;vm_A (等价于 *(&amp;vmlist) = &amp;vm_A)</code></pre>
+
+<p><strong>结果</strong>：</p>
+
+<pre><code>vmlist ──&gt; [vm_A: addr=0x1000, next=NULL]</code></pre>
+
+<p><code>*p = vm</code> 此时 <code>p == &vmlist</code>，所以直接修改了头指针，vm_A 自动成为 head。</p>
+
+<h3>4.2 插入 vm_B —— 追加到尾部</h3>
+
+<p><strong>当前状态</strong>：<code>vmlist -> vm_A -> NULL</code></p>
+
+<pre><code>执行步骤:
+  p = &amp;vmlist             // p 指向 vmlist
+  tmp = *p = &amp;vm_A        // tmp 指向 vm_A
+  tmp != NULL? → true     // 进入循环
+
+  [循环第1轮]
+    tmp-&gt;addr(0x1000) &gt;= vm-&gt;addr(0x2000)? → false (else分支)
+    BUG_ON: 0x1000+0x500=0x1500 &gt; 0x2000? → No, OK
+    p = &amp;tmp-&gt;next        // p 移到 vm_A 的 next 字段的地址
+
+  [循环第2轮]
+    tmp = *p = vm_A.next = NULL
+    tmp != NULL? → false  // 循环结束
+
+  vm-&gt;next = *p;          // vm_B.next = NULL (链表尾)
+  *p = vm;                // vm_A.next = &amp;vm_B (追加到A后面)</code></pre>
+
+<p><strong>结果</strong>：</p>
+
+<pre><code>vmlist ──&gt; [vm_A: 0x1000] ──&gt; [vm_B: 0x2000] ──&gt; NULL</code></pre>
+
+<p><code>*p = vm</code> 此时 <code>p == &vm_A.next</code>，所以修改的是 vm_A 的 next 指针。</p>
+
+<h3>4.3 插入 vm_C —— 插入到中间</h3>
+
+<p><strong>当前状态</strong>：<code>vmlist -> vm_A -> vm_B -> NULL</code></p>
+
+<pre><code>执行步骤:
+  p = &amp;vmlist             // p 指向 vmlist
+  tmp = *p = &amp;vm_A        // tmp 指向 vm_A
+  tmp != NULL? → true     // 进入循环
+
+  [循环第1轮]
+    tmp-&gt;addr(0x1000) &gt;= vm-&gt;addr(0x1800)? → false (else分支)
+    BUG_ON: 0x1000+0x500=0x1500 &gt; 0x1800? → No, OK
+    p = &amp;tmp-&gt;next        // p 移到 vm_A 的 next 字段
+
+  [循环第2轮]
+    tmp = *p = &amp;vm_B      // vm_A.next 指向 vm_B
+    tmp != NULL? → true
+
+    tmp-&gt;addr(0x2000) &gt;= vm-&gt;addr(0x1800)? → true! (if分支)
+    BUG_ON: 0x2000 &lt; 0x1800+0x200=0x1A00? → No, OK
+    break!                // 找到插入位置，跳出循环
+
+  // 此时: p = &amp;vm_A.next, *p = &amp;vm_B
+
+  vm-&gt;next = *p;          // vm_C.next = &amp;vm_B (C的next指向B)
+  *p = vm;                // vm_A.next = &amp;vm_C (A的next改为指向C)</code></pre>
+
+<p><strong>结果</strong>：</p>
+
+<pre><code>vmlist ──&gt; [vm_A: 0x1000] ──&gt; [vm_C: 0x1800] ──&gt; [vm_B: 0x2000] ──&gt; NULL</code></pre>
+
+<p>vm_C 被完美地插入到 A 和 B 之间，链表保持地址有序。</p>
+
+<h2>5. 插入过程可视化</h2>
+
+<p><img src="image/vm_area_add_early.svg" alt="vm_area_add_early 链表插入过程"></p>
+
+<h2>6. 重叠检测机制</h2>
+
+<p>两个 <code>BUG_ON</code> 确保任何两个区域不存在地址重叠：</p>
+
+<pre><code>情况1: 新节点在已有节点前面
+    BUG_ON(tmp-&gt;addr &lt; vm-&gt;addr + vm-&gt;size)
+
+    vm:   [=========]
+    tmp:      [=========]    ← tmp-&gt;addr 落在 vm 范围内? → BUG!
+              ^
+              tmp-&gt;addr &lt; vm-&gt;addr + vm-&gt;size → 重叠!
+
+
+情况2: 新节点在已有节点后面
+    BUG_ON(tmp-&gt;addr + tmp-&gt;size &gt; vm-&gt;addr)
+
+    tmp:  [=========]
+    vm:       [=========]    ← vm-&gt;addr 落在 tmp 范围内? → BUG!
+              ^
+              tmp-&gt;addr + tmp-&gt;size &gt; vm-&gt;addr → 重叠!</code></pre>
+
+<p>如果检测到重叠，内核会直接 <code>BUG()</code>——触发 panic，因为这属于严重的内核配置错误。</p>
+
+<h2>7. 生命周期：从临时链表到正式管理</h2>
+
+<pre><code>┌─────────────────────────┐          ┌─────────────────────────────┐
+│     启动早期 (Boot)      │          │      启动后期 (vmalloc_init) │
+│                         │          │                             │
+│  declare_kernel_vmas()  │          │  遍历 vmlist                │
+│    │                    │          │    │                        │
+│    ├─ vm_area_add_early │          │    ├─ 每个节点 → vmap_area   │
+│    ├─ vm_area_add_early │  ────→   │    ├─ 插入红黑树 (busy)     │
+│    ├─ vm_area_add_early │          │    └─ 识别空闲区间 (free)    │
+│    ├─ vm_area_add_early │          │                             │
+│    └─ vm_area_add_early │          │  vmap_initialized = true    │
+│                         │          │                             │
+│  数据结构: vmlist 单链表  │          │  数据结构: 红黑树 + free list│
+│  标记: __initdata (临时) │          │  标记: 永久                  │
+└─────────────────────────┘          └─────────────────────────────┘
+
+vmalloc_init() 中的关键代码:
+
+    for (tmp = vmlist; tmp; tmp = tmp-&gt;next) {
+        va = kmem_cache_zalloc(vmap_area_cachep, GFP_NOWAIT);
+        va-&gt;va_start = (unsigned long)tmp-&gt;addr;
+        va-&gt;va_end   = va-&gt;va_start + tmp-&gt;size;
+        va-&gt;vm       = tmp;
+        insert_vmap_area(va, &amp;vn-&gt;busy.root, &amp;vn-&gt;busy.head);
+    }
+
+此后 vmalloc() 只从 free tree 中分配地址，自动绕开已注册的内核段。
+vmlist 本身（__initdata）在启动完成后被释放。</code></pre>
+
+<h2>8. 总结</h2>
+
+<table>
+<thead><tr>
+<th>特性</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>设计模式</strong></td>
+<td>侵入式单链表 + 二级指针有序插入</td>
+</tr>
+<tr>
+<td><strong>链表头</strong></td>
+<td><code>vmlist</code>——一个裸指针，不是结构体</td>
+</tr>
+<tr>
+<td><strong>排序方式</strong></td>
+<td>按虚拟地址从低到高排列</td>
+</tr>
+<tr>
+<td><strong>安全检查</strong></td>
+<td>两个 <code>BUG_ON</code> 保证无地址重叠</td>
+</tr>
+<tr>
+<td><strong>使用阶段</strong></td>
+<td>仅在 <code>vmalloc_init()</code> 之前（<code>__init</code>）</td>
+</tr>
+<tr>
+<td><strong>后续处理</strong></td>
+<td><code>vmalloc_init()</code> 将链表导入红黑树后，链表被废弃</td>
+</tr>
+<tr>
+<td><strong>二级指针优势</strong></td>
+<td>头/中/尾插入统一两行代码，无需特判空链表</td>
+</tr>
+</tbody></table>
+
+<h3>核心两行代码的本质</h3>
+
+<pre><code class="language-c">vm-&gt;next = *p;    // 新节点接管 p 位置原来指向的后续节点
+*p = vm;          // p 位置改为指向新节点</code></pre>
+
+<p>无论 <code>p</code> 指向 <code>&vmlist</code> 还是 <code>&某节点->next</code>，这两行代码的语义完全一致：<strong>在 p 这个位置把新节点"嫁接"进去</strong>。这就是 Linus Torvalds 所推崇的"理解指针的指针"的经典范例。</p>
+
+</body>
+</html>

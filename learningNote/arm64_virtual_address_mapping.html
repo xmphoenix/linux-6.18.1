@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arm64 Virtual Address Mapping</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>ARM64 Linux Virtual Address Space Mapping (VA_BITS=48)</h1>
+
+<blockquote>Based on linux-6.18 kernel source: <code>arch/arm64/include/asm/memory.h</code>, <code>arch/arm64/include/asm/pgtable.h</code>, <code>arch/arm64/mm/mmu.c</code><br>
+<br>
+Virtual address space layout diagram:<br>
+<br>
+<img src="image/arm64_va_space_48bit.svg" alt="ARM64 Virtual Address Space Layout"></blockquote>
+
+<hr>
+
+<h2>1. Overview</h2>
+
+<p>ARM64 (AArch64) architecture uses a 64-bit virtual address space, but hardware only uses the lower bits for address translation. With <code>VA_BITS=48</code> and 4KB pages, the usable virtual address range is 2 x 256TB:</p>
+
+<ul>
+<li><strong>User space (TTBR0)</strong>: <code>0x0000_0000_0000_0000</code> ~ <code>0x0000_FFFF_FFFF_FFFF</code> (256 TB)</li>
+<li><strong>Kernel space (TTBR1)</strong>: <code>0xFFFF_0000_0000_0000</code> ~ <code>0xFFFF_FFFF_FFFF_FFFF</code> (256 TB)</li>
+<li><strong>Canonical hole</strong>: <code>0x0001_0000_0000_0000</code> ~ <code>0xFFFE_FFFF_FFFF_FFFF</code> (unmappable)</li>
+</ul>
+
+<p>Hardware uses bit[55] of the virtual address to select the translation table base register:</p>
+
+<table>
+<thead><tr>
+<th>bit[55]</th>
+<th>Register</th>
+<th>Address Space</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>TTBR0_EL1</td>
+<td>User space (per-process page tables)</td>
+</tr>
+<tr>
+<td>1</td>
+<td>TTBR1_EL1</td>
+<td>Kernel space (<code>swapper_pg_dir</code>)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>2. Kernel Virtual Address Space Layout</h2>
+
+<p>The 256TB kernel address space (TTBR1) is divided into two halves by <code>PAGE_END</code>:</p>
+
+<ul>
+<li><strong>Lower half</strong> (<code>PAGE_OFFSET</code> ~ <code>PAGE_END</code>): <strong>Linear map</strong> (direct map), 128 TB</li>
+<li><strong>Upper half</strong> (<code>PAGE_END</code> ~ <code>0xFFFF_FFFF_FFFF_FFFF</code>): <strong>Non-linear mappings</strong> (modules, vmalloc, kernel image, vmemmap, PCI I/O, fixmap)</li>
+</ul>
+
+<h3>2.1 Address Region Table (high to low)</h3>
+
+<table>
+<thead><tr>
+<th>Virtual Address</th>
+<th>Macro</th>
+<th>Definition</th>
+<th>Region</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>0xFFFF_FFFF_FFFF_FFFF</code></td>
+<td>—</td>
+<td>—</td>
+<td>Guard / unused</td>
+</tr>
+<tr>
+<td><code>0xFFFF_FFFF_FF80_0000</code></td>
+<td><code>FIXADDR_TOP</code></td>
+<td><code>-UL(SZ_8M)</code></td>
+<td><strong>fixmap</strong> (early console, FDT)</td>
+</tr>
+<tr>
+<td><code>0xFFFF_FFFF_C180_0000</code></td>
+<td><code>PCI_IO_END</code></td>
+<td><code>PCI_IO_START + SZ_16M</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>0xFFFF_FFFF_C080_0000</code></td>
+<td><code>PCI_IO_START</code></td>
+<td><code>VMEMMAP_END + SZ_8M</code></td>
+<td><strong>PCI I/O</strong> (16MB)</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td>[guard: 8MB]</td>
+</tr>
+<tr>
+<td><code>0xFFFF_FFFF_C000_0000</code></td>
+<td><code>VMEMMAP_END</code></td>
+<td><code>-UL(SZ_1G)</code></td>
+<td><strong>vmemmap</strong> (struct page array)</td>
+</tr>
+<tr>
+<td>(dynamic)</td>
+<td><code>VMEMMAP_START</code></td>
+<td><code>VMEMMAP_END - VMEMMAP_SIZE</code></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td>[guard: 8MB]</td>
+</tr>
+<tr>
+<td>(dynamic)</td>
+<td><code>VMALLOC_END</code></td>
+<td><code>VMEMMAP_START - SZ_8M</code></td>
+<td><strong>vmalloc</strong> (~127 TB)</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td>Kernel image is inside this range</td>
+</tr>
+<tr>
+<td><code>0xFFFF_8000_8000_0000</code></td>
+<td><code>KIMAGE_VADDR</code> = <code>VMALLOC_START</code></td>
+<td><code>MODULES_END</code></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>modules</strong> (2GB)</td>
+</tr>
+<tr>
+<td><code>0xFFFF_8000_0000_0000</code></td>
+<td><code>PAGE_END</code> = <code>MODULES_VADDR</code></td>
+<td><code>-(1UL << 47)</code></td>
+<td>Boundary: non-linear / linear</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>Linear map</strong> (128 TB)</td>
+</tr>
+<tr>
+<td><code>0xFFFF_0000_0000_0000</code></td>
+<td><code>PAGE_OFFSET</code></td>
+<td><code>-(1UL << 48)</code></td>
+<td>Start of kernel address space</td>
+</tr>
+</tbody></table>
+
+<h3>2.2 Key Macro Derivation Chain</h3>
+
+<p>The core definitions in <code>arch/arm64/include/asm/memory.h</code>:</p>
+
+<pre><code class="language-c">#define VA_BITS             (CONFIG_ARM64_VA_BITS)       // 48
+#define _PAGE_OFFSET(va)    (-(UL(1) &lt;&lt; (va)))           // -(1&lt;&lt;48) = 0xFFFF_0000_0000_0000
+#define PAGE_OFFSET         (_PAGE_OFFSET(VA_BITS))
+#define _PAGE_END(va)       (-(UL(1) &lt;&lt; ((va) - 1)))     // -(1&lt;&lt;47) = 0xFFFF_8000_0000_0000
+#define MODULES_VADDR       (_PAGE_END(VA_BITS_MIN))     // 0xFFFF_8000_0000_0000
+#define MODULES_VSIZE       (SZ_2G)                      // 0x8000_0000
+#define MODULES_END         (MODULES_VADDR + MODULES_VSIZE)  // 0xFFFF_8000_8000_0000
+#define KIMAGE_VADDR        (MODULES_END)                // 0xFFFF_8000_8000_0000</code></pre>
+
+<p>And in <code>arch/arm64/include/asm/pgtable.h</code>:</p>
+
+<pre><code class="language-c">#define VMALLOC_START       (MODULES_END)                // = KIMAGE_VADDR
+#define VMALLOC_END         (VMEMMAP_START - SZ_8M)</code></pre>
+
+<hr>
+
+<h2>3. Linear Map (Direct Map)</h2>
+
+<h3>3.1 What Is It</h3>
+
+<p>The linear map is a contiguous 128TB virtual address region starting at <code>PAGE_OFFSET</code> that maps <strong>all physical RAM</strong> with a fixed offset:</p>
+
+<pre><code class="language-c">// arch/arm64/include/asm/memory.h
+#define __phys_to_virt(x)   ((unsigned long)((x) - PHYS_OFFSET) | PAGE_OFFSET)
+#define __lm_to_phys(addr)  (((addr) - PAGE_OFFSET) + PHYS_OFFSET)</code></pre>
+
+<p>Given a physical address <code>PA</code>, its linear map virtual address is:</p>
+
+<pre><code>VA = (PA - PHYS_OFFSET) | PAGE_OFFSET</code></pre>
+
+<p>This is the foundation for <code>phys_to_virt()</code>, <code>virt_to_phys()</code>, <code><strong>va()</code>, <code></strong>pa()</code>.</p>
+
+<h3>3.2 How It Is Built: <code>map_mem()</code></h3>
+
+<p>The linear map is established during early boot by <code>paging_init()</code> -> <code>map_mem(swapper_pg_dir)</code> in <code>arch/arm64/mm/mmu.c</code>:</p>
+
+<pre><code class="language-c">void __init paging_init(void)
+{
+    map_mem(swapper_pg_dir);   // Build the linear map
+    memblock_allow_resize();
+    create_idmap();            // Build identity mapping
+    declare_kernel_vmas();     // Register kernel VMAs
+}</code></pre>
+
+<p>The <code>map_mem()</code> function does the following:</p>
+
+<p><strong>Step 1</strong>: Temporarily mark the kernel image region <code>[_text, __init_begin)</code> as <code>NOMAP</code>:</p>
+
+<pre><code class="language-c">memblock_mark_nomap(kernel_start, kernel_end - kernel_start);</code></pre>
+
+<p>This prevents the generic loop from creating a writable alias of the kernel text/rodata.</p>
+
+<p><strong>Step 2</strong>: Map all other physical RAM with <code>PAGE_KERNEL | NX</code>:</p>
+
+<pre><code class="language-c">for_each_mem_range(i, &amp;start, &amp;end) {
+    __map_memblock(pgdp, start, end, pgprot_tagged(PAGE_KERNEL), flags);
+}</code></pre>
+
+<p>The <code>flags</code> include <code>NO_EXEC_MAPPINGS</code> — the linear map is <strong>never executable</strong>.</p>
+
+<p><strong>Step 3</strong>: Map the kernel image region separately with controlled permissions:</p>
+
+<pre><code class="language-c">__map_memblock(pgdp, kernel_start, kernel_end,
+               PAGE_KERNEL, NO_CONT_MAPPINGS);
+memblock_clear_nomap(kernel_start, kernel_end - kernel_start);</code></pre>
+
+<p>This creates the kernel image's <strong>linear alias</strong> (see Section 4), initially writable (for alternative patching), later tightened to read-only.</p>
+
+<p><strong>Step 4</strong> (later in boot): <code>mark_linear_text_alias_ro()</code> removes write permission:</p>
+
+<pre><code class="language-c">void __init mark_linear_text_alias_ro(void)
+{
+    update_mapping_prot(__pa_symbol(_text), (unsigned long)lm_alias(_text),
+                        (unsigned long)__init_begin - (unsigned long)_text,
+                        PAGE_KERNEL_RO);
+}</code></pre>
+
+<h3>3.3 Why the Linear Map Matters</h3>
+
+<ul>
+<li><strong>Page allocator (buddy)</strong>: Returns linear map addresses. <code>kmalloc()</code> and slab allocators operate here.</li>
+<li><strong><code>phys_to_virt()</code> / <code>virt_to_phys()</code></strong>: Only work for linear map addresses.</li>
+<li><strong>Hibernate / kexec</strong>: Access kernel memory pages as data through the linear alias.</li>
+<li><strong>DMA</strong>: Drivers use linear map addresses for DMA-coherent buffers (via <code>virt_to_phys()</code>).</li>
+</ul>
+
+<hr>
+
+<h2>4. Dual Mapping of the Kernel Image</h2>
+
+<p>This is one of the most important concepts in the ARM64 memory layout: the kernel image's physical pages have <strong>two separate virtual address mappings</strong> with different permissions.</p>
+
+<h3>4.1 Mapping 1: Execution Mapping (at <code>KIMAGE_VADDR</code>)</h3>
+
+<p>Created during early boot by <code>head.S</code>. The kernel runs from here.</p>
+
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Virtual address</td>
+<td><code>KIMAGE_VADDR + kaslr_offset</code> (around <code>0xFFFF_8000_8xxx_xxxx</code>)</td>
+</tr>
+<tr>
+<td>Translation</td>
+<td><code>VA = PA + kimage_voffset</code></td>
+</tr>
+<tr>
+<td><code>.text</code> permission</td>
+<td>Read-Only + eXecutable (<code>PAGE_KERNEL_ROX</code>)</td>
+</tr>
+<tr>
+<td><code>.rodata</code> permission</td>
+<td>Read-Only (<code>PAGE_KERNEL_RO</code>)</td>
+</tr>
+<tr>
+<td>Purpose</td>
+<td><strong>CPU fetches and executes instructions from here</strong></td>
+</tr>
+</tbody></table>
+
+<h3>4.2 Mapping 2: Linear Alias (at <code>PAGE_OFFSET</code> region)</h3>
+
+<p>Created by <code>map_mem()</code>. The same physical pages appear again in the linear map.</p>
+
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Virtual address</td>
+<td><code>PAGE_OFFSET + offset</code> (around <code>0xFFFF_0000_0xxx_xxxx</code>)</td>
+</tr>
+<tr>
+<td>Translation</td>
+<td>`VA = (PA - PHYS_OFFSET) \</td>
+<td>PAGE_OFFSET`</td>
+</tr>
+<tr>
+<td>Permission</td>
+<td>Read-Only + No-eXecute (<code>PAGE_KERNEL_RO</code> after <code>mark_linear_text_alias_ro()</code>)</td>
+</tr>
+<tr>
+<td>Purpose</td>
+<td><strong>Data access only</strong> — hibernate, kexec, alternative patching</td>
+</tr>
+</tbody></table>
+
+<h3>4.3 Why Two Mappings?</h3>
+
+<p>When <code>map_mem()</code> maps all physical RAM into the linear map, the kernel image's physical pages are inevitably included. If mapped with the same <code>PAGE_KERNEL</code> (read-write) permission as normal RAM, this would create a <strong>writable alias</strong> of the read-only kernel text — a security violation (breaks W^X policy).</p>
+
+<p>The solution is a three-phase approach:</p>
+
+<ol>
+<li><strong>Skip</strong> the kernel image during the generic RAM mapping loop (<code>memblock_mark_nomap</code>)</li>
+<li><strong>Map</strong> the kernel image separately with <code>PAGE_KERNEL</code> + <code>NO_CONT_MAPPINGS</code> (temporarily writable for alternative patching)</li>
+<li><strong>Tighten</strong> to <code>PAGE_KERNEL_RO</code> after patching is complete (<code>mark_linear_text_alias_ro()</code>)</li>
+</ol>
+
+<h3>4.4 Address Conversion Between the Two Mappings</h3>
+
+<pre><code class="language-c">// include/linux/mm.h
+#define lm_alias(x)    __va(__pa_symbol(x))</code></pre>
+
+<p>Given a kernel symbol address (Mapping 1), <code>lm_alias()</code> converts it to the linear map address (Mapping 2) by:</p>
+<ol>
+<li><code>__pa_symbol(x)</code>: Convert kernel image VA to physical address (using <code>kimage_voffset</code>)</li>
+<li><code>__va(pa)</code>: Convert physical address to linear map VA (using <code>PAGE_OFFSET</code>)</li>
+</ol>
+
+<p>Example (assuming <code>PHYS_OFFSET=0x4000_0000</code>, no KASLR):</p>
+
+<pre><code>_text physical address:    0x4100_0000
+
+Mapping 1 (execution):    0xFFFF_8000_8100_0000  (= PA + kimage_voffset)
+Mapping 2 (linear alias): 0xFFFF_0000_0100_0000  (= (PA - PHYS_OFFSET) | PAGE_OFFSET)
+
+lm_alias(_text) = 0xFFFF_0000_0100_0000</code></pre>
+
+<h3>4.5 How <code>__virt_to_phys()</code> Handles Both Mappings</h3>
+
+<pre><code class="language-c">// arch/arm64/include/asm/memory.h
+#define __virt_to_phys_nodebug(x) ({
+    phys_addr_t __x = (phys_addr_t)(__tag_reset(x));
+    __is_lm_address(__x) ? __lm_to_phys(__x) : __kimg_to_phys(__x);
+})</code></pre>
+
+<p>The kernel detects which mapping a virtual address belongs to:</p>
+<ul>
+<li>If in the linear map range (<code>PAGE_OFFSET</code> ~ <code>PAGE_END</code>): use <code>__lm_to_phys()</code> (subtract <code>PAGE_OFFSET</code>, add <code>PHYS_OFFSET</code>)</li>
+<li>Otherwise (kernel image range): use <code>__kimg_to_phys()</code> (subtract <code>kimage_voffset</code>)</li>
+</ul>
+
+<hr>
+
+<h2>5. vmalloc vs kmalloc: Different Address Regions</h2>
+
+<h3>5.1 vmalloc — Non-Linear Region</h3>
+
+<pre><code class="language-c">// arch/arm64/include/asm/pgtable.h
+#define VMALLOC_START   (MODULES_END)           // = 0xFFFF_8000_8000_0000
+#define VMALLOC_END     (VMEMMAP_START - SZ_8M) // near 0xFFFF_FFFF_xxxx_xxxx</code></pre>
+
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>VA range</td>
+<td><code>0xFFFF_8000_8000_0000</code> ~ <code>VMEMMAP_START - 8MB</code> (~127 TB)</td>
+</tr>
+<tr>
+<td>Physical contiguity</td>
+<td><strong>Not required</strong></td>
+</tr>
+<tr>
+<td>Page tables</td>
+<td>Created on demand, per allocation</td>
+</tr>
+<tr>
+<td>Typical use</td>
+<td><code>vmalloc()</code>, <code>ioremap()</code>, <code>vmap()</code>, large buffers</td>
+</tr>
+</tbody></table>
+
+<h3>5.2 kmalloc — Linear Map Region</h3>
+
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>VA range</td>
+<td><code>PAGE_OFFSET</code> ~ <code>PAGE_END</code> (<code>0xFFFF_0000_xxxx</code> ~ <code>0xFFFF_8000_0000_0000</code>, 128 TB)</td>
+</tr>
+<tr>
+<td>Physical contiguity</td>
+<td><strong>Required</strong> (guaranteed by buddy allocator)</td>
+</tr>
+<tr>
+<td>Page tables</td>
+<td>Pre-built by <code>map_mem()</code> at boot time, no per-allocation overhead</td>
+</tr>
+<tr>
+<td>Typical use</td>
+<td><code>kmalloc()</code>, slab objects, small kernel data structures, DMA buffers</td>
+</tr>
+</tbody></table>
+
+<h3>5.3 Comparison</h3>
+
+<table>
+<thead><tr>
+<th></th>
+<th>vmalloc</th>
+<th>kmalloc</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Address region</td>
+<td>Non-linear (upper TTBR1)</td>
+<td>Linear map (lower TTBR1)</td>
+</tr>
+<tr>
+<td>Physical pages</td>
+<td>Scattered, non-contiguous OK</td>
+<td>Must be contiguous</td>
+</tr>
+<tr>
+<td>Page table cost</td>
+<td>Per-allocation page table setup</td>
+<td>Zero (uses pre-built linear map)</td>
+</tr>
+<tr>
+<td><code>virt_to_phys()</code></td>
+<td><strong>Not directly usable</strong></td>
+<td>Works directly</td>
+</tr>
+<tr>
+<td>TLB efficiency</td>
+<td>May be lower (scattered pages)</td>
+<td>Higher (block/contiguous mappings possible)</td>
+</tr>
+<tr>
+<td>Max allocation</td>
+<td>Very large (TB-scale VA space)</td>
+<td>Limited by contiguous free pages</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>6. Other Key Regions</h2>
+
+<h3>6.1 fixmap</h3>
+
+<ul>
+<li><strong>Address</strong>: Near <code>0xFFFF_FFFF_FF80_0000</code> (<code>FIXADDR_TOP</code>)</li>
+<li><strong>Purpose</strong>: Compile-time-fixed virtual addresses for early boot mappings (FDT, early console, temporary I/O). Available before the full page allocator is online.</li>
+</ul>
+
+<h3>6.2 vmemmap</h3>
+
+<ul>
+<li><strong>Address</strong>: Up to <code>0xFFFF_FFFF_C000_0000</code> (<code>VMEMMAP_END</code>)</li>
+<li><strong>Purpose</strong>: Virtual array of <code>struct page</code> for the sparse memory model. Each physical page frame has a corresponding <code>struct page</code> accessible via <code>vmemmap[pfn]</code>.</li>
+</ul>
+
+<h3>6.3 Modules</h3>
+
+<ul>
+<li><strong>Address</strong>: <code>0xFFFF_8000_0000_0000</code> ~ <code>0xFFFF_8000_8000_0000</code> (2GB)</li>
+<li><strong>Purpose</strong>: Loadable kernel modules (<code>.ko</code>). The 2GB range ensures modules can use direct branch instructions to reach kernel symbols.</li>
+</ul>
+
+<h3>6.4 Identity Map (idmap)</h3>
+
+<p>Not part of the virtual address layout, but important for context:</p>
+
+<ul>
+<li>Created by <code>create_idmap()</code> in <code>paging_init()</code></li>
+<li>Maps <code>VA == PA</code> for a small region of code (<code><strong>idmap_text_start</code> ~ <code></strong>idmap_text_end</code>)</li>
+<li>Used when enabling/disabling the MMU, CPU suspend/resume, and KPTI page table switching</li>
+<li>Stored in a separate page table <code>idmap_pg_dir</code>, loaded into TTBR0 temporarily</li>
+</ul>
+
+<hr>
+
+<h2>7. Boot Sequence: How the Address Space Is Established</h2>
+
+<pre><code>head.S (early boot)
+  |
+  |-- Create initial kernel image mapping in swapper_pg_dir
+  |   (maps _text ~ _end at KIMAGE_VADDR, executable)
+  |
+  |-- Enable MMU, jump to start_kernel()
+  |
+  v
+paging_init()
+  |
+  |-- map_mem(swapper_pg_dir)
+  |     |-- Map all RAM into linear map (PAGE_OFFSET region)
+  |     |-- Special handling for kernel image linear alias
+  |     &#x27;-- Map KFENCE pool if enabled
+  |
+  |-- memblock_allow_resize()
+  |
+  |-- create_idmap()
+  |     &#x27;-- Build identity map in idmap_pg_dir
+  |
+  &#x27;-- declare_kernel_vmas()
+        &#x27;-- Register kernel segments as early VMAs
+              (_text, _rodata, _init, _data)
+
+  ... later in boot ...
+
+mark_linear_text_alias_ro()
+  &#x27;-- Tighten linear alias of kernel text to PAGE_KERNEL_RO
+
+mark_rodata_ro()
+  &#x27;-- Mark .rodata as read-only in kernel image mapping</code></pre>
+
+<hr>
+
+<h2>8. Summary Diagram</h2>
+
+<p>See the full diagram above, or open the SVG file directly: <code>image/arm64_va_space_48bit.svg</code></p>
+
+<pre><code>0xFFFF_FFFF_FFFF_FFFF  +---------------------+
+                       | guard               |
+0xFFFF_FFFF_FF80_0000  | fixmap              |  FIXADDR_TOP
+                       | PCI I/O (16MB)      |
+0xFFFF_FFFF_C000_0000  | vmemmap             |  VMEMMAP_END
+                       | [guard 8MB]         |
+          (dynamic)    | vmalloc (~127TB)    |  VMALLOC_END
+                       |   +---------------+ |
+                       |   | Kernel Image  | |  (Mapping 1: Execution)
+                       |   | .text (ROX)   | |
+                       |   | .rodata (RO)  | |
+                       |   | .init         | |
+                       |   | .data (RW)    | |
+                       |   +---------------+ |
+0xFFFF_8000_8000_0000  | modules (2GB)       |  KIMAGE_VADDR = VMALLOC_START
+0xFFFF_8000_0000_0000  |=====================|  PAGE_END = MODULES_VADDR
+                       | Linear Map (128TB)  |
+                       |   Normal RAM (RW,NX)|
+                       |   Kernel linear     |  (Mapping 2: Data Access)
+                       |     alias (RO,NX)   |
+                       |   kmalloc/slab here  |
+0xFFFF_0000_0000_0000  +---------------------+  PAGE_OFFSET
+                       |                     |
+                       | Canonical Addr Hole |
+                       |                     |
+0x0000_FFFF_FFFF_FFFF  +---------------------+
+                       | User Space (256TB)  |  TTBR0
+0x0000_0000_0000_0000  +---------------------+</code></pre>
+
+</body>
+</html>

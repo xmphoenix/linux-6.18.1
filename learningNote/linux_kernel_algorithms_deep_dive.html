@@ -1,0 +1,2213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux Kernel Algorithms Deep Dive</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux 6.18.1 内核核心算法深度解析</h1>
+
+<blockquote>Based on source code analysis of <code>/repo/ybzhang/kernel/linux-6.18.1</code></blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><a href="#1-cfs-完全公平调度器-completely-fair-scheduler">1. CFS 完全公平调度器 (Completely Fair Scheduler)</a></summary></p>
+
+<ul>
+<li><a href="#11-核心思想">1.1 核心思想</a></li>
+<li><a href="#12-virtual-runtime-vruntime-计算">1.2 Virtual Runtime (vruntime) 计算</a></li>
+<li><a href="#13-nice-to-weight-映射">1.3 Nice-to-Weight 映射</a></li>
+<li><a href="#14-eevdf-earliest-eligible-virtual-deadline-first">1.4 EEVDF: Earliest Eligible Virtual Deadline First</a></li>
+<li><a href="#15-red-black-tree-调度">1.5 Red-Black Tree 调度</a></li>
+<li><a href="#15-enqueue_entity--完整入队流程">1.5 <code>enqueue_entity()</code> — 完整入队流程</a></li>
+<li><a href="#16-pick_next_task_fair--选择下一个任务">1.6 <code>pick_next_task_fair()</code> — 选择下一个任务</a></li>
+<li><a href="#17-load-balancing">1.7 Load Balancing</a></li>
+<li><a href="#18-复杂度">1.8 复杂度</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#2-slub-allocator-小对象分配器">2. SLUB Allocator (小对象分配器)</a></summary></p>
+
+<ul>
+<li><a href="#21-核心思想">2.1 核心思想</a></li>
+<li><a href="#22-关键数据结构">2.2 关键数据结构</a></li>
+<li><a href="#23-slab-状态分类">2.3 Slab 状态分类</a></li>
+<li><a href="#24-分配快速路径-fast-path">2.4 分配快速路径 (Fast Path)</a></li>
+<li><a href="#25-分配慢速路径-slow-path">2.5 分配慢速路径 (Slow Path)</a></li>
+<li><a href="#26-释放快速路径">2.6 释放快速路径</a></li>
+<li><a href="#27-<strong>slab_free-慢路径">2.7 <code></strong>slab_free()</code> 慢路径</a></li>
+<li><a href="#28-复杂度">2.8 复杂度</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#3-buddy-system-伙伴系统">3. Buddy System (伙伴系统)</a></summary></p>
+
+<ul>
+<li><a href="#31-核心思想">3.1 核心思想</a></li>
+<li><a href="#32-关键数据结构">3.2 关键数据结构</a></li>
+<li><a href="mm/page_alloc.c#L1880">3.3 分配算法: <code><strong>rmqueue_smallest()</code> ([page_alloc.c</a>)](#33-分配算法-</strong>rmqueue_smallest-page_alloccmmpage_alloccl1880)</li>
+<li><a href="mm/page_alloc.c#L940">3.4 释放与合并: <code><strong>free_one_page()</code> ([page_alloc.c</a>)](#34-释放与合并-</strong>free_one_page-page_alloccmmpage_alloccl940)</li>
+<li><a href="#35-fallback-机制">3.5 Fallback 机制</a></li>
+<li><a href="#36-复杂度">3.6 复杂度</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#4-page-reclaim--lru-页面回收">4. Page Reclaim / LRU (页面回收)</a></summary></p>
+
+<ul>
+<li><a href="#41-核心思想">4.1 核心思想</a></li>
+<li><a href="#42-lru-链表">4.2 LRU 链表</a></li>
+<li><a href="#43-scan_control-结构">4.3 <code>scan_control</code> 结构</a></li>
+<li><a href="#44-second-chance--reference-checking">4.4 Second Chance / Reference Checking</a></li>
+<li><a href="mm/vmscan.c#L1099">4.5 <code>shrink_folio_list()</code> — 回收决策核心 ([vmscan.c</a>)](#45-shrink_folio_list--回收决策核心-vmscancmmvmscancl1099)</li>
+<li><a href="#46-shrink_inactive_list">4.6 <code>shrink_inactive_list()</code></a></li>
+<li><a href="#47-kswapd-vs-direct-reclaim">4.7 kswapd vs Direct Reclaim</a></li>
+<li><a href="#48-复杂度">4.8 复杂度</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#5-vma-management-maple-tree">5. VMA Management (Maple Tree)</a></summary></p>
+
+<ul>
+<li><a href="#51-核心思想">5.1 核心思想</a></li>
+<li><a href="#52-关键数据结构">5.2 关键数据结构</a></li>
+<li><a href="#53-find_vma--olog-n-查找">5.3 <code>find_vma()</code> — O(log n) 查找</a></li>
+<li><a href="#54-find_vma_intersection">5.4 <code>find_vma_intersection()</code></a></li>
+<li><a href="#55-do_mmap--创建映射">5.5 <code>do_mmap()</code> — 创建映射</a></li>
+<li><a href="#56-maple-tree-vs-rb-tree">5.6 Maple Tree vs RB-tree</a></li>
+<li><a href="#57-复杂度">5.7 复杂度</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#6-writeback-algorithm-写回算法">6. Writeback Algorithm (写回算法)</a></summary></p>
+
+<ul>
+<li><a href="#61-核心思想">6.1 核心思想</a></li>
+<li><a href="#62-关键参数">6.2 关键参数</a></li>
+<li><a href="#63-dirty-limits-计算">6.3 Dirty Limits 计算</a></li>
+<li><a href="#64-两阶段写回机制">6.4 两阶段写回机制</a></li>
+<li><a href="#65-balance_dirty_pages">6.5 <code>balance_dirty_pages()</code></a></li>
+<li><a href="#66-bdi-backing-device-info">6.6 BDI (Backing Device Info)</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#7-io-schedulers">7. I/O Schedulers</a></summary></p>
+
+<ul>
+<li><a href="#71-mq-deadline">7.1 mq-deadline</a></li>
+<li><a href="#72-bfq-budget-fair-queueing">7.2 BFQ (Budget Fair Queueing)</a></li>
+<li><a href="#73-复杂度">7.3 复杂度</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#8-rcu-grace-period-detection">8. RCU Grace Period Detection</a></summary></p>
+
+<ul>
+<li><a href="#81-核心思想">8.1 核心思想</a></li>
+<li><a href="#82-rcu_node-树结构">8.2 rcu_node 树结构</a></li>
+<li><a href="kernel/rcu/tree.c#L1803">8.3 Grace Period 初始化 — <code>rcu_gp_init()</code> ([tree.c</a>)](#83-grace-period-初始化--rcu_gp_init-treeckernelrcutreecl1803)</li>
+<li><a href="#84-grace-period-kthread-主循环">8.4 Grace Period Kthread 主循环</a></li>
+<li><a href="#85-quiescent-state-报告--自底向上传播">8.5 Quiescent State 报告 — 自底向上传播</a></li>
+<li><a href="#86-复杂度">8.6 复杂度</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#9-timer-wheel-定时器轮">9. Timer Wheel (定时器轮)</a></summary></p>
+
+<ul>
+<li><a href="#91-核心思想">9.1 核心思想</a></li>
+<li><a href="#92-层次结构-hz1000">9.2 层次结构 (HZ=1000)</a></li>
+<li><a href="#93-timer_base-结构">9.3 <code>timer_base</code> 结构</a></li>
+<li><a href="#94-定时器添加">9.4 定时器添加</a></li>
+<li><a href="#95-到期定时器的收集与处理">9.5 到期定时器的收集与处理</a></li>
+<li><a href="#95-优势-vs-经典实现">9.5 优势 vs 经典实现</a></li>
+<li><a href="#96-复杂度">9.6 复杂度</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#10-kernel-sort-内核排序">10. Kernel Sort (内核排序)</a></summary></p>
+
+<ul>
+<li><a href="#101-核心思想">10.1 核心思想</a></li>
+<li><a href="lib/sort.c#L196">10.2 <code><strong>sort_r()</code> 完整实现源码注释 ([sort.c</a>)](#102-</strong>sort_r-完整实现源码注释-sortclibsortcl196)</li>
+<li><a href="#103-bottom-up-优化">10.3 Bottom-up 优化</a></li>
+<li><a href="#104-swap-优化">10.4 Swap 优化</a></li>
+<li><a href="#105-复杂度">10.5 复杂度</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#11-crchash-algorithms">11. CRC/Hash Algorithms</a></summary></p>
+
+<ul>
+<li><a href="#111-multiplicative-hash-hash_long">11.1 Multiplicative Hash (<code>hash_long</code>)</a></li>
+<li><a href="#112-jenkins-hash-jhash">11.2 Jenkins Hash (jhash)</a></li>
+<li><a href="#113-crc32">11.3 CRC32</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#总结对比">总结对比</a></summary></p>
+
+<p></details></p>
+
+<hr>
+
+<h2>1. CFS 完全公平调度器 (Completely Fair Scheduler)</h2>
+
+<p><strong>Source</strong>: <code>kernel/sched/fair.c</code>, <code>kernel/sched/core.c</code></p>
+
+<h3>1.1 核心思想</h3>
+
+<p>CFS 的目标是给每个任务分配"理想的"CPU 时间份额。它通过 <strong>虚拟运行时间 (vruntime)</strong> 来追踪每个任务"欠"了多少CPU时间。权重越高（nice值越低）的任务，vruntime 增长越慢，从而获得更多实际CPU时间。</p>
+
+<h3>1.2 Virtual Runtime (vruntime) 计算</h3>
+
+<p><strong>关键函数</strong>: <code>update_curr()</code> (<a href="kernel/sched/fair.c#L1207">fair.c</a>)</p>
+
+<pre><code>update_curr(cfs_rq):
+  1. curr = cfs_rq-&gt;curr                    // 当前运行的调度实体
+  2. delta_exec = update_se(rq, curr)        // 计算自上次更新以来的实际运行时间 (ns)
+  3. curr-&gt;vruntime += calc_delta_fair(delta_exec, curr)  // 加权后的虚拟时间
+  4. update_deadline(cfs_rq, curr)           // 更新deadline（EEVDF）
+  5. update_min_vruntime(cfs_rq)             // 更新cfs_rq的最小vruntime</code></pre>
+
+<p><strong><code>calc_delta_fair()</code></strong> (<a href="kernel/sched/fair.c#L290">fair.c</a>):</p>
+<pre><code class="language-c">// delta_vruntime = delta_exec * NICE_0_LOAD / weight
+// 如果 weight == NICE_0_LOAD (nice=0), 则 delta_vruntime == delta_exec
+static inline u64 calc_delta_fair(u64 delta, struct sched_entity *se)
+{
+    if (unlikely(se-&gt;load.weight != NICE_0_LOAD))
+        delta = __calc_delta(delta, NICE_0_LOAD, &amp;se-&gt;load);
+    return delta;
+}</code></pre>
+
+<p><strong><code>__calc_delta()</code></strong> (<a href="kernel/sched/fair.c#L260">fair.c</a>):</p>
+<pre><code class="language-c">// 计算 delta_exec * weight / lw-&gt;weight
+// 使用预计算的逆值 (inv_weight = 2^32 / weight) 来避免除法
+// result = delta_exec * (NICE_0_LOAD * inv_weight) &gt;&gt; 32
+static u64 __calc_delta(u64 delta_exec, unsigned long weight, struct load_weight *lw)
+{
+    u64 fact = scale_load_down(weight);
+    __update_inv_weight(lw);          // 计算 lw-&gt;inv_weight = 2^32 / lw-&gt;weight
+    fact = mul_u32_u32(fact, lw-&gt;inv_weight);
+    return mul_u64_u32_shr(delta_exec, fact, shift);
+}</code></pre>
+
+<p><strong>数学公式</strong>:<br>
+$$vruntime_{new} = vruntime_{old} + \Delta_{exec} \times \frac{weight_{nice_0}}{weight_{task}}$$</p>
+
+<h3>1.3 Nice-to-Weight 映射</h3>
+
+<p><strong><code>sched_prio_to_weight[]</code></strong> (<a href="kernel/sched/core.c#L10342">core.c</a>):</p>
+<pre><code class="language-c">const int sched_prio_to_weight[40] = {
+ /* -20 */     88761,     71755,     56483,     46273,     36291,
+ /* -15 */     29154,     23254,     18705,     14949,     11916,
+ /* -10 */      9548,      7620,      6100,      4904,      3906,
+ /*  -5 */      3121,      2501,      1991,      1586,      1277,
+ /*   0 */      1024,       820,       655,       526,       423,
+ /*   5 */       335,       272,       215,       172,       137,
+ /*  10 */       110,        87,        70,        56,        45,
+ /*  15 */        36,        29,        23,        18,        15,
+};</code></pre>
+
+<p><strong>设计原则</strong>: 相邻 nice 值之间的权重比大约为 <strong>~1.25</strong> (25%)，保证每降低1个nice值，获得约10%更多的CPU时间。<code>NICE_0_LOAD = 1024</code>。</p>
+
+<p>预计算的逆值 <code>sched_prio_to_wmult[]</code> 用于将除法转换为乘法+右移，避免运行时除法的开销。</p>
+
+<h3>1.4 EEVDF: Earliest Eligible Virtual Deadline First</h3>
+
+<p>Linux 6.6+ 将 CFS 从纯 vruntime 选择升级为 <strong>EEVDF</strong> 算法。EEVDF 增加了两个关键概念：<strong>eligibility</strong> (资格) 和 <strong>deadline</strong> (虚拟截止时间)。</p>
+
+<h4>1.4.1 Lag (滞后量) 和 Eligibility (资格)</h4>
+
+<p><strong><code>entity_eligible()</code></strong> (<a href="kernel/sched/fair.c#L738">fair.c</a>):</p>
+
+<pre><code class="language-c">/*
+ * lag_i = S - s_i = w_i * (V - v_i)
+ *
+ * lag &gt;= 0 意味着实体欠服务（应该运行），具有资格
+ * lag &lt; 0 意味着实体已获得超额服务，暂时没资格
+ *
+ * 直觉: V 是加权平均 vruntime，如果 v_i &lt; V 说明实体运行时间
+ * 少于公平份额，应该被优先调度
+ */
+int entity_eligible(struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+    return vruntime_eligible(cfs_rq, se-&gt;vruntime);
+}
+
+static int vruntime_eligible(struct cfs_rq *cfs_rq, u64 vruntime)
+{
+    struct sched_entity *curr = cfs_rq-&gt;curr;
+    s64 avg = cfs_rq-&gt;avg_vruntime;    // Σ(v_i - min_vruntime) * w_i
+    long load = cfs_rq-&gt;avg_load;       // Σw_i
+
+    if (curr &amp;&amp; curr-&gt;on_rq) {
+        unsigned long weight = scale_load_down(curr-&gt;load.weight);
+        avg += entity_key(cfs_rq, curr) * weight;
+        load += weight;
+    }
+
+    // 不做除法! 而是交叉相乘比较:
+    // avg/load &gt;= vruntime - min_vruntime
+    // 等价于: avg &gt;= (vruntime - min_vruntime) * load
+    return avg &gt;= (s64)(vruntime - cfs_rq-&gt;min_vruntime) * load;
+}</code></pre>
+
+<p><strong>为什么不直接用 <code>avg_vruntime() >= se->vruntime</code>？</strong> 因为 <code>avg_vruntime()</code> 需要做一次 64 位除法（<code>div_s64</code>），而 <code>vruntime_eligible()</code> 通过交叉相乘避免了除法，在热路径上更快。</p>
+
+<h4>1.4.2 <code>avg_vruntime</code> — 增量维护加权平均</h4>
+
+<pre><code class="language-c">// 加权平均的增量维护:
+// avg_vruntime = Σ (v_i - min_vruntime) * w_i
+// avg_load = Σ w_i
+// V = avg_vruntime / avg_load + min_vruntime
+
+static void avg_vruntime_add(struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+    unsigned long weight = scale_load_down(se-&gt;load.weight);
+    s64 key = entity_key(cfs_rq, se);  // = se-&gt;vruntime - cfs_rq-&gt;min_vruntime
+    cfs_rq-&gt;avg_vruntime += key * weight;
+    cfs_rq-&gt;avg_load += weight;
+}
+
+// 当 min_vruntime 前进 delta 时，需要调整:
+// avg_vruntime&#x27; = Σ (v_i - (min_vruntime + delta)) * w_i
+//              = avg_vruntime - delta * avg_load
+static inline void avg_vruntime_update(struct cfs_rq *cfs_rq, s64 delta)
+{
+    cfs_rq-&gt;avg_vruntime -= cfs_rq-&gt;avg_load * delta;
+}</code></pre>
+
+<h4>1.4.3 <code>__pick_eevdf()</code> — EEVDF 核心选择算法 (<a href="kernel/sched/fair.c#L944">fair.c</a>)</h4>
+
+<pre><code class="language-c">static struct sched_entity *__pick_eevdf(struct cfs_rq *cfs_rq, bool protect)
+{
+    struct rb_node *node = cfs_rq-&gt;tasks_timeline.rb_root.rb_node;
+    struct sched_entity *se = __pick_first_entity(cfs_rq);  // leftmost = 最早deadline
+    struct sched_entity *curr = cfs_rq-&gt;curr;
+    struct sched_entity *best = NULL;
+
+    // 优化: 只有一个实体时直接返回
+    if (cfs_rq-&gt;nr_queued == 1)
+        return curr &amp;&amp; curr-&gt;on_rq ? curr : se;
+
+    // 当前运行的实体如果不 eligible，就不考虑
+    if (curr &amp;&amp; (!curr-&gt;on_rq || !entity_eligible(cfs_rq, curr)))
+        curr = NULL;
+
+    // 如果当前实体还在保护期(slice未用完)，继续运行
+    if (curr &amp;&amp; protect &amp;&amp; protect_slice(curr))
+        return curr;
+
+    // 快速路径: 最左节点(最早deadline)如果 eligible，就是最优选择
+    if (se &amp;&amp; entity_eligible(cfs_rq, se)) {
+        best = se;
+        goto found;
+    }
+
+    /*
+     * 堆搜索: 利用 augmented 数据 min_vruntime 剪枝
+     * 树按 deadline 排序，但每个节点维护子树中的 min_vruntime
+     *
+     * 算法: 找 eligible 且 deadline 最早的实体
+     */
+    while (node) {
+        struct rb_node *left = node-&gt;rb_left;
+
+        // 如果左子树中有 eligible 实体(min_vruntime够小)
+        // 左子树的 deadline 更早，所以优先搜索左边
+        if (left &amp;&amp; vruntime_eligible(cfs_rq,
+                    __node_2_se(left)-&gt;min_vruntime)) {
+            node = left;
+            continue;
+        }
+
+        se = __node_2_se(node);
+
+        // 左子树没有 eligible 的，检查当前节点
+        if (entity_eligible(cfs_rq, se)) {
+            best = se;
+            break;
+        }
+
+        // 当前不 eligible，试右子树
+        node = node-&gt;rb_right;
+    }
+found:
+    // 如果 curr 比 best 的 deadline 更早，选 curr
+    if (!best || (curr &amp;&amp; entity_before(curr, best)))
+        best = curr;
+
+    return best;
+}</code></pre>
+
+<p><strong>算法复杂度分析</strong>: 虽然是树搜索，但由于 augmented <code>min_vruntime</code> 的剪枝，通常只需访问 O(log n) 个节点。最坏情况下遍历整棵树，但这在实际工作负载中极为罕见。</p>
+
+<p><strong>EEVDF vs 纯 CFS 的区别</strong>:</p>
+<ul>
+<li>纯 CFS: 始终选 vruntime 最小的实体（<code>rb_first_cached</code>，O(1)）</li>
+<li>EEVDF: 选 <strong>eligible 且 deadline 最早</strong> 的实体，提供了更好的延迟保证</li>
+<li><code>deadline = vruntime + calc_delta_fair(slice, se)</code> — slice 越小的实体 deadline 越紧迫</li>
+</ul>
+
+<h3>1.5 Red-Black Tree 调度</h3>
+
+<p><strong>关键数据结构</strong>: <code>cfs_rq->tasks_timeline</code> (augmented rb-tree, cached)</p>
+
+<p><strong><code>__enqueue_entity()</code></strong> (<a href="kernel/sched/fair.c#L848">fair.c</a>):</p>
+<pre><code class="language-c">static void __enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+    avg_vruntime_add(cfs_rq, se);
+    se-&gt;min_vruntime = se-&gt;vruntime;
+    se-&gt;min_slice = se-&gt;slice;
+    rb_add_augmented_cached(&amp;se-&gt;run_node, &amp;cfs_rq-&gt;tasks_timeline,
+                            __entity_less, &amp;min_vruntime_cb);
+}</code></pre>
+
+<ul>
+<li>使用 <strong>augmented RB-tree</strong> — 每个节点维护子树中的 <code>min_vruntime</code> 和 <code>min_slice</code></li>
+<li><code>rb_leftmost</code> 缓存指向 vruntime 最小的实体，实现 O(1) 的 <code>pick_next</code> 访问</li>
+<li>入队/出队操作为 <strong>O(log n)</strong></li>
+</ul>
+
+<h3>1.5 <code>enqueue_entity()</code> — 完整入队流程</h3>
+
+<p>(<a href="kernel/sched/fair.c#L5239">fair.c</a>):</p>
+<pre><code>enqueue_entity(cfs_rq, se, flags):
+  1. place_entity(cfs_rq, se, flags)   // 设置合理的 vruntime（防止睡眠任务饥饿/抢占）
+  2. update_curr(cfs_rq)               // 更新当前运行实体的 vruntime
+  3. update_load_avg(cfs_rq, se, ...)  // 更新 PELT 负载
+  4. se_update_runnable(se)            // 更新可运行统计
+  5. update_cfs_group(se)              // 更新组调度权重
+  6. place_entity(cfs_rq, se, flags)   // 非当前实体放置
+  7. account_entity_enqueue(cfs_rq, se)// 更新 cfs_rq 的负载/计数
+  8. __enqueue_entity(cfs_rq, se)      // 插入 rb-tree
+  9. se-&gt;on_rq = 1</code></pre>
+
+<h3>1.6 <code>pick_next_task_fair()</code> — 选择下一个任务</h3>
+
+<p>(<a href="kernel/sched/fair.c#L8869">fair.c</a>):</p>
+<pre><code>pick_next_task_fair(rq, prev, rf):
+  1. p = pick_task_fair(rq)          // 从rb-tree选出最合适的任务（EEVDF: eligible + earliest deadline）
+  2. if (!p) goto idle               // 无任务，尝试 newidle balance
+  3. 优化路径: 如果 prev 和 p 在同一个 cgroup 层级，
+     只切换差异部分（减少 put_prev/set_next 的层次遍历）
+  4. idle: sched_balance_newidle()   // 从其他CPU偷任务</code></pre>
+
+<h3>1.7 Load Balancing</h3>
+
+<ul>
+<li><strong>域层次</strong>: <code>sched_domain</code> 层次结构（SMT → MC → NUMA）</li>
+<li><code>sched_balance_newidle()</code>: 当CPU即将空闲时从繁忙CPU迁移任务</li>
+<li><code>migration_cost = 500000 ns (0.5ms)</code>: 防止过于频繁的迁移</li>
+<li>PELT (Per-Entity Load Tracking): 每个实体的负载使用几何衰减序列追踪</li>
+</ul>
+
+<h3>1.8 复杂度</h3>
+
+<table>
+<thead><tr>
+<th>操作</th>
+<th>时间复杂度</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>pick_next_task</td>
+<td>O(log n) (EEVDF) / O(1) via leftmost cache</td>
+</tr>
+<tr>
+<td>enqueue/dequeue</td>
+<td>O(log n)</td>
+</tr>
+<tr>
+<td>update_curr</td>
+<td>O(1)</td>
+</tr>
+<tr>
+<td>load balance</td>
+<td>O(n) per domain</td>
+</tr>
+</tbody></table>
+
+<p><strong>空间</strong>: O(n) 用于rb-tree节点，每个调度实体 <code>struct sched_entity</code> 约 200+ bytes。</p>
+
+<hr>
+
+<h2>2. SLUB Allocator (小对象分配器)</h2>
+
+<p><strong>Source</strong>: <code>mm/slub.c</code></p>
+
+<h3>2.1 核心思想</h3>
+
+<p>SLUB 是内核的 slab 分配器，专门高效分配固定大小的小对象（如 <code>task_struct</code>, <code>inode</code>, <code>dentry</code> 等）。它比传统 SLAB 更简单，减少了缓存行的使用和元数据开销。</p>
+
+<h3>2.2 关键数据结构</h3>
+
+<pre><code>struct kmem_cache {
+    struct kmem_cache_cpu *cpu_slab;  // Per-CPU slab（快速路径）
+    unsigned int size;                // 对象大小（含对齐）
+    unsigned int object_size;         // 对象实际大小
+    struct kmem_cache_node *node[];   // Per-node partial lists
+}
+
+struct kmem_cache_cpu {
+    void **freelist;    // 指向下一个空闲对象的指针
+    struct slab *slab;  // 当前 CPU 使用的 slab page
+    // ...per-cpu partial list
+}
+
+struct slab (嵌入 struct page) {
+    void *freelist;     // 第一个空闲对象
+    unsigned inuse;     // 正在使用的对象数
+    unsigned objects;   // slab 中总对象数
+    unsigned frozen;    // 是否被 CPU &quot;冻结&quot;
+}</code></pre>
+
+<h3>2.3 Slab 状态分类</h3>
+
+<p>来自源码注释 (<a href="mm/slub.c#L100">slub.c</a>):</p>
+<table>
+<thead><tr>
+<th>状态</th>
+<th>SL_partial</th>
+<th>frozen</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>CPU slab</strong></td>
+<td>0</td>
+<td>1</td>
+<td>正在被CPU使用，从中分配对象</td>
+</tr>
+<tr>
+<td><strong>CPU partial</strong></td>
+<td>0</td>
+<td>0</td>
+<td>缓存在CPU partial list上，加速分配</td>
+</tr>
+<tr>
+<td><strong>Node partial</strong></td>
+<td>1</td>
+<td>0</td>
+<td>在节点的partial链表上</td>
+</tr>
+<tr>
+<td><strong>Full slab</strong></td>
+<td>0</td>
+<td>0</td>
+<td>所有对象都被分配，不在任何链表上</td>
+</tr>
+</tbody></table>
+
+<h3>2.4 分配快速路径 (Fast Path)</h3>
+
+<p><strong><code>slab_alloc_node()</code></strong> (<a href="mm/slub.c#L5258">slub.c</a>):</p>
+<pre><code>slab_alloc_node(s, gfpflags, node):
+  1. s = slab_pre_alloc_hook(s, gfpflags)  // memcg 记账等
+  2. 尝试 kfence 分配（调试用）
+  3. 如果 s-&gt;cpu_sheaves 存在，尝试 alloc_from_pcs() // per-cpu sheaves
+  4. 否则: __slab_alloc_node(s, ...)
+     → 快速路径:
+        c = this_cpu_ptr(s-&gt;cpu_slab)
+        object = c-&gt;freelist              // 从per-CPU freelist取
+        c-&gt;freelist = get_freepointer(s, object)  // 前进到下一个空闲对象
+        // 使用 cmpxchg 或 local lock 保证原子性
+  5. slab_post_alloc_hook()               // 初始化、memcg等</code></pre>
+
+<p><strong>实际的快速路径是无锁的</strong>：使用 <code>this_cpu_cmpxchg_double()</code> 或 <code>local_lock</code> 来原子地取出 freelist 头部。</p>
+
+<h3>2.5 分配慢速路径 (Slow Path)</h3>
+
+<p><strong><code>___slab_alloc()</code></strong> (<a href="mm/slub.c#L4460">slub.c</a>):</p>
+
+<pre><code class="language-c">static void *___slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
+                           unsigned long addr, struct kmem_cache_cpu *c,
+                           unsigned int orig_size)
+{
+    void *freelist;
+    struct slab *slab;
+
+    stat(s, ALLOC_SLOWPATH);  // 统计: 慢路径次数+1
+
+reread_slab:
+    slab = READ_ONCE(c-&gt;slab);        // 读取当前CPU的slab
+    if (!slab)
+        goto new_slab;                 // 没有slab → 需要获取新的
+
+    /* 检查 NUMA 节点是否匹配 */
+    if (unlikely(!node_match(slab, node))) {
+        if (!allow_spin) {
+            node = NUMA_NO_NODE;       // 不能自旋锁 → 放宽节点要求
+        } else {
+            goto deactivate_slab;      // 停用当前slab，获取正确节点的
+        }
+    }
+
+    /* 加 per-cpu local_lock，重新检查（防止抢占竞争） */
+    local_lock_cpu_slab(s, flags);
+    if (unlikely(slab != c-&gt;slab)) {
+        local_unlock_cpu_slab(s, flags);
+        goto reread_slab;              // 被抢占了，slab已变，重试
+    }
+
+    freelist = c-&gt;freelist;
+    if (freelist)
+        goto load_freelist;            // 快速路径重试: 有人归还了对象
+
+    /* 尝试从 slab 本身的 freelist 获取
+     * (其他CPU释放的对象会放到slab-&gt;freelist) */
+    freelist = get_freelist(s, slab);
+    if (!freelist) {
+        c-&gt;slab = NULL;               // slab 已满，断开关联
+        goto new_slab;
+    }
+
+load_freelist:
+    /* 从 freelist 取出第一个对象 */
+    c-&gt;freelist = get_freepointer(s, freelist);  // freelist = freelist-&gt;next
+    c-&gt;tid = next_tid(c-&gt;tid);
+    local_unlock_cpu_slab(s, flags);
+    return freelist;                   // 返回分配的对象
+
+new_slab:
+    /* 层次化搜索: CPU partial → Node partial → Buddy allocator */
+
+    // 1. 尝试 CPU partial list
+    while (slub_percpu_partial(c)) {
+        slab = slub_percpu_partial(c);
+        slub_set_percpu_partial(c, slab);  // pop from per-cpu partial
+        if (likely(node_match(slab, node))) {
+            c-&gt;slab = slab;
+            freelist = get_freelist(s, slab);
+            goto load_freelist;        // 找到了!
+        }
+    }
+
+    // 2. 尝试 Node partial list (需要 node-&gt;list_lock)
+    freelist = get_partial_node(s, ...);
+    if (freelist)
+        goto check_new_slab;
+
+    // 3. 最终手段: 从 buddy allocator 分配新页
+    slab = new_slab(s, gfpflags, node);
+    // new_slab → allocate_slab → alloc_slab_page → alloc_pages
+    // 然后初始化 freelist: 用指针串联所有空闲对象
+}</code></pre>
+
+<p><strong>SLUB 分配的层次化结构总结</strong>:</p>
+<pre><code>┌─────────────────────────┐
+│     快速路径 (无锁)      │ ← c-&gt;freelist 直接取
+│   this_cpu_cmpxchg 或   │    ~10ns
+│   local_lock             │
+├─────────────────────────┤
+│   slab-&gt;freelist 取      │ ← 其他CPU释放的对象
+│   (local_lock held)      │    ~20ns
+├─────────────────────────┤
+│   CPU partial list       │ ← 本CPU缓存的半满slab
+│   (local_lock held)      │    ~30ns
+├─────────────────────────┤
+│   Node partial list      │ ← node-&gt;list_lock (自旋锁)
+│                          │    ~100ns
+├─────────────────────────┤
+│   Buddy allocator        │ ← zone-&gt;lock, 分配新页
+│   (alloc_pages)          │    ~1000ns
+└─────────────────────────┘</code></pre>
+
+<h3>2.6 释放快速路径</h3>
+
+<p>快速路径通过 <code>freelist</code> 链表：</p>
+<pre><code>slab_free():
+  1. 如果对象属于当前CPU的slab:
+     → set_freepointer(s, object, c-&gt;freelist)  // object-&gt;next = old_head
+     → c-&gt;freelist = object                      // 头插法
+     → 使用 cmpxchg 保证原子性
+  2. 否则 → __slab_free() (慢路径)</code></pre>
+
+<h3>2.7 <code>__slab_free()</code> 慢路径</h3>
+
+<p>(<a href="mm/slub.c#L5861">slub.c</a>):</p>
+<pre><code>__slab_free(s, slab, head, tail, cnt):
+  使用 CAS 循环:
+  do {
+    prior = slab-&gt;freelist
+    set_freepointer(s, tail, prior)    // 把新对象链到旧freelist前
+    new.inuse -= cnt
+    if (slab变为非满 &amp;&amp; 之前是满的 &amp;&amp; 非frozen):
+      → 需要把slab加入partial list
+      → 获取 node-&gt;list_lock
+  } while (!slab_update_freelist(cmpxchg))
+
+  成功后:
+  - 如果was_frozen: 什么都不做（CPU自己管理）
+  - 如果slab从满变为partial: 放入 cpu partial list
+  - 如果slab完全空: 可能释放回buddy allocator</code></pre>
+
+<h3>2.8 复杂度</h3>
+
+<table>
+<thead><tr>
+<th>操作</th>
+<th>时间复杂度</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>快速路径分配/释放</td>
+<td><strong>O(1)</strong> amortized，无锁</td>
+</tr>
+<tr>
+<td>慢路径（从partial取）</td>
+<td>O(1) + 锁开销</td>
+</tr>
+<tr>
+<td>新slab分配</td>
+<td>O(1) buddy + O(n) 初始化对象</td>
+</tr>
+</tbody></table>
+
+<p><strong>空间</strong>: 每个slab page的元数据嵌入 <code>struct page</code>，每个对象的 freelist pointer 嵌入在对象空间内（对象空闲时），极低开销。</p>
+
+<hr>
+
+<h2>3. Buddy System (伙伴系统)</h2>
+
+<p><strong>Source</strong>: <code>mm/page_alloc.c</code></p>
+
+<h3>3.1 核心思想</h3>
+
+<p>Buddy system 管理物理页帧。将空闲内存组织为 2^order 大小的块（order 0..MAX_PAGE_ORDER）。分配时找最小合适块，必要时分裂；释放时检查"伙伴"是否空闲，若是则合并。</p>
+
+<h3>3.2 关键数据结构</h3>
+
+<pre><code class="language-c">struct zone {
+    struct free_area free_area[NR_PAGE_ORDERS];  // order 0 to MAX_PAGE_ORDER
+    // ...
+};
+
+struct free_area {
+    struct list_head free_list[MIGRATE_TYPES];  // 按迁移类型分组
+    unsigned long nr_free;                       // 该order空闲块数
+};</code></pre>
+
+<p><strong>迁移类型</strong> (Migration Types):</p>
+<pre><code class="language-c">enum migratetype {
+    MIGRATE_UNMOVABLE,     // 不可移动（内核分配）
+    MIGRATE_MOVABLE,       // 可移动（用户页面）
+    MIGRATE_RECLAIMABLE,   // 可回收（page cache）
+    MIGRATE_PCPTYPES,      // per-cpu页类型数量
+    MIGRATE_HIGHATOMIC,    // 紧急原子分配保留
+    MIGRATE_CMA,           // CMA区域
+    MIGRATE_ISOLATE,       // 隔离（热插拔/compaction）
+};</code></pre>
+
+<h3>3.3 分配算法: <code>__rmqueue_smallest()</code> (<a href="mm/page_alloc.c#L1880">page_alloc.c</a>)</h3>
+
+<pre><code class="language-c">static __always_inline
+struct page *__rmqueue_smallest(struct zone *zone, unsigned int order,
+                                int migratetype)
+{
+    unsigned int current_order;
+    struct free_area *area;
+    struct page *page;
+
+    /* 从请求的 order 开始向上搜索，找到第一个有空闲块的级别 */
+    for (current_order = order; current_order &lt; NR_PAGE_ORDERS; ++current_order) {
+        area = &amp;(zone-&gt;free_area[current_order]);
+        page = get_page_from_free_area(area, migratetype);
+        // 从 area-&gt;free_list[migratetype] 链表头取一个 page
+        if (!page)
+            continue;  // 该 order 无空闲块，尝试更大的
+
+        /* 找到了! 如果 current_order &gt; order，需要分裂 */
+        page_del_and_expand(zone, page, order, current_order, migratetype);
+        return page;
+    }
+    return NULL;  // 该迁移类型完全没有合适的块
+}</code></pre>
+
+<p><strong><code>page_del_and_expand()</code></strong> — 块分裂过程:</p>
+<pre><code>请求 order=0 (1页), 找到 order=3 (8页) 的块:
+
+  Step 1: 从 free_area[3] 取出 8页块 [A B C D E F G H]
+  Step 2: 右半 [E F G H] 放入 free_area[2] (4页)
+  Step 3: 右半 [C D]     放入 free_area[1] (2页)
+  Step 4: 右半 [B]       放入 free_area[0] (1页)
+  Step 5: 返回 [A] 给调用者
+
+  每次分裂都把&quot;伙伴&quot;(右半部分)放回更小一级的 freelist</code></pre>
+
+<h3>3.4 释放与合并: <code>__free_one_page()</code> (<a href="mm/page_alloc.c#L940">page_alloc.c</a>)</h3>
+
+<pre><code class="language-c">static inline void __free_one_page(struct page *page,
+        unsigned long pfn, struct zone *zone,
+        unsigned int order, int migratetype, fpi_t fpi_flags)
+{
+    unsigned long buddy_pfn = 0, combined_pfn;
+    struct page *buddy;
+
+    account_freepages(zone, 1 &lt;&lt; order, migratetype);  // 更新zone统计
+
+    /* 循环尝试合并伙伴，每次合并 order 加 1 */
+    while (order &lt; MAX_PAGE_ORDER) {
+        int buddy_mt = migratetype;
+
+        // 通过 XOR 计算伙伴的 PFN
+        // buddy_pfn = pfn ^ (1 &lt;&lt; order)
+        buddy = find_buddy_page_pfn(page, pfn, order, &amp;buddy_pfn);
+        if (!buddy)
+            goto done_merging;  // 伙伴不空闲，停止
+
+        /* 大块(≥pageblock_order)需要检查迁移类型兼容性 */
+        if (unlikely(order &gt;= pageblock_order)) {
+            buddy_mt = get_pfnblock_migratetype(buddy, buddy_pfn);
+            if (migratetype != buddy_mt &amp;&amp;
+                (!migratetype_is_mergeable(migratetype) ||
+                 !migratetype_is_mergeable(buddy_mt)))
+                goto done_merging;  // 不可合并（如CMA/ISOLATE）
+        }
+
+        /* 伙伴空闲! 从 freelist 取出它 */
+        __del_page_from_free_list(buddy, zone, order, buddy_mt);
+
+        /* 计算合并后的起始 PFN */
+        combined_pfn = buddy_pfn &amp; pfn;  // 取两者中较小的
+        page = page + (combined_pfn - pfn);
+        pfn = combined_pfn;
+        order++;  // 升级到更大的 order
+    }
+
+done_merging:
+    set_buddy_order(page, order);
+    /* 选择放入链表头还是尾:
+     * - 头部: 下次会被优先分配 (hot)
+     * - 尾部: 留给更大的合并机会 (cold)
+     */
+    __add_to_free_list(page, zone, order, migratetype, to_tail);
+}</code></pre>
+
+<p><strong>伙伴查找的数学原理</strong>:<br>
+$$buddy\_pfn = pfn \oplus (1 << order)$$</p>
+
+<p>例如，order=2 (4页块):</p>
+<ul>
+<li>PFN=0b<strong>1000</strong> 的伙伴是 0b<strong>1100</strong> (XOR 0b0100)</li>
+<li>PFN=0b<strong>1100</strong> 的伙伴是 0b<strong>1000</strong> (XOR 0b0100)</li>
+<li>合并后: <code>combined_pfn = 0b1000 & 0b1100 = 0b1000</code>，order=3 (8页块)</li>
+</ul>
+
+<pre><code>释放 PFN=12 (order=0) 的合并过程:
+
+  order=0: PFN=12 的伙伴是 PFN=13 (12^1)
+           → PFN=13 空闲! 合并为 order=1, PFN=12
+
+  order=1: PFN=12 的伙伴是 PFN=14 (12^2)
+           → PFN=14 空闲! 合并为 order=2, PFN=12
+
+  order=2: PFN=12 的伙伴是 PFN=8 (12^4)
+           → PFN=8 不空闲. 停止合并.
+
+  最终: 将 order=2 (4页) 的块放入 free_area[2]</code></pre>
+
+<h3>3.5 Fallback 机制</h3>
+
+<p><strong><code>__rmqueue()</code></strong> (<a href="mm/page_alloc.c#L2445">page_alloc.c</a>):</p>
+<pre><code>__rmqueue(zone, order, migratetype):
+  switch (*mode):
+    RMQUEUE_NORMAL: __rmqueue_smallest(zone, order, migratetype)
+    RMQUEUE_CMA:    __rmqueue_cma_fallback()
+    RMQUEUE_CLAIM:  __rmqueue_claim()  // 尝试从其他migratetype&quot;偷取&quot;整个pageblock
+    RMQUEUE_STEAL:  __rmqueue_steal()  // 偷取部分页</code></pre>
+
+<p>Fallback 顺序:</p>
+<pre><code class="language-c">static int fallbacks[MIGRATE_PCPTYPES][MIGRATE_PCPTYPES - 1] = {
+    [MIGRATE_UNMOVABLE]   = { MIGRATE_RECLAIMABLE, MIGRATE_MOVABLE   },
+    [MIGRATE_MOVABLE]     = { MIGRATE_RECLAIMABLE, MIGRATE_UNMOVABLE },
+    [MIGRATE_RECLAIMABLE] = { MIGRATE_UNMOVABLE,   MIGRATE_MOVABLE   },
+};</code></pre>
+
+<h3>3.6 复杂度</h3>
+
+<table>
+<thead><tr>
+<th>操作</th>
+<th>时间复杂度</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>分配</td>
+<td>O(MAX_ORDER) 最坏，通常 O(1)</td>
+</tr>
+<tr>
+<td>释放+合并</td>
+<td>O(MAX_ORDER) 最坏</td>
+</tr>
+<tr>
+<td>伙伴查找</td>
+<td>O(1) — 简单XOR</td>
+</tr>
+</tbody></table>
+
+<p><strong>空间</strong>: 每个 <code>struct page</code> ≈ 64 bytes 元数据，free_area 数组 ~固定大小。</p>
+
+<hr>
+
+<h2>4. Page Reclaim / LRU (页面回收)</h2>
+
+<p><strong>Source</strong>: <code>mm/vmscan.c</code></p>
+
+<h3>4.1 核心思想</h3>
+
+<p>当系统内存不足时，需要回收页面。Linux 使用 LRU (Least Recently Used) 近似算法，维护 active/inactive 链表，通过"第二次机会"算法决定哪些页面可以回收。</p>
+
+<h3>4.2 LRU 链表</h3>
+
+<pre><code>每个 lruvec 维护 5 条 LRU 链表:
+  LRU_INACTIVE_ANON    // 不活跃匿名页（需要swap才能回收）
+  LRU_ACTIVE_ANON      // 活跃匿名页
+  LRU_INACTIVE_FILE    // 不活跃文件页（可直接丢弃/写回）
+  LRU_ACTIVE_FILE      // 活跃文件页
+  LRU_UNEVICTABLE      // 不可驱逐页（mlock等）</code></pre>
+
+<h3>4.3 <code>scan_control</code> 结构</h3>
+
+<p>(<a href="mm/vmscan.c#L73">vmscan.c</a>):</p>
+<pre><code class="language-c">struct scan_control {
+    unsigned long nr_to_reclaim;      // 需要回收的页数
+    nodemask_t *nodemask;             // 允许的节点
+    struct mem_cgroup *target_mem_cgroup;
+    unsigned long anon_cost;          // 匿名页扫描代价
+    unsigned long file_cost;          // 文件页扫描代价
+    unsigned int may_writepage:1;     // 是否允许写回
+    unsigned int may_unmap:1;         // 是否允许取消映射
+    unsigned int may_swap:1;          // 是否允许swap
+};</code></pre>
+
+<h3>4.4 Second Chance / Reference Checking</h3>
+
+<p><strong><code>folio_check_references()</code></strong> (<a href="mm/vmscan.c#L906">vmscan.c</a>):</p>
+<pre><code>folio_check_references(folio, sc):
+  referenced_ptes = folio_referenced(folio, ...)  // 检查PTE accessed bit
+  referenced_folio = folio_test_clear_referenced(folio)  // 检查并清除folio的referenced标记
+
+  if VM_LOCKED → FOLIOREF_ACTIVATE (不可回收)
+
+  if referenced_ptes == -1 → FOLIOREF_KEEP (rmap锁竞争)
+
+  if lru_gen_enabled():
+    → 使用 MGLRU 多代 LRU 算法
+
+  // 经典第二次机会算法:
+  if referenced_ptes:
+    folio_set_referenced(folio)        // 标记 referenced
+    if (referenced_folio || referenced_ptes &gt; 1):
+      return FOLIOREF_ACTIVATE         // 提升到 active list
+    return FOLIOREF_KEEP               // 给第二次机会
+
+  if referenced_folio:
+    return FOLIOREF_RECLAIM_CLEAN      // 可回收（如果干净）
+
+  return FOLIOREF_RECLAIM              // 可回收</code></pre>
+
+<h3>4.5 <code>shrink_folio_list()</code> — 回收决策核心 (<a href="mm/vmscan.c#L1099">vmscan.c</a>)</h3>
+
+<pre><code class="language-c">static unsigned int shrink_folio_list(struct list_head *folio_list,
+        struct pglist_data *pgdat, struct scan_control *sc,
+        struct reclaim_stat *stat, bool ignore_references,
+        struct mem_cgroup *memcg)
+{
+    unsigned int nr_reclaimed = 0;
+
+    while (!list_empty(folio_list)) {
+        struct folio *folio = lru_to_folio(folio_list);
+        list_del(&amp;folio-&gt;lru);
+
+        /* Step 1: 尝试获取 folio 锁 — 失败则跳过 */
+        if (!folio_trylock(folio))
+            goto keep;       // 放回 LRU，下次再试
+
+        /* Step 2: 检查是否为 hwpoisoned 页 */
+        if (folio_contain_hwpoisoned_page(folio)) {
+            unmap_poisoned_folio(folio, ...);
+            continue;
+        }
+
+        /* Step 3: 不可驱逐的页(mlock等) → 提升到 active */
+        if (unlikely(!folio_evictable(folio)))
+            goto activate_locked;
+
+        /* Step 4: 如果不允许 unmap，跳过已映射的页 */
+        if (!sc-&gt;may_unmap &amp;&amp; folio_mapped(folio))
+            goto keep_locked;
+
+        /* Step 5: 统计脏页和写回中的页 */
+        folio_check_dirty_writeback(folio, &amp;dirty, &amp;writeback);
+
+        /* Step 6: 引用检查 — &quot;第二次机会&quot;算法 */
+        if (!ignore_references) {
+            references = folio_check_references(folio, sc);
+            switch (references) {
+            case FOLIOREF_ACTIVATE:
+                goto activate_locked;    // 活跃! 提升到 active list
+            case FOLIOREF_KEEP:
+                goto keep_locked;        // 给第二次机会，保留
+            case FOLIOREF_RECLAIM:
+            case FOLIOREF_RECLAIM_CLEAN:
+                ;  // 可以回收，继续流程
+            }
+        }
+
+        /* Step 7: 匿名页需要先加入 swap */
+        if (folio_test_anon(folio) &amp;&amp; !folio_test_swapcache(folio)) {
+            if (!add_to_swap(folio))
+                goto activate_locked;
+        }
+
+        /* Step 8: 取消所有进程的页表映射 */
+        if (folio_mapped(folio)) {
+            try_to_unmap(folio, ...);
+            if (folio_mapped(folio))
+                goto keep_locked;        // 还有映射未解除
+        }
+
+        /* Step 9: 脏页需要写回 */
+        if (dirty) {
+            pageout(folio, mapping, &amp;plug);  // 触发 I/O
+            goto keep;                       // 等写回完成后下一轮再回收
+        }
+
+        /* Step 10: 干净且未映射 → 释放! */
+        nr_reclaimed += folio_nr_pages(folio);
+        folio_batch_add(&amp;free_folios, folio);
+        continue;
+
+    activate_locked:
+        folio_set_active(folio);     // 设置 active 标志
+        pgactivate++;
+    keep_locked:
+        folio_unlock(folio);
+    keep:
+        list_add(&amp;folio-&gt;lru, &amp;ret_folios);  // 放回待归还列表
+    }
+    // 将 ret_folios 放回 LRU
+    // 释放 free_folios 中的页面
+    return nr_reclaimed;
+}</code></pre>
+
+<p><strong>回收决策流程图</strong>:</p>
+<pre><code>folio 从 inactive LRU 尾部取出
+        │
+  ┌─trylock 成功?──┐
+  │NO              │YES
+  │→ keep          ↓
+  │         evictable?
+  │        YES ↓    NO → activate
+  │         ↓
+  │   check_references()
+  │   ┌──────┬──────────┐
+  │  ACTIVATE KEEP    RECLAIM
+  │   ↓       ↓         ↓
+  │  active  keep   anon? → add_to_swap
+  │  list    list        ↓
+  │                 mapped? → try_to_unmap
+  │                      ↓
+  │                 dirty? → pageout (I/O)
+  │                      ↓
+  │                 释放页面! ✓
+  └─────────────────────┘</code></pre>
+
+<h3>4.6 <code>shrink_inactive_list()</code></h3>
+
+<p>(<a href="mm/vmscan.c#L2008">vmscan.c</a>):</p>
+<pre><code>shrink_inactive_list(nr_to_scan, lruvec, sc, lru):
+  1. lru_add_drain()                    // 把per-cpu的pagevec刷到LRU
+  2. spin_lock(&amp;lruvec-&gt;lru_lock)
+  3. isolate_lru_folios(nr_to_scan, ...)  // 从LRU尾部隔离一批folio
+  4. spin_unlock(&amp;lruvec-&gt;lru_lock)
+  5. shrink_folio_list(&amp;folio_list, ...)   // 对隔离的folio逐一回收
+  6. 将未回收的folio放回LRU</code></pre>
+
+<h3>4.7 kswapd vs Direct Reclaim</h3>
+
+<ul>
+<li><strong>kswapd</strong>: 后台内核线程，当空闲页低于 <code>pages_low</code> 水位时被唤醒，回收到 <code>pages_high</code></li>
+<li><strong>Direct reclaim</strong>: 当分配路径中空闲页低于 <code>pages_min</code> 时，分配者自己同步回收</li>
+<li><code>balance_pgdat()</code> 是 kswapd 的主循环</li>
+<li>扫描压力在 anon 和 file 之间平衡：基于 <code>anon_cost</code> / <code>file_cost</code></li>
+</ul>
+
+<h3>4.8 复杂度</h3>
+
+<table>
+<thead><tr>
+<th>操作</th>
+<th>时间复杂度</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>从 LRU 隔离</td>
+<td>O(n) n=nr_to_scan</td>
+</tr>
+<tr>
+<td>folio_check_references</td>
+<td>O(映射数) per folio</td>
+</tr>
+<tr>
+<td>shrink_folio_list</td>
+<td>O(n) n=隔离数</td>
+</tr>
+<tr>
+<td>kswapd 一轮</td>
+<td>O(扫描页数)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>5. VMA Management (Maple Tree)</h2>
+
+<p><strong>Source</strong>: <code>mm/mmap.c</code></p>
+
+<h3>5.1 核心思想</h3>
+
+<p>Linux 6.x 用 <strong>Maple Tree</strong> 替代了传统的 RB-tree + 链表来管理进程的虚拟内存区域 (VMA)。Maple Tree 是一个 RCU-safe 的 B-tree 变体，针对范围查询优化。</p>
+
+<h3>5.2 关键数据结构</h3>
+
+<pre><code class="language-c">struct mm_struct {
+    struct maple_tree mm_mt;    // VMA 的 maple tree
+    // ...
+};
+
+struct vm_area_struct {
+    unsigned long vm_start;     // VMA 起始地址
+    unsigned long vm_end;       // VMA 结束地址
+    struct file *vm_file;       // 映射的文件（如果有）
+    vm_flags_t vm_flags;        // 权限和属性标志
+    // ...
+};</code></pre>
+
+<h3>5.3 <code>find_vma()</code> — O(log n) 查找</h3>
+
+<p>(<a href="mm/mmap.c#L904">mmap.c</a>):</p>
+<pre><code class="language-c">struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr)
+{
+    unsigned long index = addr;
+    mmap_assert_locked(mm);
+    return mt_find(&amp;mm-&gt;mm_mt, &amp;index, ULONG_MAX);
+}</code></pre>
+
+<p><code>mt_find()</code> 在 maple tree 中执行范围搜索，找到包含 <code>addr</code> 的 VMA 或下一个 VMA。</p>
+
+<h3>5.4 <code>find_vma_intersection()</code></h3>
+
+<p>(<a href="mm/mmap.c#L885">mmap.c</a>):</p>
+<pre><code class="language-c">struct vm_area_struct *find_vma_intersection(struct mm_struct *mm,
+                         unsigned long start_addr, unsigned long end_addr)
+{
+    unsigned long index = start_addr;
+    mmap_assert_locked(mm);
+    return mt_find(&amp;mm-&gt;mm_mt, &amp;index, end_addr - 1);
+}</code></pre>
+
+<h3>5.5 <code>do_mmap()</code> — 创建映射</h3>
+
+<p>(<a href="mm/mmap.c#L334">mmap.c</a>):</p>
+<pre><code>do_mmap(file, addr, len, prot, flags, pgoff):
+  1. 参数验证（长度、溢出、map_count限制）
+  2. calc_vm_prot_bits() + calc_vm_flag_bits() → 计算 vm_flags
+  3. get_unmapped_area() → 在maple tree中找到空闲地址空间
+  4. mmap_region() → 实际创建VMA:
+     a) 尝试与相邻VMA合并 (vma_merge())
+     b) 如果不能合并，创建新VMA
+     c) 插入maple tree: vma_iter_store()
+     d) 如果是文件映射: 调用 file-&gt;f_op-&gt;mmap()</code></pre>
+
+<h3>5.6 Maple Tree vs RB-tree</h3>
+
+<table>
+<thead><tr>
+<th>特性</th>
+<th>Maple Tree</th>
+<th>RB-tree</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>结构</td>
+<td>B-tree variant (fan-out 最大16)</td>
+<td>Binary tree</td>
+</tr>
+<tr>
+<td>缓存友好</td>
+<td>更好（节点内连续数据）</td>
+<td>较差（每个节点2个子节点）</td>
+</tr>
+<tr>
+<td>RCU-safe</td>
+<td>原生支持</td>
+<td>需要额外处理</td>
+</tr>
+<tr>
+<td>范围查询</td>
+<td>优化的</td>
+<td>需要遍历</td>
+</tr>
+<tr>
+<td>查找复杂度</td>
+<td>O(log_B n)</td>
+<td>O(log_2 n)</td>
+</tr>
+</tbody></table>
+
+<h3>5.7 复杂度</h3>
+
+<table>
+<thead><tr>
+<th>操作</th>
+<th>时间复杂度</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>find_vma</td>
+<td>O(log n)</td>
+</tr>
+<tr>
+<td>插入/删除 VMA</td>
+<td>O(log n)</td>
+</tr>
+<tr>
+<td>VMA 合并</td>
+<td>O(log n)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>6. Writeback Algorithm (写回算法)</h2>
+
+<p><strong>Source</strong>: <code>mm/page-writeback.c</code>, <code>fs/fs-writeback.c</code></p>
+
+<h3>6.1 核心思想</h3>
+
+<p>Writeback 系统控制脏页何时、如何写回到磁盘。通过设定脏页比例阈值，平衡 I/O 性能和数据安全性。</p>
+
+<h3>6.2 关键参数</h3>
+
+<p>(<a href="mm/page-writeback.c#L74">page-writeback.c</a>):</p>
+<pre><code class="language-c">static int dirty_background_ratio = 10;   // 脏页占可脏化内存 10% 时触发后台写回
+static unsigned long dirty_background_bytes; // 或绝对字节数
+static int vm_dirty_ratio = 20;            // 脏页占 20% 时开始限流写入者
+static unsigned long vm_dirty_bytes;
+static long ratelimit_pages = 32;          // 每个CPU脏了32页后检查是否需要限流</code></pre>
+
+<h3>6.3 Dirty Limits 计算</h3>
+
+<p><strong><code>domain_dirty_limits()</code></strong> (<a href="mm/page-writeback.c#L356">page-writeback.c</a>):</p>
+<pre><code>domain_dirty_limits(dtc):
+  available_memory = dtc-&gt;avail   // 可脏化内存总量
+
+  if vm_dirty_bytes:
+    thresh = vm_dirty_bytes / PAGE_SIZE
+  else:
+    thresh = vm_dirty_ratio * available_memory / 100
+
+  if dirty_background_bytes:
+    bg_thresh = dirty_background_bytes / PAGE_SIZE
+  else:
+    bg_thresh = dirty_background_ratio * available_memory / 100
+
+  // 实时任务获得 25% 额外配额
+  if rt_or_dl_task(current):
+    thresh += thresh / 4
+    bg_thresh += bg_thresh / 4</code></pre>
+
+<h3>6.4 两阶段写回机制</h3>
+
+<pre><code>                    0%          bg_thresh (10%)      thresh (20%)
+  脏页比例:  |--------|----------------|----------------|-----&gt;
+             正常写入   后台写回开始      限流写入者（throttle）
+
+  1. 脏页 &lt; bg_thresh: 不做写回
+  2. bg_thresh ≤ 脏页 &lt; thresh: 唤醒 writeback 线程后台写回
+  3. 脏页 ≥ thresh: balance_dirty_pages() 限制写入者速度</code></pre>
+
+<h3>6.5 <code>balance_dirty_pages()</code></h3>
+
+<p>限流的核心是让写入者在 <code>balance_dirty_pages()</code> 中 sleep:</p>
+<ul>
+<li>根据当前脏页量和写带宽估计，计算需要暂停的时间</li>
+<li><code>MAX_PAUSE = max(HZ/5, 1)</code> — 单次最大 sleep 200ms</li>
+<li>使用带宽估计 (<code>BANDWIDTH_INTERVAL = 200ms</code>) 来平滑限流</li>
+</ul>
+
+<h3>6.6 BDI (Backing Device Info)</h3>
+
+<p>每个块设备有自己的写回带宽跟踪和脏页配额，防止一个慢设备拖慢整个系统。</p>
+
+<hr>
+
+<h2>7. I/O Schedulers</h2>
+
+<h3>7.1 mq-deadline</h3>
+
+<p><strong>Source</strong>: <code>block/mq-deadline.c</code></p>
+
+<h4>核心算法</h4>
+
+<p><strong><code>__dd_dispatch_request()</code></strong> (<a href="block/mq-deadline.c#L313">mq-deadline.c</a>):</p>
+
+<pre><code>__dd_dispatch_request(dd, per_prio, latest_start):
+  1. 检查 dispatch 队列是否有待处理请求
+
+  2. 批处理续接:
+     if 有下一个请求 &amp;&amp; batching &lt; fifo_batch:
+       → 继续当前方向的请求（保持连续性）
+
+  3. 方向选择:
+     if 有读请求:
+       if 有写请求 &amp;&amp; starved &gt;= writes_starved:
+         → 切换到写（防止写饥饿，默认 writes_starved=2）
+       else:
+         → 选择读
+
+     else if 有写请求:
+       → 选择写
+
+  4. 请求选择:
+     if deadline 过期 || 没有下一个连续请求:
+       → 从 FIFO 链表取最早过期的请求（按到达时间排序）
+     else:
+       → 取扇区排序的下一个请求（电梯式）
+
+  5. deadline_move_request() → 从调度队列移到 dispatch 队列</code></pre>
+
+<p><strong>数据结构</strong>:</p>
+<ul>
+<li><code>sort_list[DD_READ/DD_WRITE]</code>: 按扇区号排序的 RB-tree（电梯合并）</li>
+<li><code>fifo_list[DD_READ/DD_WRITE]</code>: 按到达时间排序的 FIFO（deadline 保证）</li>
+<li>优先级分为 3 级 (RT, BE, IDLE)</li>
+<li>默认: read_expire=500ms, write_expire=5000ms, fifo_batch=16</li>
+</ul>
+
+<h3>7.2 BFQ (Budget Fair Queueing)</h3>
+
+<p><strong>Source</strong>: <code>block/bfq-iosched.c</code></p>
+
+<h4>核心算法</h4>
+
+<p><strong><code>bfq_select_queue()</code></strong> (<a href="block/bfq-iosched.c#L4798">bfq-iosched.c</a>): 选择下一个要服务的 bfq_queue<br>
+<strong><code>bfq_dispatch_rq_from_bfqq()</code></strong> (<a href="block/bfq-iosched.c#L5100">bfq-iosched.c</a>): 从选中的队列取出请求</p>
+
+<p>BFQ 基于 <strong>B-WF²Q+</strong> (Budget Weighted Fair Queuing) 算法:</p>
+<ul>
+<li>每个进程/cgroup 有自己的 <code>bfq_queue</code></li>
+<li>每个队列有一个 <strong>budget</strong>（可以发送的扇区数）</li>
+<li>使用时间戳实现公平性</li>
+<li>特别优化了交互式/延迟敏感的工作负载</li>
+</ul>
+
+<h3>7.3 复杂度</h3>
+
+<table>
+<thead><tr>
+<th>调度器</th>
+<th>dispatch</th>
+<th>insert</th>
+<th>适用场景</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>mq-deadline</td>
+<td>O(1)/O(log n)</td>
+<td>O(log n)</td>
+<td>通用，数据库</td>
+</tr>
+<tr>
+<td>BFQ</td>
+<td>O(log n)</td>
+<td>O(log n)</td>
+<td>桌面，交互式</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>8. RCU Grace Period Detection</h2>
+
+<p><strong>Source</strong>: <code>kernel/rcu/tree.c</code></p>
+
+<h3>8.1 核心思想</h3>
+
+<p>RCU (Read-Copy Update) 允许读者无锁访问共享数据。写者更新数据后，必须等到所有可能持有旧引用的读者完成后（grace period），才能安全释放旧数据。</p>
+
+<h3>8.2 rcu_node 树结构</h3>
+
+<pre><code>rcu_state
+  └── rcu_node[0]               (root)
+       ├── rcu_node[1]          (intermediate)
+       │    ├── rcu_data[CPU0]
+       │    └── rcu_data[CPU1]
+       └── rcu_node[2]          (intermediate)
+            ├── rcu_data[CPU2]
+            └── rcu_data[CPU3]</code></pre>
+
+<ul>
+<li><code>rcu_state</code>: 全局状态，包含 <code>gp_seq</code>（grace period 序号）</li>
+<li><code>rcu_node</code>: 层次结构节点，每个有 <code>qsmask</code> 位图追踪哪些子节点/CPU已报告静默状态</li>
+<li><code>rcu_data</code>: Per-CPU 数据，包含回调链表</li>
+</ul>
+
+<h3>8.3 Grace Period 初始化 — <code>rcu_gp_init()</code> (<a href="kernel/rcu/tree.c#L1803">tree.c</a>)</h3>
+
+<pre><code class="language-c">static noinline_for_stack bool rcu_gp_init(void)
+{
+    struct rcu_node *rnp = rcu_get_root();
+
+    raw_spin_lock_irq_rcu_node(rnp);
+
+    if (!rcu_state.gp_flags) {
+        raw_spin_unlock_irq_rcu_node(rnp);
+        return false;  // 虚假唤醒，没有GP请求
+    }
+    WRITE_ONCE(rcu_state.gp_flags, 0);  // 清除标志: 新GP开始
+
+    /* 推进 gp_seq — 标记新GP开始
+     * rcu_seq_start() 将 gp_seq 的低2位从 0b00 变为 0b01
+     * 表示&quot;GP进行中&quot; */
+    rcu_seq_start(&amp;rcu_state.gp_seq);
+    raw_spin_unlock_irq_rcu_node(rnp);
+
+    /* 遍历所有叶子 rcu_node，设置 qsmask
+     * qsmask 中每一位代表一个在线CPU
+     * 所有位都被清除(所有CPU报告QS)后，GP完成 */
+    rcu_for_each_leaf_node(rnp) {
+        raw_spin_lock_rcu_node(rnp);
+        oldmask = rnp-&gt;qsmaskinit;
+        rnp-&gt;qsmaskinit = rnp-&gt;qsmaskinitnext;  // 应用CPU上下线变化
+        rnp-&gt;qsmask = rnp-&gt;qsmaskinit;          // 设置本GP的qsmask
+        raw_spin_unlock_rcu_node(rnp);
+    }
+}</code></pre>
+
+<h3>8.4 Grace Period Kthread 主循环</h3>
+
+<p><strong><code>rcu_gp_kthread()</code></strong> (<a href="kernel/rcu/tree.c#L2259">tree.c</a>):</p>
+<pre><code>rcu_gp_kthread():
+  for (;;):
+    // Phase 1: 等待GP请求
+    swait_event(rcu_state.gp_wq, gp_flags &amp; RCU_GP_FLAG_INIT)
+    
+    // Phase 2: 初始化GP — rcu_gp_init()
+    //   → 推进 gp_seq，设置所有 rcu_node 的 qsmask
+
+    // Phase 3: 等待所有CPU报告 Quiescent State
+    //   → rcu_gp_fqs_loop() 循环:
+    //     每 jiffies_till_first_fqs 后开始强制QS检测
+    //     对每个未报告QS的CPU发送 IPI 或检查其状态
+
+    // Phase 4: 清理 — rcu_gp_cleanup()
+    //   → 推进 gp_seq 完成 (低2位从 0b01 → 0b00, 高位+1)
+    //   → 唤醒等待此GP的回调</code></pre>
+
+<h3>8.5 Quiescent State 报告 — 自底向上传播</h3>
+
+<pre><code class="language-c">// 每个CPU通过以下事件报告静默状态:
+// - 上下文切换 → rcu_note_context_switch()
+// - 进入idle   → rcu_idle_enter()
+// - 返回用户态 → rcu_user_enter()
+// - 显式标记   → cond_resched_rcu_qs()
+
+rcu_report_qs_rnp(mask, rnp):
+  for (;;):
+    rnp-&gt;qsmask &amp;= ~mask        // 清除已报告QS的CPU/子节点位
+    if (rnp-&gt;qsmask != 0)
+      break                      // 还有未报告的，等待
+    rnp = rnp-&gt;parent            // 所有子节点完成 → 向上传播
+    mask = rnp_child_mask
+
+  if 到达 root &amp;&amp; root-&gt;qsmask == 0:
+    rcu_report_qs_rsp()          // GP 完成!</code></pre>
+
+<p><strong>QS 传播示例 (4 CPU 系统)</strong>:</p>
+<pre><code>         rcu_node[0] (root)
+        qsmask = 0b11
+          /        \
+   rcu_node[1]   rcu_node[2]
+   qsmask=0b11   qsmask=0b11
+    /    \         /    \
+  CPU0  CPU1    CPU2  CPU3
+
+Step 1: CPU0 上下文切换 → rcu_node[1].qsmask = 0b10
+Step 2: CPU1 进入idle   → rcu_node[1].qsmask = 0b00
+        → 向上: rcu_node[0].qsmask = 0b10
+Step 3: CPU3 返回用户态 → rcu_node[2].qsmask = 0b01
+Step 4: CPU2 cond_resched → rcu_node[2].qsmask = 0b00
+        → 向上: rcu_node[0].qsmask = 0b00 → GP 完成!</code></pre>
+
+<h3>8.6 复杂度</h3>
+
+<table>
+<thead><tr>
+<th>操作</th>
+<th>时间复杂度</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>rcu_read_lock/unlock</code></td>
+<td><strong>O(1)</strong>, 无原子操作 (preemptible RCU有开销)</td>
+</tr>
+<tr>
+<td>QS 报告传播</td>
+<td>O(tree depth) = O(log(NR_CPUS))</td>
+</tr>
+<tr>
+<td>GP 完成</td>
+<td>O(NR_CPUS) 总扫描</td>
+</tr>
+<tr>
+<td>回调执行</td>
+<td>O(callback数量)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>9. Timer Wheel (定时器轮)</h2>
+
+<p><strong>Source</strong>: <code>kernel/time/timer.c</code></p>
+
+<h3>9.1 核心思想</h3>
+
+<p>Linux 使用 <strong>分层定时器轮</strong> (Hierarchical Timing Wheel) 管理内核定时器。不同于经典的需要级联的实现，当前版本使用隐式批处理：越远的定时器精度越低，避免了级联开销。</p>
+
+<h3>9.2 层次结构 (HZ=1000)</h3>
+
+<p>(<a href="kernel/time/timer.c#L85">timer.c</a>):</p>
+<pre><code>Level  Offset  Granularity       Range
+  0      0         1 ms          0 ms -     63 ms
+  1     64         8 ms         64 ms -    511 ms
+  2    128        64 ms        512 ms -   ~4s
+  3    192       512 ms         ~4s -     ~32s
+  4    256      4096 ms (~4s)   ~32s -    ~4m
+  5    320     32768 ms (~32s)  ~4m -     ~34m
+  6    384    262144 ms (~4m)   ~34m -    ~4h
+  7    448   2097152 ms (~34m)  ~4h -     ~1d
+  8    512  16777216 ms (~4h)   ~1d -     ~12d</code></pre>
+
+<p><strong>常量</strong>:</p>
+<pre><code class="language-c">#define LVL_BITS        6                    // 每级 64 个桶
+#define LVL_SIZE        (1UL &lt;&lt; LVL_BITS)    // = 64
+#define LVL_DEPTH       9                    // 9个层级 (HZ &gt; 100)
+#define WHEEL_SIZE      (LVL_SIZE * LVL_DEPTH)  // = 576 个桶
+#define LVL_CLK_SHIFT   3                    // 每级时钟除以 8</code></pre>
+
+<h3>9.3 <code>timer_base</code> 结构</h3>
+
+<p>(<a href="kernel/time/timer.c#L250">timer.c</a>):</p>
+<pre><code class="language-c">struct timer_base {
+    raw_spinlock_t  lock;
+    struct timer_list *running_timer;
+    unsigned long   clk;                    // 当前时钟
+    unsigned long   next_expiry;            // 最近到期时间
+    bool            timers_pending;
+    DECLARE_BITMAP(pending_map, WHEEL_SIZE); // 576位bitmap，标记哪些桶有定时器
+    struct hlist_head vectors[WHEEL_SIZE];   // 576个桶（哈希链表）
+};</code></pre>
+
+<p>每CPU有多个 <code>timer_base</code>: LOCAL, GLOBAL, DEF(deferrable)。</p>
+
+<h3>9.4 定时器添加</h3>
+
+<p><strong><code>calc_wheel_index()</code></strong> (<a href="kernel/time/timer.c#L542">timer.c</a>):</p>
+<pre><code class="language-c">static int calc_wheel_index(unsigned long expires, unsigned long clk,
+                            unsigned long *bucket_expiry)
+{
+    unsigned long delta = expires - clk;     // 距当前时钟的差值
+    unsigned int idx;
+
+    // 根据 delta 大小选择层级 — 越远的定时器放越高层(粒度越粗)
+    if (delta &lt; LVL_START(1)) {              // 0 - 63 ticks
+        idx = calc_index(expires, 0, bucket_expiry);
+    } else if (delta &lt; LVL_START(2)) {       // 64 - 511 ticks
+        idx = calc_index(expires, 1, bucket_expiry);
+    } else if (delta &lt; LVL_START(3)) {       // 512 - 4095 ticks
+        idx = calc_index(expires, 2, bucket_expiry);
+    } else if (delta &lt; LVL_START(4)) {
+        idx = calc_index(expires, 3, bucket_expiry);
+    } /* ... 最多 9 级 ... */
+    else if ((long) delta &lt; 0) {
+        idx = clk &amp; LVL_MASK;               // 已过期! 放到当前桶
+        *bucket_expiry = clk;
+    } else {
+        if (delta &gt;= WHEEL_TIMEOUT_CUTOFF)
+            expires = clk + WHEEL_TIMEOUT_MAX; // 超大timeout截断
+        idx = calc_index(expires, LVL_DEPTH - 1, bucket_expiry);
+    }
+    return idx;
+}
+
+static inline unsigned calc_index(unsigned long expires, unsigned lvl,
+                                  unsigned long *bucket_expiry)
+{
+    // 对齐到该层级的粒度（向上取整，防止过早触发）
+    expires = (expires &gt;&gt; LVL_SHIFT(lvl)) + 1;
+    *bucket_expiry = expires &lt;&lt; LVL_SHIFT(lvl);
+    return LVL_OFFS(lvl) + (expires &amp; LVL_MASK);
+    // LVL_OFFS(lvl) = lvl * 64    — 每级64个桶
+    // LVL_MASK = 63               — 桶内偏移
+}</code></pre>
+
+<p><strong><code>enqueue_timer()</code></strong> (<a href="kernel/time/timer.c#L612">timer.c</a>):</p>
+<pre><code class="language-c">static void enqueue_timer(struct timer_base *base, struct timer_list *timer,
+                          unsigned int idx, unsigned long bucket_expiry)
+{
+    hlist_add_head(&amp;timer-&gt;entry, base-&gt;vectors + idx);  // O(1) 插入对应桶
+    __set_bit(idx, base-&gt;pending_map);                    // 标记 bitmap 中该桶有定时器
+    timer_set_idx(timer, idx);
+
+    // 如果这是最早到期的定时器，更新 base-&gt;next_expiry
+    if (time_before(bucket_expiry, base-&gt;next_expiry)) {
+        base-&gt;next_expiry = bucket_expiry;
+        base-&gt;timers_pending = true;
+        trigger_dyntick_cpu(base, timer);  // 唤醒处于idle的CPU
+    }
+}</code></pre>
+
+<h3>9.5 到期定时器的收集与处理</h3>
+
+<p><strong><code>collect_expired_timers()</code></strong> (<a href="kernel/time/timer.c#L1807">timer.c</a>):</p>
+<pre><code class="language-c">static int collect_expired_timers(struct timer_base *base,
+                                  struct hlist_head *heads)
+{
+    unsigned long clk = base-&gt;clk = base-&gt;next_expiry;
+    struct hlist_head *vec;
+    int i, levels = 0;
+    unsigned int idx;
+
+    for (i = 0; i &lt; LVL_DEPTH; i++) {
+        // 计算当前时钟在该层级对应的桶索引
+        idx = (clk &amp; LVL_MASK) + i * LVL_SIZE;
+
+        // 检查 bitmap 中该桶是否有定时器
+        if (__test_and_clear_bit(idx, base-&gt;pending_map)) {
+            vec = base-&gt;vectors + idx;
+            hlist_move_list(vec, heads++);  // 整个链表移到 heads 数组
+            levels++;
+        }
+        // 检查是否需要看更高层级:
+        // 只有当低位全为0时才需要(时钟对齐到该层粒度)
+        if (clk &amp; LVL_CLK_MASK)
+            break;
+        clk &gt;&gt;= LVL_CLK_SHIFT;  // 右移3位，检查下一层
+    }
+    return levels;
+}</code></pre>
+
+<p><strong><code>__run_timers()</code></strong> (<a href="kernel/time/timer.c#L2343">timer.c</a>):</p>
+<pre><code class="language-c">static inline void __run_timers(struct timer_base *base)
+{
+    struct hlist_head heads[LVL_DEPTH];
+    int levels;
+
+    while (time_after_eq(jiffies, base-&gt;clk) &amp;&amp;
+           time_after_eq(jiffies, base-&gt;next_expiry)) {
+        levels = collect_expired_timers(base, heads);
+        base-&gt;clk++;                        // 推进时钟
+        timer_recalc_next_expiry(base);     // 重新计算最近到期时间
+
+        while (levels--)
+            expire_timers(base, heads + levels);  // 逐个执行回调
+    }
+}</code></pre>
+
+<h3>9.5 优势 vs 经典实现</h3>
+
+<ul>
+<li><strong>无级联</strong>: 不需要在轮转动时把定时器从高层移到低层</li>
+<li><strong>隐式批处理</strong>: 高层定时器精度较低，但大多数定时器是超时用的（取消居多），精度要求不高</li>
+<li><strong>O(1) 添加</strong>: <code>calc_wheel_index</code> + <code>hlist_add_head</code></li>
+<li><strong>高效到期查找</strong>: 使用 <code>pending_map</code> bitmap 的 <code>find_next_bit()</code></li>
+</ul>
+
+<h3>9.6 复杂度</h3>
+
+<table>
+<thead><tr>
+<th>操作</th>
+<th>时间复杂度</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>添加定时器</td>
+<td><strong>O(1)</strong></td>
+</tr>
+<tr>
+<td>删除定时器</td>
+<td><strong>O(1)</strong></td>
+</tr>
+<tr>
+<td>查找下一个到期</td>
+<td>O(WHEEL_SIZE/BITS_PER_LONG) ≈ O(1)</td>
+</tr>
+<tr>
+<td>处理到期定时器</td>
+<td>O(桶中定时器数)</td>
+</tr>
+</tbody></table>
+
+<p><strong>空间</strong>: <code>WHEEL_SIZE * sizeof(hlist_head)</code> + bitmap = ~5KB per CPU per base.</p>
+
+<hr>
+
+<h2>10. Kernel Sort (内核排序)</h2>
+
+<p><strong>Source</strong>: <code>lib/sort.c</code></p>
+
+<h3>10.1 核心思想</h3>
+
+<p>Linux 内核的 <code>sort()</code> 实现是一个 <strong>底向上的堆排序 (Bottom-up Heapsort)</strong> 变体，非递归，O(1) 额外空间，且可以在 SOFTIRQ 中调用（不使用栈递归）。</p>
+
+<h3>10.2 <code>__sort_r()</code> 完整实现源码注释 (<a href="lib/sort.c#L196">sort.c</a>)</h3>
+
+<pre><code class="language-c">static void __sort_r(void *base, size_t num, size_t size,
+                     cmp_r_func_t cmp_func, swap_r_func_t swap_func,
+                     const void *priv, bool may_schedule)
+{
+    /* 预缩放计数器: 所有偏移都以字节为单位而非元素索引 */
+    size_t n = num * size;              // 总字节数
+    size_t a = (num/2) * size;          // 建堆起始位置(最后一个非叶节点)
+    const unsigned int lsbit = size &amp; -size;  // size的最低有效位
+    size_t shift = 0;                   // 用于一次提取两个元素的优化
+
+    if (!a)     /* num &lt; 2 || size == 0 → 不需要排序 */
+        return;
+
+    /* 自动选择最优 swap 策略 */
+    if (!swap_func) {
+        if (is_aligned(base, size, 8))
+            swap_func = SWAP_WORDS_64;      // 64位块交换(最快)
+        else if (is_aligned(base, size, 4))
+            swap_func = SWAP_WORDS_32;      // 32位块交换
+        else
+            swap_func = SWAP_BYTES;         // 逐字节(fallback)
+    }
+
+    /*
+     * 主循环: 两个阶段
+     * Phase 1 (a &gt; 0): 建堆 — 从中间向前扫描，每个元素 sift down
+     * Phase 2 (a == 0): 排序 — 反复提取最大元素放到数组尾部
+     */
+    for (;;) {
+        size_t b, c, d;
+
+        if (a)                          /* Phase 1: 建堆 */
+            a -= size &lt;&lt; shift;         // 下一个需要 sift down 的位置
+        else if (n &gt; 3 * size) {        /* Phase 2: 排序(每次提取两个!) */
+            n -= size;
+            do_swap(base, base + n, size, swap_func, priv);
+            // ↑ 堆顶(最大值)放到 base[n]
+
+            // 巧妙优化: 比较堆顶的两个子节点，
+            // 更大的那个也直接提取出来!
+            shift = do_cmp(base + size, base + 2*size, cmp_func, priv) &lt;= 0;
+            a = size &lt;&lt; shift;          // a = size 或 2*size
+            n -= size;
+            do_swap(base + a, base + n, size, swap_func, priv);
+            // ↑ 第二大值也放到数组尾部
+        } else {
+            break;  /* 排序完成 (剩余 ≤ 3 个元素) */
+        }
+
+        /*
+         * Bottom-up sift down — 核心创新!
+         *
+         * 传统 sift down: 每层2次比较 (元素 vs 左子, 元素 vs 最大子)
+         * Bottom-up: 分三步
+         */
+
+        /* Step 1: 从位置 a 出发，沿最大子节点一路走到叶子
+         * 每层只比较两个子节点(不与目标元素比较)
+         * → 每层只需 1 次比较 (vs 传统的 2 次)
+         */
+        for (b = a; c = 2*b + size, (d = c + size) &lt; n;)
+            b = do_cmp(base + c, base + d, cmp_func, priv) &gt; 0 ? c : d;
+        if (d == n)                     // 特殊情况: 最后一个节点只有左子
+            b = c;
+
+        /* Step 2: 从叶子回溯，找到 a 元素的正确插入位置
+         * 大多数元素会 sift 到接近叶子的位置，
+         * 所以这个回溯通常很短
+         */
+        while (b != a &amp;&amp; do_cmp(base + a, base + b, cmp_func, priv) &gt;= 0)
+            b = parent(b, lsbit, size);
+
+        /* Step 3: 通过旋转把 a 元素移到找到的位置
+         * 从 b 开始向上 swap，直到 a
+         */
+        c = b;
+        while (b != a) {
+            b = parent(b, lsbit, size);
+            do_swap(base + b, base + c, size, swap_func, priv);
+        }
+
+        if (may_schedule)
+            cond_resched();             // 长排序时让出CPU
+    }
+
+    /* 处理最后 2-3 个元素 */
+    n -= size;
+    do_swap(base, base + n, size, swap_func, priv);
+    if (n == size * 2 &amp;&amp; do_cmp(base, base + size, cmp_func, priv) &gt; 0)
+        do_swap(base, base + size, size, swap_func, priv);
+}</code></pre>
+
+<p><strong><code>parent()</code> 函数 — 无除法的父节点计算</strong>:</p>
+<pre><code class="language-c">static size_t parent(size_t i, unsigned int lsbit, size_t size)
+{
+    i -= size;
+    i -= size &amp; -(i &amp; lsbit);  // 无分支的 &quot;if (i &amp; lsbit) i -= size&quot;
+    return i / 2;
+}
+// 数组索引中: parent(j) = (j-1)/2
+// 但字节偏移中不能直接除，需要先对齐</code></pre>
+
+<h3>10.3 Bottom-up 优化</h3>
+
+<p>传统堆排序在 sift-down 时每层做2次比较（与两个子节点）。Bottom-up 变体：</p>
+<ol>
+<li><strong>下行</strong>: 每层只做1次比较（两个子节点之间比较），一路走到叶子</li>
+<li><strong>上行</strong>: 从叶子回溯，做1次比较找到插入位置</li>
+</ol>
+
+<p>由于元素通常 sift 到接近叶子的位置，平均比较次数约为标准版的 <strong>一半多一点</strong>。</p>
+
+<h3>10.4 Swap 优化</h3>
+
+<pre><code class="language-c">// 根据对齐选择最优 swap 策略
+if (is_aligned(base, size, 8))  → swap_words_64 (64位块交换)
+elif (is_aligned(base, size, 4)) → swap_words_32 (32位块交换)
+else → swap_bytes (逐字节)</code></pre>
+
+<h3>10.5 复杂度</h3>
+
+<table>
+<thead><tr>
+<th>指标</th>
+<th>值</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>平均比较次数</td>
+<td>$n \log_2 n + 0.37n + o(n)$</td>
+</tr>
+<tr>
+<td>最坏比较次数</td>
+<td>$1.5n \log_2 n + O(n)$</td>
+</tr>
+<tr>
+<td>时间复杂度</td>
+<td><strong>O(n log n)</strong></td>
+</tr>
+<tr>
+<td>空间复杂度</td>
+<td><strong>O(1)</strong> — 完全原地</td>
+</tr>
+<tr>
+<td>稳定性</td>
+<td><strong>不稳定</strong></td>
+</tr>
+<tr>
+<td>递归</td>
+<td><strong>无</strong> — 纯迭代</td>
+</tr>
+</tbody></table>
+
+<p><strong>实际意义</strong>: 相比 quicksort 的 $n\log_2 n - 1.26n$ 平均比较次数，堆排序多约 $1.63n$ 次比较，但保证 O(n log n) 最坏情况、O(1) 空间且无栈溢出风险——这在内核中至关重要。</p>
+
+<hr>
+
+<h2>11. CRC/Hash Algorithms</h2>
+
+<h3>11.1 Multiplicative Hash (<code>hash_long</code>)</h3>
+
+<p><strong>Source</strong>: <code>include/linux/hash.h</code></p>
+
+<p>(<a href="include/linux/hash.h#L1">hash.h</a>):</p>
+
+<h4>算法</h4>
+
+<pre><code class="language-c">#define GOLDEN_RATIO_32 0x61C88647
+#define GOLDEN_RATIO_64 0x61C8864680B583EBull
+
+static inline u32 hash_32(u32 val, unsigned int bits)
+{
+    return (val * GOLDEN_RATIO_32) &gt;&gt; (32 - bits);
+}
+
+static __always_inline u32 hash_64(u64 val, unsigned int bits)
+{
+    return val * GOLDEN_RATIO_64 &gt;&gt; (64 - bits);
+}
+
+static inline u32 hash_ptr(const void *ptr, unsigned int bits)
+{
+    return hash_long((unsigned long)ptr, bits);
+}</code></pre>
+
+<h4>原理</h4>
+
+<p>使用 <strong>Knuth 乘法散列</strong>:<br>
+$$h(k) = \lfloor (k \cdot A \cdot 2^w) \gg (w - p) \rfloor$$</p>
+
+<p>其中 $A$ 是黄金比例的负数 $(1 - \phi) = \phi^2 = (3 - \sqrt{5})/2$。</p>
+
+<p><strong>黄金比例的数学特性</strong>使得输入的任何位变化都能很好地扩散到输出的高位。取高位是因为乘法的传播方向是向高位的。</p>
+
+<h4>复杂度</h4>
+
+<ul>
+<li><strong>O(1)</strong> — 单次乘法 + 移位</li>
+<li>分布质量优秀，特别是对于连续整数和指针值</li>
+</ul>
+
+<h3>11.2 Jenkins Hash (jhash)</h3>
+
+<p><strong>用途</strong>: 网络子系统（连接跟踪hash表、路由缓存）</p>
+
+<pre><code>jhash(key, length, initval):
+  混合3个32位变量 a, b, c
+  每次消费12字节，通过位运算（加法、减法、XOR、移位）充分混合
+  最终返回 c</code></pre>
+
+<ul>
+<li>设计目标: 每个输入位影响每个输出位（雪崩效应）</li>
+<li>O(length) 时间</li>
+<li>在内核网络子系统中广泛使用</li>
+</ul>
+
+<h3>11.3 CRC32</h3>
+
+<ul>
+<li>使用查表法 (table-driven CRC)</li>
+<li>内核支持多种变体: CRC32, CRC32c (Castagnoli)</li>
+<li>CRC32c 在某些架构上有硬件加速 (如 x86 SSE4.2)</li>
+<li>主要用于: 文件系统校验、网络校验和</li>
+</ul>
+
+<hr>
+
+<h2>总结对比</h2>
+
+<table>
+<thead><tr>
+<th>算法</th>
+<th>核心数据结构</th>
+<th>时间复杂度(关键操作)</th>
+<th>空间复杂度</th>
+<th>主要优化</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>CFS</td>
+<td>Augmented RB-tree</td>
+<td>O(log n)</td>
+<td>O(n)</td>
+<td>EEVDF, leftmost cache, 预计算逆权重</td>
+</tr>
+<tr>
+<td>SLUB</td>
+<td>Per-CPU freelist + partial lists</td>
+<td>O(1) fast path</td>
+<td>O(n slabs)</td>
+<td>无锁快速路径, cmpxchg</td>
+</tr>
+<tr>
+<td>Buddy</td>
+<td>Free area arrays</td>
+<td>O(MAX_ORDER)</td>
+<td>O(pages)</td>
+<td>Migration types, PCP cache</td>
+</tr>
+<tr>
+<td>LRU/Reclaim</td>
+<td>Active/Inactive lists</td>
+<td>O(scan count)</td>
+<td>O(1) per page</td>
+<td>第二次机会, MGLRU</td>
+</tr>
+<tr>
+<td>VMA/Maple Tree</td>
+<td>B-tree variant</td>
+<td>O(log n)</td>
+<td>O(n VMAs)</td>
+<td>高扇出, RCU-safe</td>
+</tr>
+<tr>
+<td>Writeback</td>
+<td>Per-BDI bandwidth</td>
+<td>O(1) throttle</td>
+<td>O(1)</td>
+<td>自适应带宽估计</td>
+</tr>
+<tr>
+<td>mq-deadline</td>
+<td>RB-tree + FIFO</td>
+<td>O(log n)</td>
+<td>O(requests)</td>
+<td>读写分离, 批处理</td>
+</tr>
+<tr>
+<td>RCU</td>
+<td>rcu_node tree</td>
+<td>O(1) read, O(CPUs) GP</td>
+<td>O(CPUs)</td>
+<td>树形QS传播, 无读端锁</td>
+</tr>
+<tr>
+<td>Timer Wheel</td>
+<td>Hierarchical hash</td>
+<td>O(1) add/del</td>
+<td>O(WHEEL_SIZE) per CPU</td>
+<td>无级联, bitmap快速查找</td>
+</tr>
+<tr>
+<td>Kernel Sort</td>
+<td>In-place array</td>
+<td>O(n log n)</td>
+<td>O(1)</td>
+<td>Bottom-up heapsort, 无递归</td>
+</tr>
+<tr>
+<td>Hash</td>
+<td>—</td>
+<td>O(1)</td>
+<td>O(1)</td>
+<td>Golden ratio 乘法散列</td>
+</tr>
+</tbody></table>
+
+</body>
+</html>

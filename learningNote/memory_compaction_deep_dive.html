@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Compaction Deep Dive</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux ARM64 内存规整 (Memory Compaction) 深度学习指南</h1>
+
+<blockquote>适用范围：Linux 6.18.1 / ARM64 / 当前工作区源码<br>
+<br>
+文档目标：系统梳理内存规整的原理、数据结构、核心流程、触发路径、ARM64 特有机制，并通过 QEMU 实验验证关键行为。</blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary>展开目录</summary></p>
+
+<ul>
+<li><a href="#一句话先说清">一句话先说清</a></li>
+<li><a href="#为什么需要内存规整">为什么需要内存规整</a></li>
+<li><a href="#核心心智模型">核心心智模型</a></li>
+<li><a href="#关键数据结构">关键数据结构</a></li>
+<li><a href="#规整核心流程双扫描器算法">规整核心流程：双扫描器算法</a></li>
+<li><a href="#规整触发路径">规整触发路径</a></li>
+<li><a href="#路径-1直接规整-direct-compaction">路径 1：直接规整 (Direct Compaction)</a></li>
+<li><a href="#路径-2kcompactd-后台规整">路径 2：kcompactd 后台规整</a></li>
+<li><a href="#路径-3主动规整-proactive-compaction">路径 3：主动规整 (Proactive Compaction)</a></li>
+<li><a href="#路径-4用户空间手动触发">路径 4：用户空间手动触发</a></li>
+<li><a href="#延迟与跳过机制">延迟与跳过机制</a></li>
+<li><a href="#规整与页迁移的关系">规整与页迁移的关系</a></li>
+<li><a href="#arm64-特有机制">ARM64 特有机制</a></li>
+<li><a href="#cma-预留与规整">CMA 预留与规整</a></li>
+<li><a href="#contiguous-pte-与规整效率">Contiguous PTE 与规整效率</a></li>
+<li><a href="#mte-标签在迁移中的处理">MTE 标签在迁移中的处理</a></li>
+<li><a href="#大页迁移支持">大页迁移支持</a></li>
+<li><a href="#线性映射粒度与-set_direct_map">线性映射粒度与 set_direct_map</a></li>
+<li><a href="#碎片评分与主动规整决策">碎片评分与主动规整决策</a></li>
+<li><a href="#调试与统计接口">调试与统计接口</a></li>
+<li><a href="#qemu-实验">QEMU 实验</a></li>
+<li><a href="#实验-1构建-arm64-内核与基础启动">实验 1：构建 ARM64 内核与基础启动</a></li>
+<li><a href="#实验-2观察内存碎片与规整触发">实验 2：观察内存碎片与规整触发</a></li>
+<li><a href="#实验-3手动触发规整并观察结果">实验 3：手动触发规整并观察结果</a></li>
+<li><a href="#实验-4追踪规整过程的-tracepoint">实验 4：追踪规整过程的 Tracepoint</a></li>
+<li><a href="#实验-5主动规整与碎片评分验证">实验 5：主动规整与碎片评分验证</a></li>
+<li><a href="#实验-6cma-与-alloc_contig_range-验证">实验 6：CMA 与 alloc_contig_range 验证</a></li>
+<li><a href="#实验-7thp-分配与规整联动验证">实验 7：THP 分配与规整联动验证</a></li>
+<li><a href="#源码阅读路线图">源码阅读路线图</a></li>
+<li><a href="#关键源码索引">关键源码索引</a></li>
+</ul>
+
+<p></details></p>
+
+<hr>
+
+<h2>一句话先说清</h2>
+
+<p><strong>内存规整 = 把散落在 zone 低地址区的可移动页迁移到高地址区的空闲位置，从而在低地址区腾出连续空闲块，满足高阶分配请求。</strong> 它的核心是"双扫描器 + 页迁移"：迁移扫描器从低到高找可移动页，空闲扫描器从高到低找空闲页，两者配合完成搬移。</p>
+
+<hr>
+
+<h2>为什么需要内存规整</h2>
+
+<table>
+<thead><tr>
+<th>问题</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>外部碎片</td>
+<td>系统总空闲页充足，但散布在各 pageblock 中无法拼出连续的高阶块</td>
+</tr>
+<tr>
+<td>THP 分配失败</td>
+<td>Transparent Huge Page 需要 order-9 (2MB) 连续块，碎片化后难以满足</td>
+</tr>
+<tr>
+<td>DMA 大缓冲区</td>
+<td>设备需要物理连续的大块内存用于 DMA 传输</td>
+</tr>
+<tr>
+<td>CMA 分配失败</td>
+<td>连续内存分配器 (CMA) 需要大块连续物理内存</td>
+</tr>
+</tbody></table>
+
+<p><strong>规整与回收的区别</strong>：</p>
+<ul>
+<li><strong>回收 (reclaim)</strong>：把不活跃的页释放掉 → 增加总空闲量，但不保证连续性</li>
+<li><strong>规整 (compact)</strong>：把可移动页挪位置 → 不改变总空闲量，但让空闲页聚拢</li>
+</ul>
+
+<p>两者互补：回收释放空间，规整让空间变得连续。</p>
+
+<hr>
+
+<h2>核心心智模型</h2>
+
+<pre><code>┌─────────────────────────────────────────────────────────┐
+│                    ZONE (e.g. ZONE_NORMAL)              │
+│                                                         │
+│  低 PFN                              高 PFN             │
+│  ┌─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┐  │
+│  │M│F│M│M│F│M│F│M│M│F│F│M│M│F│ │ │ │ │ │ │ │ │ │ │  │
+│  └─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┘  │
+│       ↑ 迁移扫描器              ↑ 空闲扫描器           │
+│       (migrate_pfn)             (free_pfn)              │
+│       从低→高找可移动页         从高→低找空闲页          │
+│                                                         │
+│  规整后:                                                 │
+│  ┌─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┐  │
+│  │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │M│M│M│M│ │  │
+│  └─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┘  │
+│       ←── 连续空闲区 ──→       ←── 可移动页聚拢 ──→    │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+
+M = 已占用可移动页    F = 空闲页    空格 = 空闲页</code></pre>
+
+<p><strong>核心逻辑</strong>：</p>
+<ol>
+<li>迁移扫描器从低 PFN 向上扫描，隔离 LRU 上或属于 movable_ops 的页</li>
+<li>空闲扫描器从高 PFN 向下扫描，隔离 buddy 空闲页</li>
+<li>调用 <code>migrate_pages()</code> 把迁移页搬到空闲页位置</li>
+<li>当两个扫描器相遇 (<code>compact_scanners_met()</code>) 或找到满足 order 的空闲块时停止</li>
+</ol>
+
+<hr>
+
+<h2>关键数据结构</h2>
+
+<h3><code>struct compact_control</code> — 规整总控 (<code>mm/internal.h:875</code>)</h3>
+
+<pre><code class="language-c">struct compact_control {
+    struct list_head freepages[NR_PAGE_ORDERS]; // 隔离的空闲页（目标页），按 order 分组
+    struct list_head migratepages;              // 隔离的待迁移页（源页）
+    unsigned int nr_freepages;                  // 空闲页计数
+    unsigned int nr_migratepages;               // 待迁移页计数
+    unsigned long free_pfn;                     // 空闲扫描器当前位置（从高往低）
+    unsigned long migrate_pfn;                  // 迁移扫描器当前位置（从低往高）
+    unsigned long fast_start_pfn;               // 快速搜索起始 PFN
+    struct zone *zone;                          // 当前操作的 zone
+    unsigned long total_migrate_scanned;        // 迁移扫描器扫描总页数
+    unsigned long total_free_scanned;           // 空闲扫描器扫描总页数
+    int order;                                  // 目标分配阶数（-1 表示全 zone 规整）
+    int migratetype;                            // 目标 migratetype
+    enum migrate_mode mode;                     // MIGRATE_ASYNC / SYNC_LIGHT / SYNC
+    bool direct_compaction;                     // true=分配路径触发, false=kcompactd
+    bool proactive_compaction;                  // 主动规整模式
+    bool whole_zone;                            // 全 zone 扫描
+    bool contended;                             // 锁竞争导致退出
+    bool alloc_contig;                          // alloc_contig_range 上下文
+    const gfp_t gfp_mask;
+    const unsigned int alloc_flags;
+    const int highest_zoneidx;
+};</code></pre>
+
+<h3><code>struct capture_control</code> — 页捕获优化 (<code>mm/internal.h:919</code>)</h3>
+
+<pre><code class="language-c">struct capture_control {
+    struct compact_control *cc;
+    struct page *page;     // 中断上下文释放页面时可直接捕获
+};</code></pre>
+
+<p>当 <code>compact_zone_order()</code> 运行时，<code>capture_control</code> 挂在 <code>current->capture_control</code> 上。如果中断处理释放了一个满足 order 的页，可以直接"捕获"而不必经过 buddy 释放再分配。</p>
+
+<h3><code>enum compact_result</code> — 规整结果 (<code>include/linux/compaction.h:21</code>)</h3>
+
+<pre><code class="language-c">COMPACT_NOT_SUITABLE_ZONE  // zone 不适合规整
+COMPACT_SKIPPED            // 被跳过（zone 不满足条件）
+COMPACT_DEFERRED           // 因历史失败被延迟
+COMPACT_NO_SUITABLE_PAGE   // 内部状态：没找到合适页
+COMPACT_CONTINUE           // 应继续扫描
+COMPACT_COMPLETE           // 全 zone 扫完，未成功
+COMPACT_PARTIAL_SKIPPED    // 部分扫描后停止
+COMPACT_CONTENDED          // 因锁竞争退出
+COMPACT_SUCCESS            // 规整成功，现在可以分配了</code></pre>
+
+<h3><code>enum compact_priority</code> — 规整优先级 (<code>include/linux/compaction.h:9</code>)</h3>
+
+<pre><code class="language-c">COMPACT_PRIO_SYNC_FULL   // 最高优先级，完全同步
+COMPACT_PRIO_SYNC_LIGHT  // 默认优先级，轻量同步
+COMPACT_PRIO_ASYNC       // 最低优先级，异步不阻塞</code></pre>
+
+<p>分配路径会逐步提升优先级：ASYNC → SYNC_LIGHT → SYNC_FULL。</p>
+
+<h3><code>enum migrate_mode</code> — 迁移模式 (<code>include/linux/migrate_mode.h:11</code>)</h3>
+
+<pre><code class="language-c">MIGRATE_ASYNC       // 不阻塞，适用于规整首次尝试
+MIGRATE_SYNC_LIGHT  // 阻塞大部分操作，但不调用 writepage
+MIGRATE_SYNC        // 完全同步阻塞</code></pre>
+
+<hr>
+
+<h2>规整核心流程：双扫描器算法</h2>
+
+<p><code>compact_zone()</code> (<code>mm/compaction.c:2511</code>) 是核心函数，流程如下：</p>
+
+<pre><code>compact_zone(cc, capc)
+│
+├─ 1. 初始化扫描器位置
+│     whole_zone → migrate_pfn=zone_start, free_pfn=zone_end
+│     否则 → 使用缓存的 compact_cached_migrate_pfn / compact_cached_free_pfn
+│
+├─ 2. WHILE compact_finished() == COMPACT_CONTINUE:
+│     │
+│     ├─ a. isolate_migratepages(cc)        ← 迁移扫描器
+│     │     ├─ fast_find_migrateblock()      ← 在 buddy free list 中快速定位
+│     │     ├─ isolate_migratepages_block()  ← 隔离 LRU/movable 页
+│     │     └─ 返回 ISOLATE_ABORT/NONE/SUCCESS
+│     │
+│     ├─ b. migrate_pages(&amp;cc-&gt;migratepages, compaction_alloc,
+│     │                   compaction_free, cc, cc-&gt;mode, MR_COMPACTION)
+│     │     ├─ compaction_alloc()  ← 从隔离空闲列表提供目标页
+│     │     ├─ compaction_free()   ← 返回迁移失败的目标页
+│     │     └─ 内部调用 move_pages_to_new_lru() 更新 LRU
+│     │
+│     ├─ c. 检查 page capture (中断上下文捕获的页)
+│     │
+│     └─ d. drain PCP lists (迁移扫描器跨过上一个 pageblock 时)
+│
+├─ 3. release_free_list()  ← 释放未使用的隔离空闲页
+│
+├─ 4. 更新 vmstat 计数器和 trace 事件
+│
+└─ 5. 返回 compact_result</code></pre>
+
+<p><strong>扫描器相遇判断</strong> (<code>compact_scanners_met()</code>)：</p>
+
+<pre><code class="language-c">// mm/compaction.c
+static inline bool compact_scanners_met(struct compact_control *cc)
+{
+    return cc-&gt;free_pfn &lt;= cc-&gt;migrate_pfn;
+}</code></pre>
+
+<p>当 free_pfn ≤ migrate_pfn 时，两个扫描器已经"相遇"，意味着无法再找到更多可迁移/空闲页对，规整结束。</p>
+
+<h3>迁移扫描器的快速搜索优化</h3>
+
+<p><code>fast_find_migrateblock()</code> (<code>mm/compaction.c:1923</code>) 不逐 pageblock 遍历，而是直接搜索 buddy free list 找到包含空闲页的 pageblock——这些 pageblock 更可能有可移动页与之交错，是迁移的好目标。</p>
+
+<h3>空闲扫描器的快速搜索优化</h3>
+
+<p><code>fast_isolate_freepages()</code> (<code>mm/compaction.c:1504</code>) 直接搜索 <code>zone->free_area[order].free_list[MIGRATE_MOVABLE]</code>，从高 PFN 开始找大块空闲页，避免逐 pageblock 搜索。</p>
+
+<hr>
+
+<h2>规整触发路径</h2>
+
+<h3>路径 1：直接规整 (Direct Compaction)</h3>
+
+<p>分配路径中高阶分配失败时触发：</p>
+
+<pre><code>__alloc_pages()
+  → __alloc_pages_slowpath()                    [mm/page_alloc.c:4626]
+    → __alloc_pages_direct_compact()            [mm/page_alloc.c:4081]
+      → try_to_compact_pages()                  [mm/compaction.c:2814]
+        → for_each_zone_zonelist:
+            → compact_zone_order(zone, order, gfp, prio, ...)  [mm/compaction.c:2749]
+              → compact_zone(&amp;cc, &amp;capc)        [mm/compaction.c:2511]
+    → should_compact_retry()                    [mm/page_alloc.c:4139]
+      → 逐步升级优先级: ASYNC → SYNC_LIGHT → SYNC_FULL
+      → 最大重试次数 MAX_COMPACT_RETRIES = 16</code></pre>
+
+<p><strong>两次尝试时机</strong>：</p>
+<ul>
+<li><strong>首次尝试</strong> (<code>page_alloc.c:4722</code>)：costly order (> PAGE_ALLOC_COSTLY_ORDER=3) 或不可移动的高阶分配，在直接回收之前尝试</li>
+<li><strong>二次尝试</strong> (<code>page_alloc.c:4817</code>)：直接回收之后，如果回收有进展</li>
+</ul>
+
+<h3>路径 2：kcompactd 后台规整</h3>
+
+<p>内核守护线程，在后台定期执行规整：</p>
+
+<pre><code>kcompactd()                                     [mm/compaction.c:3165]
+  │
+  ├─ wait_event_freezable_timeout(kcompactd_wait, ...)
+  │
+  ├─ if (!proactive_trigger):
+  │     psi_memstall_enter()
+  │     kcompactd_do_work(pgdat)                [mm/compaction.c:3055]
+  │       → for each zone:
+  │           compact_zone() with MIGRATE_SYNC_LIGHT
+  │     psi_memstall_leave()
+  │
+  └─ if (should_proactive_compact_node()):
+        compact_node(pgdat, true)               [mm/compaction.c:2893]</code></pre>
+
+<p><strong>唤醒来源</strong>：</p>
+<ol>
+<li><strong>分配路径</strong>：直接规整成功或 <code>should_compact_retry()</code> 决定重试</li>
+<li><strong>kswapd 回收后</strong> (<code>mm/vmscan.c</code>)：kswapd 完成回收、降低 watermark boost、或放弃回收时调用 <code>wakeup_kcompactd()</code></li>
+<li><strong>sysctl 写入</strong>：修改 <code>compaction_proactiveness</code> 时唤醒所有 kcompactd</li>
+</ol>
+
+<h3>路径 3：主动规整 (Proactive Compaction)</h3>
+
+<p>kcompactd 在无显式唤醒时，每 500ms (<code>HPAGE_FRAG_CHECK_INTERVAL_MSEC</code>) 检查碎片评分：</p>
+
+<pre><code>should_proactive_compact_node(pgdat)
+  → fragmentation_score_node(pgdat) &gt; wmark_high
+    → Σ(zone_present_pages × extfrag_for_order(zone, COMPACTION_HPAGE_ORDER))
+         / (node_present_pages + 1)
+  → wmark_high = 100 - sysctl_compaction_proactiveness + leeway</code></pre>
+
+<h3>路径 4：用户空间手动触发</h3>
+
+<table>
+<thead><tr>
+<th>接口</th>
+<th>方式</th>
+<th>代码位置</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>echo 1 > /proc/sys/vm/compact_memory</code></td>
+<td>全节点规整，MIGRATE_SYNC 模式</td>
+<td><code>mm/compaction.c:2976</code> <code>sysctl_compaction_handler()</code></td>
+</tr>
+<tr>
+<td><code>echo 1 > /sys/devices/system/node/nodeN/compact</code></td>
+<td>单节点规整 (需 NUMA+SYSFS)</td>
+<td><code>mm/compaction.c:2996</code> <code>compact_store()</code></td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>延迟与跳过机制</h2>
+
+<p>规整失败后有指数退避机制，避免反复尝试无效规整：</p>
+
+<h3>延迟 (Deferral)</h3>
+
+<pre><code class="language-c">// mm/compaction.c:126
+static void defer_compaction(struct zone *zone, int order)
+{
+    zone-&gt;compact_defer_shift++;    // 每次失败 +1，上限 COMPACT_MAX_DEFER_SHIFT=6
+    // 即最多延迟 2^6 = 64 次
+}
+
+// mm/compaction.c:141
+static bool compaction_deferred(struct zone *zone, int order)
+{
+    unsigned long defer_limit = 1UL &lt;&lt; zone-&gt;compact_defer_shift;
+    if (++zone-&gt;compact_considered &gt;= defer_limit)
+        return false;  // 考虑次数到达限制，不再延迟
+    return true;       // 被延迟，跳过这次
+}
+
+// mm/compaction.c:164
+void compaction_defer_reset(struct zone *zone, int order, bool alloc_success)
+{
+    if (alloc_success) {
+        zone-&gt;compact_considered = 0;
+        zone-&gt;compact_defer_shift = 0;  // 成功后清零
+    }
+}</code></pre>
+
+<h3>Pageblock Skip Hint</h3>
+
+<pre><code class="language-c">// mm/compaction.c:419
+static bool test_and_set_skip(struct compact_control *cc, unsigned long pfn)
+{
+    // 在 pageblock 的 migrateflags 中设置 PG_migrate_skip
+    // 下次扫描时跳过这个 pageblock
+}
+
+// mm/compaction.c:349
+static void __reset_isolation_suitable(struct zone *zone)
+{
+    // 遍历 zone，清除所有 pageblock 的 skip hint
+    // 在规整重启 (compaction_restarting) 时调用
+}</code></pre>
+
+<hr>
+
+<h2>规整与页迁移的关系</h2>
+
+<p>规整本身不做搬移，它只做扫描和隔离，实际搬移委托给 <code>migrate_pages()</code>：</p>
+
+<pre><code class="language-c">// mm/compaction.c:2647 — compact_zone() 中的核心调用
+err = migrate_pages(&amp;cc-&gt;migratepages, compaction_alloc,
+                    compaction_free, (unsigned long)cc, cc-&gt;mode,
+                    MR_COMPACTION, &amp;nr_succeeded);</code></pre>
+
+<p><strong><code>compaction_alloc()</code></strong> (<code>mm/compaction.c:1845</code>)：</p>
+<ul>
+<li>作为 <code>new_folio_t</code> 回调，从已隔离的空闲页列表中提供目标页</li>
+<li>如果需要低阶页，会分裂高阶空闲页</li>
+</ul>
+
+<p><strong><code>compaction_free()</code></strong> (<code>mm/compaction.c:1855</code>)：</p>
+<ul>
+<li>作为 <code>free_folio_t</code> 回调，迁移失败时把目标页放回隔离空闲列表</li>
+</ul>
+
+<p><strong><code>migrate_pages()</code></strong> (<code>mm/migrate.c:2064</code>) 内部流程：</p>
+<pre><code>migrate_pages()
+  ├─ migrate_hugetlbs()          ← 大页单独处理
+  ├─ migrate_pages_sync()        ← 先 ASYNC 批量，再 SYNC 重试
+  │   └─ migrate_pages_batch()   ← 批量 unmap + move
+  │     ├─ folio_mc_copy()       ← 复制页内容
+  │     ├─ __folio_migrate_mapping() ← 更新页表映射
+  │     └─ folio_migrate_flags() ← 迁移页标志位
+  └─ 返回迁移统计 (nr_succeeded, nr_failed)</code></pre>
+
+<hr>
+
+<h2>ARM64 特有机制</h2>
+
+<h3>CMA 预留与规整</h3>
+
+<p>ARM64 在 <code>bootmem_init()</code> 中预留两类 CMA 区域：</p>
+
+<pre><code class="language-c">// arch/arm64/mm/init.c — bootmem_init()
+bootmem_init()
+  ├─ arm64_hugetlb_cma_reserve()   ← 为 gigantic hugepage 预留 CMA
+  │   └─ hugetlb_cma_reserve(PUD_SHIFT - PAGE_SHIFT)  // 4K页: order=30 = 1GB
+  ├─ zone_sizes_init()
+  ├─ dma_contiguous_reserve(arm64_dma_phys_limit)  ← DMA CMA 区域
+  └─ arch_reserve_crashkernel()</code></pre>
+
+<p>CMA 分配 (<code>alloc_contig_range()</code>) 本质上也是一种规整——它隔离目标范围内的所有可移动页并迁移走：</p>
+
+<pre><code>alloc_contig_range()
+  ├─ isolate_migratepages_range()  ← 隠离范围内可移动页
+  ├─ migrate_pages()               ← 迁移到其他位置
+  └─ isolate_freepages_range()     ← 隔离范围内空闲页</code></pre>
+
+<h3>Contiguous PTE 与规整效率</h3>
+
+<p>ARM64 的 <code>PTE_CONT</code> (bit 52) 允许连续的 PTE 共享一个 TLB entry：</p>
+
+<table>
+<thead><tr>
+<th>页粒度</th>
+<th>CONT_PTE 大小</th>
+<th>CONT_PMD 大小</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>4K</td>
+<td>16×4K = 64KB</td>
+<td>16×2M = 32MB</td>
+</tr>
+<tr>
+<td>16K</td>
+<td>128×16K = 2MB</td>
+<td>32×32M = 1GB</td>
+</tr>
+<tr>
+<td>64K</td>
+<td>32×64K = 2MB</td>
+<td>32×512M = 16GB</td>
+</tr>
+</tbody></table>
+
+<p><code>contpte.c</code> 透明管理这个 bit：</p>
+<ul>
+<li><code>contpte_try_fold()</code> — 满足对齐条件时设置 CONT bit</li>
+<li><code>contpte_try_unfold()</code> — 修改单个页时需要先"拆开"连续映射</li>
+<li><code>pte_batch_hint()</code> — 告知核心 MM 可以批量处理多少页</li>
+</ul>
+
+<p><strong>对规整的影响</strong>：规整迁移页后，新的映射可能触发 contpte fold/unfold，需要额外的 TLB 维护操作。BBML2 硬件支持可以减少 TLB flush。</p>
+
+<h3>MTE 标签在迁移中的处理</h3>
+
+<p>ARM64 的 Memory Tagging Extension (MTE) 为每个页附加标签。<code>copy_highpage()</code> (<code>arch/arm64/mm/copypage.c:17</code>) 在迁移过程中确保标签正确复制：</p>
+
+<pre><code class="language-c">void copy_highpage(struct page *to, struct page *from) {
+    copy_page(kto, kfrom);              // 复制页内容
+
+    if (!system_supports_mte()) return;
+
+    if (folio_test_hugetlb(src)) {
+        // 大页：复制所有子页的 MTE 标签
+        for (i = 0; i &lt; nr_pages; i++)
+            mte_copy_page_tags(kto + i*PAGE_SIZE, kfrom + i*PAGE_SIZE);
+    } else if (page_mte_tagged(from)) {
+        // 普通页：目标页可能复用已标签页
+        try_page_mte_tagging(to);
+        mte_copy_page_tags(kto, kfrom);
+        set_page_mte_tagged(to);
+    }
+}</code></pre>
+
+<p><strong>关键注意</strong>：迁移可能复用同一物理页（源页和目标页相同），此时必须正确管理标签状态。</p>
+
+<h3>大页迁移支持</h3>
+
+<p>ARM64 支持所有合法大页尺寸的迁移 (<code>arch/arm64/mm/hugetlbpage.c:69</code>)：</p>
+
+<pre><code class="language-c">bool arch_hugetlb_migration_supported(struct hstate *h) {
+    size_t pagesize = huge_page_size(h);
+    return __hugetlb_valid_size(pagesize);  // 所有 ARM64 合法大页尺寸都可迁移
+}</code></pre>
+
+<p>Kconfig 选择 (<code>arch/arm64/Kconfig</code>):</p>
+<pre><code>select ARCH_ENABLE_HUGEPAGE_MIGRATION if HUGETLB_PAGE &amp;&amp; MIGRATION
+select ARCH_ENABLE_THP_MIGRATION if TRANSPARENT_HUGEPAGE</code></pre>
+
+<h3>线性映射粒度与 set_direct_map</h3>
+
+<p><code>can_set_direct_map()</code> (<code>arch/arm64/mm/pageattr.c</code>) 决定是否可以逐页控制线性映射：</p>
+
+<pre><code class="language-c">bool can_set_direct_map(void) {
+    return rodata_full || debug_pagealloc_enabled() ||
+           arm64_kfence_can_set_direct_map() || is_realm_world();
+}</code></pre>
+
+<p>当 <code>can_set_direct_map()</code> 返回 true 时，线性映射使用 PTE 级别（而非 PMD/PUD block），支持：</p>
+<ul>
+<li><code>set_direct_map_invalid_noflush()</code> — 页迁移时使源页映射无效</li>
+<li><code>set_direct_map_default_noflush()</code> — 迁移完成后恢复映射</li>
+<li><code>set_direct_map_valid_noflush()</code> — 热插拔时启用/禁用页映射</li>
+</ul>
+
+<p><strong>对规整的意义</strong>：如果线性映射使用 block mapping，迁移时无法单独使某个页的映射无效，需要依赖 TLB flush 和 BBM 机制。</p>
+
+<hr>
+
+<h2>碎片评分与主动规整决策</h2>
+
+<pre><code class="language-c">// mm/compaction.c:2167
+static unsigned int fragmentation_score_zone(struct zone *zone)
+{
+    return extfrag_for_order(zone, COMPACTION_HPAGE_ORDER);  // [0, 100]
+}
+
+// mm/compaction.c:2197
+static unsigned int fragmentation_score_node(pg_data_t *pgdat)
+{
+    // 各 zone 加权求和：zone_present_pages × score / node_present_pages
+}
+
+// mm/compaction.c:2214
+static unsigned int fragmentation_score_wmark(bool low)
+{
+    unsigned int wmark_low = 100U - sysctl_compaction_proactiveness;
+    unsigned int leeway = min(10U, wmark_low / 2);
+    return low ? wmark_low : min(wmark_low + leeway, 100U);
+}
+
+// mm/compaction.c:2223
+static bool should_proactive_compact_node(pg_data_t *pgdat)
+{
+    if (!sysctl_compaction_proactiveness || kswapd_is_running(pgdat))
+        return false;
+    return fragmentation_score_node(pgdat) &gt; fragmentation_score_wmark(false);
+}</code></pre>
+
+<p><strong>阈值关系</strong>：</p>
+<ul>
+<li><code>wmark_high</code> = <code>100 - proactiveness</code> + <code>leeway(≤10)</code> → 开始主动规整</li>
+<li><code>wmark_low</code> = <code>100 - proactiveness</code> → 主动规整可以停止</li>
+<li>默认 <code>proactiveness=20</code> → <code>wmark_high=90</code>, <code>wmark_low=80</code></li>
+<li>无进展时退避：<code>timeout << COMPACT_MAX_DEFER_SHIFT</code> (64× 延长超时)</li>
+</ul>
+
+<hr>
+
+<h2>调试与统计接口</h2>
+
+<h3>/proc/vmstat 规整计数器</h3>
+
+<table>
+<thead><tr>
+<th>计数器</th>
+<th>含义</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>compact_migrate_scanned</code></td>
+<td>迁移扫描器扫描的总页数</td>
+</tr>
+<tr>
+<td><code>compact_free_scanned</code></td>
+<td>空闲扫描器扫描的总页数</td>
+</tr>
+<tr>
+<td><code>compact_isolated</code></td>
+<td>隔离的页数</td>
+</tr>
+<tr>
+<td><code>compact_stall</code></td>
+<td>因规整导致的分配停顿次数</td>
+</tr>
+<tr>
+<td><code>compact_fail</code></td>
+<td>规整失败次数</td>
+</tr>
+<tr>
+<td><code>compact_success</code></td>
+<td>规整成功次数</td>
+</tr>
+<tr>
+<td><code>compact_daemon_wake</code></td>
+<td>kcompactd 唤醒次数</td>
+</tr>
+<tr>
+<td><code>compact_daemon_migrate_scanned</code></td>
+<td>kcompactd 迁移扫描器扫描页数</td>
+</tr>
+<tr>
+<td><code>compact_daemon_free_scanned</code></td>
+<td>kcompactd 空闲扫描器扫描页数</td>
+</tr>
+<tr>
+<td><code>pgmigrate_success</code></td>
+<td>页迁移成功次数</td>
+</tr>
+<tr>
+<td><code>pgmigrate_fail</code></td>
+<td>页迁移失败次数</td>
+</tr>
+<tr>
+<td><code>thp_migration_success</code></td>
+<td>THP 迁移成功次数</td>
+</tr>
+<tr>
+<td><code>thp_migration_fail</code></td>
+<td>THP 迁移失败次数</td>
+</tr>
+<tr>
+<td><code>thp_migration_split</code></td>
+<td>THP 因迁移拆分次数</td>
+</tr>
+</tbody></table>
+
+<h3>/sys/kernel/debug/extfrag/</h3>
+
+<table>
+<thead><tr>
+<th>文件</th>
+<th>含义</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>unusable_index</code></td>
+<td>每 zone 每 order 的不可用空闲空间指数 [0-1]</td>
+</tr>
+<tr>
+<td><code>extfrag_index</code></td>
+<td>每 zone 每 order 的碎片指数 [-1-1]。-1=分配可成功; 0=因内存不足失败; 1=因碎片失败</td>
+</tr>
+</tbody></table>
+
+<h3>sysctl 接口</h3>
+
+<table>
+<thead><tr>
+<th>路径</th>
+<th>默认值</th>
+<th>用途</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>/proc/sys/vm/compact_memory</code></td>
+<td>WO</td>
+<td>写 1 触发全节点规整</td>
+</tr>
+<tr>
+<td><code>/proc/sys/vm/compaction_proactiveness</code></td>
+<td>20</td>
+<td>0-100，控制主动规整激进程度</td>
+</tr>
+<tr>
+<td><code>/proc/sys/vm/extfrag_threshold</code></td>
+<td>500</td>
+<td>0-1000，碎片指数阈值</td>
+</tr>
+<tr>
+<td><code>/proc/sys/vm/compact_unevictable_allowed</code></td>
+<td>1</td>
+<td>是否扫描 unevictable LRU</td>
+</tr>
+<tr>
+<td><code>/proc/sys/vm/defrag_mode</code></td>
+<td>0</td>
+<td>启用反碎片模式</td>
+</tr>
+</tbody></table>
+
+<h3>Tracepoint 事件</h3>
+
+<table>
+<thead><tr>
+<th>Tracepoint</th>
+<th>含义</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>mm_compaction_begin</code></td>
+<td>规整开始</td>
+</tr>
+<tr>
+<td><code>mm_compaction_end</code></td>
+<td>规整结束（带结果）</td>
+</tr>
+<tr>
+<td><code>mm_compaction_migratepages</code></td>
+<td>迁移页统计</td>
+</tr>
+<tr>
+<td><code>mm_compaction_isolate_migratepages</code></td>
+<td>迁移扫描器隔离页</td>
+</tr>
+<tr>
+<td><code>mm_compaction_isolate_freepages</code></td>
+<td>空闲扫描器隔离页</td>
+</tr>
+<tr>
+<td><code>mm_compaction_try_to_compact_pages</code></td>
+<td>直接规整入口</td>
+</tr>
+<tr>
+<td><code>mm_compaction_suitable</code></td>
+<td>zone 适合性判断</td>
+</tr>
+<tr>
+<td><code>mm_compaction_deferred</code></td>
+<td>规整被延迟</td>
+</tr>
+<tr>
+<td><code>mm_compaction_kcompactd_sleep</code></td>
+<td>kcompactd 睡眠</td>
+</tr>
+<tr>
+<td><code>mm_compaction_wakeup_kcompactd</code></td>
+<td>kcompactd 唤醒请求</td>
+</tr>
+<tr>
+<td><code>mm_migrate_pages</code></td>
+<td>页迁移批量结果</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>QEMU 实验</h2>
+
+<h3>实验 1：构建 ARM64 内核与基础启动</h3>
+
+<p><strong>目标</strong>：构建可在 QEMU 上启动的 ARM64 内核，验证规整代码编译和基础运行。</p>
+
+<pre><code class="language-bash"># 1. 安装交叉编译工具和 QEMU
+sudo apt install gcc-aarch64-linux-gnu qemu-system-aarch64
+
+# 2. 配置内核（启用规整相关选项）
+cd /home/ybzhang/kernel/linux-6.18.1
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+
+# 检查关键配置已启用
+grep -E &quot;COMPACTION|TRANSPARENT_HUGEPAGE|MIGRATION|CMA&quot; .config
+# 期望输出:
+# CONFIG_COMPACTION=y
+# CONFIG_MIGRATION=y
+# CONFIG_TRANSPARENT_HUGEPAGE=y (或 =m)
+# CONFIG_CMA=y
+
+# 3. 编译内核
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc)
+
+# 4. 创建最小 rootfs
+mkdir -p rootfs
+cd rootfs
+
+# 创建 init 脚本（使用 busybox 或静态 init）
+cat &gt; init &lt;&lt; &#x27;EOF&#x27;
+#!/bin/sh
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t debugfs debugfs /sys/kernel/debug
+mount -t tmpfs tmpfs /tmp
+
+echo &quot;=== Memory Compaction Test Environment ===&quot;
+echo &quot;Kernel: $(uname -r)&quot;
+echo &quot;Arch: $(uname -m)&quot;
+cat /proc/meminfo | head -5
+
+# 等待 kcompactd 初始化
+sleep 2
+echo &quot;=== Compaction vmstat ===&quot;
+grep compact /proc/vmstat
+
+exec /bin/sh
+EOF
+chmod +x init
+
+# 创建 cpio rootfs
+find . | cpio -o -H newc &gt; ../rootfs.cpio
+cd ..
+
+# 5. 启动 QEMU
+qemu-system-aarch64 \
+  -machine virt \
+  -cpu cortex-a57 \
+  -m 512M \
+  -kernel arch/arm64/boot/Image \
+  -initrd rootfs.cpio \
+  -append &quot;console=ttyAMA0 earlycon=pl011,0x9000000 init=/init&quot; \
+  -nographic \
+  -smp 2</code></pre>
+
+<p><strong>验证要点</strong>：</p>
+<ul>
+<li>启动后 <code>/proc/vmstat</code> 中 <code>compact_daemon_wake</code> > 0（kcompactd 已唤醒）</li>
+<li><code>compact_migrate_scanned</code> 和 <code>compact_free_scanned</code> 有初始值</li>
+<li>THP 相关配置：<code>always</code> 或 <code>madvise</code></li>
+</ul>
+
+<h3>实验 2：观察内存碎片与规整触发</h3>
+
+<p><strong>目标</strong>：人为制造碎片，观察直接规整的触发。</p>
+
+<pre><code class="language-bash"># 在 QEMU 启动的系统中执行
+
+# 1. 查看初始碎片状态
+cat /proc/buddyinfo
+# 示例输出: Node 0, zone Normal  ... 0 1 2 3 4 5 ... (高阶块数量)
+
+cat /sys/kernel/debug/extfrag/unusable_index
+# 观察各 order 的不可用空闲空间指数
+
+# 2. 制造碎片：大量小页分配
+# 使用 stress-ng 或手动小程序
+cat &gt; /tmp/frag.c &lt;&lt; &#x27;EOF&#x27;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/mman.h&gt;
+
+#define PAGE_SIZE 4096
+#define NR_PAGES 4000  // 约 16MB
+
+int main() {
+    void *pages[NR_PAGES];
+    int i;
+
+    // 分配大量单页，制造碎片
+    for (i = 0; i &lt; NR_PAGES; i++) {
+        pages[i] = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE,
+                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (pages[i] == MAP_FAILED) {
+            printf(&quot;mmap failed at page %d\n&quot;, i);
+            break;
+        }
+        // 写入数据确保物理页已分配
+        memset(pages[i], 0xAA, PAGE_SIZE);
+    }
+
+    printf(&quot;Allocated %d pages (%ld KB)\n&quot;, i, (long)i * PAGE_SIZE / 1024);
+
+    // 释放部分页制造间隙（每隔 2 页释放 1 页）
+    for (i = 0; i &lt; NR_PAGES; i += 2) {
+        if (pages[i] != MAP_FAILED)
+            munmap(pages[i], PAGE_SIZE);
+    }
+
+    printf(&quot;Released alternate pages to create fragmentation\n&quot;);
+
+    // 观察 buddyinfo 变化
+    sleep(1);
+
+    // 尝试分配大块连续内存触发规整
+    void *huge = mmap(NULL, 2 * 1024 * 1024, PROT_READ | PROT_WRITE,
+                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (huge != MAP_FAILED) {
+        printf(&quot;2MB allocation succeeded (THP)\n&quot;);
+        memset(huge, 0xBB, 2 * 1024 * 1024);
+    } else {
+        printf(&quot;2MB allocation failed (fragmentation)\n&quot;);
+    }
+
+    sleep(5);
+    return 0;
+}
+EOF
+
+# 交叉编译
+aarch64-linux-gnu-gcc -static /tmp/frag.c -o rootfs/frag
+# 重建 rootfs
+
+# 3. 运行后查看规整统计
+grep compact /proc/vmstat
+cat /proc/buddyinfo</code></pre>
+
+<p><strong>验证要点</strong>：</p>
+<ul>
+<li><code>compact_stall</code> 增长 → 分配路径触发了直接规整</li>
+<li><code>compact_success</code> 或 <code>compact_fail</code> 增长</li>
+<li>buddyinfo 中高阶块数量变化</li>
+</ul>
+
+<h3>实验 3：手动触发规整并观察结果</h3>
+
+<p><strong>目标</strong>：通过 sysctl 手动触发规整，观察前后碎片变化。</p>
+
+<pre><code class="language-bash"># 在 QEMU 系统中
+
+# 1. 记录规整前状态
+echo &quot;=== Before compaction ===&quot;
+cat /proc/buddyinfo
+grep compact /proc/vmstat
+cat /sys/kernel/debug/extfrag/unusable_index
+
+# 2. 触发全节点规整
+echo 1 &gt; /proc/sys/vm/compact_memory
+
+# 3. 等待规整完成
+sleep 3
+
+# 4. 记录规整后状态
+echo &quot;=== After compaction ===&quot;
+cat /proc/buddyinfo
+grep compact /proc/vmstat
+cat /sys/kernel/debug/extfrag/unusable_index
+
+# 5. 对比分析
+# - buddyinfo 高阶块数量应该增加
+# - unusable_index 应该下降
+# - compact_success 应该增长</code></pre>
+
+<h3>实验 4：追踪规整过程的 Tracepoint</h3>
+
+<p><strong>目标</strong>：使用 ftrace 追踪规整的详细过程。</p>
+
+<pre><code class="language-bash"># 在 QEMU 系统中
+
+# 1. 启用规整 tracepoint
+echo 1 &gt; /sys/kernel/debug/tracing/events/compaction/enable
+echo 1 &gt; /sys/kernel/debug/tracing/events/migrate/enable
+
+# 2. 触发规整
+echo 1 &gt; /proc/sys/vm/compact_memory
+
+# 3. 读取 trace
+sleep 2
+cat /sys/kernel/debug/tracing/trace | head -50
+
+# 4. 过滤特定事件
+cat /sys/kernel/debug/tracing/trace | grep mm_compaction_begin
+cat /sys/kernel/debug/tracing/trace | grep mm_compaction_end
+cat /sys/kernel/debug/tracing/trace | grep mm_compaction_migratepages
+
+# 5. 清理
+echo 0 &gt; /sys/kernel/debug/tracing/events/compaction/enable
+echo 0 &gt; /sys/kernel/debug/tracing/events/migrate/enable
+echo &gt; /sys/kernel/debug/tracing/trace</code></pre>
+
+<p><strong>期望 trace 输出格式</strong>：</p>
+<pre><code>&lt;...&gt;-123  [001] d... 100.0: mm_compaction_begin: zone=Normal move_pfn=0x100 free_pfn=0x8000 sync=1
+&lt;...&gt;-123  [001] d... 100.1: mm_compaction_migratepages: nr_migrated=32 nr_failed=0
+&lt;...&gt;-123  [001] d... 100.2: mm_compaction_end: status=success</code></pre>
+
+<h3>实验 5：主动规整与碎片评分验证</h3>
+
+<p><strong>目标</strong>：验证主动规整的碎片评分机制。</p>
+
+<pre><code class="language-bash"># 1. 设置主动规整激进度
+echo 50 &gt; /proc/sys/vm/compaction_proactiveness
+# wmark_high = 100 - 50 + leeway(~5) = 55
+# wmark_low = 100 - 50 = 50
+
+# 2. 查看碎片评分（间接方式）
+cat /sys/kernel/debug/extfrag/extfrag_index
+
+# 3. 制造碎片后观察 kcompactd 主动规整
+# (使用实验 2 的碎片制造方法)
+./frag
+
+# 4. 观察 kcompactd 唤醒和规整
+sleep 10
+grep compact /proc/vmstat
+grep compact_daemon /proc/vmstat
+
+# 5. 关闭主动规整对比
+echo 0 &gt; /proc/sys/vm/compaction_proactiveness
+# 此时只有显式唤醒才会触发 kcompactd</code></pre>
+
+<h3>实验 6：CMA 与 alloc_contig_range 验证</h3>
+
+<p><strong>目标</strong>：验证 CMA 区域和 alloc_contig_range 行为。</p>
+
+<pre><code class="language-bash"># 1. 查看 CMA 信息
+cat /proc/meminfo | grep Cma
+dmesg | grep cma
+
+# 2. 查看 CMA 区域详情
+cat /sys/kernel/debug/cma/cma-reserved/stats  # 如果可用
+
+# 3. 通过内核模块测试 alloc_contig_range
+# 创建测试模块:
+cat &gt; /tmp/cma_test.c &lt;&lt; &#x27;EOF&#x27;
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/cma.h&gt;
+#include &lt;linux/page-isolation.h&gt;
+
+static int __init cma_test_init(void)
+{
+    struct page *page;
+    unsigned long count = 8;  // 8 页 = 32KB 连续
+
+    // 从 CMA 分配连续页
+    page = cma_alloc(&amp;dma_contiguous_default_area, count, 0, false);
+    if (page) {
+        pr_info(&quot;CMA alloc success: pfn=%lu order=%lu\n&quot;,
+                page_to_pfn(page), count);
+        cma_release(&amp;dma_contiguous_default_area, page, count);
+        pr_info(&quot;CMA release done\n&quot;);
+    } else {
+        pr_info(&quot;CMA alloc failed\n&quot;);
+    }
+    return 0;
+}
+
+module_init(cma_test_init);
+MODULE_LICENSE(&quot;GPL&quot;);
+EOF
+
+# 4. 查看规整统计变化
+grep compact /proc/vmstat</code></pre>
+
+<h3>实验 7：THP 分配与规整联动验证</h3>
+
+<p><strong>目标</strong>：验证 THP 分配失败时触发规整的完整路径。</p>
+
+<pre><code class="language-bash"># 1. 设置 THP 为 always 模式
+echo always &gt; /sys/kernel/mm/transparent_hugepage/enabled
+
+# 2. 记录初始规整统计
+BEFORE=$(cat /proc/vmstat | grep compact_stall)
+
+# 3. 大量碎片化后尝试 THP 分配
+# 编写测试程序:
+cat &gt; /tmp/thp_test.c &lt;&lt; &#x27;EOF&#x27;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/mman.h&gt;
+
+int main() {
+    // Phase 1: 制造碎片
+    void *frag[4000];
+    for (int i = 0; i &lt; 4000; i++) {
+        frag[i] = mmap(NULL, 4096, PROT_READ|PROT_WRITE,
+                       MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        memset(frag[i], 1, 4096);
+    }
+    // 释放间隔页
+    for (int i = 0; i &lt; 4000; i += 3) {
+        munmap(frag[i], 4096);
+    }
+
+    // Phase 2: 尝试 THP 分配
+    void *thp = mmap(NULL, 2*1024*1024, PROT_READ|PROT_WRITE,
+                     MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    if (thp != MAP_FAILED) {
+        memset(thp, 2, 2*1024*1024);  // 触发实际物理页分配
+        printf(&quot;THP alloc: %p\n&quot;, thp);
+
+        // 检查是否真的是 THP
+        FILE *f = fopen(&quot;/proc/self/smaps&quot;, &quot;r&quot;);
+        char line[256];
+        while (fgets(line, sizeof(line), f)) {
+            if (strstr(line, &quot;AnonHugePages&quot;))
+                printf(&quot;  %s&quot;, line);
+        }
+        fclose(f);
+    }
+    sleep(3);
+    return 0;
+}
+EOF
+
+aarch64-linux-gnu-gcc -static /tmp/thp_test.c -o rootfs/thp_test
+
+# 4. 运行后查看
+AFTER=$(cat /proc/vmstat | grep compact_stall)
+echo &quot;Stall count delta:&quot;
+echo &quot;$BEFORE&quot;
+echo &quot;$AFTER&quot;
+
+grep thp /proc/vmstat</code></pre>
+
+<p><strong>验证要点</strong>：</p>
+<ul>
+<li>THP 分配失败时 <code>compact_stall</code> 增长</li>
+<li>规整成功后 THP 分配可能成功</li>
+<li><code>thp_migration_success</code> 或 <code>thp_migration_split</code> 增长</li>
+</ul>
+
+<hr>
+
+<h2>源码阅读路线图</h2>
+
+<p>建议按以下顺序阅读，每步都有明确的阅读目标：</p>
+
+<h3>第 1 步：理解入口和结果 (<code>include/linux/compaction.h</code>)</h3>
+<ul>
+<li>阅读 <code>compact_priority</code> 和 <code>compact_result</code> 枚举</li>
+<li>阅读 <code>compaction_suitable()</code>、<code>try_to_compact_pages()</code> 声明</li>
+</ul>
+
+<h3>第 2 步：理解数据结构 (<code>mm/internal.h</code>)</h3>
+<ul>
+<li>重点阅读 <code>struct compact_control</code> (line 875)</li>
+<li>阅读 <code>struct capture_control</code> (line 919)</li>
+<li>对比 <code>struct migration_target_control</code> (line 1339)</li>
+</ul>
+
+<h3>第 3 步：理解延迟机制 (<code>mm/compaction.c:120-180</code>)</h3>
+<ul>
+<li><code>defer_compaction()</code> → <code>compaction_deferred()</code> → <code>compaction_defer_reset()</code> → <code>compaction_restarting()</code></li>
+<li>理解指数退避逻辑和 <code>compact_defer_shift</code> 上限</li>
+</ul>
+
+<h3>第 4 步：理解隔离逻辑 (<code>mm/compaction.c</code>)</h3>
+<ul>
+<li><code>isolate_migratepages_block()</code> (line 837) — 迁移页隔离的详细逻辑</li>
+<li><code>isolate_freepages_block()</code> (line 556) — 空闲页隔离</li>
+<li><code>fast_find_migrateblock()</code> (line 1923) — buddy 搜索优化</li>
+<li><code>fast_isolate_freepages()</code> (line 1504) — 空闲页快速搜索</li>
+</ul>
+
+<h3>第 5 步：理解核心规整循环 (<code>mm/compaction.c:2511-2747</code>)</h3>
+<ul>
+<li><code>compact_zone()</code> — 双扫描器主循环</li>
+<li><code>__compact_finished()</code> (line 2234) — 终止条件判断</li>
+<li><code>compact_scanners_met()</code> — 扫描器相遇判断</li>
+</ul>
+
+<h3>第 6 步：理解触发路径 (<code>mm/compaction.c:2749-2839</code> + <code>mm/page_alloc.c</code>)</h3>
+<ul>
+<li><code>compact_zone_order()</code> (line 2749) — 直接规整封装</li>
+<li><code>try_to_compact_pages()</code> (line 2814) — zonelist 遍历</li>
+<li><code>__alloc_pages_slowpath()</code> (page_alloc.c:4626) — 分配路径中规整的位置</li>
+</ul>
+
+<h3>第 7 步：理解 kcompactd (<code>mm/compaction.c:3055-3330</code>)</h3>
+<ul>
+<li><code>kcompactd_do_work()</code> (line 3055)</li>
+<li><code>kcompactd()</code> (line 3165)</li>
+<li><code>wakeup_kcompactd()</code> (line 3135)</li>
+<li><code>kcompactd_init()</code> (line 3323) — subsys_initcall</li>
+</ul>
+
+<h3>第 8 步：理解碎片评分 (<code>mm/compaction.c:2167-2232</code>)</h3>
+<ul>
+<li><code>fragmentation_score_zone()</code> → <code>fragmentation_score_zone_weighted()</code> → <code>fragmentation_score_node()</code></li>
+<li><code>should_proactive_compact_node()</code></li>
+<li><code>fragmentation_score_wmark()</code></li>
+</ul>
+
+<h3>第 9 步：理解页迁移 (<code>mm/migrate.c</code>)</h3>
+<ul>
+<li><code>migrate_pages()</code> (line 2064) — 规整调用的入口</li>
+<li><code>migrate_pages_batch()</code> (line 1775)</li>
+<li><code>alloc_migration_target()</code> (line 2161)</li>
+</ul>
+
+<h3>第 10 步：理解 ARM64 特有机制</h3>
+<ul>
+<li><code>arch/arm64/mm/copypage.c</code> — <code>copy_highpage()</code> MTE 标签处理</li>
+<li><code>arch/arm64/mm/hugetlbpage.c</code> — <code>arch_hugetlb_migration_supported()</code></li>
+<li><code>arch/arm64/mm/pageattr.c</code> — <code>can_set_direct_map()</code> + <code>set_direct_map_*()</code></li>
+<li><code>arch/arm64/mm/contpte.c</code> — contpte fold/unfold</li>
+<li><code>arch/arm64/mm/init.c</code> — CMA 预留 (<code>bootmem_init</code>)</li>
+</ul>
+
+<hr>
+
+<h2>关键源码索引</h2>
+
+<table>
+<thead><tr>
+<th>文件</th>
+<th>行号</th>
+<th>函数/结构</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>126</td>
+<td><code>defer_compaction()</code></td>
+<td>延迟规整</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>141</td>
+<td><code>compaction_deferred()</code></td>
+<td>判断是否延迟</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>164</td>
+<td><code>compaction_defer_reset()</code></td>
+<td>成功后清除延迟</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>349</td>
+<td><code>__reset_isolation_suitable()</code></td>
+<td>清除 skip hint</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>419</td>
+<td><code>test_and_set_skip()</code></td>
+<td>设置 pageblock skip</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>556</td>
+<td><code>isolate_freepages_block()</code></td>
+<td>空闲页隔离</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>837</td>
+<td><code>isolate_migratepages_block()</code></td>
+<td>迁移页隔离</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>1504</td>
+<td><code>fast_isolate_freepages()</code></td>
+<td>buddy 空闲搜索优化</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>1845</td>
+<td><code>compaction_alloc()</code></td>
+<td>规整迁移目标分配</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>1855</td>
+<td><code>compaction_free()</code></td>
+<td>规整迁移目标释放</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>1923</td>
+<td><code>fast_find_migrateblock()</code></td>
+<td>buddy 迁移搜索优化</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>2167</td>
+<td><code>fragmentation_score_zone()</code></td>
+<td>zone 碎片评分</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>2197</td>
+<td><code>fragmentation_score_node()</code></td>
+<td>node 碎片评分</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>2223</td>
+<td><code>should_proactive_compact_node()</code></td>
+<td>主动规整决策</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>2234</td>
+<td><code>__compact_finished()</code></td>
+<td>规整终止判断</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>2511</td>
+<td><code>compact_zone()</code></td>
+<td><strong>核心规整循环</strong></td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>2749</td>
+<td><code>compact_zone_order()</code></td>
+<td>直接规整封装</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>2814</td>
+<td><code>try_to_compact_pages()</code></td>
+<td><strong>直接规整入口</strong></td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>2893</td>
+<td><code>compact_node()</code></td>
+<td>全节点规整</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>2976</td>
+<td><code>sysctl_compaction_handler()</code></td>
+<td>compact_memory sysctl</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>3055</td>
+<td><code>kcompactd_do_work()</code></td>
+<td>kcompactd 工作函数</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>3135</td>
+<td><code>wakeup_kcompactd()</code></td>
+<td>kcompactd 唤醒</td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>3165</td>
+<td><code>kcompactd()</code></td>
+<td><strong>kcompactd 主循环</strong></td>
+</tr>
+<tr>
+<td><code>mm/compaction.c</code></td>
+<td>3323</td>
+<td><code>kcompactd_init()</code></td>
+<td>kcompactd 初始化</td>
+</tr>
+<tr>
+<td><code>mm/internal.h</code></td>
+<td>875</td>
+<td><code>struct compact_control</code></td>
+<td><strong>规整总控结构</strong></td>
+</tr>
+<tr>
+<td><code>mm/internal.h</code></td>
+<td>919</td>
+<td><code>struct capture_control</code></td>
+<td>页捕获控制</td>
+</tr>
+<tr>
+<td><code>mm/page_alloc.c</code></td>
+<td>4626</td>
+<td><code>__alloc_pages_slowpath()</code></td>
+<td>分配慢路径</td>
+</tr>
+<tr>
+<td><code>mm/page_alloc.c</code></td>
+<td>4081</td>
+<td><code>__alloc_pages_direct_compact()</code></td>
+<td>直接规整调用</td>
+</tr>
+<tr>
+<td><code>mm/migrate.c</code></td>
+<td>2064</td>
+<td><code>migrate_pages()</code></td>
+<td>页迁移主入口</td>
+</tr>
+<tr>
+<td><code>mm/migrate.c</code></td>
+<td>1775</td>
+<td><code>migrate_pages_batch()</code></td>
+<td>批量页迁移</td>
+</tr>
+<tr>
+<td><code>mm/vmscan.c</code></td>
+<td>7197</td>
+<td><code>wakeup_kcompactd()</code></td>
+<td>kswapd 唤醒 kcompactd</td>
+</tr>
+<tr>
+<td><code>mm/vmstat.c</code></td>
+<td>2349</td>
+<td><code>unusable_index</code></td>
+<td>不可用空闲空间指数</td>
+</tr>
+<tr>
+<td><code>mm/vmstat.c</code></td>
+<td>2395</td>
+<td><code>extfrag_index</code></td>
+<td>碎片指数</td>
+</tr>
+<tr>
+<td><code>arch/arm64/mm/init.c</code></td>
+<td>—</td>
+<td><code>bootmem_init()</code></td>
+<td>CMA 预留</td>
+</tr>
+<tr>
+<td><code>arch/arm64/mm/copypage.c</code></td>
+<td>17</td>
+<td><code>copy_highpage()</code></td>
+<td>MTE 标签迁移</td>
+</tr>
+<tr>
+<td><code>arch/arm64/mm/hugetlbpage.c</code></td>
+<td>69</td>
+<td><code>arch_hugetlb_migration_supported()</code></td>
+<td>大页迁移支持</td>
+</tr>
+<tr>
+<td><code>arch/arm64/mm/pageattr.c</code></td>
+<td>—</td>
+<td><code>can_set_direct_map()</code></td>
+<td>直接映射粒度</td>
+</tr>
+<tr>
+<td><code>arch/arm64/mm/contpte.c</code></td>
+<td>—</td>
+<td><code>contpte_convert()</code></td>
+<td>contpte 转换</td>
+</tr>
+<tr>
+<td><code>include/linux/compaction.h</code></td>
+<td>9</td>
+<td><code>enum compact_priority</code></td>
+<td>规整优先级</td>
+</tr>
+<tr>
+<td><code>include/linux/compaction.h</code></td>
+<td>21</td>
+<td><code>enum compact_result</code></td>
+<td>规整结果</td>
+</tr>
+<tr>
+<td><code>include/trace/events/compaction.h</code></td>
+<td>—</td>
+<td>各 tracepoint</td>
+<td>规整追踪点</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<blockquote>本文档基于 Linux 6.18.1 源码分析生成，所有行号和函数签名均对应当前工作区代码。</blockquote>
+</body>
+</html>

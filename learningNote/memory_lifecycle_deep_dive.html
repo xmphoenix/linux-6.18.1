@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Lifecycle Deep Dive</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux ARM64 内存生命周期深度分析</h1>
+
+<blockquote>基于 Linux 6.18.1 / ARM64 / <code>CONFIG_NUMA=y</code> / QEMU 1GB  <br>
+记录日期：2026-04-05</blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><a href="#1-memblock-→-buddy-过渡全流程">1. memblock → Buddy 过渡全流程</a></summary></p>
+
+<ul>
+<li><a href="#11-整体时序">1.1 整体时序</a></li>
+<li><a href="#12-phase-1建立-memblocksetup_arch">1.2 Phase 1：建立 memblock（<code>setup_arch</code>）</a></li>
+<li><a href="#13-phase-2过渡核心-memblock_free_allmmmemblockc2339">1.3 Phase 2：过渡核心 <code>memblock_free_all()</code>（mm/memblock.c:2339）</a></li>
+<li><a href="#14-两种区域的不同命运">1.4 两种区域的不同命运</a></li>
+<li><a href="#15-嵌入式-umaconfig_numa下的简化">1.5 嵌入式 UMA（<code>!CONFIG_NUMA</code>）下的简化</a></li>
+<li><a href="#16-过渡前后状态对比">1.6 过渡前后状态对比</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#2-arm64-虚拟内存-vma-知识体系">2. ARM64 虚拟内存 VMA 知识体系</a></summary></p>
+
+<ul>
+<li><a href="#21-arm64-虚拟地址空间布局">2.1 ARM64 虚拟地址空间布局</a></li>
+<li><a href="#22-核心数据结构">2.2 核心数据结构</a></li>
+<li><a href="#23-vma-组织maple-treelinux-61-关键变化">2.3 VMA 组织：Maple Tree（Linux 6.1+ 关键变化）</a></li>
+<li><a href="#24-重要-vm_flags-标志">2.4 重要 <code>vm_flags</code> 标志</a></li>
+<li><a href="#25-缺页异常处理决策树最核心">2.5 缺页异常处理决策树（最核心）</a></li>
+<li><a href="#26-cow写时复制机制">2.6 COW（写时复制）机制</a></li>
+<li><a href="#27-反向映射rmap">2.7 反向映射（RMAP）</a></li>
+<li><a href="#28-per-vma-locklinux-64此内核已启用">2.8 Per-VMA Lock（Linux 6.4+，此内核已启用）</a></li>
+<li><a href="#29-vm_operations_structvma-多态">2.9 <code>vm_operations_struct</code>：VMA 多态</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#3-slub-与-buddy-的双向交互">3. SLUB 与 Buddy 的双向交互</a></summary></p>
+
+<ul>
+<li><a href="#31-向-buddy-申请内存分配路径">3.1 向 Buddy 申请内存（分配路径）</a></li>
+<li><a href="#32-向-buddy-归还内存释放路径">3.2 向 Buddy 归还内存（释放路径）</a></li>
+<li><a href="#33-min_partial-水位保留多少不还">3.3 <code>min_partial</code> 水位：保留多少不还</a></li>
+<li><a href="#34-主动回收触发-discard_slab-的三种时机">3.4 主动回收：触发 <code>discard_slab</code> 的三种时机</a></li>
+<li><a href="#35-最终归还调用链">3.5 最终归还调用链</a></li>
+<li><a href="#36-不会归还的例外">3.6 不会归还的例外</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#4-三大主题的统一视角">4. 三大主题的统一视角</a></summary></p>
+
+<ul>
+<li><a href="#41-内存管理完整层次图">4.1 内存管理完整层次图</a></li>
+<li><a href="#42-关键问题汇总">4.2 关键问题汇总</a></li>
+<li><a href="#43-嵌入式系统关注点">4.3 嵌入式系统关注点</a></li>
+</ul>
+
+<p></details></p>
+
+<hr>
+
+<h2>1. memblock → Buddy 过渡全流程</h2>
+
+<h3>1.1 整体时序</h3>
+
+<pre><code>start_kernel()
+  └─ setup_arch()                          ← Phase 1：建立 memblock
+       ├─ arm64_memblock_init()            ← 填充 memblock 数据库
+       ├─ paging_init()                    ← 用 memblock 建立四级页表
+       └─ bootmem_init()                   ← 初始化 zone 空骨架
+            ├─ sparse_init()              ← memblock_alloc() 分配 struct page 数组
+            └─ zone_sizes_init()
+                 └─ free_area_init()      ← 初始化 free_area 空链表
+  └─ mm_core_init()                        ← Phase 2：执行过渡
+       ├─ build_all_zonelists()
+       ├─ memblock_free_all()             ← ★ 过渡核心
+       ├─ mem_init()
+       └─ kmem_cache_init()               ← buddy 已就绪，SLUB 初始化</code></pre>
+
+<h3>1.2 Phase 1：建立 memblock（<code>setup_arch</code>）</h3>
+
+<h4><code>arm64_memblock_init()</code>（arch/arm64/mm/init.c:185）</h4>
+
+<p>从 DTB 扫描物理内存后，对 <code>memblock</code> 数据库进行修剪：</p>
+
+<pre><code class="language-c">// 裁剪超出线性映射窗口的物理地址（VA_BITS=48 时线性映射窗口 = 128TB）
+memblock_remove(memstart_addr + linear_region_size, ULLONG_MAX);
+
+// 保留内核镜像自身（_text → _end）
+memblock_reserve(__pa_symbol(_text), _end - _text);
+
+// 扫描 FDT /reserved-memory 节点
+early_init_fdt_scan_reserved_mem();</code></pre>
+
+<p>此时两张表状态：</p>
+<ul>
+<li><code>memblock.memory</code> = 所有可用物理页区间  </li>
+<li><code>memblock.reserved</code> = 内核镜像 + DTB + initrd + FDT 保留区</li>
+</ul>
+
+<h4><code>paging_init()</code></h4>
+
+<p>调用 <code>memblock_phys_alloc()</code> 分配页目录页（PGD/PUD/PMD/PTE），建立 ARM64 四级页表，使内核可通过线性映射访问全部物理内存。</p>
+
+<p><strong>这是 memblock 作为"分配器"的最后一批重要分配。</strong></p>
+
+<h4><code>bootmem_init()</code> → <code>sparse_init()</code> + <code>zone_sizes_init()</code>（arch/arm64/mm/init.c:292）</h4>
+
+<pre><code class="language-c">void __init bootmem_init(void)
+{
+    min = PFN_UP(memblock_start_of_DRAM());
+    max = PFN_DOWN(memblock_end_of_DRAM());
+    
+    arch_numa_init();              // 解析 NUMA 拓扑（QEMU 单节点 node_data[0]）
+    sparse_init();                 // memblock_alloc() 分配 struct page 数组内存
+    zone_sizes_init();             // 设置 max_zone_pfns[]，调用 free_area_init()
+}</code></pre>
+
+<p><code>free_area_init()</code> 里的 <code>zone_init_free_lists()</code> 初始化所有空链表（mm/mm_init.c:1436）：</p>
+
+<pre><code class="language-c">static void __meminit zone_init_free_lists(struct zone *zone)
+{
+    for_each_migratetype_order(order, t) {
+        INIT_LIST_HEAD(&amp;zone-&gt;free_area[order].free_list[t]); // 空链表
+        zone-&gt;free_area[order].nr_free = 0;                   // 计数为 0
+    }
+}</code></pre>
+
+<blockquote><strong>关键</strong>：此时 buddy 的 zone 骨架已创建，但 <code>free_list</code> 全空，buddy <strong>不可用</strong>。  <br>
+<code>struct page</code> 数组已分配，每个 page 的 <code>_refcount = 1</code>（标记"已分配"）。</blockquote>
+
+<h3>1.3 Phase 2：过渡核心 <code>memblock_free_all()</code>（mm/memblock.c:2339）</h3>
+
+<pre><code class="language-c">void __init memblock_free_all(void)
+{
+    free_unused_memmap();               // 1. 释放空洞对应的 struct page 内存
+    reset_all_zones_managed_pages();    // 2. 清零 zone-&gt;managed_pages 计数
+    memblock_clear_kho_scratch_only();
+    pages = free_low_memory_core_early(); // 3. ★ 核心：把空闲页送入 buddy
+    totalram_pages_add(pages);          // 4. 更新 totalram_pages
+}</code></pre>
+
+<h4>步骤 3：<code>free_low_memory_core_early()</code></h4>
+
+<pre><code class="language-c">static unsigned long __init free_low_memory_core_early(void)
+{
+    // ① 给 reserved 区域的 struct page 打 PageReserved 标记
+    memmap_init_reserved_pages();   // → reserve_bootmem_region() → __SetPageReserved()
+
+    // ② 遍历所有 free 区间（= memory - reserved）
+    for_each_free_mem_range(i, NUMA_NO_NODE, MEMBLOCK_NONE, &amp;start, &amp;end, NULL)
+        count += __free_memory_core(start, end);
+    
+    return count;
+}</code></pre>
+
+<h4>对齐优化：<code>__free_pages_memory()</code>（mm/memblock.c:2199）</h4>
+
+<pre><code class="language-c">static void __init __free_pages_memory(unsigned long start, unsigned long end)
+{
+    while (start &lt; end) {
+        // __ffs(start) = start 的最低有效位 = 最大对齐 order
+        order = start ? min_t(int, MAX_PAGE_ORDER, __ffs(start)) : MAX_PAGE_ORDER;
+        while (start + (1UL &lt;&lt; order) &gt; end)
+            order--;   // 缩小到不超出边界
+
+        memblock_free_pages(pfn_to_page(start), start, order); // ★ 送入 buddy
+        start += (1UL &lt;&lt; order);
+    }
+}</code></pre>
+
+<p><strong>设计目的</strong>：保证 buddy 的对齐不变式（order-n 块的 PFN 必须是 2^n 的倍数）。</p>
+
+<h4>最终入 buddy：<code>memblock_free_pages()</code> → <code>__free_pages_core()</code>（mm/mm_init.c:2483）</h4>
+
+<pre><code class="language-c">void __init memblock_free_pages(struct page *page, unsigned long pfn, unsigned int order)
+{
+    clear_page_tag_ref(page);
+    __free_pages_core(page, order, MEMINIT_EARLY);
+}
+
+void __meminit __free_pages_core(struct page *page, unsigned int order, ...)
+{
+    for (loop = 0; loop &lt; nr_pages; loop++, p++) {
+        __ClearPageReserved(p);      // 清除 Reserved 标志
+        set_page_count(p, 0);        // refcount：1 → 0（标记为 free）
+    }
+    atomic_long_add(nr_pages, &amp;page_zone(page)-&gt;managed_pages);
+    
+    // FPI_TO_TAIL：绕过 PCP，直接插到 buddy 链表尾部
+    __free_pages_ok(page, order, FPI_TO_TAIL);
+    //  └── free_one_page()
+    //       └── __free_one_page()   ← 插入 free_area[order].free_list[mt]
+    //            └── buddy 合并算法（检查伙伴并向上合并）
+}</code></pre>
+
+<h3>1.4 两种区域的不同命运</h3>
+
+<table>
+<thead><tr>
+<th>区域类型</th>
+<th>在 <code>memblock.reserved</code> 中？</th>
+<th>结果</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>未被 reserved 的 memory 页</td>
+<td>否</td>
+<td><code>for_each_free_mem_range</code> → 送入 buddy</td>
+</tr>
+<tr>
+<td>内核镜像 <code>_text</code>~<code>_end</code></td>
+<td>是</td>
+<td><code>reserve_bootmem_region()</code> 打 <code>PageReserved</code>，不入 buddy</td>
+</tr>
+<tr>
+<td>DTB / initrd</td>
+<td>是</td>
+<td>同上，永久 Reserved</td>
+</tr>
+<tr>
+<td>sparse mem_map（struct page 数组）</td>
+<td>是</td>
+<td>不入 buddy，永久使用</td>
+</tr>
+</tbody></table>
+
+<h3>1.5 嵌入式 UMA（<code>!CONFIG_NUMA</code>）下的简化</h3>
+
+<p>整个流程<strong>结构完全相同</strong>，差异仅在规模：</p>
+
+<table>
+<thead><tr>
+<th>项目</th>
+<th>NUMA</th>
+<th>UMA 嵌入式</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>NODE_DATA(nid)</code></td>
+<td><code>node_data[nid]</code> 数组</td>
+<td>直接 <code>&contig_page_data</code></td>
+</tr>
+<tr>
+<td><code>free_area_init()</code> 初始化节点数</td>
+<td><code>nr_node_ids</code> 个</td>
+<td>始终 1 个</td>
+</tr>
+<tr>
+<td><code>__free_one_page()</code> 中 nid 判断</td>
+<td>同 nid buddy 才合并</td>
+<td>无此约束</td>
+</tr>
+<tr>
+<td><code>SLUB_TINY</code> 配置</td>
+<td>MIN_PARTIAL=5</td>
+<td><code>MIN_PARTIAL=0</code>（全空立即归还）</td>
+</tr>
+</tbody></table>
+
+<h3>1.6 过渡前后状态对比</h3>
+
+<pre><code>─────────── bootmem_init 结束 ───────────
+memblock.memory:   [0x40000000, 0x80000000)  ← 完整记录（QEMU 1GB）
+memblock.reserved: [0x40080000, 0x41000000)  ← 内核等保留区
+zone.free_area[*]: 全空链表                  ← buddy 存在但无页
+struct page 数组:  已分配，_refcount=1       ← 标记为&quot;已分配&quot;状态
+
+─────────── memblock_free_all 结束 ──────
+memblock 数据:     仍在内存，静默废弃        ← 不再使用
+zone.managed_pages: ~200000（约 800MB）
+free_area[10].free_list[MIGRATE_MOVABLE]: 有大块（1024页）
+free_area[9..0]:   有零散边缘块
+totalram_pages:    约 240000（1GB / 4KB）</code></pre>
+
+<hr>
+
+<h2>2. ARM64 虚拟内存 VMA 知识体系</h2>
+
+<h3>2.1 ARM64 虚拟地址空间布局</h3>
+
+<p>ARM64 采用双页表基址寄存器（TTBR0/TTBR1），VA_BITS=48 时：</p>
+
+<pre><code>0x0000_0000_0000_0000
+│   用户态（TTBR0）        [0, TASK_SIZE_64 = 1&lt;&lt;vabits_actual = 256TB)
+│   ├── text/data/bss      ← ELF 加载
+│   ├── heap               ← start_brk → brk，向高地址增长
+│   ├── mmap 区域          ← 从 mmap_base 向低地址分配（top-down）
+│   └── stack              ← start_stack，VM_GROWSDOWN，向低地址增长
+│
+0x0000_FFFF_FFFF_FFFF  ← 用户态上边界（256TB）
+─ ─ ─ ─ ─ 无效洞 ─ ─ ─ ─ ─
+0xFFFF_0000_0000_0000
+│   内核态（TTBR1）
+│   ├── MODULES_VADDR      ← 内核模块（.ko）
+│   ├── VMALLOC_START      ← vmalloc / ioremap 区域
+│   ├── KIMAGE_VADDR       ← 内核镜像（.text .data）
+│   └── PAGE_OFFSET        ← 线性映射（直接映射全部物理内存）
+0xFFFF_FFFF_FFFF_FFFF</code></pre>
+
+<ul>
+<li><code>TASK_SIZE_64 = UL(1) << vabits_actual</code>（arch/arm64/include/asm/processor.h:56）</li>
+<li>mm_struct 中 <code>task_size</code> 字段记录此值</li>
+</ul>
+
+<h3>2.2 核心数据结构</h3>
+
+<h4><code>mm_struct</code> — 进程地址空间描述符（include/linux/mm_types.h:944）</h4>
+
+<pre><code class="language-c">struct mm_struct {
+    struct maple_tree mm_mt;        // ★ VMA 索引树（Linux 6.1+ 替代红黑树）
+    unsigned long mmap_base;        // mmap 区域起始（受 ASLR 随机化）
+    unsigned long task_size;        // 用户地址空间上限
+    pgd_t *pgd;                     // 四级页表根（TTBR0 存物理地址）
+
+    struct rw_semaphore mmap_lock;  // 全局大锁，保护 VMA 树
+    seqcount_t mm_lock_seq;         // 与 PER_VMA_LOCK 配合（序列号）
+
+    int map_count;                  // VMA 数量（/proc/PID/maps 行数）
+    atomic_t mm_users;              // 线程引用（降到 0 触发 exit_mmap）
+    atomic_t mm_count;              // 内核持有（降到 0 释放 mm_struct）
+
+    // 地址空间边界
+    unsigned long start_code, end_code;
+    unsigned long start_data, end_data;
+    unsigned long start_brk, brk;   // heap 当前上边界
+    unsigned long start_stack;      // 栈起始虚拟地址
+};</code></pre>
+
+<h4><code>vm_area_struct</code> — 单个虚拟内存区域（include/linux/mm_types.h:813）</h4>
+
+<pre><code class="language-c">struct vm_area_struct {
+    unsigned long vm_start;              // VMA 覆盖 [vm_start, vm_end)
+    unsigned long vm_end;
+
+    struct mm_struct *vm_mm;             // 所属进程
+    pgprot_t vm_page_prot;               // → ARM64 PTE 访问权限位
+    vm_flags_t vm_flags;                 // 类型和权限标志
+
+    const struct vm_operations_struct *vm_ops; // 操作函数表（多态）
+
+    // 文件映射
+    unsigned long vm_pgoff;              // 文件偏移（页单位）
+    struct file *vm_file;                // NULL = 匿名映射
+
+    // 反向映射
+    struct anon_vma *anon_vma;           // 匿名页反向映射根
+    struct list_head anon_vma_chain;     // 串联到 anon_vma 的链
+
+    // 文件共享映射：插入 i_mmap interval tree
+    struct { struct rb_node rb; unsigned long rb_subtree_last; } shared;
+
+#ifdef CONFIG_PER_VMA_LOCK              // 此内核已启用（CONFIG_PER_VMA_LOCK=y）
+    unsigned int vm_lock_seq;            // 细粒度读锁序列号
+    refcount_t vm_refcnt;                // VMA 引用计数
+#endif
+};</code></pre>
+
+<p><strong>vm_area_struct 从 SLUB 分配</strong>（mm/vma_init.c:22）：</p>
+
+<pre><code class="language-c">// 初始化专用 kmem_cache
+vm_area_cachep = kmem_cache_create(&quot;vm_area_struct&quot;,
+    sizeof(struct vm_area_struct), &amp;args,
+    SLAB_HWCACHE_ALIGN | SLAB_TYPESAFE_BY_RCU | SLAB_ACCOUNT);
+
+// 分配
+vma = kmem_cache_alloc(vm_area_cachep, GFP_KERNEL);  // → per-CPU slab</code></pre>
+
+<blockquote><strong>连接点</strong>：VMA 对象本身由 SLUB 分配，是 SLUB 服务上层虚拟内存管理的典型例子。</blockquote>
+
+<h3>2.3 VMA 组织：Maple Tree（Linux 6.1+ 关键变化）</h3>
+
+<pre><code class="language-c">// 以虚拟地址区间 [vm_start, vm_end) 为 key
+mm-&gt;mm_mt (maple_tree)
+  ├── [0x400000, 0x401000) → vma1 (.text)
+  ├── [0x600000, 0x601000) → vma2 (.data)
+  └── [0x7fff0000, ...) → vma3 (stack)
+
+// 查找（O(log n)，区间查询优化）
+vma = vma_lookup(mm, addr);
+
+// 迭代
+VMA_ITERATOR(vmi, mm, addr);
+for_each_vma(vmi, vma) { ... }</code></pre>
+
+<p><strong>6.1 之前</strong>：红黑树（<code>mm_rb</code>）+ 链表（<code>mmap</code>），两个结构分别维护。  <br>
+<strong>6.1 之后</strong>：Maple Tree 合二为一，区间查找更优，减少 cache miss。</p>
+
+<h3>2.4 重要 <code>vm_flags</code> 标志</h3>
+
+<table>
+<thead><tr>
+<th>标志</th>
+<th>含义</th>
+<th>ARM64 PTE 映射</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>VM_READ</code></td>
+<td>可读</td>
+<td>AP 字段设置</td>
+</tr>
+<tr>
+<td><code>VM_WRITE</code></td>
+<td>可写</td>
+<td>AP[2]=0（read-write）</td>
+</tr>
+<tr>
+<td><code>VM_EXEC</code></td>
+<td>可执行</td>
+<td>UXN=0（User eXecute Never 清零）</td>
+</tr>
+<tr>
+<td><code>VM_SHARED</code></td>
+<td>MAP_SHARED</td>
+<td>写直接到 page cache</td>
+</tr>
+<tr>
+<td><code>VM_GROWSDOWN</code></td>
+<td>向低地址增长</td>
+<td>栈，<code>VM_STACK = VM_GROWSDOWN</code>（ARM64）</td>
+</tr>
+<tr>
+<td><code>VM_PFNMAP</code></td>
+<td>纯 PFN 映射，无 struct page</td>
+<td>设备 MMIO 映射（嵌入式常用）</td>
+</tr>
+<tr>
+<td><code>VM_LOCKED</code></td>
+<td>mlock() 锁定，不可换出</td>
+<td>实时系统防缺页抖动</td>
+</tr>
+<tr>
+<td><code>VM_HUGETLB</code></td>
+<td>大页映射</td>
+<td>ARM64 使用 PMD/PUD 级页表条目</td>
+</tr>
+</tbody></table>
+
+<h3>2.5 缺页异常处理决策树（最核心）</h3>
+
+<h4>ARM64 异常入口（arch/arm64/mm/fault.c:924）</h4>
+
+<pre><code>硬件触发 Data Abort / Instruction Abort（ESR_ELx 编码故障类型）
+  └── do_mem_abort()
+       └── arm64_abort_table[] 按 ESR 分发
+            ├── Translation Fault (level 0-3) → do_translation_fault()
+            │    └── do_page_fault(far, esr, regs)
+            ├── Access Flag Fault              → do_page_fault()
+            └── Permission Fault               → do_page_fault()</code></pre>
+
+<h4>通用处理路径（mm/memory.c）</h4>
+
+<pre><code>do_page_fault(far=fault_addr)
+  ├── vma = vma_lookup(mm, addr)        ← Maple Tree 查找所属 VMA
+  ├── 检查 VMA 权限 vs 访问类型         ← 无 VMA → SIGSEGV (SEGV_MAPERR)
+  │                                        权限不符 → SIGSEGV (SEGV_ACCERR)
+  ├── [PER_VMA_LOCK 快路径]
+  │    └── handle_mm_fault(vma, addr, FAULT_FLAG_VMA_LOCK)
+  └── [mmap_lock 慢路径]
+       └── handle_mm_fault(vma, addr, mm_flags)
+            └── handle_pte_fault(vmf)
+                 ├── PTE 不存在 → do_pte_missing()
+                 │    ├── vma_is_anonymous() == true
+                 │    │    └── do_anonymous_page()    ← ★ 匿名缺页
+                 │    └── vm_file != NULL
+                 │         └── do_fault()             ← ★ 文件缺页
+                 │              ├── 只读   → do_read_fault()
+                 │              ├── 私有写 → do_cow_fault()   ← COW
+                 │              └── 共享写 → do_shared_fault()
+                 ├── PTE 存在但写保护   → do_wp_page()  ← ★ COW 触发
+                 ├── PTE 是 swap entry → do_swap_page() ← 换入
+                 └── PTE 为 PROT_NONE  → do_numa_page() ← NUMA 迁移</code></pre>
+
+<h4>匿名缺页关键路径（mm/memory.c:5134）</h4>
+
+<pre><code class="language-c">// 只读访问 → 映射零页（zero_page），延迟物理分配，零成本
+if (!(flags &amp; FAULT_FLAG_WRITE))
+    entry = pte_mkspecial(pfn_pte(my_zero_pfn(addr), vma-&gt;vm_page_prot));
+
+// 写访问 → 从 buddy 分配真实物理页
+folio = alloc_anon_folio(vmf);           // → alloc_pages(ZONE_NORMAL, 0)
+__folio_mark_uptodate(folio);
+entry = folio_mk_pte(folio, vma-&gt;vm_page_prot);
+set_pte_at(mm, addr, vmf-&gt;pte, entry);  // 写入 PTE，建立虚实映射</code></pre>
+
+<h3>2.6 COW（写时复制）机制</h3>
+
+<p><code>fork()</code> 时 <code>copy_page_range()</code> 将父子进程的可写私有页 PTE 都设为只读（write-protect）：</p>
+
+<pre><code>Permission Fault（ARM64: AP[2]=1 → 写触发）
+  └── do_wp_page()
+       ├── folio_mapcount() == 1（只有自己映射）
+       │    └── page_mkwrite()  / pte_mkwrite()  ← 直接提升为可写，无拷贝
+       └── folio_mapcount() &gt; 1（共享）
+            └── wp_page_copy()
+                 ├── alloc_folio()           ← 从 buddy 分配新页
+                 ├── copy_user_highpage()    ← 复制内容（物理拷贝）
+                 └── 更新 PTE 指向新页      ← 父子独立，解除共享</code></pre>
+
+<h3>2.7 反向映射（RMAP）</h3>
+
+<p>kswapd 回收时需要知道某物理页被哪些进程的哪个 VMA 映射了：</p>
+
+<pre><code>struct folio / struct page
+  └── folio-&gt;mapping = (struct anon_vma *)   ← 匿名页反向映射根
+
+struct anon_vma                              ← 根节点（rwsem 保护）
+  └── interval_tree: [start, end) → anon_vma_chain
+
+struct anon_vma_chain                        ← 桥接节点
+  ├── struct anon_vma *anon_vma              ← 指向父/祖先 anon_vma
+  └── struct vm_area_struct *vma            ← 指向具体 VMA
+
+// fork 后结构（父子进程共享同一 anon_vma 根）：
+   父 anon_vma ← AVC ← 父 VMA
+               ← AVC ← 子 VMA</code></pre>
+
+<p><strong>目的</strong>：<code>rmap_walk_anon()</code> 找到所有映射该页的 VMA → <code>unmap_mapping_range()</code> 解除映射 → 页面可回收。</p>
+
+<h3>2.8 Per-VMA Lock（Linux 6.4+，此内核已启用）</h3>
+
+<p><strong>问题</strong>：<code>mmap_lock</code> 是进程级读写信号量，高并发缺页时写锁排队严重。</p>
+
+<p><strong>解决</strong>：为每个 VMA 加细粒度锁：</p>
+
+<pre><code>快路径（不需要修改 VMA 结构时）：
+  vma_start_read(vma)           ← 只锁单个 VMA
+  handle_mm_fault(..., FAULT_FLAG_VMA_LOCK)
+  vma_end_read(vma)
+
+慢路径（VMA 结构需要变更时）：
+  mmap_read_lock(mm)            ← 全局读锁，兼容旧语义</code></pre>
+
+<p><strong>不变式</strong>：<code>mm->mm_lock_seq</code> 奇数 = mmap_lock 写锁中（VMA 可能变更），偶数 = 已释放。缺页时通过比较 <code>vma->vm_lock_seq</code> 判断是否需要退化到慢路径。</p>
+
+<h3>2.9 <code>vm_operations_struct</code>：VMA 多态</h3>
+
+<table>
+<thead><tr>
+<th>回调</th>
+<th>触发时机</th>
+<th>典型实现</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>fault()</code></td>
+<td>缺页读取文件页</td>
+<td>ext4/shmem → page cache 填充</td>
+</tr>
+<tr>
+<td><code>page_mkwrite()</code></td>
+<td>只读页升级为可写</td>
+<td>文件系统标记 dirty</td>
+</tr>
+<tr>
+<td><code>map_pages()</code></td>
+<td>缺页时预读周边页</td>
+<td>减少连续缺页次数</td>
+</tr>
+<tr>
+<td><code>open/close()</code></td>
+<td>VMA 创建/销毁</td>
+<td>驱动引用计数</td>
+</tr>
+<tr>
+<td><code>mprotect()</code></td>
+<td><code>mprotect()</code> 系统调用</td>
+<td>驱动自定义权限检查</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>3. SLUB 与 Buddy 的双向交互</h2>
+
+<h3>3.1 向 Buddy 申请内存（分配路径）</h3>
+
+<p>当 per-CPU slab 和 node partial list 都耗尽时，SLUB 向 buddy 申请一整页（或多页）：</p>
+
+<pre><code class="language-c">// ___slab_alloc() 慢路径
+new_slab = allocate_slab(s, flags, node)
+  └── alloc_slab_page(s, alloc_gfp, node, oo)
+       └── alloc_pages(alloc_gfp, oo_order(oo))  // ← 向 buddy 申请 2^order 页</code></pre>
+
+<p>申请到的页整体作为一个 slab 使用，并将 <code>struct folio</code> 标记为 slab（<code>__folio_set_slab()</code>）。</p>
+
+<h3>3.2 向 Buddy 归还内存（释放路径）</h3>
+
+<p>SLUB <strong>会</strong>还内存给 buddy，<strong>但有条件</strong>。条件是：<strong>slab 全空</strong> 且 <strong>node 的 partial slab 数量 ≥ <code>min_partial</code></strong>。</p>
+
+<h4>完整的内存流转图</h4>
+
+<pre><code>kmem_cache_free(obj)
+  │
+  ▼
+[per-CPU slab freelist]
+  │  对象还入，slab 变全空
+  ▼
+对象全部释放？
+  ├── 否 → 留在 per-CPU slab 或进 per-CPU partial list
+  └── 是 → 检查 n-&gt;nr_partial &gt;= s-&gt;min_partial
+             ├── 否（partial 不足）→ 保留在 node partial list，不还
+             └── 是（partial 充足）→ discard_slab()
+                                          └── __free_slab()
+                                               └── free_frozen_pages()
+                                                    └── __free_pages_ok()
+                                                         └── __free_one_page()
+                                                              └── ★ 进入 buddy free_area[]</code></pre>
+
+<h4>关键决策代码（mm/slub.c:3784）</h4>
+
+<pre><code class="language-c">// deactivate_slab 中的决策（CPU slab 换出时）
+if (!new.inuse &amp;&amp; n-&gt;nr_partial &gt;= s-&gt;min_partial) {
+    stat(s, DEACTIVATE_EMPTY);
+    discard_slab(s, slab);     // ★ 直接还给 buddy
+} else if (new.freelist) {
+    add_partial(n, slab, tail); // 放入 partial list 留待复用
+}
+
+// __slab_free 中的决策（正常对象释放时）
+if (unlikely(!new.inuse &amp;&amp; n-&gt;nr_partial &gt;= s-&gt;min_partial))
+    goto slab_empty;   // → discard_slab() → ★ 还给 buddy</code></pre>
+
+<h3>3.3 <code>min_partial</code> 水位：保留多少不还</h3>
+
+<pre><code class="language-c">// 计算公式（mm/slub.c:8596）
+s-&gt;min_partial = min_t(unsigned long, MAX_PARTIAL, ilog2(s-&gt;size) / 2);
+s-&gt;min_partial = max_t(unsigned long, MIN_PARTIAL, s-&gt;min_partial);
+
+// 默认常量（非 SLUB_TINY 配置）
+#define MIN_PARTIAL   5    // 每个 node 至少保留 5 个 partial slab
+#define MAX_PARTIAL  10    // 最多保留 10 个 partial slab</code></pre>
+
+<table>
+<thead><tr>
+<th>对象大小</th>
+<th><code>ilog2(size)/2</code></th>
+<th><code>min_partial</code> 实际值</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>8 bytes</td>
+<td>1</td>
+<td>5（MIN_PARTIAL 下限）</td>
+</tr>
+<tr>
+<td>64 bytes</td>
+<td>3</td>
+<td>5（MIN_PARTIAL 下限）</td>
+</tr>
+<tr>
+<td>256 bytes</td>
+<td>4</td>
+<td>5（MIN_PARTIAL 下限）</td>
+</tr>
+<tr>
+<td>4096 bytes</td>
+<td>6</td>
+<td>6</td>
+</tr>
+</tbody></table>
+
+<p>可通过 <code>/sys/kernel/slab/<name>/min_partial</code> 动态调整。</p>
+
+<p><strong>保留逻辑</strong>：partial slab 中有部分对象仍在使用，保留它们避免反复向 buddy 申请/归还（thrashing）。</p>
+
+<h3>3.4 主动回收：触发 <code>discard_slab</code> 的三种时机</h3>
+
+<table>
+<thead><tr>
+<th>时机</th>
+<th>触发条件</th>
+<th>路径</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>普通 free</strong></td>
+<td>slab 全空 AND <code>nr_partial >= min_partial</code></td>
+<td><code>__slab_free</code> → <code>discard_slab</code></td>
+</tr>
+<tr>
+<td><strong>内存压力</strong></td>
+<td>kswapd 触发 <code>shrink_slab()</code></td>
+<td><code>mm/vmscan.c:4955</code> → <code>__kmem_cache_do_shrink()</code></td>
+</tr>
+<tr>
+<td><strong><code>kmem_cache_shrink()</code></strong></td>
+<td>手动调用或内存 hotplug offline</td>
+<td>扫描所有 node partial，全空 slab 全部释放</td>
+</tr>
+</tbody></table>
+
+<h4><code>kmem_cache_shrink</code> 扫描逻辑（mm/slub.c:8264）</h4>
+
+<pre><code class="language-c">static int __kmem_cache_do_shrink(struct kmem_cache *s)
+{
+    for_each_kmem_cache_node(s, node, n) {
+        list_for_each_entry_safe(slab, t, &amp;n-&gt;partial, slab_list) {
+            int free = slab-&gt;objects - slab-&gt;inuse;
+            
+            if (free == slab-&gt;objects) {       // slab 完全空
+                list_move(&amp;slab-&gt;slab_list, &amp;discard);
+                n-&gt;nr_partial--;
+            } else if (free &lt;= SHRINK_PROMOTE_MAX)
+                list_move(..., promote + free - 1); // 最满的提到链表头
+        }
+        // 批量释放，连 min_partial 也不保留（强制回收）
+        list_for_each_entry_safe(slab, t, &amp;discard, slab_list)
+            free_slab(s, slab);                // ★ 全部还给 buddy
+    }
+}</code></pre>
+
+<h3>3.5 最终归还调用链</h3>
+
+<pre><code class="language-c">discard_slab(s, slab)
+  └── free_slab(s, slab)
+       ├── SLAB_TYPESAFE_BY_RCU（如 vm_area_struct）
+       │    └── call_rcu(&amp;slab-&gt;rcu_head, rcu_free_slab)  ← 延迟归还
+       └── 普通 slab
+            └── __free_slab(s, slab)                      // mm/slub.c:3290
+                 ├── __folio_clear_slab()   // 清除 folio 的 slab 标志位
+                 ├── folio-&gt;mapping = NULL  // 解除 slab 与地址空间的关联
+                 └── free_frozen_pages(&amp;folio-&gt;page, order)  // ★ 还给 buddy
+                      └── __free_pages_ok(page, order, FPI_NONE)
+                           └── __free_one_page()       // 插入 free_area[order]
+                                └── buddy 合并，尝试合并为更大 order 块</code></pre>
+
+<h3>3.6 不会归还的例外</h3>
+
+<ol>
+<li><strong><code>SLAB_TYPESAFE_BY_RCU</code> 标志</strong>（如 <code>vm_area_struct</code>）：全空 slab 需等 RCU grace period 后才归还，保证读者安全。</li>
+<li><strong><code>nr_partial < min_partial</code></strong>：保留全空 slab 备用，不归还。</li>
+<li><strong><code>SLUB_TINY</code> 配置</strong>（极简嵌入式）：<code>MIN_PARTIAL = MAX_PARTIAL = 0</code>，全空 slab 立即归还。</li>
+</ol>
+
+<hr>
+
+<h2>4. 三大主题的统一视角</h2>
+
+<h3>4.1 内存管理完整层次图</h3>
+
+<pre><code>                         ┌─────────────────────────────────────┐
+                         │         用户态进程                    │
+                         │   malloc() → glibc ptmalloc2         │
+                         └─────────────┬───────────────────────┘
+                                       │ brk() / mmap() 系统调用
+                         ┌─────────────▼───────────────────────┐
+                         │         VMA 层（虚拟内存）            │
+                         │   vm_area_struct + maple_tree         │
+               ┌─────────┤   per-VMA lock / mmap_lock           ├──────────┐
+               │         │   缺页处理决策树                      │          │
+               │         └─────────────┬───────────────────────┘          │
+               │                       │ alloc_pages() / do_anonymous_page │
+               │         ┌─────────────▼───────────────────────┐          │
+               │         │         SLUB 层（对象分配）           │          │
+               │VMAs from│   kmem_cache（对象工厂）              │← 全空slab│
+               │SLUB     │   kmem_cache_cpu（per-CPU 快路径）    │  还给     │
+               │         │   kmem_cache_node（partial 池）       │  buddy   │
+               └─────────┤   条件：nr_partial &gt;= min_partial    ├──────────┘
+                         └─────────────┬───────────────────────┘
+                                       │ alloc_pages() / free_frozen_pages()
+                         ┌─────────────▼───────────────────────┐
+                         │         Buddy 层（页分配）            │
+                         │   zone.free_area[0..10]              │
+                         │   MIGRATE_MOVABLE/UNMOVABLE/RECLAIMABLE│
+                         └─────────────┬───────────────────────┘
+                                       │ memblock_free_all() 一次性过渡
+                         ┌─────────────▼───────────────────────┐
+                         │         Memblock 层（启动期）         │
+                         │   memblock.memory / memblock.reserved│
+                         │   启动完成后静默废弃                   │
+                         └─────────────────────────────────────┘</code></pre>
+
+<h3>4.2 关键问题汇总</h3>
+
+<table>
+<thead><tr>
+<th>问题</th>
+<th>答案</th>
+<th>关键代码位置</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>memblock 何时退出历史舞台？</td>
+<td><code>memblock_free_all()</code> 后不再使用，数据仍在内存但无人读</td>
+<td>mm/memblock.c:2339</td>
+</tr>
+<tr>
+<td>buddy 的 free_list 何时第一次有数据？</td>
+<td><code>__free_one_page()</code> 在 <code>memblock_free_all()</code> 中首次被调用</td>
+<td>mm/page_alloc.c:940</td>
+</tr>
+<tr>
+<td>VMA 在哪里分配？</td>
+<td>从 SLUB 的 <code>vm_area_cachep</code> 分配</td>
+<td>mm/vma_init.c:32</td>
+</tr>
+<tr>
+<td>缺页时物理页从哪来？</td>
+<td><code>alloc_anon_folio()</code> → buddy <code>alloc_pages()</code></td>
+<td>mm/memory.c:5134</td>
+</tr>
+<tr>
+<td>SLUB 全空 slab 何时还给 buddy？</td>
+<td><code>nr_partial >= min_partial</code> 时立即还，否则保留</td>
+<td>mm/slub.c:3784</td>
+</tr>
+<tr>
+<td><code>min_partial</code> 默认值？</td>
+<td>5~10（由对象大小决定，ilog2(size)/2 取值）</td>
+<td>mm/slub.c:8596</td>
+</tr>
+<tr>
+<td>强制回收 SLUB 内存的方法？</td>
+<td><code>kmem_cache_shrink()</code> 或内存压力触发 <code>shrink_slab()</code></td>
+<td>mm/slub.c:8324</td>
+</tr>
+</tbody></table>
+
+<h3>4.3 嵌入式系统关注点</h3>
+
+<ol>
+<li><strong>内存紧张场景</strong>：适当降低 <code>min_partial</code>（<code>/sys/kernel/slab/*/min_partial</code>）可以让 SLUB 更积极地将空 slab 还给 buddy</li>
+<li><strong>实时性要求</strong>：<code>VM_LOCKED</code> + <code>mlock()</code> 锁定关键 VMA，防止缺页抖动</li>
+<li><strong>设备内存映射</strong>：<code>VM_PFNMAP</code> 是将 MMIO 物理地址映射到用户态的标准方式，无 struct page 开销</li>
+<li><strong>SLUB_TINY 配置</strong>：<code>MIN_PARTIAL = 0</code>，全空 slab 立即归还，以延迟换内存节省</li>
+<li><strong>UMA 过渡影响</strong>：<code>!CONFIG_NUMA</code> 时 <code>NODE_DATA()</code> 直接返回 <code>&contig_page_data</code>，<code>__free_one_page</code> 无 nid 约束，buddy 合并效率更高</li>
+</ol>
+
+<hr>
+
+<p><em>文档基于 Linux 6.18.1 内核源码，ARM64 架构，GDB 实测数据。</em>  <br>
+<em>相关文档：<code>slub_analysis.md</code>（SLUB 深度分析）、<code>memory_subsystem_data_structures.md</code>（数据结构全景）</em></p>
+
+</body>
+</html>

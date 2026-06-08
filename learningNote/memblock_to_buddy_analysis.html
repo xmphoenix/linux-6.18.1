@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memblock To Buddy Analysis</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux ARM64 内存初始化：memblock → Buddy Allocator 过渡分析</h1>
+
+<blockquote>环境：Linux 6.18.1 / ARM64 / QEMU 1GB 内存</blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><a href="#1-核心问题free_area-是在哪里填充的">1. 核心问题：free_area 是在哪里填充的？</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#2-完整调用链">2. 完整调用链</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#3-关键函数说明">3. 关键函数说明</a></summary></p>
+
+<ul>
+<li><a href="#31-<strong>free_pages_memory--按对齐分配-ordermemblockc">3.1 <code></strong>free_pages_memory()</code> — 按对齐分配 order（memblock.c）</a></li>
+<li><a href="#32-free_one_page--中间层page_allocc1528">3.2 <code>free_one_page()</code> — 中间层（page_alloc.c:1528）</a></li>
+<li><a href="#33-<strong>free_one_page--buddy-合并核心page_allocc940">3.3 <code></strong>free_one_page()</code> — buddy 合并核心（page_alloc.c:940）</a></li>
+<li><a href="#34-<strong>add_to_free_list--最终插入page_allocc803">3.4 <code></strong>add_to_free_list()</code> — 最终插入（page_alloc.c:803）</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#4-memblock_free_all-完成后-buddy-分配器是否可用">4. memblock_free_all() 完成后 Buddy 分配器是否可用？</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#5-为什么不是全部都放进最大-order">5. 为什么不是全部都放进最大 order？</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#6-数据结构回顾">6. 数据结构回顾</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#7-今日讨论总结">7. 今日讨论总结</a></summary></p>
+
+<p></details></p>
+
+<hr>
+
+<h2>1. 核心问题：free_area 是在哪里填充的？</h2>
+
+<p><code>free_area_init()</code> → <code>zone_init_free_lists()</code> 只是建立了<strong>空骨架</strong>（<code>INIT_LIST_HEAD</code> + <code>nr_free = 0</code>），真正把页面挂进去是在 <code>memblock_free_all()</code> 调用链中完成的。</p>
+
+<hr>
+
+<h2>2. 完整调用链</h2>
+
+<pre><code>mm_core_init()                              [mm/mm_init.c]
+  └─ memblock_free_all()                    [mm/memblock.c]
+       ├─ free_unused_memmap()              清理多余的 memmap
+       ├─ reset_all_zones_managed_pages()   清零 managed_pages 计数
+       └─ free_low_memory_core_early()
+            └─ __free_memory_core(start, end)
+                 └─ __free_pages_memory(start_pfn, end_pfn)   ← 按对齐计算 order
+                      └─ memblock_free_pages(page, pfn, order) [mm/mm_init.c:2483]
+                           └─ __free_pages_core(page, order, MEMINIT_EARLY)
+                                └─ __free_pages_ok(page, order, FPI_TO_TAIL)
+                                     └─ free_one_page(zone, page, pfn, order, flags)
+                                          └─ split_large_buddy(zone, page, pfn, order, fpi)
+                                               └─ __free_one_page(page, pfn, zone, order, mt, fpi)
+                                                    ├─ [buddy merge 循环] 向上合并找伙伴
+                                                    └─ __add_to_free_list(page, zone, order, mt, to_tail)
+                                                         └─ list_add[_tail](&amp;page-&gt;buddy_list,
+                                                                    &amp;zone-&gt;free_area[order].free_list[mt])
+                                                            area-&gt;nr_free++
+                                                            ★ 真正插入 free_area</code></pre>
+
+<hr>
+
+<h2>3. 关键函数说明</h2>
+
+<h3>3.1 <code>__free_pages_memory()</code> — 按对齐分配 order（memblock.c）</h3>
+
+<pre><code class="language-c">static void __init __free_pages_memory(unsigned long start, unsigned long end)
+{
+    int order;
+    while (start &lt; end) {
+        if (start)
+            order = min_t(int, MAX_PAGE_ORDER, __ffs(start)); // 按 PFN 对齐找最大 order
+        else
+            order = MAX_PAGE_ORDER;
+
+        while (start + (1UL &lt;&lt; order) &gt; end)
+            order--;  // 范围不够则降 order
+
+        memblock_free_pages(pfn_to_page(start), start, order);
+        start += (1UL &lt;&lt; order);
+    }
+}</code></pre>
+
+<p><strong>关键规律</strong>：order-N 块要求 <code>PFN % (1 << N) == 0</code>，即自然对齐约束决定了每个块的 order，<strong>不是全部都用最大 order</strong>。</p>
+
+<h3>3.2 <code>free_one_page()</code> — 中间层（page_alloc.c:1528）</h3>
+
+<p>注意：<code>free_one_page()</code> <strong>不直接</strong>调用 <code>__free_one_page()</code>，中间经过 <code>split_large_buddy()</code>：</p>
+
+<pre><code class="language-c">free_one_page(zone, page, pfn, order, fpi_flags)
+  └─ spin_lock_irqsave(&amp;zone-&gt;lock, flags)     获取 zone 锁
+  └─ split_large_buddy(zone, page, pfn, order, fpi_flags)
+       // 若 order &gt; pageblock_order，拆成多个 pageblock_order 大小的块
+       └─ __free_one_page(page, pfn, zone, order, mt, fpi)</code></pre>
+
+<h3>3.3 <code>__free_one_page()</code> — buddy 合并核心（page_alloc.c:940）</h3>
+
+<pre><code class="language-c">while (order &lt; MAX_PAGE_ORDER) {
+    buddy = find_buddy_page_pfn(page, pfn, order, &amp;buddy_pfn);
+    if (!buddy) goto done_merging;
+
+    __del_page_from_free_list(buddy, zone, order, buddy_mt); // 从链表摘出 buddy
+    combined_pfn = buddy_pfn &amp; pfn;  // 合并后的起始 PFN
+    pfn = combined_pfn;
+    order++;  // 升阶
+}
+done_merging:
+    set_buddy_order(page, order);       // 记录 order 到 page-&gt;private
+    __add_to_free_list(page, zone, order, migratetype, to_tail); // ★ 插入 free_area</code></pre>
+
+<p><strong>buddy 伙伴公式</strong>：<code>buddy_pfn = pfn ^ (1 << order)</code></p>
+
+<h3>3.4 <code>__add_to_free_list()</code> — 最终插入（page_alloc.c:803）</h3>
+
+<pre><code class="language-c">static inline void __add_to_free_list(struct page *page, struct zone *zone,
+                                      unsigned int order, int migratetype, bool tail)
+{
+    struct free_area *area = &amp;zone-&gt;free_area[order];  // 选对应 order 的槽
+
+    if (tail)
+        list_add_tail(&amp;page-&gt;buddy_list, &amp;area-&gt;free_list[migratetype]);
+    else
+        list_add(&amp;page-&gt;buddy_list, &amp;area-&gt;free_list[migratetype]);
+    area-&gt;nr_free++;
+}</code></pre>
+
+<hr>
+
+<h2>4. memblock_free_all() 完成后 Buddy 分配器是否可用？</h2>
+
+<p><strong>是的，buddy 分配器在 <code>memblock_free_all()</code> 返回后即可使用。</strong></p>
+
+<pre><code class="language-c">void __init mm_core_init(void)
+{
+    build_all_zonelists(NULL);    // ① zonelist 建立（分配 fallback 链）
+    ...
+    memblock_free_all();          // ② buddy 可用：free_area 已填充
+    mem_init();                   // ③ 体系结构收尾（ARM64 无实质内容）
+    kmem_cache_init();            // ④ slab 建立（依赖 buddy）
+    ...
+}</code></pre>
+
+<table>
+<thead><tr>
+<th>分配器</th>
+<th>可用时机</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>memblock</td>
+<td>早期 boot，<code>memblock_free_all()</code> 之前</td>
+</tr>
+<tr>
+<td>buddy (<code>alloc_pages</code>)</td>
+<td><code>memblock_free_all()</code> 之后</td>
+</tr>
+<tr>
+<td>slab (<code>kmalloc</code>)</td>
+<td><code>kmem_cache_init()</code> 之后</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>5. 为什么不是全部都放进最大 order？</h2>
+
+<p>以 QEMU 1GB 内存为例，内核占用 PFN <code>[0x40000, 0x40800)</code>，空闲从 <code>0x40800</code> 开始：</p>
+
+<pre><code>PFN 0x40800 = 0b 0100 0000 1000 0000 0000 0000
+__ffs(0x40800) = 11  → order = min(10, 11) = 10 ？
+
+实际：0x40800 % (1&lt;&lt;10) = 0x40800 % 0x400 = 0
+      0x40800 % (1&lt;&lt;11) = 0x40800 % 0x800 = 0  ← 满足 order-10</code></pre>
+
+<p>所以从 0x40800 开始确实可以分配 order-10 的块，这也解释了 <code>/proc/buddyinfo</code> 中看到 223 个 order-10 块的原因。边界处（内核末尾附近）的零散 PFN 因对齐不满足大 order 而产生小 order 块。</p>
+
+<hr>
+
+<h2>6. 数据结构回顾</h2>
+
+<pre><code>struct zone {
+    struct free_area free_area[NR_PAGE_ORDERS];  // [11] 个 order 槽
+};
+
+struct free_area {
+    struct list_head free_list[MIGRATE_TYPES];  // [6] 个迁移类型链表
+    unsigned long    nr_free;                    // 本 order 空闲块总数
+};</code></pre>
+
+<p><code>zone->free_area[order].free_list[migratetype]</code> 是最终存放空闲页的位置，由 <code><strong>add_to_free_list()</code> 写入，由 <code></strong>rmqueue_smallest()</code> 读取（分配时）。</p>
+
+<hr>
+
+<h2>7. 今日讨论总结</h2>
+
+<table>
+<thead><tr>
+<th>问题</th>
+<th>结论</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>free_area 在哪填充</td>
+<td><code>memblock_free_all()</code> 调用链最底层的 <code>__add_to_free_list()</code></td>
+</tr>
+<tr>
+<td><code>free_one_page</code> 是否直接调用 <code>__free_one_page</code></td>
+<td>否，中间有 <code>split_large_buddy()</code></td>
+</tr>
+<tr>
+<td>memblock_free_all 后 buddy 是否可用</td>
+<td>是，buddy 可用；slab 要等 <code>kmem_cache_init()</code></td>
+</tr>
+<tr>
+<td>从 memblock 转 free_area 是否全用最大 order</td>
+<td>否，由 PFN 自然对齐约束决定每块的 order</td>
+</tr>
+</tbody></table>
+
+</body>
+</html>

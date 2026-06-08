@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hung Task Deep Dive</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux Kernel Hung Task 检测机制深度解析</h1>
+
+<blockquote>基于 Linux 6.18.1 内核源码（<code>kernel/hung_task.c</code>、<code>include/linux/hung_task.h</code>、<code>include/linux/sched.h</code>）</blockquote>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><b>1. 软件架构总览</b></summary></p>
+
+<ul>
+<li>1.1 <a href="#11-设计目标">设计目标</a></li>
+<li>1.2 <a href="#12-整体架构图">整体架构图</a></li>
+<li>1.3 <a href="#13-核心源文件">核心源文件</a></li>
+<li>1.4 <a href="#14-kconfig-编译选项">Kconfig 编译选项</a></li>
+</ul>
+<p></details><br>
+<details><br>
+<summary><b>2. 关键数据结构及其关系</b></summary></p>
+
+<ul>
+<li>2.1 <a href="#21-task_struct-中的-hung-task-字段">task_struct 中的 hung task 字段</a></li>
+<li>2.2 <a href="#22-blocker-编码机制">blocker 编码机制</a></li>
+<li>2.3 <a href="#23-sysctl-控制变量">sysctl 控制变量</a></li>
+<li>2.4 <a href="#24-数据结构关系图">数据结构关系图</a></li>
+</ul>
+<p></details><br>
+<details><br>
+<summary><b>3. 实现原理</b></summary></p>
+
+<ul>
+<li>3.1 <a href="#31-khungtaskd-内核线程">khungtaskd 内核线程</a></li>
+<li>3.2 <a href="#32-task_is_hung-判定算法">task_is_hung 判定算法</a></li>
+<li>3.3 <a href="#33-check_hung_task-处理流程">check_hung_task 处理流程</a></li>
+<li>3.4 <a href="#34-rcu-锁分段机制">RCU 锁分段机制</a></li>
+<li>3.5 <a href="#35-blocker-追踪机制">blocker 追踪机制</a></li>
+<li>3.6 <a href="#36-电源管理集成">电源管理集成</a></li>
+<li>3.7 <a href="#37-完整检测流程图">完整检测流程图</a></li>
+</ul>
+<p></details><br>
+<details><br>
+<summary><b>4. 用法总结</b></summary></p>
+
+<ul>
+<li>4.1 <a href="#41-编译配置">编译配置</a></li>
+<li>4.2 <a href="#42-运行时-sysctl-调优">运行时 sysctl 调优</a></li>
+<li>4.3 <a href="#43-内核启动参数">内核启动参数</a></li>
+<li>4.4 <a href="#44-典型使用场景">典型使用场景</a></li>
+</ul>
+<p></details><br>
+<details><br>
+<summary><b>5. hung task 发生意味着什么</b></summary></p>
+
+<ul>
+<li>5.1 <a href="#51-d-状态的本质">D 状态的本质</a></li>
+<li>5.2 <a href="#52-常见根因分类">常见根因分类</a></li>
+<li>5.3 <a href="#53-与其他检测机制的区别">与其他检测机制的区别</a></li>
+<li>5.4 <a href="#54-生产环境影响">生产环境影响</a></li>
+</ul>
+<p></details><br>
+<details><br>
+<summary><b>6. QEMU 模拟实验</b></summary></p>
+
+<ul>
+<li>6.1 <a href="#61-实验环境准备">实验环境准备</a></li>
+<li>6.2 <a href="#62-实验一触发基本-hung-task-告警">实验一：触发基本 hung task 告警</a></li>
+<li>6.3 <a href="#63-实验二hung_task_panic-触发内核-panic">实验二：hung_task_panic 触发内核 panic</a></li>
+<li>6.4 <a href="#64-实验三观察-blocker-信息输出">实验三：观察 blocker 信息输出</a></li>
+<li>6.5 <a href="#65-实验四动态调整-sysctl-参数">实验四：动态调整 sysctl 参数</a></li>
+</ul>
+<p></details><br>
+<details><br>
+<summary><b>7. 面试经典问题与答案</b></summary></p>
+
+<ul>
+<li><a href="#q1-什么是-hung-task">Q1: 什么是 hung task？</a></li>
+<li><a href="#q2-khungtaskd-如何判断一个任务是-hung">Q2: khungtaskd 如何判断一个任务是 hung？</a></li>
+<li><a href="#q3-为什么只检测-task_uninterruptible-而不检测-task_interruptible">Q3: 为什么只检测 TASK_UNINTERRUPTIBLE 而不检测 TASK_INTERRUPTIBLE？</a></li>
+<li><a href="#q4-task_killable-的任务会被检测为-hung-吗">Q4: TASK_KILLABLE 的任务会被检测为 hung 吗？</a></li>
+<li><a href="#q5-hung-task-与-soft-lockup--hard-lockup-有什么区别">Q5: hung task 与 soft lockup / hard lockup 有什么区别？</a></li>
+<li><a href="#q6-为什么检测循环中需要-rcu-lock-break">Q6: 为什么检测循环中需要 RCU lock break？</a></li>
+<li><a href="#q7-blocker-字段是如何编码的">Q7: blocker 字段是如何编码的？</a></li>
+<li><a href="#q8-生产环境中如何处理-hung-task">Q8: 生产环境中如何处理 hung task？</a></li>
+<li><a href="#q9-hung-task-检测在-suspendresume-流程中如何处理">Q9: hung task 检测在 suspend/resume 流程中如何处理？</a></li>
+<li><a href="#q10-如何区分真正的-hung-task-和合理的长时间-d-状态">Q10: 如何区分真正的 hung task 和合理的长时间 D 状态？</a></li>
+</ul>
+<p></details></p>
+
+<hr>
+
+<h2>1. 软件架构总览</h2>
+
+<h3>1.1 设计目标</h3>
+
+<p>Hung task 检测器的核心使命：<strong>发现长时间处于 <code>TASK_UNINTERRUPTIBLE</code>（D 状态）而未被调度的任务，并发出告警或触发 panic</strong>。</p>
+
+<p>在正常的内核运行中，进程进入 D 状态是为了等待不可中断的 I/O 操作（如磁盘读写），通常在毫秒级别就会返回。当一个进程在 D 状态停留超过 120 秒（默认值），几乎可以确定内核存在 bug——可能是死锁、驱动异常或资源泄漏。</p>
+
+<h3>1.2 整体架构图</h3>
+
+<p><img src="image/hung_task_architecture.svg" alt="Hung Task 软件架构总览"></p>
+
+<h3>1.3 核心源文件</h3>
+
+<table>
+<thead><tr>
+<th>文件</th>
+<th>作用</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>kernel/hung_task.c</code></td>
+<td>检测器完整实现：khungtaskd 线程、判定逻辑、sysctl 接口</td>
+</tr>
+<tr>
+<td><code>include/linux/hung_task.h</code></td>
+<td>blocker 类型定义、辅助函数（<code>hung_task_set_blocker</code> 等）</td>
+</tr>
+<tr>
+<td><code>include/linux/sched.h</code></td>
+<td><code>task_struct</code> 中 <code>last_switch_count</code>/<code>last_switch_time</code>/<code>blocker</code> 字段</td>
+</tr>
+<tr>
+<td><code>lib/Kconfig.debug</code></td>
+<td><code>CONFIG_DETECT_HUNG_TASK</code> 等编译选项</td>
+</tr>
+</tbody></table>
+
+<h3>1.4 Kconfig 编译选项</h3>
+
+<pre><code class="language-kconfig">CONFIG_DETECT_HUNG_TASK        # 主开关，依赖 DEBUG_KERNEL
+CONFIG_DEFAULT_HUNG_TASK_TIMEOUT  # 默认超时（秒），默认 120
+CONFIG_BOOTPARAM_HUNG_TASK_PANIC  # 启动时即 panic on hung task
+CONFIG_DETECT_HUNG_TASK_BLOCKER   # 输出阻塞者（持锁任务）堆栈</code></pre>
+
+<blockquote>源码位置：<code>lib/Kconfig.debug</code> 第 1230–1290 行</blockquote>
+
+<hr>
+
+<h2>2. 关键数据结构及其关系</h2>
+
+<h3>2.1 task_struct 中的 hung task 字段</h3>
+
+<pre><code class="language-c">/* include/linux/sched.h */
+struct task_struct {
+    /* ... */
+    unsigned long  nvcsw;              /* 自愿上下文切换计数 */
+    unsigned long  nivcsw;             /* 非自愿上下文切换计数 */
+
+#ifdef CONFIG_DETECT_HUNG_TASK
+    unsigned long  last_switch_count;  /* 上次检测时的 nvcsw+nivcsw */
+    unsigned long  last_switch_time;   /* 上次切换时的 jiffies */
+#endif
+
+#ifdef CONFIG_DETECT_HUNG_TASK_BLOCKER
+    unsigned long  blocker;            /* 编码后的锁地址 + 阻塞类型 */
+#endif
+    /* ... */
+};</code></pre>
+
+<p><strong>三组关键字段</strong>：</p>
+
+<table>
+<thead><tr>
+<th>字段</th>
+<th>类型</th>
+<th>含义</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>nvcsw</code></td>
+<td><code>unsigned long</code></td>
+<td>累计自愿上下文切换次数（voluntary context switch）</td>
+</tr>
+<tr>
+<td><code>nivcsw</code></td>
+<td><code>unsigned long</code></td>
+<td>累计非自愿上下文切换次数（involuntary context switch）</td>
+</tr>
+<tr>
+<td><code>last_switch_count</code></td>
+<td><code>unsigned long</code></td>
+<td>khungtaskd 上次检查时记录的 <code>nvcsw + nivcsw</code></td>
+</tr>
+<tr>
+<td><code>last_switch_time</code></td>
+<td><code>unsigned long</code></td>
+<td>上次发生切换的 <code>jiffies</code> 时间戳</td>
+</tr>
+<tr>
+<td><code>blocker</code></td>
+<td><code>unsigned long</code></td>
+<td>低 2 位编码锁类型，高位存储锁地址</td>
+</tr>
+</tbody></table>
+
+<h3>2.2 blocker 编码机制</h3>
+
+<p><code>blocker</code> 字段利用锁地址的对齐特性（至少 4 字节对齐，低 2 位恒为 0），在低 2 位编码阻塞类型：</p>
+
+<pre><code class="language-c">/* include/linux/hung_task.h */
+#define BLOCKER_TYPE_MUTEX         0x00UL  /* 00 - mutex */
+#define BLOCKER_TYPE_SEM           0x01UL  /* 01 - semaphore */
+#define BLOCKER_TYPE_RWSEM_READER  0x02UL  /* 10 - rwsem 读端 */
+#define BLOCKER_TYPE_RWSEM_WRITER  0x03UL  /* 11 - rwsem 写端 */
+#define BLOCKER_TYPE_MASK          0x03UL</code></pre>
+
+<p>编码/解码操作：</p>
+
+<pre><code>设置: blocker = lock_addr | type
+取类型: type = blocker &amp; BLOCKER_TYPE_MASK
+取锁地址: lock_addr = blocker &amp; ~BLOCKER_TYPE_MASK
+
+示例：锁地址 0xFFFF0000DEAD0040，类型 mutex(0x00)
+      blocker = 0xFFFF0000DEAD0040 | 0x00 = 0xFFFF0000DEAD0040
+      
+示例：锁地址 0xFFFF0000DEAD0040，类型 rwsem_writer(0x03)
+      blocker = 0xFFFF0000DEAD0040 | 0x03 = 0xFFFF0000DEAD0043</code></pre>
+
+<h3>2.3 sysctl 控制变量</h3>
+
+<pre><code class="language-c">/* kernel/hung_task.c 中的全局变量 */
+static int  sysctl_hung_task_check_count;        /* 每轮最多检查任务数, 默认 PID_MAX_LIMIT */
+static unsigned long sysctl_hung_task_detect_count;  /* 累计检测到的 hung task 数（只读）*/
+unsigned long sysctl_hung_task_timeout_secs;      /* 超时阈值，默认 120 秒 */
+static unsigned long sysctl_hung_task_check_interval_secs; /* 检查间隔, 0=同 timeout */
+static int  sysctl_hung_task_warnings;            /* 剩余告警次数, 默认 10 */
+static unsigned int sysctl_hung_task_panic;       /* 是否 panic, 0 或 1 */
+static unsigned int sysctl_hung_task_all_cpu_backtrace; /* 是否 dump 所有 CPU 回溯 */</code></pre>
+
+<p>对应 <code>/proc/sys/kernel/</code> 下的文件：</p>
+
+<table>
+<thead><tr>
+<th>sysctl 路径</th>
+<th>变量</th>
+<th>默认值</th>
+<th>权限</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>hung_task_timeout_secs</code></td>
+<td><code>sysctl_hung_task_timeout_secs</code></td>
+<td>120</td>
+<td>0644</td>
+<td>超时阈值（0=禁用）</td>
+</tr>
+<tr>
+<td><code>hung_task_check_interval_secs</code></td>
+<td><code>sysctl_hung_task_check_interval_secs</code></td>
+<td>0</td>
+<td>0644</td>
+<td>检测间隔（0=同 timeout）</td>
+</tr>
+<tr>
+<td><code>hung_task_check_count</code></td>
+<td><code>sysctl_hung_task_check_count</code></td>
+<td>PID_MAX_LIMIT</td>
+<td>0644</td>
+<td>每轮最大检查数</td>
+</tr>
+<tr>
+<td><code>hung_task_warnings</code></td>
+<td><code>sysctl_hung_task_warnings</code></td>
+<td>10</td>
+<td>0644</td>
+<td>剩余告警次数（-1=无限）</td>
+</tr>
+<tr>
+<td><code>hung_task_panic</code></td>
+<td><code>sysctl_hung_task_panic</code></td>
+<td>0</td>
+<td>0644</td>
+<td>检测到 hung 时是否 panic</td>
+</tr>
+<tr>
+<td><code>hung_task_detect_count</code></td>
+<td><code>sysctl_hung_task_detect_count</code></td>
+<td>0</td>
+<td>0444</td>
+<td>累计 hung 次数（只读）</td>
+</tr>
+<tr>
+<td><code>hung_task_all_cpu_backtrace</code></td>
+<td><code>sysctl_hung_task_all_cpu_backtrace</code></td>
+<td>0</td>
+<td>0644</td>
+<td>是否 dump 所有 CPU（SMP）</td>
+</tr>
+</tbody></table>
+
+<h3>2.4 数据结构关系图</h3>
+
+<p><img src="image/hung_task_data_structures.svg" alt="Hung Task 关键数据结构关系"></p>
+
+<p><!--<br>
+原始文本版保留供参考：</p>
+<pre><code>┌──────────────────────────────────────────┐
+│            task_struct (进程)              │
+├──────────────────────────────────────────┤
+│  __state          : TASK_UNINTERRUPTIBLE │──── 检测前提
+│  nvcsw            : 自愿切换计数          │──┐
+│  nivcsw           : 非自愿切换计数        │──┤
+│                                          │  │  switch_count = nvcsw + nivcsw
+│  last_switch_count: 上次记录的切换计数    │◄─┘
+│  last_switch_time : 上次切换的 jiffies    │──── 用于超时判定
+│                                          │
+│  blocker          : 编码的锁地址+类型     │──── debug_show_blocker() 解码
+│  comm[16]         : 进程名               │
+│  pid              : 进程 ID              │
+│  flags (PF_POSTCOREDUMP)                 │──── coredump 阻塞标记
+└──────────────────────────────────────────┘
+            ▲
+            │ for_each_process_thread() 遍历
+            │
+┌──────────────────────────────────────────┐
+│           khungtaskd 线程                 │
+├──────────────────────────────────────────┤
+│  watchdog_task    : 线程 task_struct 指针 │
+│  hung_last_checked: 上次检查的 jiffies    │
+│  reset_hung_task  : atomic 重置标志       │
+│  hung_detector_suspended: PM 挂起标志     │
+│                                          │
+│  sysctl 控制:                            │
+│    timeout / interval / check_count      │
+│    warnings / panic / all_cpu_backtrace  │
+└──────────────────────────────────────────┘</code></pre>
+<p>--></p>
+
+<hr>
+
+<h2>3. 实现原理</h2>
+
+<h3>3.1 khungtaskd 内核线程</h3>
+
+<p>khungtaskd 是整个机制的驱动核心，在 <code>subsys_initcall</code> 阶段启动：</p>
+
+<pre><code class="language-c">static int __init hung_task_init(void)
+{
+    atomic_notifier_chain_register(&amp;panic_notifier_list, &amp;panic_block);
+    pm_notifier(hungtask_pm_notify, 0);          /* 注册电源管理回调 */
+    watchdog_task = kthread_run(watchdog, NULL, &quot;khungtaskd&quot;);
+    hung_task_sysctl_init();                      /* 注册 sysctl 接口 */
+    return 0;
+}
+subsys_initcall(hung_task_init);</code></pre>
+
+<p><code>watchdog()</code> 函数是线程主循环：</p>
+
+<pre><code class="language-c">static int watchdog(void *dummy)
+{
+    unsigned long hung_last_checked = jiffies;
+    set_user_nice(current, 0);               /* nice=0, 普通优先级 */
+
+    for ( ; ; ) {
+        unsigned long timeout = sysctl_hung_task_timeout_secs;
+        unsigned long interval = sysctl_hung_task_check_interval_secs;
+        long t;
+
+        if (interval == 0)
+            interval = timeout;              /* 间隔默认等于超时 */
+        interval = min_t(unsigned long, interval, timeout);
+        t = hung_timeout_jiffies(hung_last_checked, interval);
+        
+        if (t &lt;= 0) {
+            if (!atomic_xchg(&amp;reset_hung_task, 0) &amp;&amp;   /* 未被重置 */
+                !hung_detector_suspended)                /* 未在 suspend */
+                check_hung_uninterruptible_tasks(timeout);
+            hung_last_checked = jiffies;
+            continue;
+        }
+        schedule_timeout_interruptible(t);   /* 可中断睡眠 */
+    }
+}</code></pre>
+
+<p>关键设计点：</p>
+<ul>
+<li><strong><code>set_user_nice(current, 0)</code></strong>：不需要高优先级，正常调度即可</li>
+<li><strong><code>schedule_timeout_interruptible(t)</code></strong>：可中断睡眠，支持被 sysctl 写入唤醒</li>
+<li><strong><code>atomic_xchg(&reset_hung_task, 0)</code></strong>：检查并清除重置标志，防止误报（如 debug 工具主动重置）</li>
+</ul>
+
+<h3>3.2 task_is_hung 判定算法</h3>
+
+<p>这是最核心的判定函数，用 <strong>"切换计数 + 时间窗口"双重检测</strong>：</p>
+
+<pre><code class="language-c">static bool task_is_hung(struct task_struct *t, unsigned long timeout)
+{
+    unsigned long switch_count = t-&gt;nvcsw + t-&gt;nivcsw;
+    unsigned int state = READ_ONCE(t-&gt;__state);
+
+    /* 排除不需要检测的状态 */
+    if (!(state &amp; TASK_UNINTERRUPTIBLE) ||
+        (state &amp; (TASK_WAKEKILL | TASK_NOLOAD | TASK_FROZEN)))
+        return false;
+
+    /* 从未被调度过的新进程，跳过 */
+    if (unlikely(!switch_count))
+        return false;
+
+    /* 切换计数有变化 → 进程被调度过，刷新记录 */
+    if (switch_count != t-&gt;last_switch_count) {
+        t-&gt;last_switch_count = switch_count;
+        t-&gt;last_switch_time = jiffies;
+        return false;
+    }
+
+    /* 切换计数未变，但还没超时 */
+    if (time_is_after_jiffies(t-&gt;last_switch_time + timeout * HZ))
+        return false;
+
+    return true;  /* 判定为 hung */
+}</code></pre>
+
+<p><strong>状态过滤逻辑详解</strong>：</p>
+
+<pre><code>进程状态          是否检测    原因
+───────────────────────────────────────────────
+TASK_RUNNING        否       正在运行/可运行
+TASK_INTERRUPTIBLE  否       可被信号唤醒
+TASK_UNINTERRUPTIBLE 是      ← 唯一检测目标
+TASK_KILLABLE       否       WAKEKILL 位排除
+TASK_IDLE           否       NOLOAD 位排除
+TASK_FROZEN         否       FROZEN 位排除（freezer 合理冻结）</code></pre>
+
+<p><strong>判定流程</strong>（一图胜千言）：</p>
+
+<pre><code>        进入 task_is_hung(t, timeout)
+                    │
+        ┌───────────▼───────────┐
+        │ state 是 D 状态？      │──否──→ return false
+        │ 排除 KILLABLE/IDLE/   │
+        │ FROZEN?               │
+        └───────────┬───────────┘
+                    │是
+        ┌───────────▼───────────┐
+        │ switch_count == 0 ?   │──是──→ return false
+        │ (从未被调度过)         │        (新建进程)
+        └───────────┬───────────┘
+                    │否
+        ┌───────────▼───────────┐
+        │ switch_count !=       │──是──→ 更新 last_switch_count
+        │ last_switch_count ?   │        更新 last_switch_time
+        │ (发生过切换)           │        return false
+        └───────────┬───────────┘
+                    │否(计数相同)
+        ┌───────────▼───────────┐
+        │ jiffies &lt; last_time   │──是──→ return false
+        │ + timeout * HZ ?      │        (还没超时)
+        └───────────┬───────────┘
+                    │否
+                    ▼
+              return true ← 判定 hung!</code></pre>
+
+<h3>3.3 check_hung_task 处理流程</h3>
+
+<p>当 <code>task_is_hung()</code> 返回 true 时的处理：</p>
+
+<pre><code class="language-c">static void check_hung_task(struct task_struct *t, unsigned long timeout)
+{
+    if (!task_is_hung(t, timeout))
+        return;
+
+    sysctl_hung_task_detect_count++;          /* 累计计数 */
+    trace_sched_process_hang(t);              /* tracepoint 事件 */
+
+    if (sysctl_hung_task_panic) {
+        console_verbose();                    /* 提升 console 日志级别 */
+        hung_task_show_lock = true;
+        hung_task_call_panic = true;
+    }
+
+    if (sysctl_hung_task_warnings || hung_task_call_panic) {
+        if (sysctl_hung_task_warnings &gt; 0)
+            sysctl_hung_task_warnings--;      /* 递减告警计数 */
+
+        /* 打印 hung task 告警信息 */
+        pr_err(&quot;INFO: task %s:%d blocked for more than %ld seconds.\n&quot;,
+               t-&gt;comm, t-&gt;pid, (jiffies - t-&gt;last_switch_time) / HZ);
+        pr_err(&quot;      %s %s %.*s\n&quot;, print_tainted(), ...);
+
+        if (t-&gt;flags &amp; PF_POSTCOREDUMP)
+            pr_err(&quot;      Blocked by coredump.\n&quot;);
+
+        sched_show_task(t);                   /* 打印任务堆栈 */
+        debug_show_blocker(t, timeout);       /* 打印阻塞者信息 */
+    }
+
+    touch_nmi_watchdog();                     /* 防止 NMI watchdog 误报 */
+}</code></pre>
+
+<p>输出示例：</p>
+<pre><code>INFO: task modprobe:1234 blocked for more than 120 seconds.
+      Tainted: G           OE     6.18.1 #1
+&quot;echo 0 &gt; /proc/sys/kernel/hung_task_timeout_secs&quot; disables this message.
+task:modprobe        state:D stack:12345 pid:1234 tgid:1234 ...
+Call trace:
+ __schedule+0x2c4/0x700
+ schedule+0x3c/0xd0
+ schedule_preempt_disabled+0x14/0x20
+ __mutex_lock+0x374/0x5b0
+ ...
+INFO: task modprobe:1234 is blocked on a mutex likely owned by task kworker:5678.</code></pre>
+
+<h3>3.4 RCU 锁分段机制</h3>
+
+<p>遍历所有进程线程需要在 RCU 读端临界区中进行。但长时间持有 RCU 读锁会延迟 grace period，影响整个系统。内核用 <strong>分段锁</strong> 策略解决：</p>
+
+<pre><code class="language-c">#define HUNG_TASK_LOCK_BREAK (HZ / 10)   /* 每 100ms 打断一次 */
+
+static void check_hung_uninterruptible_tasks(unsigned long timeout)
+{
+    unsigned long last_break = jiffies;
+    struct task_struct *g, *t;
+
+    rcu_read_lock();
+    for_each_process_thread(g, t) {
+        if (!max_count--)
+            goto unlock;
+        /* 每 100ms 释放一次 RCU 锁，让其他 RCU 回调有机会执行 */
+        if (time_after(jiffies, last_break + HUNG_TASK_LOCK_BREAK)) {
+            if (!rcu_lock_break(g, t))
+                goto unlock;              /* 进程已退出，停止遍历 */
+            last_break = jiffies;
+        }
+        check_hung_task(t, timeout);
+    }
+unlock:
+    rcu_read_unlock();
+    /* ... */
+}</code></pre>
+
+<p><code>rcu_lock_break()</code> 的实现：</p>
+
+<pre><code class="language-c">static bool rcu_lock_break(struct task_struct *g, struct task_struct *t)
+{
+    get_task_struct(g);            /* 增加引用计数，防止释放 */
+    get_task_struct(t);
+    rcu_read_unlock();             /* 释放 RCU 读锁 */
+    cond_resched();                /* 让出 CPU */
+    rcu_read_lock();               /* 重新获取 RCU 读锁 */
+    can_cont = pid_alive(g) &amp;&amp; pid_alive(t);  /* 检查进程是否还活着 */
+    put_task_struct(t);
+    put_task_struct(g);
+    return can_cont;
+}</code></pre>
+
+<h3>3.5 blocker 追踪机制</h3>
+
+<p><code>CONFIG_DETECT_HUNG_TASK_BLOCKER</code> 启用后，内核在 mutex、semaphore、rwsem 的慢路径中调用 <code>hung_task_set_blocker()</code>，记录当前任务被哪把锁阻塞：</p>
+
+<pre><code class="language-c">/* 加锁慢路径中（如 __mutex_lock_common）*/
+hung_task_set_blocker(lock, BLOCKER_TYPE_MUTEX);
+schedule_preempt_disabled();     /* 进入 D 状态等待 */
+hung_task_clear_blocker();       /* 获得锁后清除 */</code></pre>
+
+<p>当检测到 hung task 时，<code>debug_show_blocker()</code> 解码 blocker：</p>
+
+<ol>
+<li>提取锁地址和类型</li>
+<li>根据类型调用 <code>mutex_get_owner()</code> / <code>sem_last_holder()</code> / <code>rwsem_owner()</code> 获取持锁者</li>
+<li>遍历所有进程匹配持锁者</li>
+<li>打印持锁者信息和堆栈（如果持锁者本身不是 hung 的话）</li>
+</ol>
+
+<h3>3.6 电源管理集成</h3>
+
+<p>系统 suspend/resume 期间，许多进程会合理地长时间处于 D 状态。检测器通过 PM notifier 自动暂停：</p>
+
+<pre><code class="language-c">static int hungtask_pm_notify(struct notifier_block *self,
+                              unsigned long action, void *hcpu)
+{
+    switch (action) {
+    case PM_SUSPEND_PREPARE:
+    case PM_HIBERNATION_PREPARE:
+    case PM_RESTORE_PREPARE:
+        hung_detector_suspended = true;      /* 暂停检测 */
+        break;
+    case PM_POST_SUSPEND:
+    case PM_POST_HIBERNATION:
+    case PM_POST_RESTORE:
+        hung_detector_suspended = false;     /* 恢复检测 */
+        break;
+    }
+    return NOTIFY_OK;
+}</code></pre>
+
+<h3>3.7 完整检测流程图</h3>
+
+<pre><code>系统启动
+    │
+    ▼
+hung_task_init()  [subsys_initcall]
+    ├── 注册 panic_notifier
+    ├── 注册 pm_notifier (suspend 暂停检测)
+    ├── kthread_run(watchdog) → 创建 khungtaskd
+    └── hung_task_sysctl_init() → 注册 /proc/sys/kernel/hung_task_*
+            │
+            ▼
+    ┌── watchdog() 主循环 ──────────────────────────┐
+    │                                                │
+    │  计算 interval = min(check_interval, timeout)  │
+    │  计算剩余 jiffies t                            │
+    │       │                                        │
+    │       ├─ t &gt; 0 → schedule_timeout_interruptible│
+    │       │          (可被 sysctl 写入唤醒)          │
+    │       │                                        │
+    │       └─ t ≤ 0 → 是否 reset? suspended?        │
+    │                    │                           │
+    │                    ├─是→ 跳过本轮               │
+    │                    │                           │
+    │                    └─否→ check_hung_uninterruptible_tasks()
+    │                              │                 │
+    │                              ▼                 │
+    │                    rcu_read_lock()              │
+    │                    for_each_process_thread:     │
+    │                        │                       │
+    │                        ├─ 每100ms rcu_lock_break│
+    │                        │                       │
+    │                        └─ check_hung_task(t):  │
+    │                             task_is_hung()?    │
+    │                               │                │
+    │                            ┌──┴──┐             │
+    │                           否     是             │
+    │                            │   trace + 告警    │
+    │                            │   show_blocker    │
+    │                            │   可能 panic      │
+    │                            │                   │
+    │                    rcu_read_unlock()            │
+    │                    debug_show_all_locks()       │
+    │                    trigger_all_cpu_backtrace()  │
+    │                                                │
+    └────────────────────────────────────────────────┘</code></pre>
+
+<hr>
+
+<h2>4. 用法总结</h2>
+
+<h3>4.1 编译配置</h3>
+
+<pre><code class="language-bash"># 启用 hung task 检测
+CONFIG_DETECT_HUNG_TASK=y
+
+# 默认超时 120 秒（可根据需要调整）
+CONFIG_DEFAULT_HUNG_TASK_TIMEOUT=120
+
+# 启用 blocker 追踪（推荐）
+CONFIG_DETECT_HUNG_TASK_BLOCKER=y
+
+# 检测到 hung task 时直接 panic（生产高可用场景）
+# CONFIG_BOOTPARAM_HUNG_TASK_PANIC=y</code></pre>
+
+<h3>4.2 运行时 sysctl 调优</h3>
+
+<pre><code class="language-bash"># 查看当前配置
+sysctl -a | grep hung_task
+
+# 调整超时时间为 60 秒（调试时缩短等待）
+echo 60 &gt; /proc/sys/kernel/hung_task_timeout_secs
+
+# 禁用检测（设为 0）
+echo 0 &gt; /proc/sys/kernel/hung_task_timeout_secs
+
+# 检测到 hung task 时 panic
+echo 1 &gt; /proc/sys/kernel/hung_task_panic
+
+# 不限制告警次数
+echo -1 &gt; /proc/sys/kernel/hung_task_warnings
+
+# 查看累计检测到的 hung task 数
+cat /proc/sys/kernel/hung_task_detect_count
+
+# 设置检查间隔为 30 秒（比 timeout 更频繁地检查）
+echo 30 &gt; /proc/sys/kernel/hung_task_check_interval_secs
+
+# dump 所有 CPU 回溯（SMP 系统调试）
+echo 1 &gt; /proc/sys/kernel/hung_task_all_cpu_backtrace</code></pre>
+
+<h3>4.3 内核启动参数</h3>
+
+<pre><code class="language-bash"># 通过 bootargs 设置
+hung_task_panic=1       # 等同于 CONFIG_BOOTPARAM_HUNG_TASK_PANIC</code></pre>
+
+<h3>4.4 典型使用场景</h3>
+
+<table>
+<thead><tr>
+<th>场景</th>
+<th>推荐配置</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>开发调试</td>
+<td>timeout=30, warnings=-1, panic=0</td>
+</tr>
+<tr>
+<td>生产服务器</td>
+<td>timeout=120, panic=1, panic_timeout=30</td>
+</tr>
+<tr>
+<td>嵌入式看门狗</td>
+<td>timeout=60, panic=1, panic_timeout=0（立即重启）</td>
+</tr>
+<tr>
+<td>CI/CD 测试</td>
+<td>timeout=60, panic=0, all_cpu_backtrace=1</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>5. hung task 发生意味着什么</h2>
+
+<h3>5.1 D 状态的本质</h3>
+
+<p><code>TASK_UNINTERRUPTIBLE</code>（D 状态）意味着进程正在等待一个<strong>不可中断的内核操作</strong>完成。这种状态的特点：</p>
+
+<ul>
+<li><strong>不响应信号</strong>：<code>kill -9</code> 也无法终止</li>
+<li><strong>不可抢占</strong>：进程主动让出 CPU，等待事件唤醒</li>
+<li><strong>设计用途</strong>：保护关键的内核数据一致性操作（如磁盘 I/O、锁等待）</li>
+</ul>
+
+<p>正常情况下 D 状态是<strong>短暂</strong>的。当进程在 D 状态停留超过 120 秒，说明：</p>
+
+<h3>5.2 常见根因分类</h3>
+
+<pre><code>hung task 根因
+    │
+    ├── 1. 锁相关问题
+    │   ├── 死锁：A 持锁等 B，B 持锁等 A
+    │   ├── 锁饥饿：高优先级任务长时间持锁
+    │   └── 锁被 hung 的持有者阻塞（链式阻塞）
+    │
+    ├── 2. I/O 子系统问题
+    │   ├── 存储设备无响应（硬盘故障、NFS 服务器宕机）
+    │   ├── 块设备驱动 bug（请求丢失、完成回调未触发）
+    │   └── I/O 调度器异常
+    │
+    ├── 3. 驱动程序 bug
+    │   ├── 未正确释放资源
+    │   ├── 中断处理错误导致唤醒丢失
+    │   └── 固件异常导致设备不响应
+    │
+    ├── 4. 内存压力
+    │   ├── 内存回收路径阻塞
+    │   ├── OOM 处理过程中的锁竞争
+    │   └── writeback 路径等待 I/O 完成
+    │
+    └── 5. 其他内核 bug
+        ├── 唤醒条件丢失（lost wakeup）
+        ├── wait_queue 使用不当
+        └── coredump 阻塞（PF_POSTCOREDUMP）</code></pre>
+
+<h3>5.3 与其他检测机制的区别</h3>
+
+<table>
+<thead><tr>
+<th>特性</th>
+<th>hung task</th>
+<th>soft lockup</th>
+<th>hard lockup</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>检测目标</strong></td>
+<td>D 状态进程</td>
+<td>独占 CPU 不调度</td>
+<td>CPU 被锁死（中断也不响应）</td>
+</tr>
+<tr>
+<td><strong>检测线程</strong></td>
+<td>khungtaskd</td>
+<td>watchdog/N (per-CPU)</td>
+<td>NMI watchdog</td>
+</tr>
+<tr>
+<td><strong>默认超时</strong></td>
+<td>120 秒</td>
+<td>20 秒</td>
+<td>10 秒</td>
+</tr>
+<tr>
+<td><strong>进程状态</strong></td>
+<td>TASK_UNINTERRUPTIBLE</td>
+<td>TASK_RUNNING（在内核态循环）</td>
+<td>任意（中断禁止）</td>
+</tr>
+<tr>
+<td><strong>CPU 是否空闲</strong></td>
+<td>是（进程让出了 CPU）</td>
+<td>否（CPU 被占满）</td>
+<td>否（CPU 完全卡死）</td>
+</tr>
+<tr>
+<td><strong>能否响应中断</strong></td>
+<td>能</td>
+<td>能</td>
+<td>不能</td>
+</tr>
+<tr>
+<td><strong>触发 panic</strong></td>
+<td>可选</td>
+<td>可选</td>
+<td>可选</td>
+</tr>
+</tbody></table>
+
+<h3>5.4 生产环境影响</h3>
+
+<ul>
+<li><strong>用户可见</strong>：进程卡住无响应，<code>ps</code> 显示 D 状态</li>
+<li><strong>系统影响</strong>：如果 hung 的进程持有关键锁，可能导致其他进程连锁阻塞</li>
+<li><strong>数据风险</strong>：如果涉及文件系统 I/O，可能导致数据丢失</li>
+<li><strong>恢复方式</strong>：通常需要解决根因（修复驱动/恢复 I/O 路径）或重启</li>
+</ul>
+
+<hr>
+
+<h2>6. QEMU 模拟实验</h2>
+
+<h3>6.1 实验环境准备</h3>
+
+<pre><code class="language-bash"># 确保内核编译选项开启
+CONFIG_DETECT_HUNG_TASK=y
+CONFIG_DEFAULT_HUNG_TASK_TIMEOUT=120
+CONFIG_DETECT_HUNG_TASK_BLOCKER=y
+CONFIG_MODULES=y
+
+# 编译内核
+make -j$(nproc)
+
+# 启动 QEMU (arm64 示例)
+qemu-system-aarch64 \
+    -machine virt \
+    -cpu cortex-a57 \
+    -nographic \
+    -kernel arch/arm64/boot/Image \
+    -append &quot;console=ttyAMA0 root=/dev/vda rw&quot; \
+    -drive file=rootfs.img,format=raw \
+    -m 1024</code></pre>
+
+<h3>6.2 实验一：触发基本 hung task 告警</h3>
+
+<p>编写一个内核模块，创建线程进入 D 状态并永远不唤醒：</p>
+
+<pre><code class="language-c">/* hung_task_test.c */
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kthread.h&gt;
+#include &lt;linux/delay.h&gt;
+#include &lt;linux/sched.h&gt;
+
+static struct task_struct *test_thread;
+
+static int hung_thread_fn(void *data)
+{
+    pr_info(&quot;hung_task_test: entering D state...\n&quot;);
+
+    /* 设置为 TASK_UNINTERRUPTIBLE 并永远不唤醒 */
+    set_current_state(TASK_UNINTERRUPTIBLE);
+    schedule();
+
+    /* 不会执行到这里 */
+    return 0;
+}
+
+static int __init hung_task_test_init(void)
+{
+    pr_info(&quot;hung_task_test: loading module\n&quot;);
+    test_thread = kthread_run(hung_thread_fn, NULL, &quot;hung_test&quot;);
+    if (IS_ERR(test_thread))
+        return PTR_ERR(test_thread);
+    return 0;
+}
+
+static void __exit hung_task_test_exit(void)
+{
+    pr_info(&quot;hung_task_test: unloading module\n&quot;);
+    /* 注意：hung 的线程无法被正常停止 */
+}
+
+module_init(hung_task_test_init);
+module_exit(hung_task_test_exit);
+MODULE_LICENSE(&quot;GPL&quot;);
+MODULE_DESCRIPTION(&quot;Hung task detector test module&quot;);</code></pre>
+
+<p>操作步骤：</p>
+
+<pre><code class="language-bash"># 缩短超时加速实验
+echo 30 &gt; /proc/sys/kernel/hung_task_timeout_secs
+
+# 加载模块
+insmod hung_task_test.ko
+
+# 等待 30+ 秒后查看 dmesg
+dmesg | grep -A 20 &quot;blocked for more than&quot;</code></pre>
+
+<p>预期输出：</p>
+<pre><code>INFO: task hung_test:XXX blocked for more than 30 seconds.
+      Not tainted 6.18.1 #1
+&quot;echo 0 &gt; /proc/sys/kernel/hung_task_timeout_secs&quot; disables this message.
+task:hung_test       state:D stack:XXXX pid:XXX ...
+Call trace:
+ __schedule+0x.../0x...
+ schedule+0x.../0x...
+ hung_thread_fn+0x.../0x...
+ kthread+0x.../0x...
+ ret_from_fork+0x.../0x...</code></pre>
+
+<h3>6.3 实验二：hung_task_panic 触发内核 panic</h3>
+
+<pre><code class="language-bash"># 启用 panic on hung task
+echo 1 &gt; /proc/sys/kernel/hung_task_panic
+
+# 设置 panic 后自动重启（10 秒后）
+echo 10 &gt; /proc/sys/kernel/panic
+
+# 缩短超时
+echo 30 &gt; /proc/sys/kernel/hung_task_timeout_secs
+
+# 加载测试模块
+insmod hung_task_test.ko
+
+# 30 秒后系统将 panic 并在 10 秒后重启</code></pre>
+
+<p>预期输出：</p>
+<pre><code>INFO: task hung_test:XXX blocked for more than 30 seconds.
+...
+Kernel panic - not syncing: hung_task: blocked tasks
+...</code></pre>
+
+<h3>6.4 实验三：观察 blocker 信息输出</h3>
+
+<p>编写模块让一个线程持锁不放，另一个线程等锁进入 D 状态：</p>
+
+<pre><code class="language-c">/* hung_blocker_test.c */
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kthread.h&gt;
+#include &lt;linux/mutex.h&gt;
+#include &lt;linux/delay.h&gt;
+
+static DEFINE_MUTEX(test_mutex);
+static struct task_struct *holder_thread;
+static struct task_struct *waiter_thread;
+
+/* 持锁线程：获取锁后进入 D 状态不释放 */
+static int holder_fn(void *data)
+{
+    mutex_lock(&amp;test_mutex);
+    pr_info(&quot;blocker_test: holder got the lock, going to D state\n&quot;);
+    set_current_state(TASK_UNINTERRUPTIBLE);
+    schedule();  /* 永远不会醒来，锁不会释放 */
+    mutex_unlock(&amp;test_mutex);
+    return 0;
+}
+
+/* 等锁线程：尝试获取被持有的锁，进入 D 状态 */
+static int waiter_fn(void *data)
+{
+    msleep(1000);  /* 确保 holder 先获取锁 */
+    pr_info(&quot;blocker_test: waiter trying to get the lock\n&quot;);
+    mutex_lock(&amp;test_mutex);  /* 阻塞在这里 */
+    mutex_unlock(&amp;test_mutex);
+    return 0;
+}
+
+static int __init blocker_test_init(void)
+{
+    holder_thread = kthread_run(holder_fn, NULL, &quot;lock_holder&quot;);
+    waiter_thread = kthread_run(waiter_fn, NULL, &quot;lock_waiter&quot;);
+    return 0;
+}
+
+static void __exit blocker_test_exit(void)
+{
+    pr_info(&quot;blocker_test: unloading\n&quot;);
+}
+
+module_init(blocker_test_init);
+module_exit(blocker_test_exit);
+MODULE_LICENSE(&quot;GPL&quot;);</code></pre>
+
+<p>预期输出（含 blocker 信息）：</p>
+
+<pre><code>INFO: task lock_waiter:XXX blocked for more than 30 seconds.
+...
+INFO: task lock_waiter:XXX is blocked on a mutex likely owned by task lock_holder:YYY.
+task:lock_holder     state:D stack:XXXX pid:YYY ...
+Call trace:
+ __schedule+0x.../0x...
+ schedule+0x.../0x...
+ holder_fn+0x.../0x...
+ ...</code></pre>
+
+<h3>6.5 实验四：动态调整 sysctl 参数</h3>
+
+<pre><code class="language-bash"># 实时监控 hung task 检测次数
+watch -n 1 cat /proc/sys/kernel/hung_task_detect_count
+
+# 动态调整告警次数（设为无限）
+echo -1 &gt; /proc/sys/kernel/hung_task_warnings
+
+# 动态缩短检查间隔
+echo 10 &gt; /proc/sys/kernel/hung_task_check_interval_secs
+
+# 修改 timeout 会立即唤醒 khungtaskd
+echo 20 &gt; /proc/sys/kernel/hung_task_timeout_secs
+# → proc_dohung_task_timeout_secs() 调用 wake_up_process(watchdog_task)</code></pre>
+
+<hr>
+
+<h2>7. 面试经典问题与答案</h2>
+
+<h3>Q1: 什么是 hung task？</h3>
+
+<p><strong>答</strong>：hung task 是指在 <code>TASK_UNINTERRUPTIBLE</code>（D 状态）停留超过阈值（默认 120 秒）而未被调度的任务。内核通过 <code>khungtaskd</code> 线程周期性遍历所有进程，检测是否存在这种异常。D 状态本身是合法的（用于等待不可中断 I/O），但长时间停留通常意味着内核 bug（死锁、驱动故障、I/O 路径阻塞等）。</p>
+
+<h3>Q2: khungtaskd 如何判断一个任务是 hung？</h3>
+
+<p><strong>答</strong>：通过<strong>两阶段比较</strong>：</p>
+
+<ol>
+<li><strong>切换计数比较</strong>：取 <code>nvcsw + nivcsw</code>（自愿+非自愿上下文切换总数），与上次记录的 <code>last_switch_count</code> 对比。如果有变化，说明进程被调度过，刷新记录并跳过。</li>
+<li><strong>超时判定</strong>：如果切换计数不变，检查 <code>jiffies - last_switch_time</code> 是否超过 <code>timeout * HZ</code>。超过则判定为 hung。</li>
+</ol>
+
+<p>这种双重检测避免了因单次检查时序问题导致的误报。</p>
+
+<h3>Q3: 为什么只检测 TASK_UNINTERRUPTIBLE 而不检测 TASK_INTERRUPTIBLE？</h3>
+
+<p><strong>答</strong>：<code>TASK_INTERRUPTIBLE</code> 的进程可以被信号唤醒，用户可以通过 <code>kill</code> 终止它。即使长时间等待，也不构成"不可恢复"的问题。而 <code>TASK_UNINTERRUPTIBLE</code> 的进程无法响应任何信号（包括 SIGKILL），如果等待条件永远无法满足，进程将永久卡死，这才是需要检测的真正问题。</p>
+
+<h3>Q4: TASK_KILLABLE 的任务会被检测为 hung 吗？</h3>
+
+<p><strong>答</strong>：不会。<code>TASK_KILLABLE</code> 定义为 <code>TASK_WAKEKILL | TASK_UNINTERRUPTIBLE</code>。在 <code>task_is_hung()</code> 中会检查：</p>
+
+<pre><code class="language-c">if (state &amp; (TASK_WAKEKILL | TASK_NOLOAD | TASK_FROZEN))
+    return false;</code></pre>
+
+<p><code>TASK_WAKEKILL</code> 位被排除，因为这类进程虽然不响应普通信号，但可以被 fatal signal（如 SIGKILL）唤醒，不会真正"hung"住。</p>
+
+<h3>Q5: hung task 与 soft lockup / hard lockup 有什么区别？</h3>
+
+<p><strong>答</strong>：</p>
+
+<table>
+<thead><tr>
+<th>维度</th>
+<th>hung task</th>
+<th>soft lockup</th>
+<th>hard lockup</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>症状</td>
+<td>进程睡眠不醒</td>
+<td>CPU 在内核态死循环</td>
+<td>CPU 连中断都不响应</td>
+</tr>
+<tr>
+<td>CPU 状态</td>
+<td>空闲（进程已让出）</td>
+<td>被占满</td>
+<td>完全锁死</td>
+</tr>
+<tr>
+<td>检测机制</td>
+<td>khungtaskd 遍历进程</td>
+<td>per-CPU watchdog 线程</td>
+<td>NMI watchdog</td>
+</tr>
+<tr>
+<td>超时</td>
+<td>120s</td>
+<td>20s</td>
+<td>10s</td>
+</tr>
+<tr>
+<td>根因</td>
+<td>锁竞争/IO阻塞</td>
+<td>内核代码无限循环</td>
+<td>禁中断代码死循环</td>
+</tr>
+</tbody></table>
+
+<p>核心区别：hung task 中进程是<strong>主动让出 CPU</strong> 等待唤醒的，CPU 本身是正常的；而 lockup 是 <strong>CPU 被占用</strong> 无法执行其他任务。</p>
+
+<h3>Q6: 为什么检测循环中需要 RCU lock break？</h3>
+
+<p><strong>答</strong>：遍历所有进程线程在 <code>rcu_read_lock()</code> 保护下进行。长时间持有 RCU 读锁会导致：</p>
+<ul>
+<li><strong>grace period 延迟</strong>：RCU 回调（如内存释放）被推迟，可能导致内存压力</li>
+<li><strong>可抢占性降低</strong>：在非 PREEMPT_RCU 配置中，RCU 读端临界区禁止抢占</li>
+</ul>
+
+<p>因此每隔 <code>HUNG_TASK_LOCK_BREAK</code>（100ms）就释放一次 RCU 读锁，调用 <code>cond_resched()</code> 让出 CPU，然后重新获取锁继续遍历。通过 <code>get_task_struct()</code> 增加引用计数防止遍历中的进程被释放。</p>
+
+<h3>Q7: blocker 字段是如何编码的？</h3>
+
+<p><strong>答</strong>：利用锁指针的<strong>自然对齐</strong>特性（至少 4 字节对齐，低 2 位恒为 0），将锁地址和阻塞类型编码在一个 <code>unsigned long</code> 中：</p>
+
+<ul>
+<li><strong>高位</strong>：锁的内核地址</li>
+<li><strong>低 2 位</strong>：阻塞类型（<code>00</code>=mutex，<code>01</code>=semaphore，<code>10</code>=rwsem 读端，<code>11</code>=rwsem 写端）</li>
+</ul>
+
+<p>设置时 <code>blocker = lock_addr | type</code>，解码时 <code>type = blocker & 0x03</code>，<code>lock = blocker & ~0x03</code>。如果锁地址不对齐（低位非零），则静默跳过该锁的追踪。</p>
+
+<h3>Q8: 生产环境中如何处理 hung task？</h3>
+
+<p><strong>答</strong>：</p>
+
+<ol>
+<li><strong>立即分析 dmesg</strong>：获取 hung task 的堆栈和 blocker 信息，确定阻塞点</li>
+<li><strong>检查 I/O 路径</strong>：<code>iostat</code>、<code>blktrace</code> 确认存储设备是否正常</li>
+<li><strong>检查锁竞争</strong>：<code>/proc/lock_stat</code>、<code>debug_show_all_locks()</code> 输出分析死锁</li>
+<li><strong>高可用场景</strong>：启用 <code>hung_task_panic=1</code> + <code>panic_timeout=N</code> 实现自动重启恢复</li>
+<li><strong>长期修复</strong>：根据堆栈定位 bug 位置（驱动、文件系统、锁顺序等），提交内核补丁</li>
+</ol>
+
+<h3>Q9: hung task 检测在 suspend/resume 流程中如何处理？</h3>
+
+<p><strong>答</strong>：通过 PM notifier 机制自动管理。在 <code>PM_SUSPEND_PREPARE</code>/<code>PM_HIBERNATION_PREPARE</code> 时设置 <code>hung_detector_suspended = true</code>，暂停检测。在 <code>PM_POST_SUSPEND</code>/<code>PM_POST_HIBERNATION</code> 时恢复。这是因为 suspend 过程中很多进程会合法地长时间处于 D 状态（等待设备 suspend 完成），不应误报。</p>
+
+<h3>Q10: 如何区分真正的 hung task 和合理的长时间 D 状态？</h3>
+
+<p><strong>答</strong>：</p>
+
+<table>
+<thead><tr>
+<th>判断因素</th>
+<th>真正 hung</th>
+<th>合理等待</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>堆栈位置</td>
+<td>锁等待/死锁点</td>
+<td>NFS/网络 I/O 等待</td>
+</tr>
+<tr>
+<td>是否可恢复</td>
+<td>条件永远无法满足</td>
+<td>等待外部事件（如网络恢复）</td>
+</tr>
+<tr>
+<td>影响范围</td>
+<td>连锁阻塞其他进程</td>
+<td>仅影响自身</td>
+</tr>
+</tbody></table>
+
+<p>对于合理的长时间等待（如 NFS 挂载点网络断开），应：</p>
+<ul>
+<li>使用 <code>TASK_KILLABLE</code> 替代 <code>TASK_UNINTERRUPTIBLE</code>（允许 kill 终止）</li>
+<li>调大 <code>hung_task_timeout_secs</code></li>
+<li>在特定代码路径中调用 <code>reset_hung_task_detector()</code> 重置检测计时器</li>
+</ul>
+
+<hr>
+
+<blockquote><strong>源码参考</strong>：<br>
+- <code>kernel/hung_task.c</code> — 完整检测器实现<br>
+- <code>include/linux/hung_task.h</code> — blocker 类型定义和辅助函数<br>
+- <code>include/linux/sched.h</code> — task_struct 中 hung task 相关字段<br>
+- <code>lib/Kconfig.debug</code> — 编译配置选项</blockquote>
+
+</body>
+</html>

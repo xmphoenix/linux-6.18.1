@@ -1,0 +1,3805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arm64 Dma Learning Guide</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>ARM64 Linux 内核 DMA 深度学习指南</h1>
+
+<blockquote>基于 Linux 6.18.1 内核源码分析，面向 ARMv8 架构</blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><a href="#第一部分dma-硬件基础">第一部分：DMA 硬件基础</a></summary></p>
+
+<ul>
+<li><a href="#11-dma-概念与动机">1.1 DMA 概念与动机</a></li>
+<li><a href="#12-armv8-dma-硬件架构">1.2 ARMv8 DMA 硬件架构</a></li>
+<li><a href="#13-dma-传输模式">1.3 DMA 传输模式</a></li>
+<li><a href="#14-mmuiommusmmu区别与联系">1.4 MMU、IOMMU、SMMU：区别与联系</a></li>
+<li><a href="#15-arm-smmu-system-mmu-详解">1.5 ARM SMMU (System MMU) 详解</a></li>
+<li><a href="#16-cache-一致性与-dma">1.6 Cache 一致性与 DMA</a></li>
+<li><a href="#17-dma-地址空间与总线拓扑">1.7 DMA 地址空间与总线拓扑</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第二部分内核-dma-软件框架">第二部分：内核 DMA 软件框架</a></summary></p>
+
+<ul>
+<li><a href="#21-dma-mapping-api流式映射">2.1 DMA Mapping API（流式映射）</a></li>
+<li><a href="#22-dma-engine-框架dma-控制器抽象">2.2 DMA Engine 框架（DMA 控制器抽象）</a></li>
+<li><a href="#23-地址转换流程">2.3 地址转换流程</a></li>
+<li><a href="#24-三条-dma-映射路径">2.4 三条 DMA 映射路径</a></li>
+<li><a href="#25-bounce-buffer-swiotlb-机制">2.5 Bounce Buffer (swiotlb) 机制</a></li>
+<li><a href="#26-cma-连续内存分配器">2.6 CMA 连续内存分配器</a></li>
+<li><a href="#27-coherent-dma-内存池">2.7 Coherent DMA 内存池</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第三部分arm64-平台特有实现">第三部分：ARM64 平台特有实现</a></summary></p>
+
+<ul>
+<li><a href="#31-cache-维护操作">3.1 Cache 维护操作</a></li>
+<li><a href="#32-dma-zone-配置">3.2 DMA Zone 配置</a></li>
+<li><a href="#33-arm-smmuv3-驱动">3.3 ARM SMMUv3 驱动</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第四部分核心数据结构">第四部分：核心数据结构</a></summary></p>
+
+<ul>
+<li><a href="#设备-dma-配置struct-device-相关字段">设备 DMA 配置（<code>struct device</code> 相关字段）</a></li>
+<li><a href="#dma-cookie-机制">DMA Cookie 机制</a></li>
+<li><a href="#dma-slave-配置">DMA Slave 配置</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第五部分关键-api-速查">第五部分：关键 API 速查</a></summary></p>
+
+<ul>
+<li><a href="#dma-mapping-api驱动开发者必知">DMA Mapping API（驱动开发者必知）</a></li>
+<li><a href="#dma-engine-apidma-控制器使用者">DMA Engine API（DMA 控制器使用者）</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第六部分典型使用模式">第六部分：典型使用模式</a></summary></p>
+
+<ul>
+<li><a href="#模式一流式-dma-映射网络驱动典型">模式一：流式 DMA 映射（网络驱动典型）</a></li>
+<li><a href="#模式二一致性-dma-内存设备描述符环典型">模式二：一致性 DMA 内存（设备描述符环典型）</a></li>
+<li><a href="#模式三dma-engine-从设备传输uartspi-典型">模式三：DMA Engine 从设备传输（UART/SPI 典型）</a></li>
+<li><a href="#模式四scatter-gather-映射块设备典型">模式四：Scatter-Gather 映射（块设备典型）</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第七部分调试与问题排查">第七部分：调试与问题排查</a></summary></p>
+
+<ul>
+<li><a href="#常见-dma-问题">常见 DMA 问题</a></li>
+<li><a href="#调试工具与内核配置">调试工具与内核配置</a></li>
+<li><a href="#dma-编程检查清单">DMA 编程检查清单</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第八部分内核经典-dma-映射案例分析">第八部分：内核经典 DMA 映射案例分析</a></summary></p>
+
+<ul>
+<li><a href="#案例一流式-dma-映射--dma-enginepl011-uart-tx">案例一：流式 DMA 映射 + DMA Engine（PL011 UART TX）</a></li>
+<li><a href="#案例二coherent-dma-内存分配pl011-dma-缓冲区">案例二：Coherent DMA 内存分配（PL011 DMA 缓冲区）</a></li>
+<li><a href="#案例三scatter-gather-dma-映射dw-mmc-控制器">案例三：Scatter-Gather DMA 映射（DW MMC 控制器）</a></li>
+<li><a href="#案例四spi-dma-全双工传输--sgpl022-spi-控制器">案例四：SPI DMA 全双工传输 + SG（PL022 SPI 控制器）</a></li>
+<li><a href="#案例五网络驱动-coherent-描述符环--流式数据映射stmmac">案例五：网络驱动 Coherent 描述符环 + 流式数据映射（STMMAC）</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第九部分qemu-arm64-dma-实验">第九部分：QEMU ARM64 DMA 实验</a></summary></p>
+
+<ul>
+<li><a href="#91-实验环境准备">9.1 实验环境准备</a></li>
+<li><a href="#92-实验一dma-coherent-内存分配内核模块">9.2 实验一：DMA Coherent 内存分配内核模块</a></li>
+<li><a href="#93-实验二流式-dma-映射--cache-同步">9.3 实验二：流式 DMA 映射 + Cache 同步</a></li>
+<li><a href="#94-实验三dma-engine--pl011-uart-观察">9.4 实验三：DMA Engine + PL011 UART 观察</a></li>
+<li><a href="#95-makefile通用适用于以上三个模块">9.5 Makefile（通用，适用于以上三个模块）</a></li>
+<li><a href="#96-实验操作步骤">9.6 实验操作步骤</a></li>
+<li><a href="#97-实验观察要点">9.7 实验观察要点</a></li>
+<li><a href="#98-进阶实验qemu-开启-smmu-对比">9.8 进阶实验：QEMU 开启 SMMU 对比</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第十部分dma-面试高频问题与解答">第十部分：DMA 面试高频问题与解答</a></summary></p>
+
+<ul>
+<li><a href="#q1什么是-dma为什么需要-dma">Q1：什么是 DMA？为什么需要 DMA？</a></li>
+<li><a href="#q2dma-和-cpu-都要访问内存为什么-dma-还能提升性能">Q2：DMA 和 CPU 都要访问内存，为什么 DMA 还能提升性能？</a></li>
+<li><a href="#q3dma-传输有哪几种模式分别应用在什么场景">Q3：DMA 传输有哪几种模式？分别应用在什么场景？</a></li>
+<li><a href="#q4dma_alloc_coherent-和-dma_map_single-有什么区别什么时候用哪个">Q4：<code>dma_alloc_coherent()</code> 和 <code>dma_map_single()</code> 有什么区别？什么时候用哪个？</a></li>
+<li><a href="#q5什么是-dma-的-cache-一致性问题arm64-上如何解决">Q5：什么是 DMA 的 Cache 一致性问题？ARM64 上如何解决？</a></li>
+<li><a href="#q6什么是-iommu和-mmu-有什么区别arm-平台的-iommu-叫什么">Q6：什么是 IOMMU？和 MMU 有什么区别？ARM 平台的 IOMMU 叫什么？</a></li>
+<li><a href="#q7dma_map_single-之后dma_unmap_single-之前cpu-能不能访问这块内存">Q7：<code>dma_map_single()</code> 之后、<code>dma_unmap_single()</code> 之前，CPU 能不能访问这块内存？</a></li>
+<li><a href="#q8什么是-bounce-bufferswiotlb什么时候会触发">Q8：什么是 Bounce Buffer（swiotlb）？什么时候会触发？</a></li>
+<li><a href="#q9dma_map_sg-返回值和传入的-nents-可能不同为什么">Q9：<code>dma_map_sg()</code> 返回值和传入的 nents 可能不同，为什么？</a></li>
+<li><a href="#q10dma-缓冲区为什么必须-cache-行对齐">Q10：DMA 缓冲区为什么必须 Cache 行对齐？</a></li>
+<li><a href="#q11linux-dma-子系统中有几条映射路径如何选择">Q11：Linux DMA 子系统中有几条映射路径？如何选择？</a></li>
+<li><a href="#q12dma_set_mask-和-dma_set_coherent_mask-有什么区别">Q12：<code>dma_set_mask()</code> 和 <code>dma_set_coherent_mask()</code> 有什么区别？</a></li>
+<li><a href="#q13dma-mapping-之后必须检查错误吗怎么检查">Q13：DMA mapping 之后必须检查错误吗？怎么检查？</a></li>
+<li><a href="#q14什么是-cma为什么-dma-需要-cma">Q14：什么是 CMA？为什么 DMA 需要 CMA？</a></li>
+<li><a href="#q15驱动开发中最常见的-dma-bug-有哪些">Q15：驱动开发中最常见的 DMA bug 有哪些？</a></li>
+<li><a href="#q16解释-dma-地址转换的完整链路从内核虚拟地址到设备访问物理内存">Q16：解释 DMA 地址转换的完整链路（从内核虚拟地址到设备访问物理内存）</a></li>
+<li><a href="#q17linux-中-dma-engine-框架和-dma-mapping-api-是什么关系">Q17：Linux 中 DMA Engine 框架和 DMA Mapping API 是什么关系？</a></li>
+<li><a href="#q18arm64-上-dma_coherent-设备和非-coherent-设备的区别性能差异">Q18：ARM64 上 <code>dma_coherent</code> 设备和非 coherent 设备的区别？性能差异？</a></li>
+<li><a href="#q19如何调试-dma-相关问题">Q19：如何调试 DMA 相关问题？</a></li>
+<li><a href="#q20简述一个网络驱动收包的完整-dma-流程">Q20：简述一个网络驱动收包的完整 DMA 流程</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#附录源码文件索引">附录：源码文件索引</a></summary></p>
+
+<p></details></p>
+
+<hr>
+
+<h2>第一部分：DMA 硬件基础</h2>
+
+<h3>1.1 DMA 概念与动机</h3>
+
+<p><strong>DMA (Direct Memory Access)</strong> 允许外设直接读写系统内存，无需 CPU 参与每个字节的传输。</p>
+
+<pre><code>传统 PIO 模式:                DMA 模式:
+CPU ←→ 设备寄存器 ←→ 内存     CPU 发起 → DMA 控制器 → 设备⟷内存
+  (每字节都要 CPU 参与)         (CPU 只需配置，传输由 DMA 硬件完成)</code></pre>
+
+<p><strong>核心优势：</strong></p>
+<ul>
+<li>CPU 从数据搬运中解放，可执行其他计算任务</li>
+<li>总线利用率更高（突发传输 burst transfer）</li>
+<li>对大块数据传输（网络、存储、多媒体）性能提升显著</li>
+</ul>
+
+<h4>深入理解：DMA 和 CPU 都要访问内存，为什么 DMA 还能节省 CPU？</h4>
+
+<p>这是学习 DMA 时最常见的疑问。DMA 控制器和 CPU 确实<strong>共享同一个物理内存</strong>，但 DMA 节省的不是"内存带宽"，而是 <strong>CPU 的指令执行周期</strong>。</p>
+
+<p><strong>1) PIO 模式下 CPU 做了什么（以从设备读 4KB 数据为例）：</strong></p>
+
+<pre><code>                 CPU 视角（PIO 模式）
+                 ─────────────────────
+循环 1024 次 (4KB / 4 bytes):
+  ① LDR  r0, [设备FIFO寄存器]    // 从设备读一个字 → CPU 流水线停顿等待 I/O
+  ② STR  r0, [内存目标地址]       // 写入内存
+  ③ ADD  目标地址, #4             // 地址递增
+  ④ SUBS 计数器, #1              // 循环控制
+  ⑤ BNE  loop
+
+每轮循环：5 条指令 × 1024 = 5120 条指令
+更关键的：每次 LDR 设备寄存器要等待 I/O 总线响应
+  - DRAM 访问延迟 ~100ns
+  - 外设寄存器访问延迟 ~100-1000ns（取决于总线和设备）
+  - CPU 在等待期间完全阻塞（或占用一个硬件线程）</code></pre>
+
+<p><strong>2) DMA 模式下 CPU 做了什么：</strong></p>
+
+<pre><code>                 CPU 视角（DMA 模式）
+                 ─────────────────────
+  ① 配置 DMA 控制器寄存器 (源地址、目标地址、长度、方向)
+     → 大约 4~8 次 MMIO 写操作
+  ② 启动 DMA 传输
+     → 1 次 MMIO 写操作
+  ③ CPU 去做其他事情！（运行其他进程/线程）
+  ④ DMA 完成后产生中断
+  ⑤ 中断处理程序处理完成事件
+
+总共：约 10~20 条指令 + 1 次中断处理
+CPU 在传输期间完全自由！</code></pre>
+
+<p><strong>3) 关键区别——总线仲裁与并行：</strong></p>
+
+<pre><code>时间轴对比:
+
+PIO 模式:
+CPU: ██████████████████████████████████████  (100% 忙于搬数据)
+总线: ─读─写─读─写─读─写─读─写─读─写─读─写  (CPU 驱动的零散访问)
+设备:  ↑   ↑   ↑   ↑   ↑   ↑               (被动等 CPU 来取)
+
+DMA 模式:
+CPU: ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░██  (配置+中断，中间空闲)
+     ↑ 配置DMA                        ↑ 中断处理
+DMA: ──████████████████████████████████──  (硬件突发传输)
+总线: ──BURST──BURST──BURST──BURST──────  (高效突发访问)
+
+CPU 空闲期间可以执行其他任务:
+CPU: ██▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓██
+     ↑                              ↑
+   配置DMA    执行其他计算任务      中断处理</code></pre>
+
+<p><strong>4) 为什么共享同一个内存总线，DMA 还能更高效？</strong></p>
+
+<table>
+<thead><tr>
+<th>维度</th>
+<th>PIO 模式</th>
+<th>DMA 模式</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>CPU 占用</strong></td>
+<td>100% 占用，每个字节都要 CPU 参与</td>
+<td>只需配置 + 中断，<1% 占用</td>
+</tr>
+<tr>
+<td><strong>总线效率</strong></td>
+<td>每次传输 1 个字（4/8 字节），总线利用率低</td>
+<td>硬件突发传输（Burst），一次传 16~256 字节</td>
+</tr>
+<tr>
+<td><strong>流水线</strong></td>
+<td>CPU 流水线频繁停顿等 I/O 响应</td>
+<td>DMA 控制器专为数据搬运优化，无流水线浪费</td>
+</tr>
+<tr>
+<td><strong>并行度</strong></td>
+<td>CPU 搬数据期间无法做其他事</td>
+<td>CPU 和 DMA 控制器<strong>真正并行</strong>工作</td>
+</tr>
+<tr>
+<td><strong>中断频率</strong></td>
+<td>可能每字节/每FIFO半满就中断</td>
+<td>整块传输完才一次中断</td>
+</tr>
+</tbody></table>
+
+<p><strong>5) ARMv8 互联总线保证了并行访问的可能性：</strong></p>
+
+<pre><code>         ┌─────────┐    ┌──────────┐
+         │  CPU    │    │ DMA 控制器│
+         │(Master) │    │ (Master)  │
+         └────┬────┘    └─────┬────┘
+              │               │
+         ┌────┴───────────────┴────┐
+         │    Interconnect          │  ← CCI/CCN/CMN 支持多个 Master
+         │    (总线仲裁器)          │     同时发起访问，交替使用总线
+         └────────────┬────────────┘
+                      │
+              ┌───────┴───────┐
+              │  DRAM 控制器   │  ← 现代 DDR 控制器支持多端口/Bank 交叉
+              │  (多Bank并行)  │     不同 Bank 可同时服务不同 Master
+              └───────────────┘</code></pre>
+
+<p>现代 ARM SoC 的互联总线（如 ARM CCI-550、CMN-700）支持<strong>多个 Master 并发访问</strong>：</p>
+<ul>
+<li>CPU 和 DMA 控制器可以交替占用总线时隙</li>
+<li>DDR 控制器的多 Bank 架构允许不同地址区域被并行访问</li>
+<li>即使总线带宽被分享，CPU 省下的<strong>指令周期</strong>远比偶尔的总线竞争代价大</li>
+</ul>
+
+<blockquote><strong>总结</strong>：DMA 节省的核心不是内存带宽，而是 <strong>CPU 指令执行时间</strong> 和 <strong>CPU 流水线效率</strong>。CPU 是通用处理器，每搬一个字都要执行取指-译码-执行-访存-写回完整流水线；DMA 控制器是<strong>专用硬件</strong>，只做数据搬运这一件事，效率远高于通用 CPU。更重要的是，DMA 传输期间 CPU <strong>完全释放</strong>，可以执行计算密集型任务，实现真正的 I/O 与计算并行。</blockquote>
+
+<h3>1.2 ARMv8 DMA 硬件架构</h3>
+
+<p>ARMv8 平台的 DMA 硬件通常包含以下层次：</p>
+
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│                    CPU Cluster                               │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                       │
+│  │Core 0│ │Core 1│ │Core 2│ │Core 3│                       │
+│  │L1 D$ │ │L1 D$ │ │L1 D$ │ │L1 D$ │                       │
+│  └──┬───┘ └──┬───┘ └──┬───┘ └──┬───┘                       │
+│     └────┬───┘        └────┬───┘                            │
+│      ┌───┴───┐         ┌───┴───┐                            │
+│      │  L2   │         │  L2   │                            │
+│      └───┬───┘         └───┬───┘                            │
+│          └────────┬────────┘                                │
+│              ┌────┴────┐                                    │
+│              │   L3/   │  ← PoC (Point of Coherency)       │
+│              │  System │                                    │
+│              │  Cache  │                                    │
+│              └────┬────┘                                    │
+└───────────────────┼─────────────────────────────────────────┘
+                    │
+            ┌───────┴───────┐
+            │  Interconnect │  (CCI/CCN/CMN)
+            │  (Coherent    │
+            │   Bus Fabric) │
+            └─┬──────┬────┬─┘
+              │      │    │
+     ┌────────┴┐  ┌──┴──┐ ┌───┴────┐
+     │  DRAM   │  │SMMU │ │  GIC   │
+     │Controller│  │(IOMMU)│ │       │
+     └─────────┘  └──┬──┘ └────────┘
+                     │
+              ┌──────┴──────┐
+              │  I/O 总线   │
+              │  (PCIe/AXI) │
+              └─┬─────┬────┬┘
+           ┌────┴┐ ┌──┴──┐ ┌┴────┐
+           │NIC  │ │eMMC │ │GPU  │
+           │(网卡)│ │控制器│ │     │
+           └─────┘ └─────┘ └─────┘</code></pre>
+
+<p><strong>关键硬件组件：</strong></p>
+
+<table>
+<thead><tr>
+<th>组件</th>
+<th>功能</th>
+<th>与 DMA 的关系</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>DMA 控制器</strong></td>
+<td>管理 DMA 通道，执行数据传输</td>
+<td>核心硬件，驱动设备与内存间数据搬运</td>
+</tr>
+<tr>
+<td><strong>SMMU (IOMMU)</strong></td>
+<td>I/O 地址翻译与隔离</td>
+<td>将设备 DMA 地址映射到物理地址</td>
+</tr>
+<tr>
+<td><strong>Interconnect</strong></td>
+<td>总线互联（CCI-400/500, CMN-600）</td>
+<td>保证 I/O coherency</td>
+</tr>
+<tr>
+<td><strong>Cache 层次</strong></td>
+<td>L1/L2/L3 缓存</td>
+<td>DMA 需处理缓存一致性问题</td>
+</tr>
+<tr>
+<td><strong>GIC</strong></td>
+<td>中断控制器</td>
+<td>DMA 完成后通过中断通知 CPU</td>
+</tr>
+</tbody></table>
+
+<h3>1.3 DMA 传输模式</h3>
+
+<p>DMA 控制器支持多种传输模式，适用于不同的硬件场景。理解这些模式是正确使用 DMA Engine API 的基础。</p>
+
+<h4>四种基本传输模式</h4>
+
+<pre><code>┌────────────────────────────────────────────────────────────────────┐
+│                    DMA 传输模式总览                                  │
+├──────────┬─────────────────────────────────────────────────────────┤
+│ 单次传输  │  ■ → ■                    传一次就停                     │
+│ (Single) │  CPU 发起，DMA 传一个数据单元，完成后停止                  │
+├──────────┼─────────────────────────────────────────────────────────┤
+│ 块传输    │  ■■■■■■■■ → ■■■■■■■■     一次传一整块                   │
+│ (Block)  │  CPU 发起，DMA 连续传输 N 个数据单元，全部完成后中断通知    │
+├──────────┼─────────────────────────────────────────────────────────┤
+│ 需求传输  │  ■..■..■■..■ → ■..■..■■..■  外设按需请求                │
+│ (Demand) │  外设每准备好数据就发 DRQ 信号，DMA 传一个/一组数据单元     │
+├──────────┼─────────────────────────────────────────────────────────┤
+│ 循环传输  │  ■■■■■■■■ → ■■■■■■■■ → ■■■■■■■■ → ...  无限循环       │
+│ (Cyclic) │  传输完一个 buffer 后自动回到起点继续，直到软件主动停止     │
+└──────────┴─────────────────────────────────────────────────────────┘</code></pre>
+
+<h4>1) 单次传输 (Single Transfer)</h4>
+
+<pre><code>CPU 配置 DMA                     DMA 执行
+┌──────────┐                    ┌───────────────┐
+│ 源地址    │    ──触发──▶       │ 读 1 个数据单元│
+│ 目的地址  │                    │ 写 1 个数据单元│
+│ 传 1 次   │                    │ 完成 → 停止   │
+└──────────┘                    └───────────────┘</code></pre>
+
+<ul>
+<li><strong>特点</strong>：每次只传输一个数据单元（1/2/4/8 字节），传完即停</li>
+<li><strong>触发方式</strong>：软件触发或硬件 DRQ 信号</li>
+<li><strong>应用场景</strong>：极少单独使用，通常用于低速外设的单字传输</li>
+<li><strong>内核对应</strong>：无直接 API，通常封装在 block 传输中（burst size = 1）</li>
+</ul>
+
+<h4>2) 块传输 (Block / Burst Transfer)</h4>
+
+<pre><code>CPU 配置 DMA                     DMA 执行
+┌──────────┐                    ┌───────────────────────────────────┐
+│ 源地址    │    ──触发──▶       │ 连续传输 N 个数据单元               │
+│ 目的地址  │                    │ ■■■■■■■■ (burst)                  │
+│ 长度 = N  │                    │ 全部完成后：                       │
+│ burst=16  │                    │  - 产生完成中断                    │
+└──────────┘                    │  - 停止 DMA 通道                   │
+                                └───────────────────────────────────┘</code></pre>
+
+<ul>
+<li><strong>特点</strong>：一次性连续传输一整块数据，传输期间 DMA 独占总线（或按仲裁策略交替）</li>
+<li><strong>Burst Size</strong>：每次总线事务传输的数据单元数（如 4/8/16），由硬件和总线宽度决定</li>
+<li><strong>应用场景</strong>：内存到内存拷贝（memcpy 加速）、大块数据搬运</li>
+<li><strong>内核对应</strong>：<code>dmaengine_prep_dma_memcpy()</code></li>
+</ul>
+
+<pre><code class="language-c">// 内核 DMA Engine API — 块传输（memcpy）
+struct dma_async_tx_descriptor *desc;
+desc = dmaengine_prep_dma_memcpy(chan,
+    dst_dma_addr,     // 目的 DMA 地址
+    src_dma_addr,     // 源 DMA 地址
+    len,              // 传输长度（字节）
+    DMA_PREP_INTERRUPT | DMA_CTRL_ACK);</code></pre>
+
+<h4>3) 需求传输 (Demand / Slave Transfer)</h4>
+
+<pre><code>外设 FIFO                    DMA 控制器                    内存
+┌────────┐                  ┌────────────┐               ┌────────┐
+│ 数据   │──DRQ信号──▶      │            │               │        │
+│ 就绪   │                  │ 检测到 DRQ  │               │        │
+│        │◀──────────────── │ 读取 burst │──────────────▶│ 写入   │
+│        │   读取数据        │ 个数据单元  │   写入数据     │ 数据   │
+│  ...   │                  │            │               │        │
+│ 数据   │──DRQ信号──▶      │ 又检测到DRQ │               │        │
+│ 就绪   │                  │ 再读 burst │──────────────▶│ 写入   │
+└────────┘                  └────────────┘               └────────┘
+                            总计达到 len 后：完成中断</code></pre>
+
+<ul>
+<li><strong>特点</strong>：由外设硬件信号 (DRQ/DREQ) 控制传输节奏，外设 FIFO 准备好了才传</li>
+<li><strong>流控</strong>：硬件流控（device_fc）——设备控制何时传输，避免 FIFO 溢出/欠载</li>
+<li><strong>应用场景</strong>：UART/SPI/I2C 等慢速外设数据收发（最常见的 DMA 模式）</li>
+<li><strong>内核对应</strong>：<code>dmaengine_prep_slave_sg()</code> / <code>dmaengine_prep_slave_single()</code></li>
+</ul>
+
+<pre><code class="language-c">// 配置从设备参数
+struct dma_slave_config cfg = {
+    .direction    = DMA_DEV_TO_MEM,
+    .src_addr     = uart_phys + UART_RBR,   // 外设 FIFO 寄存器物理地址
+    .src_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE,
+    .src_maxburst = 16,                      // 每次 DRQ 触发传输 16 字节
+    .device_fc    = false,                   // DMA 控制器管理流控
+};
+dmaengine_slave_config(chan, &amp;cfg);
+
+// 准备从设备 SG 传输描述符
+desc = dmaengine_prep_slave_sg(chan,
+    sg_list, sg_len,          // scatter-gather 列表
+    DMA_DEV_TO_MEM,           // 设备→内存
+    DMA_PREP_INTERRUPT | DMA_CTRL_ACK);</code></pre>
+
+<p><strong>DRQ 信号与 burst 的关系：</strong></p>
+<pre><code>FIFO 半满 → 拉高 DRQ → DMA 传输 maxburst 个数据 → DRQ 拉低
+         → 设备继续接收数据 → FIFO 又半满 → 再拉高 DRQ → ...
+
+maxburst = 16, buswidth = 1 byte:
+  每次 DRQ 脉冲 → DMA 传输 16 字节
+  直到总长度 len 达到 → 完成中断</code></pre>
+
+<h4>4) 循环传输 (Cyclic Transfer)</h4>
+
+<pre><code>      缓冲区（环形）
+    ┌─────────────────────────────────┐
+    │ Period 0 │ Period 1 │ Period 2  │
+    │  ■■■■■■  │  ■■■■■■  │  ■■■■■■  │
+    └─────┬────┴────┬─────┴────┬─────┘
+          │         │          │
+          ▼         ▼          ▼
+     中断回调    中断回调    中断回调
+     (半满)     (全满)     (又半满)
+          │                    │
+          └───── 自动回绕 ─────┘
+           DMA 地址重新指向 Period 0</code></pre>
+
+<ul>
+<li><strong>特点</strong>：传输完最后一个 period 后自动回到缓冲区起始地址继续，永不停止</li>
+<li><strong>Period</strong>：缓冲区被分为 N 个等长段，每完成一个 period 产生一次中断</li>
+<li><strong>双缓冲思想</strong>：CPU 处理已完成 period 的数据时，DMA 继续写下一个 period</li>
+<li><strong>应用场景</strong>：音频流（ALSA PCM）、视频帧采集、持续数据采集</li>
+<li><strong>内核对应</strong>：<code>dmaengine_prep_dma_cyclic()</code></li>
+</ul>
+
+<pre><code class="language-c">// 循环 DMA — 音频播放典型用法
+desc = dmaengine_prep_dma_cyclic(chan,
+    buf_dma_addr,            // 环形缓冲区 DMA 地址
+    buf_len,                 // 缓冲区总大小（如 64KB）
+    period_len,              // 每个 period 大小（如 16KB）
+    DMA_MEM_TO_DEV,          // 内存→I2S 控制器
+    DMA_PREP_INTERRUPT);     // 每个 period 完成触发回调
+
+// 缓冲区被分为 buf_len / period_len = 4 个 period
+// DMA 完成 Period 0 → 中断 → 回调（应用填充 Period 0 新数据）
+// DMA 继续 Period 1 → 中断 → 回调（应用填充 Period 1 新数据）
+// ...
+// DMA 完成 Period 3 → 自动回到 Period 0 → 无限循环</code></pre>
+
+<h4>四种模式对比总结</h4>
+
+<table>
+<thead><tr>
+<th>模式</th>
+<th>触发方式</th>
+<th>传输次数</th>
+<th>中断频率</th>
+<th>典型场景</th>
+<th>DMA Engine API</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>单次</strong></td>
+<td>软件/DRQ</td>
+<td>1 次</td>
+<td>每次</td>
+<td>极少用</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>块传输</strong></td>
+<td>软件触发</td>
+<td>1 块</td>
+<td>完成时 1 次</td>
+<td>memcpy, 大块搬运</td>
+<td><code>prep_dma_memcpy()</code></td>
+</tr>
+<tr>
+<td><strong>需求传输</strong></td>
+<td>外设 DRQ</td>
+<td>按需多次</td>
+<td>完成时 1 次</td>
+<td>UART/SPI/I2C</td>
+<td><code>prep_slave_sg()</code></td>
+</tr>
+<tr>
+<td><strong>循环传输</strong></td>
+<td>外设 DRQ</td>
+<td>无限循环</td>
+<td>每 period</td>
+<td>音频/视频流</td>
+<td><code>prep_dma_cyclic()</code></td>
+</tr>
+</tbody></table>
+
+<h3>1.4 MMU、IOMMU、SMMU：区别与联系</h3>
+
+<p>这三个名字经常混用，但它们分别工作在不同层面。一句话概括：<strong>MMU 服务于 CPU，IOMMU 服务于设备，SMMU 是 ARM 对 IOMMU 的具体实现</strong>。</p>
+
+<h4>三者对比总览</h4>
+
+<table>
+<thead><tr>
+<th>维度</th>
+<th>MMU</th>
+<th>IOMMU</th>
+<th>SMMU</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>全称</strong></td>
+<td>Memory Management Unit</td>
+<td>I/O Memory Management Unit</td>
+<td>System Memory Management Unit</td>
+</tr>
+<tr>
+<td><strong>服务对象</strong></td>
+<td>CPU 核心</td>
+<td>I/O 设备（通用概念）</td>
+<td>I/O 设备（ARM 实现）</td>
+</tr>
+<tr>
+<td><strong>位置</strong></td>
+<td>CPU 内部，每个核心一个</td>
+<td>总线上，设备与内存之间</td>
+<td>ARM SoC 总线上</td>
+</tr>
+<tr>
+<td><strong>翻译什么</strong></td>
+<td>CPU 虚拟地址 → 物理地址</td>
+<td>设备 DMA 地址 → 物理地址</td>
+<td>设备 DMA 地址 → 物理地址</td>
+</tr>
+<tr>
+<td><strong>页表由谁管理</strong></td>
+<td>内核 mm 子系统</td>
+<td>内核 IOMMU 子系统</td>
+<td>内核 ARM SMMU 驱动</td>
+</tr>
+<tr>
+<td><strong>页表格式</strong></td>
+<td>ARMv8 TTBR 页表</td>
+<td>平台相关</td>
+<td>ARMv8 兼容格式（可共享 CPU 页表）</td>
+</tr>
+<tr>
+<td><strong>TLB</strong></td>
+<td>CPU 内 TLB</td>
+<td>IOTLB（I/O 侧 TLB）</td>
+<td>IOTLB</td>
+</tr>
+<tr>
+<td><strong>典型硬件</strong></td>
+<td>ARM Cortex-A 系列内置</td>
+<td>Intel VT-d, AMD-Vi, ARM SMMU</td>
+<td>ARM SMMUv2, SMMUv3</td>
+</tr>
+<tr>
+<td><strong>内核代码</strong></td>
+<td><code>arch/arm64/mm/</code></td>
+<td><code>drivers/iommu/</code> (框架)</td>
+<td><code>drivers/iommu/arm/arm-smmu-v3/</code></td>
+</tr>
+</tbody></table>
+
+<h4>硬件位置关系</h4>
+
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│  CPU Core                                                           │
+│  ┌──────────────────────────────────┐                               │
+│  │  应用程序使用虚拟地址 (VA)        │                               │
+│  │  例: 0x00007fff_12340000         │                               │
+│  └──────────┬───────────────────────┘                               │
+│             │                                                       │
+│       ┌─────┴─────┐                                                 │
+│       │  ★ MMU ★  │  ← CPU 内部硬件，翻译 CPU 发出的每一次内存访问   │
+│       │  VA → PA   │     通过 TTBR0/TTBR1 寄存器指向的页表            │
+│       └─────┬─────┘                                                 │
+│             │ 物理地址 (PA)                                          │
+└─────────────┼───────────────────────────────────────────────────────┘
+              │
+        ┌─────┴──────────────────────────────┐
+        │        Interconnect (总线)          │
+        └─────┬────────────────┬─────────────┘
+              │                │
+              │          ┌─────┴──────┐
+              │          │ ★ SMMU ★   │  ← 总线上的独立硬件单元
+              │          │ (ARM IOMMU)│     翻译设备发出的每一次 DMA 访问
+              │          │ DA → PA    │     通过 Stream Table + CD 指向的 I/O 页表
+              │          └─────┬──────┘
+              │                │
+        ┌─────┴──┐     ┌──────┴──────┐
+        │  DRAM  │     │  I/O 设备    │
+        │  内存  │     │  (NIC/GPU/   │
+        │        │     │   eMMC...)   │
+        └────────┘     └─────────────┘
+
+★ MMU  = 翻译 CPU 的地址，在 CPU 内部
+★ SMMU = 翻译设备的地址，在总线上（是 IOMMU 的 ARM 实现）</code></pre>
+
+<h4>概念层次关系</h4>
+
+<pre><code>IOMMU（通用概念/内核框架）
+  │
+  ├── Intel VT-d          ← x86 平台的 IOMMU 实现
+  ├── AMD-Vi (AMD IOMMU)  ← AMD 平台的 IOMMU 实现
+  ├── ARM SMMU            ← ARM 平台的 IOMMU 实现
+  │     ├── SMMUv1        (已淘汰)
+  │     ├── SMMUv2        (ARMv7/v8 早期)
+  │     └── SMMUv3        (ARMv8 主流，支持 Stage1+2, ATS, PRI, SVA)
+  └── RISC-V IOMMU        ← RISC-V 平台的 IOMMU 实现</code></pre>
+
+<p><strong>Linux 内核的抽象层次：</strong></p>
+<ul>
+<li><code>drivers/iommu/iommu.c</code> — <strong>IOMMU 通用框架</strong>，定义 <code>struct iommu_ops</code> 接口</li>
+<li><code>drivers/iommu/dma-iommu.c</code> — IOMMU 与 DMA 子系统的<strong>集成层</strong></li>
+<li><code>drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c</code> — ARM <strong>SMMUv3 具体驱动</strong>，实现 <code>iommu_ops</code></li>
+</ul>
+
+<h4>为什么需要 IOMMU/SMMU？MMU 不够用吗？</h4>
+
+<p>MMU 只翻译 <strong>CPU 发出的地址</strong>，但设备做 DMA 时绕过了 CPU，直接在总线上发地址访问内存。没有 IOMMU 的情况：</p>
+
+<pre><code>危险场景（无 IOMMU）:
+─────────────────────
+                           物理内存
+设备 DMA 发出地址 0x80000000 ──────▶ 直接访问！
+                                     没有任何检查！
+
+问题1: 恶意/有缺陷的设备可以读写任意物理内存 → 安全漏洞
+问题2: 设备必须使用物理地址，需要物理连续内存 → 内存管理困难
+问题3: 虚拟机中的设备直通(passthrough)无法安全隔离 → 虚拟化受限</code></pre>
+
+<pre><code>安全场景（有 IOMMU/SMMU）:
+─────────────────────────
+                                    SMMU I/O 页表
+设备 DMA 发出地址 0x1000_0000 ──▶ [翻译+权限检查] ──▶ 物理内存 0x8000_0000
+                                    │
+                                    ├─ 地址翻译：设备地址 → 真实物理地址
+                                    ├─ 权限检查：只能访问分配给它的内存区域
+                                    ├─ 地址聚合：多段不连续物理内存 → 设备看到连续地址
+                                    └─ 隔离保护：不同设备/VM 互不干扰</code></pre>
+
+<h4>MMU 与 SMMU 的页表对比</h4>
+
+<table>
+<thead><tr>
+<th>特性</th>
+<th>MMU 页表</th>
+<th>SMMU 页表</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>基地址寄存器</strong></td>
+<td><code>TTBR0_EL1</code> / <code>TTBR1_EL1</code></td>
+<td>Stream Table → CD → TTB</td>
+</tr>
+<tr>
+<td><strong>查找键</strong></td>
+<td>虚拟地址 (VA)</td>
+<td>StreamID + 设备地址</td>
+</tr>
+<tr>
+<td><strong>多级查找</strong></td>
+<td>TTBR → L0 → L1 → L2 → L3</td>
+<td>STE → CD → L0 → L1 → L2 → L3</td>
+</tr>
+<tr>
+<td><strong>两阶段翻译</strong></td>
+<td>不涉及（EL2 有 Stage 2）</td>
+<td>Stage 1 (VA→IPA) + Stage 2 (IPA→PA)</td>
+</tr>
+<tr>
+<td><strong>ASID</strong></td>
+<td>区分不同进程</td>
+<td>SubstreamID（SVA 场景共享进程地址空间）</td>
+</tr>
+<tr>
+<td><strong>VMID</strong></td>
+<td>区分不同虚拟机（EL2）</td>
+<td>区分不同虚拟机</td>
+</tr>
+<tr>
+<td><strong>页表格式</strong></td>
+<td>ARMv8 Long Descriptor</td>
+<td><strong>兼容 ARMv8 格式</strong>（可与 CPU 共享页表！）</td>
+</tr>
+<tr>
+<td><strong>TLB 失效</strong></td>
+<td><code>TLBI</code> 指令</td>
+<td>SMMU Command Queue: <code>CFGI</code>/<code>TLBI</code> 命令</td>
+</tr>
+</tbody></table>
+
+<blockquote><strong>重要特性</strong>：SMMUv3 使用与 CPU MMU <strong>相同格式</strong>的页表，这意味着在 SVA（Shared Virtual Addressing）场景下，设备可以直接使用进程的页表，设备和 CPU 看到同一个虚拟地址空间。</blockquote>
+
+<h4>三者协作全景</h4>
+
+<pre><code>用户进程调用 write(fd, buf, 4096):
+  │
+  ▼
+CPU 执行系统调用，buf 是用户虚拟地址 0x7fff_0000
+  │
+  │ ★ CPU MMU 翻译 ★
+  │ VA 0x7fff_0000 → PA 0x8000_0000 (通过进程页表)
+  ▼
+内核驱动调用 dma_map_single(dev, kernel_buf, 4096, DMA_TO_DEVICE)
+  │
+  │ 内核 DMA 子系统处理：
+  │ ├─ 如果有 SMMU: 在 I/O 页表建立映射，返回 IOVA
+  │ ├─ 如果无 SMMU: phys_to_dma() 直接转换，返回 DMA 地址
+  │ └─ Cache 维护: dcache_clean_poc()
+  ▼
+设备收到 DMA 地址，发起 DMA 读操作
+  │
+  │ ★ SMMU 翻译（如果有）★
+  │ IOVA 0x1000_0000 → PA 0x8000_0000 (通过 I/O 页表)
+  ▼
+设备读到物理内存中的数据，传输完成，触发中断</code></pre>
+
+<h3>1.5 ARM SMMU (System MMU) 详解</h3>
+
+<p>ARM SMMU（System Memory Management Unit）是 ARM 架构的 IOMMU 实现，在内核中对应 <code>drivers/iommu/arm/arm-smmu-v3/</code> 目录。</p>
+
+<p><strong>SMMUv3 关键寄存器（源码 <code>arm-smmu-v3.h</code>）：</strong></p>
+
+<pre><code class="language-c">/* 身份寄存器 */
+ARM_SMMU_IDR0    (0x00)  // 能力寄存器：Stage1/2支持、ATS、VMID位宽等
+ARM_SMMU_IDR1    (0x04)  // 队列大小、SID/SSID位宽
+ARM_SMMU_IDR5    (0x14)  // 页粒度支持(4K/16K/64K)、输出地址宽度(OAS)
+
+/* 控制寄存器 */
+ARM_SMMU_CR0     (0x20)  // 使能控制：SMMUEN, CMDQEN, EVTQEN, PRIQEN
+ARM_SMMU_CR1     (0x28)  // 缓存属性配置（表/队列的 Inner/Outer Cache）
+ARM_SMMU_CR2     (0x2C)  // PTM, E2H 等特性控制
+
+/* 流表基地址 */
+ARM_SMMU_STRTAB_BASE      (0x80)   // 流表(Stream Table)基地址
+ARM_SMMU_STRTAB_BASE_CFG  (0x88)   // 流表格式（线性/两级）
+
+/* 中断与错误 */
+ARM_SMMU_GERROR  (0x60)  // 全局错误寄存器
+ARM_SMMU_IRQ_CTRL(0x50)  // 中断使能</code></pre>
+
+<p><strong>SMMUv3 工作流程：</strong></p>
+
+<pre><code>设备发起 DMA 请求 (携带 StreamID)
+    │
+    ▼
+┌──────────────────────────────────┐
+│  SMMU Stream Table 查找          │
+│  StreamID → Stream Table Entry   │
+│  (STE 包含 Context Descriptor)   │
+└──────────┬───────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────┐
+│  Stage 1 翻译 (可选)             │
+│  设备虚拟地址(VA) → 中间物理地址 │
+│  (IPA)，使用 CD 中的页表基地址    │
+└──────────┬───────────────────────┘
+           │
+           ▼
+┌──────────────────────────────────┐
+│  Stage 2 翻译 (可选)             │
+│  IPA → 物理地址(PA)              │
+│  用于虚拟化场景                   │
+└──────────┬───────────────────────┘
+           │
+           ▼
+    访问 DRAM 物理内存</code></pre>
+
+<p><strong>SMMUv3 命令队列与事件队列：</strong></p>
+<ul>
+<li><strong>Command Queue (CMDQ)</strong>：CPU 向 SMMU 发命令（TLB invalidate、配置更新等）</li>
+<li><strong>Event Queue (EVTQ)</strong>：SMMU 向 CPU 报告事件（翻译错误、权限错误等）</li>
+<li><strong>PRI Queue (PRIQ)</strong>：Page Request Interface，设备请求缺页处理</li>
+</ul>
+
+<h3>1.6 Cache 一致性与 DMA</h3>
+
+<p>这是 ARM64 DMA 编程中<strong>最核心、最易出错</strong>的知识点。</p>
+
+<h4>问题根源</h4>
+
+<pre><code>   CPU 写数据到内存:
+   CPU → L1 Cache → L2 Cache → (可能还在Cache中，未写回DRAM)
+
+   设备通过 DMA 读内存:
+   设备 → 总线 → DRAM  (读到的可能是旧数据！)
+
+   设备通过 DMA 写内存:
+   设备 → 总线 → DRAM → (CPU Cache 中还有旧数据！)</code></pre>
+
+<h4>ARMv8 的两种一致性模型</h4>
+
+<table>
+<thead><tr>
+<th>模型</th>
+<th>说明</th>
+<th>Cache 维护</th>
+<th>性能</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Hardware Coherent</strong></td>
+<td>硬件自动保证 I/O 与 CPU Cache 一致</td>
+<td>不需要</td>
+<td>高</td>
+</tr>
+<tr>
+<td><strong>Non-Coherent</strong></td>
+<td>软件必须手动做 Cache 维护操作</td>
+<td>必须</td>
+<td>取决于维护开销</td>
+</tr>
+</tbody></table>
+
+<p><strong>ARM64 内核实现（<code>arch/arm64/mm/dma-mapping.c</code>）：</strong></p>
+
+<pre><code class="language-c">// 设备访问前：将 CPU Cache 数据刷到内存（PoC）
+void arch_sync_dma_for_device(phys_addr_t paddr, size_t size,
+                              enum dma_data_direction dir)
+{
+    unsigned long start = (unsigned long)phys_to_virt(paddr);
+    dcache_clean_poc(start, start + size);  // Clean: Cache → Memory
+}
+
+// CPU 访问前：使 Cache 无效化，迫使从内存重读
+void arch_sync_dma_for_cpu(phys_addr_t paddr, size_t size,
+                           enum dma_data_direction dir)
+{
+    unsigned long start = (unsigned long)phys_to_virt(paddr);
+    if (dir == DMA_TO_DEVICE)
+        return;  // CPU→设备方向，CPU不需要读新数据
+    dcache_inval_poc(start, start + size);  // Invalidate: 丢弃Cache
+}
+
+// 分配 Coherent 内存前：先清理 Cache
+void arch_dma_prep_coherent(struct page *page, size_t size)
+{
+    unsigned long start = (unsigned long)page_address(page);
+    dcache_clean_poc(start, start + size);
+}</code></pre>
+
+<h4>PoC（Point of Coherency）概念</h4>
+
+<pre><code>          L1 Cache
+              │
+          L2 Cache
+              │
+     ┌────────┴────────┐
+     │   PoC (L3/LLC)  │  ← 所有 observer（CPU + I/O）都能看到一致数据的点
+     └────────┬────────┘
+              │
+           DRAM</code></pre>
+
+<ul>
+<li><strong><code>dcache_clean_poc()</code></strong>：将 Cache 行清洗到 PoC，确保设备能看到最新数据</li>
+<li><strong><code>dcache_inval_poc()</code></strong>：使 Cache 行无效，CPU 下次访问从 PoC 重新获取</li>
+<li><strong><code>dcache_clean_inval_poc()</code></strong>：先清洗再无效（双向传输场景）</li>
+</ul>
+
+<h4>DMA 方向与 Cache 操作对应关系</h4>
+
+<table>
+<thead><tr>
+<th>DMA 方向</th>
+<th>含义</th>
+<th>传输前操作</th>
+<th>传输后操作</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>DMA_TO_DEVICE</code></td>
+<td>CPU→设备</td>
+<td>Clean（确保设备读到新数据）</td>
+<td>无需操作</td>
+</tr>
+<tr>
+<td><code>DMA_FROM_DEVICE</code></td>
+<td>设备→CPU</td>
+<td>无需操作（或 Invalidate）</td>
+<td>Invalidate（丢弃旧 Cache）</td>
+</tr>
+<tr>
+<td><code>DMA_BIDIRECTIONAL</code></td>
+<td>双向</td>
+<td>Clean + Invalidate</td>
+<td>Invalidate</td>
+</tr>
+</tbody></table>
+
+<h3>1.7 DMA 地址空间与总线拓扑</h3>
+
+<p>ARMv8 系统中存在<strong>多个地址空间</strong>：</p>
+
+<pre><code>┌──────────────────────────────────────────────────┐
+│  CPU 虚拟地址 (VA)                                │
+│  例: 0xffff800000000000 (内核线性映射区)           │
+│       │                                          │
+│       │ MMU / 页表翻译                            │
+│       ▼                                          │
+│  CPU 物理地址 (PA)                                │
+│  例: 0x0000000080000000                          │
+│       │                                          │
+│       │ phys_to_dma() / bus_dma_region 映射       │
+│       ▼                                          │
+│  DMA/总线地址                                     │
+│  (可能等于PA，也可能有偏移)                         │
+│       │                                          │
+│       │ 可选: SMMU/IOMMU 翻译                     │
+│       ▼                                          │
+│  设备看到的最终物理地址                             │
+└──────────────────────────────────────────────────┘</code></pre>
+
+<p><strong><code>bus_dma_region</code> 结构体（描述 CPU→DMA 地址映射规则）：</strong></p>
+
+<pre><code class="language-c">struct bus_dma_region {
+    phys_addr_t cpu_start;    // CPU 物理地址起始
+    dma_addr_t  dma_start;    // 对应的 DMA 地址起始
+    u64         size;         // 区域大小
+};</code></pre>
+
+<hr>
+
+<h2>第二部分：内核 DMA 软件框架</h2>
+
+<p>Linux 内核的 DMA 子系统由两个互补的框架组成：</p>
+
+<pre><code>┌─────────────────────────────────────────────────────┐
+│                   驱动程序                            │
+├───────────────────────┬─────────────────────────────┤
+│  DMA Mapping API      │  DMA Engine API              │
+│  (地址映射/缓存同步)  │  (DMA 控制器通道管理)          │
+│  kernel/dma/          │  drivers/dma/                │
+├───────────────────────┴─────────────────────────────┤
+│                     平台层                            │
+│  arch/arm64/mm/dma-mapping.c  +  IOMMU/SMMU         │
+├─────────────────────────────────────────────────────┤
+│                   DMA 硬件                            │
+└─────────────────────────────────────────────────────┘</code></pre>
+
+<h3>2.1 DMA Mapping API（流式映射）</h3>
+
+<p>这是驱动开发者最常用的 API 层，定义在 <code>include/linux/dma-mapping.h</code>。</p>
+
+<h4>核心数据方向</h4>
+
+<pre><code class="language-c">// include/linux/dma-direction.h
+enum dma_data_direction {
+    DMA_BIDIRECTIONAL = 0,   // 双向传输
+    DMA_TO_DEVICE     = 1,   // 内存→设备（如发送网络包）
+    DMA_FROM_DEVICE   = 2,   // 设备→内存（如接收网络包）
+    DMA_NONE          = 3,   // 仅用于调试校验
+};</code></pre>
+
+<h4>DMA 属性标志</h4>
+
+<pre><code class="language-c">// include/linux/dma-mapping.h
+#define DMA_ATTR_WEAK_ORDERING       (1UL &lt;&lt; 1)  // 允许弱序访问
+#define DMA_ATTR_WRITE_COMBINE       (1UL &lt;&lt; 2)  // 写合并，提升写性能
+#define DMA_ATTR_NO_KERNEL_MAPPING   (1UL &lt;&lt; 4)  // 不建立内核虚拟映射
+#define DMA_ATTR_SKIP_CPU_SYNC       (1UL &lt;&lt; 5)  // 跳过 Cache 同步
+#define DMA_ATTR_FORCE_CONTIGUOUS    (1UL &lt;&lt; 6)  // 强制物理连续
+#define DMA_ATTR_ALLOC_SINGLE_PAGES  (1UL &lt;&lt; 7)  // 提示：不必追求 TLB 效率
+#define DMA_ATTR_NO_WARN             (1UL &lt;&lt; 8)  // 抑制分配失败警告
+#define DMA_ATTR_PRIVILEGED          (1UL &lt;&lt; 9)  // 特权级访问
+#define DMA_ATTR_MMIO                (1UL &lt;&lt; 10) // MMIO 区域（P2P DMA）</code></pre>
+
+<h4><code>dma_map_ops</code> 操作表</h4>
+
+<p>内核通过 <code>dma_map_ops</code> 结构体抽象不同平台的 DMA 操作（<code>include/linux/dma-map-ops.h</code>）：</p>
+
+<pre><code class="language-c">struct dma_map_ops {
+    /* 一致性内存分配/释放 */
+    void *(*alloc)(struct device *dev, size_t size,
+                   dma_addr_t *dma_handle, gfp_t gfp, unsigned long attrs);
+    void  (*free)(struct device *dev, size_t size, void *vaddr,
+                  dma_addr_t dma_handle, unsigned long attrs);
+
+    /* 单页映射/解映射 */
+    dma_addr_t (*map_page)(struct device *dev, struct page *page,
+                           unsigned long offset, size_t size,
+                           enum dma_data_direction dir, unsigned long attrs);
+    void (*unmap_page)(struct device *dev, dma_addr_t dma_handle,
+                       size_t size, enum dma_data_direction dir,
+                       unsigned long attrs);
+
+    /* scatter-gather 映射/解映射 */
+    int  (*map_sg)(struct device *dev, struct scatterlist *sg, int nents,
+                   enum dma_data_direction dir, unsigned long attrs);
+    void (*unmap_sg)(struct device *dev, struct scatterlist *sg, int nents,
+                     enum dma_data_direction dir, unsigned long attrs);
+
+    /* MMIO 资源映射 (P2P DMA) */
+    dma_addr_t (*map_resource)(struct device *dev, phys_addr_t phys_addr,
+                               size_t size, enum dma_data_direction dir,
+                               unsigned long attrs);
+
+    /* Cache 同步 */
+    void (*sync_single_for_cpu)(struct device *dev, dma_addr_t dma_handle,
+                                size_t size, enum dma_data_direction dir);
+    void (*sync_single_for_device)(struct device *dev, dma_addr_t dma_handle,
+                                   size_t size, enum dma_data_direction dir);
+
+    /* 能力查询 */
+    int  (*dma_supported)(struct device *dev, u64 mask);
+    u64  (*get_required_mask)(struct device *dev);
+    size_t (*max_mapping_size)(struct device *dev);
+};</code></pre>
+
+<p><strong>操作表选择逻辑（<code>kernel/dma/mapping.c</code>）：</strong></p>
+
+<pre><code class="language-c">// 三级路由：直接映射 &gt; IOMMU映射 &gt; 自定义ops
+static inline bool dma_map_direct(struct device *dev, const struct dma_map_ops *ops)
+{
+    return dma_go_direct(dev, *dev-&gt;dma_mask, ops);
+}
+
+// 核心映射函数的路由逻辑：
+dma_addr_t dma_map_phys(struct device *dev, phys_addr_t phys, ...)
+{
+    if (dma_map_direct(dev, ops))
+        addr = dma_direct_map_phys(dev, phys, ...);      // 直接路径
+    else if (use_dma_iommu(dev))
+        addr = iommu_dma_map_phys(dev, phys, ...);       // IOMMU路径
+    else
+        addr = ops-&gt;map_page(dev, page, offset, ...);    // 自定义ops
+}</code></pre>
+
+<h3>2.2 DMA Engine 框架（DMA 控制器抽象）</h3>
+
+<p>DMA Engine 框架管理 DMA 控制器硬件，位于 <code>drivers/dma/dmaengine.c</code>。</p>
+
+<h4>核心数据结构关系</h4>
+
+<pre><code>┌──────────────┐
+│  dma_device  │ ← DMA 控制器（如 PL330）
+│  .channels   │
+│  .cap_mask   │ ← 支持的操作类型
+│  .device_prep_dma_memcpy()  │ ← 准备描述符的回调
+│  .device_issue_pending()    │ ← 触发硬件传输
+│  .device_tx_status()        │ ← 查询完成状态
+└──────┬───────┘
+       │ 1:N
+       ▼
+┌──────────────┐
+│  dma_chan     │ ← DMA 通道
+│  .device      │ ← 所属控制器
+│  .cookie      │ ← 最新提交的 cookie
+│  .completed_cookie │ ← 最新完成的 cookie
+│  .client_count│ ← 引用计数
+└──────┬───────┘
+       │ N:M
+       ▼
+┌──────────────────────┐
+│ dma_async_tx_descriptor │ ← DMA 传输描述符
+│  .cookie              │ ← 传输标识
+│  .tx_submit()         │ ← 提交到通道
+│  .callback()          │ ← 完成回调函数
+│  .flags               │ ← DMA_PREP_INTERRUPT 等
+└───────────────────────┘</code></pre>
+
+<h4>DMA 事务类型</h4>
+
+<pre><code class="language-c">enum dma_transaction_type {
+    DMA_MEMCPY,       // 内存到内存拷贝（最常用）
+    DMA_XOR,          // XOR 运算（RAID5）
+    DMA_PQ,           // P+Q 运算（RAID6）
+    DMA_MEMSET,       // 内存填充
+    DMA_SLAVE,        // 从设备传输（外设⟷内存）
+    DMA_CYCLIC,       // 循环缓冲区传输（音频/视频）
+    DMA_INTERLEAVE,   // 交错传输（2D DMA）
+};</code></pre>
+
+<h4>DMA 传输方向</h4>
+
+<pre><code class="language-c">enum dma_transfer_direction {
+    DMA_MEM_TO_MEM,   // 内存→内存（memcpy加速）
+    DMA_MEM_TO_DEV,   // 内存→设备（如UART发送）
+    DMA_DEV_TO_MEM,   // 设备→内存（如UART接收）
+    DMA_DEV_TO_DEV,   // 设备→设备（较少使用）
+};</code></pre>
+
+<h4>DMA Engine 完整工作流</h4>
+
+<pre><code>                          ┌──────────────────┐
+                          │ 1. 请求 DMA 通道  │
+                          │ dma_request_chan() │
+                          └────────┬─────────┘
+                                   │
+                          ┌────────▼─────────┐
+                          │ 2. 配置从设备参数  │
+                          │ dmaengine_slave_  │
+                          │ config()          │
+                          └────────┬─────────┘
+                                   │
+                          ┌────────▼─────────┐
+                          │ 3. 准备传输描述符  │
+                          │ dmaengine_prep_   │
+                          │ slave_sg()        │
+                          └────────┬─────────┘
+                                   │
+                          ┌────────▼─────────┐
+                          │ 4. 设置完成回调   │
+                          │ desc-&gt;callback    │
+                          └────────┬─────────┘
+                                   │
+                          ┌────────▼─────────┐
+                          │ 5. 提交描述符     │
+                          │ dmaengine_submit()│
+                          │ → 返回 cookie     │
+                          └────────┬─────────┘
+                                   │
+                          ┌────────▼─────────┐
+                          │ 6. 触发传输       │
+                          │ dma_async_issue_  │
+                          │ pending()         │
+                          └────────┬─────────┘
+                                   │
+                          ┌────────▼─────────┐
+                          │ 7. 等待完成       │
+                          │ (回调/轮询/等待)  │
+                          └────────┬─────────┘
+                                   │
+                          ┌────────▼─────────┐
+                          │ 8. 释放通道       │
+                          │ dma_release_      │
+                          │ channel()         │
+                          └──────────────────┘</code></pre>
+
+<h3>2.3 地址转换流程</h3>
+
+<p>Linux 内核 DMA 子系统的核心任务之一是<strong>地址空间转换</strong>：</p>
+
+<pre><code>┌───────────────────────────────────────────────────────────┐
+│ 内核虚拟地址 (Kernel VA)                                   │
+│ 例: 0xffff000000000000 + offset                           │
+└────────────┬──────────────────────────────────────────────┘
+             │ virt_to_phys() 或页表遍历
+             ▼
+┌───────────────────────────────────────────────────────────┐
+│ CPU 物理地址 (PA)                                         │
+│ 例: 0x80000000                                           │
+└────────────┬──────────────────────────────────────────────┘
+             │ phys_to_dma(dev, pa)
+             │   ├─ 检查内存加密 (AMD SME/SEV)
+             │   └─ 查询 bus_dma_region 映射表
+             ▼
+┌───────────────────────────────────────────────────────────┐
+│ DMA/总线地址 (dma_addr_t)                                 │
+│ (可能等于PA，也可能有偏移或加密位)                           │
+└────────────┬──────────────────────────────────────────────┘
+             │
+             ├── [直接路径] 设备直接使用此地址访问内存
+             │
+             ├── [IOMMU路径] SMMU 将 DMA 地址通过 I/O 页表
+             │   翻译为物理地址
+             │
+             └── [Bounce路径] 数据被拷贝到 swiotlb 区域，
+                 设备访问 bounce buffer 的地址</code></pre>
+
+<p><strong>关键函数（<code>kernel/dma/direct.c</code>）：</strong></p>
+
+<pre><code class="language-c">static inline dma_addr_t phys_to_dma_direct(struct device *dev,
+                                             phys_addr_t phys)
+{
+    if (force_dma_unencrypted(dev))
+        return phys_to_dma_unencrypted(dev, phys);  // 加密平台
+    return phys_to_dma(dev, phys);                   // 常规转换
+}
+
+// 检查设备 DMA 能力
+bool dma_coherent_ok(struct device *dev, phys_addr_t phys, size_t size)
+{
+    dma_addr_t dma_addr = phys_to_dma_direct(dev, phys);
+    if (dma_addr == DMA_MAPPING_ERROR)
+        return false;
+    return dma_addr + size - 1 &lt;=
+        min_not_zero(dev-&gt;coherent_dma_mask, dev-&gt;bus_dma_limit);
+}</code></pre>
+
+<h3>2.4 三条 DMA 映射路径</h3>
+
+<h4>路径一：直接映射 (Direct DMA)</h4>
+
+<pre><code>CPU PA ──phys_to_dma()──▶ DMA Address (设备直接访问)</code></pre>
+
+<ul>
+<li><strong>条件</strong>：设备 DMA mask 覆盖所有物理内存，无需 IOMMU</li>
+<li><strong>优点</strong>：零开销，最快路径</li>
+<li><strong>缺点</strong>：无地址空间隔离，需物理连续内存</li>
+</ul>
+
+<pre><code class="language-c">// kernel/dma/direct.c - 直接映射的 map_sg 实现
+int dma_direct_map_sg(struct device *dev, struct scatterlist *sgl,
+                      int nents, enum dma_data_direction dir,
+                      unsigned long attrs)
+{
+    for_each_sg(sgl, sg, nents, i) {
+        sg-&gt;dma_address = dma_direct_map_phys(dev, sg_phys(sg),
+                                               sg-&gt;length, dir, attrs);
+        // ...
+    }
+    return nents;
+}</code></pre>
+
+<h4>路径二：IOMMU 映射</h4>
+
+<pre><code>CPU PA ──▶ IOMMU 分配 IOVA ──▶ 建立 I/O 页表 ──▶ IOVA (设备使用)</code></pre>
+
+<ul>
+<li><strong>条件</strong>：设备关联了 IOMMU（如 ARM SMMU）</li>
+<li><strong>优点</strong>：地址空间隔离、支持非连续物理内存聚合、安全性高</li>
+<li><strong>缺点</strong>：有 TLB miss 开销、需管理 IOVA 空间</li>
+</ul>
+
+<pre><code class="language-c">// kernel/dma/mapping.c - 路由到 IOMMU
+if (use_dma_iommu(dev))
+    addr = iommu_dma_map_phys(dev, phys, size, dir, attrs);</code></pre>
+
+<p><strong>IOMMU DMA 的延迟 TLB 刷新优化：</strong></p>
+<ul>
+<li>使用 per-CPU flush queue 批量处理 IOTLB 失效</li>
+<li>定时器触发（默认 10ms）减少频繁刷新开销</li>
+<li>原子计数器同步 <code>fq_flush_start_cnt</code> / <code>fq_flush_finish_cnt</code></li>
+</ul>
+
+<h4>路径三：Bounce Buffer (swiotlb)</h4>
+
+<pre><code>数据: 高地址内存 ──memcpy──▶ swiotlb bounce buffer (低地址) ──▶ 设备访问</code></pre>
+
+<ul>
+<li><strong>条件</strong>：设备 DMA mask 不够大，无法访问目标内存</li>
+<li><strong>优点</strong>：兼容性强，任何设备都能工作</li>
+<li><strong>缺点</strong>：额外内存拷贝，性能开销大</li>
+</ul>
+
+<h3>2.5 Bounce Buffer (swiotlb) 机制</h3>
+
+<p><strong>swiotlb（Software I/O TLB）</strong> 是 DMA 的最后防线，当设备无法直接访问目标内存时自动启用。</p>
+
+<pre><code>┌──────────────────────────────────────────────────────────┐
+│                    系统内存布局                             │
+│                                                          │
+│  0            16MB          4GB                    max    │
+│  ├─ ZONE_DMA ─┤─ ZONE_DMA32 ─┤──── ZONE_NORMAL ────┤    │
+│               │               │                      │    │
+│   ┌───────────┴─┐             │                      │    │
+│   │ swiotlb pool│             │                      │    │
+│   │ (bounce buf)│             │                      │    │
+│   └─────────────┘             │                      │    │
+│   设备可达区域 ◄──────────────►│                      │    │
+│                               │  设备不可达           │    │
+└──────────────────────────────────────────────────────────┘</code></pre>
+
+<p><strong>核心数据结构（<code>kernel/dma/swiotlb.c</code>）：</strong></p>
+
+<pre><code class="language-c">struct io_tlb_slot {
+    phys_addr_t orig_addr;   // 原始物理地址
+    size_t alloc_size;       // 分配大小
+    unsigned short list;     // 空闲列表（连续空闲 slot 数）
+    unsigned short pad_slots;// 对齐填充 slot 数
+};</code></pre>
+
+<p><strong>工作流程：</strong></p>
+
+<pre><code>1. dma_map_page() 发现设备无法访问目标地址
+2. 从 swiotlb pool 分配 bounce buffer
+3. 如果是 DMA_TO_DEVICE：
+   memcpy(bounce_buf, orig_buf, size)  // CPU→bounce
+4. 设备 DMA 访问 bounce buffer
+5. 如果是 DMA_FROM_DEVICE：
+   memcpy(orig_buf, bounce_buf, size)  // bounce→CPU
+6. 释放 bounce buffer</code></pre>
+
+<p><strong>配置参数：</strong></p>
+<ul>
+<li><code>swiotlb=<size></code>：启动参数设置池大小</li>
+<li>默认约 64MB</li>
+<li><code>CONFIG_SWIOTLB_DYNAMIC</code>：支持动态扩展池</li>
+</ul>
+
+<h3>2.6 CMA 连续内存分配器</h3>
+
+<p>DMA 设备常需要<strong>物理连续内存</strong>，但系统运行后内存碎片化严重。CMA 解决此问题。</p>
+
+<p><strong>原理：</strong></p>
+
+<pre><code>系统启动时:
+┌──────────────────────────────────────────────┐
+│ 内核预留 CMA 区域（如128MB）                  │
+│ 标记为 MIGRATE_CMA                           │
+│ 只允许可迁移页（page cache等）使用             │
+└──────────────────────────────────────────────┘
+
+正常运行时:                     设备请求时:
+┌────────────────────┐         ┌────────────────────┐
+│ CMA区域被page cache│         │ 迁移走可移动页       │
+│ 和匿名页临时使用    │ ─────▶  │ 返回连续物理内存     │
+└────────────────────┘         └────────────────────┘</code></pre>
+
+<p><strong>关键 API（<code>include/linux/dma-map-ops.h</code>）：</strong></p>
+
+<pre><code class="language-c">void dma_contiguous_reserve(phys_addr_t addr_limit);
+struct page *dma_alloc_contiguous(struct device *dev, size_t size, gfp_t gfp);
+void dma_free_contiguous(struct device *dev, struct page *page, size_t size);
+
+// 每个设备可有独立 CMA 区域
+static inline struct cma *dev_get_cma_area(struct device *dev)
+{
+    if (dev &amp;&amp; dev-&gt;cma_area)
+        return dev-&gt;cma_area;      // 设备私有 CMA
+    return dma_contiguous_default_area; // 全局 CMA
+}</code></pre>
+
+<p><strong>配置参数：</strong></p>
+<pre><code>cma=128M                  # 全局 CMA 大小
+numa_cma=1:64M,2:128M     # Per-NUMA 节点 CMA</code></pre>
+
+<h3>2.7 Coherent DMA 内存池</h3>
+
+<p>对于需要 CPU 和设备<strong>同时持续访问</strong>的共享内存，使用 Coherent DMA 分配：</p>
+
+<pre><code class="language-c">// 分配一致性 DMA 内存（映射为 uncached 或 hardware-coherent）
+void *dma_alloc_coherent(struct device *dev, size_t size,
+                         dma_addr_t *dma_handle, gfp_t gfp);
+void dma_free_coherent(struct device *dev, size_t size,
+                       void *cpu_addr, dma_addr_t dma_handle);
+
+// 托管版本（设备移除时自动释放）
+void *dmam_alloc_attrs(struct device *dev, size_t size,
+                       dma_addr_t *dma_handle, gfp_t gfp, unsigned long attrs);</code></pre>
+
+<p><strong>分配流程（<code>kernel/dma/direct.c::dma_direct_alloc()</code>）：</strong></p>
+
+<pre><code class="language-c">void *dma_direct_alloc(struct device *dev, size_t size,
+                       dma_addr_t *dma_handle, gfp_t gfp, unsigned long attrs)
+{
+    // 非一致性设备的处理策略：
+    if (!dev_is_dma_coherent(dev)) {
+        // 方案1: 架构提供专用分配（如有的SoC有专用SRAM）
+        if (IS_ENABLED(CONFIG_ARCH_HAS_DMA_ALLOC))
+            return arch_dma_alloc(dev, ...);
+
+        // 方案2: 全局一致性池
+        if (IS_ENABLED(CONFIG_DMA_GLOBAL_POOL))
+            return dma_alloc_from_global_coherent(dev, ...);
+
+        // 方案3: 将内存映射为 uncached
+        set_uncached = IS_ENABLED(CONFIG_ARCH_HAS_DMA_SET_UNCACHED);
+        // 方案4: 重新映射为 uncached (vmalloc)
+        remap = IS_ENABLED(CONFIG_DMA_DIRECT_REMAP);
+    }
+
+    // 分配物理连续页面
+    page = __dma_direct_alloc_pages(dev, size, gfp, ...);
+
+    // 清理 Cache，确保设备看到干净数据
+    arch_dma_prep_coherent(page, size);
+
+    // 设置返回的 DMA 句柄
+    *dma_handle = phys_to_dma_direct(dev, page_to_phys(page));
+    return ret;
+}</code></pre>
+
+<hr>
+
+<h2>第三部分：ARM64 平台特有实现</h2>
+
+<h3>3.1 Cache 维护操作</h3>
+
+<p>ARM64 的 DMA Cache 维护在 <code>arch/arm64/mm/dma-mapping.c</code> 中实现，使用 ARMv8 的 Cache 维护指令：</p>
+
+<table>
+<thead><tr>
+<th>函数</th>
+<th>底层指令</th>
+<th>作用</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>dcache_clean_poc()</code></td>
+<td><code>DC CVAC</code> / <code>DC CIVAC</code></td>
+<td>将 D-Cache 清洗到 PoC</td>
+</tr>
+<tr>
+<td><code>dcache_inval_poc()</code></td>
+<td><code>DC IVAC</code></td>
+<td>使 D-Cache 行无效化</td>
+</tr>
+<tr>
+<td><code>dcache_clean_inval_poc()</code></td>
+<td><code>DC CIVAC</code></td>
+<td>清洗+无效化</td>
+</tr>
+</tbody></table>
+
+<p><strong>ARCH_DMA_MINALIGN 检查：</strong></p>
+
+<pre><code class="language-c">void arch_setup_dma_ops(struct device *dev, bool coherent)
+{
+    int cls = cache_line_size_of_cpu();
+
+    // 重要安全检查：DMA 缓冲区对齐必须 &gt;= Cache 行大小
+    // 否则可能导致相邻数据被意外刷出 Cache
+    WARN_TAINT(!coherent &amp;&amp; cls &gt; ARCH_DMA_MINALIGN,
+               TAINT_CPU_OUT_OF_SPEC,
+               &quot;%s %s: ARCH_DMA_MINALIGN smaller than CTR_EL0.CWG (%d &lt; %d)&quot;,
+               dev_driver_string(dev), dev_name(dev),
+               ARCH_DMA_MINALIGN, cls);
+
+    dev-&gt;dma_coherent = coherent;  // 标记设备一致性属性
+}</code></pre>
+
+<p><strong>为什么 DMA buffer 必须 Cache 行对齐？</strong></p>
+
+<pre><code>假设 Cache 行 = 64 bytes, DMA buffer 起始于偏移 32:
+
+Cache Line N:  [其他数据 32B][DMA buffer 前32B]
+Cache Line N+1:[DMA buffer 后部分 ...]
+
+当 invalidate DMA buffer 时，Cache Line N 被整行无效化，
+&quot;其他数据 32B&quot; 也被丢弃！→ 数据损坏</code></pre>
+
+<h3>3.2 DMA Zone 配置</h3>
+
+<p>ARM64 使用内存区域来支持不同 DMA 能力的设备：</p>
+
+<pre><code class="language-c">// kernel/dma/direct.c
+u64 zone_dma_limit __ro_after_init = DMA_BIT_MASK(24);  // 默认16MB
+
+// 分配策略：根据设备能力选择合适的 zone
+static gfp_t dma_direct_optimal_gfp_mask(struct device *dev, u64 *phys_limit)
+{
+    u64 dma_limit = min_not_zero(
+        dev-&gt;coherent_dma_mask,
+        dev-&gt;bus_dma_limit);
+
+    *phys_limit = dma_to_phys(dev, dma_limit);
+
+    if (*phys_limit &lt;= zone_dma_limit)
+        return GFP_DMA;         // 最低16MB
+    if (*phys_limit &lt;= DMA_BIT_MASK(32))
+        return GFP_DMA32;       // 低4GB
+    return 0;                    // 无限制
+}</code></pre>
+
+<p><strong>ARM64 DMA Zone 布局：</strong></p>
+
+<pre><code>0                 16MB              4GB               最大物理地址
+├── ZONE_DMA ────┤── ZONE_DMA32 ──┤── ZONE_NORMAL ──────────┤
+│  GFP_DMA       │  GFP_DMA32     │  (默认)                 │
+│  24-bit设备     │  32-bit设备    │  64-bit设备              │
+│  (极老旧ISA设备)│  (多数PCI设备) │  (现代设备)               │</code></pre>
+
+<h3>3.3 ARM SMMUv3 驱动</h3>
+
+<p>SMMUv3 驱动位于 <code>drivers/iommu/arm/arm-smmu-v3/</code>，是 ARM64 平台最重要的 IOMMU 实现。</p>
+
+<p><strong>驱动文件结构：</strong></p>
+
+<table>
+<thead><tr>
+<th>文件</th>
+<th>功能</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>arm-smmu-v3.c</code></td>
+<td>核心驱动：初始化、流表管理、命令队列</td>
+</tr>
+<tr>
+<td><code>arm-smmu-v3.h</code></td>
+<td>寄存器定义、数据结构</td>
+</tr>
+<tr>
+<td><code>arm-smmu-v3-sva.c</code></td>
+<td>Shared Virtual Addressing 支持</td>
+</tr>
+<tr>
+<td><code>arm-smmu-v3-iommufd.c</code></td>
+<td>IOMMUFD 用户态接口</td>
+</tr>
+<tr>
+<td><code>tegra241-cmdqv.c</code></td>
+<td>NVIDIA Tegra CMDQ 虚拟化扩展</td>
+</tr>
+</tbody></table>
+
+<p><strong>SMMUv3 关键特性（IDR0 寄存器）：</strong></p>
+
+<pre><code class="language-c">#define IDR0_S1P    (1 &lt;&lt; 1)   // Stage 1 翻译支持
+#define IDR0_S2P    (1 &lt;&lt; 0)   // Stage 2 翻译支持（虚拟化）
+#define IDR0_ATS    (1 &lt;&lt; 10)  // ATC/ATS 支持（PCIe设备侧TLB）
+#define IDR0_PRI    (1 &lt;&lt; 16)  // Page Request Interface
+#define IDR0_CD2L   (1 &lt;&lt; 19)  // 两级 Context Descriptor
+#define IDR0_VMID16 (1 &lt;&lt; 18)  // 16-bit VMID
+#define IDR0_MSI    (1 &lt;&lt; 13)  // MSI 中断支持
+#define IDR0_COHACC (1 &lt;&lt; 4)   // 一致性访问（页表遍历可缓存）
+#define IDR0_HTTU   GENMASK(7, 6)  // Hardware Translation Table Update</code></pre>
+
+<p><strong>SMMUv3 页表粒度支持（IDR5 寄存器）：</strong></p>
+
+<pre><code class="language-c">#define IDR5_GRAN4K   (1 &lt;&lt; 4)   // 4KB 页粒度
+#define IDR5_GRAN16K  (1 &lt;&lt; 5)   // 16KB 页粒度
+#define IDR5_GRAN64K  (1 &lt;&lt; 6)   // 64KB 页粒度
+#define IDR5_OAS      GENMASK(2, 0)  // 输出地址大小
+// OAS 编码: 32/36/40/42/44/48/52 位</code></pre>
+
+<hr>
+
+<h2>第四部分：核心数据结构</h2>
+
+<h3>设备 DMA 配置（<code>struct device</code> 相关字段）</h3>
+
+<pre><code class="language-c">struct device {
+    const struct dma_map_ops *dma_ops;    // DMA 操作表（可 NULL，用默认）
+    u64    *dma_mask;                      // 流式 DMA 地址掩码
+    u64     coherent_dma_mask;             // 一致性 DMA 地址掩码
+    u64     bus_dma_limit;                 // 总线 DMA 地址上限
+    const struct bus_dma_region *dma_range_map; // CPU→DMA 地址映射表
+    struct cma *cma_area;                  // 设备私有 CMA 区域
+    bool    dma_coherent;                  // 设备是否硬件一致性
+    bool    dma_ops_bypass;                // 旁路 dma_ops
+    // ...
+};</code></pre>
+
+<h3>DMA Cookie 机制</h3>
+
+<pre><code class="language-c">typedef s32 dma_cookie_t;
+#define DMA_MIN_COOKIE  1      // 最小有效 cookie
+
+// Cookie 工作流：
+// 1. 描述符创建时 cookie = -EBUSY（未提交）
+// 2. tx_submit() 后 cookie = 正值（提交成功）
+// 3. 通过 cookie 查询传输状态
+
+enum dma_status {
+    DMA_COMPLETE,       // 传输完成
+    DMA_IN_PROGRESS,    // 传输中
+    DMA_PAUSED,         // 已暂停
+    DMA_ERROR,          // 传输错误
+    DMA_OUT_OF_ORDER,   // 乱序完成
+};</code></pre>
+
+<h3>DMA Slave 配置</h3>
+
+<pre><code class="language-c">struct dma_slave_config {
+    enum dma_transfer_direction direction;  // 传输方向
+    phys_addr_t src_addr;     // 源设备寄存器物理地址
+    phys_addr_t dst_addr;     // 目的设备寄存器物理地址
+    enum dma_slave_buswidth src_addr_width;  // 源总线宽度(1/2/4/8/...字节)
+    enum dma_slave_buswidth dst_addr_width;  // 目的总线宽度
+    u32 src_maxburst;         // 源最大突发长度
+    u32 dst_maxburst;         // 目的最大突发长度
+    u32 src_port_window_size; // 源端口窗口大小
+    u32 dst_port_window_size; // 目的端口窗口大小
+    bool device_fc;           // 设备流控
+    bool peripheral_config;   // 外设特定配置
+    size_t peripheral_size;   // 外设配置大小
+};</code></pre>
+
+<hr>
+
+<h2>第五部分：关键 API 速查</h2>
+
+<h3>DMA Mapping API（驱动开发者必知）</h3>
+
+<table>
+<thead><tr>
+<th>API</th>
+<th>功能</th>
+<th>使用场景</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>dma_map_single()</code></td>
+<td>映射单个连续缓冲区</td>
+<td>简单 DMA 传输</td>
+</tr>
+<tr>
+<td><code>dma_unmap_single()</code></td>
+<td>解除单缓冲区映射</td>
+<td>传输完成后</td>
+</tr>
+<tr>
+<td><code>dma_map_page_attrs()</code></td>
+<td>映射页面到 DMA 地址</td>
+<td>通用页映射</td>
+</tr>
+<tr>
+<td><code>dma_map_sg_attrs()</code></td>
+<td>映射 scatter-gather 列表</td>
+<td>非连续缓冲区</td>
+</tr>
+<tr>
+<td><code>dma_map_sgtable()</code></td>
+<td>映射 sg_table</td>
+<td>新推荐的 SG 映射</td>
+</tr>
+<tr>
+<td><code>dma_map_resource()</code></td>
+<td>映射 MMIO 资源</td>
+<td>P2P DMA</td>
+</tr>
+<tr>
+<td><code>dma_alloc_coherent()</code></td>
+<td>分配一致性 DMA 内存</td>
+<td>CPU/设备共享内存</td>
+</tr>
+<tr>
+<td><code>dma_alloc_noncontiguous()</code></td>
+<td>分配非连续 DMA 内存</td>
+<td>大块 DMA 缓冲区</td>
+</tr>
+<tr>
+<td><code>dma_sync_single_for_cpu()</code></td>
+<td>同步给 CPU 访问</td>
+<td>DMA 完成后 CPU 读</td>
+</tr>
+<tr>
+<td><code>dma_sync_single_for_device()</code></td>
+<td>同步给设备访问</td>
+<td>CPU 写完后 DMA 读</td>
+</tr>
+<tr>
+<td><code>dma_set_mask()</code></td>
+<td>设置流式 DMA 地址掩码</td>
+<td>设备初始化</td>
+</tr>
+<tr>
+<td><code>dma_set_coherent_mask()</code></td>
+<td>设置一致性 DMA 掩码</td>
+<td>设备初始化</td>
+</tr>
+<tr>
+<td><code>dma_mapping_error()</code></td>
+<td>检查映射是否失败</td>
+<td>每次映射后必须检查</td>
+</tr>
+</tbody></table>
+
+<h3>DMA Engine API（DMA 控制器使用者）</h3>
+
+<table>
+<thead><tr>
+<th>API</th>
+<th>功能</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>dma_request_chan()</code></td>
+<td>按名称请求 DMA 通道</td>
+</tr>
+<tr>
+<td><code>dma_release_channel()</code></td>
+<td>释放 DMA 通道</td>
+</tr>
+<tr>
+<td><code>dmaengine_slave_config()</code></td>
+<td>配置从设备传输参数</td>
+</tr>
+<tr>
+<td><code>dmaengine_prep_slave_sg()</code></td>
+<td>准备 SG 从设备传输</td>
+</tr>
+<tr>
+<td><code>dmaengine_prep_dma_memcpy()</code></td>
+<td>准备内存拷贝传输</td>
+</tr>
+<tr>
+<td><code>dmaengine_prep_dma_cyclic()</code></td>
+<td>准备循环传输</td>
+</tr>
+<tr>
+<td><code>dmaengine_submit()</code></td>
+<td>提交描述符（获取 cookie）</td>
+</tr>
+<tr>
+<td><code>dma_async_issue_pending()</code></td>
+<td>触发挂起的传输</td>
+</tr>
+<tr>
+<td><code>dmaengine_tx_status()</code></td>
+<td>查询传输状态</td>
+</tr>
+<tr>
+<td><code>dmaengine_terminate_all()</code></td>
+<td>终止所有传输</td>
+</tr>
+<tr>
+<td><code>dmaengine_pause()</code> / <code>resume()</code></td>
+<td>暂停/恢复传输</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>第六部分：典型使用模式</h2>
+
+<h3>模式一：流式 DMA 映射（网络驱动典型）</h3>
+
+<pre><code class="language-c">/* 发送数据（DMA_TO_DEVICE） */
+dma_addr_t dma_handle;
+void *buf = kmalloc(size, GFP_KERNEL);
+
+// 填充数据...
+memcpy(buf, data, size);
+
+// 映射为 DMA 地址（会自动处理 Cache flush）
+dma_handle = dma_map_single(dev, buf, size, DMA_TO_DEVICE);
+if (dma_mapping_error(dev, dma_handle)) {
+    // 错误处理！
+    goto err;
+}
+
+// 配置设备 DMA 寄存器，启动传输
+writel(dma_handle, dev-&gt;regs + TX_ADDR);
+writel(size, dev-&gt;regs + TX_SIZE);
+writel(START, dev-&gt;regs + TX_CTRL);
+
+// ... 等待 DMA 完成中断 ...
+
+// 解除映射
+dma_unmap_single(dev, dma_handle, size, DMA_TO_DEVICE);
+kfree(buf);</code></pre>
+
+<h3>模式二：一致性 DMA 内存（设备描述符环典型）</h3>
+
+<pre><code class="language-c">/* 分配 CPU 和设备共享的描述符环 */
+struct my_desc_ring *ring;
+dma_addr_t ring_dma;
+
+// 分配：返回 CPU 虚拟地址 + DMA 地址
+ring = dma_alloc_coherent(dev, sizeof(*ring) * RING_SIZE,
+                          &amp;ring_dma, GFP_KERNEL);
+if (!ring)
+    return -ENOMEM;
+
+// CPU 可直接读写 ring，设备通过 ring_dma 访问
+// 无需手动 Cache 同步！
+ring[0].addr = some_dma_addr;
+ring[0].len = transfer_size;
+ring[0].flags = DESC_VALID;
+
+// 告诉设备描述符环地址
+writel(ring_dma, dev-&gt;regs + DESC_BASE);
+
+// 使用完释放
+dma_free_coherent(dev, sizeof(*ring) * RING_SIZE, ring, ring_dma);</code></pre>
+
+<h3>模式三：DMA Engine 从设备传输（UART/SPI 典型）</h3>
+
+<pre><code class="language-c">struct dma_chan *chan;
+struct dma_slave_config cfg;
+struct dma_async_tx_descriptor *desc;
+dma_cookie_t cookie;
+
+// 1. 请求通道（设备树中定义 dma-names = &quot;tx&quot;）
+chan = dma_request_chan(dev, &quot;tx&quot;);
+if (IS_ERR(chan))
+    return PTR_ERR(chan);
+
+// 2. 配置从设备参数
+cfg.direction = DMA_MEM_TO_DEV;
+cfg.dst_addr = uart_phys_base + UART_THR;  // UART 发送寄存器
+cfg.dst_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
+cfg.dst_maxburst = 16;
+dmaengine_slave_config(chan, &amp;cfg);
+
+// 3. 准备 SG 传输描述符
+desc = dmaengine_prep_slave_sg(chan, sg, nents,
+                                DMA_MEM_TO_DEV,
+                                DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+if (!desc) {
+    // 错误处理
+}
+
+// 4. 设置回调
+desc-&gt;callback = tx_complete_callback;
+desc-&gt;callback_param = my_private_data;
+
+// 5. 提交并触发
+cookie = dmaengine_submit(desc);
+dma_async_issue_pending(chan);
+
+// 6. 回调中或主动查询完成
+// callback 中: 标记传输完成
+
+// 7. 释放
+dma_release_channel(chan);</code></pre>
+
+<h3>模式四：Scatter-Gather 映射（块设备典型）</h3>
+
+<pre><code class="language-c">struct scatterlist sg[MAX_SG];
+int nents, mapped;
+
+sg_init_table(sg, MAX_SG);
+
+// 填充 SG 列表
+for (i = 0; i &lt; nents; i++)
+    sg_set_page(&amp;sg[i], pages[i], PAGE_SIZE, 0);
+
+// 映射整个 SG 列表
+mapped = dma_map_sg(dev, sg, nents, DMA_FROM_DEVICE);
+if (!mapped) {
+    // 错误处理
+}
+
+// mapped 可能 &lt; nents（IOMMU 可能合并相邻项）
+for_each_sg(sg, s, mapped, i) {
+    dma_addr_t addr = sg_dma_address(s);
+    unsigned int len = sg_dma_len(s);
+    // 配置设备 DMA：addr + len
+}
+
+// ... 传输完成后 ...
+
+// 解除映射
+dma_unmap_sg(dev, sg, nents, DMA_FROM_DEVICE);</code></pre>
+
+<hr>
+
+<h2>第七部分：调试与问题排查</h2>
+
+<h3>常见 DMA 问题</h3>
+
+<table>
+<thead><tr>
+<th>问题</th>
+<th>症状</th>
+<th>原因</th>
+<th>解决方案</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>数据损坏</strong></td>
+<td>读到旧数据或乱数据</td>
+<td>Cache 一致性未正确处理</td>
+<td>检查 sync_for_cpu/device 调用</td>
+</tr>
+<tr>
+<td><strong>DMA 超时</strong></td>
+<td>传输不完成</td>
+<td>地址错误/设备未响应</td>
+<td>检查 DMA 地址是否在设备可达范围</td>
+</tr>
+<tr>
+<td><strong>映射失败</strong></td>
+<td><code>DMA_MAPPING_ERROR</code></td>
+<td>地址超出 DMA mask</td>
+<td>检查 <code>dma_set_mask()</code> 设置</td>
+</tr>
+<tr>
+<td><strong>内存泄漏</strong></td>
+<td>系统内存持续下降</td>
+<td>未调用 <code>dma_unmap_*</code></td>
+<td>使用 <code>CONFIG_DMA_API_DEBUG</code></td>
+</tr>
+<tr>
+<td><strong>SMMU fault</strong></td>
+<td>内核 oops/设备报错</td>
+<td>IOMMU 翻译失败</td>
+<td>检查 IOMMU domain 绑定</td>
+</tr>
+<tr>
+<td><strong>性能低下</strong></td>
+<td>传输速率不达预期</td>
+<td>swiotlb bounce 拷贝</td>
+<td>检查是否走了 bounce 路径</td>
+</tr>
+</tbody></table>
+
+<h3>调试工具与内核配置</h3>
+
+<pre><code class="language-kconfig"># DMA 调试选项
+CONFIG_DMA_API_DEBUG=y          # 启用 DMA API 调试
+CONFIG_DMA_API_DEBUG_SG=y       # SG 映射调试
+CONFIG_IOMMU_DEBUGFS=y          # IOMMU debugfs 接口
+
+# swiotlb 调试
+CONFIG_SWIOTLB=y                # 启用 swiotlb
+CONFIG_SWIOTLB_DYNAMIC=y        # 动态 swiotlb 池</code></pre>
+
+<p><strong>debugfs 检查点：</strong></p>
+
+<pre><code class="language-bash"># 查看 IOMMU 组和设备绑定
+ls /sys/kernel/iommu_groups/
+
+# 查看 DMA 引擎设备和通道
+ls /sys/class/dma/
+
+# 查看 swiotlb 使用情况
+cat /sys/kernel/debug/swiotlb/io_tlb_nslabs
+cat /sys/kernel/debug/swiotlb/io_tlb_used
+
+# 检查设备 DMA 属性
+cat /sys/bus/platform/devices/&lt;device&gt;/dma_coherent</code></pre>
+
+<h3>DMA 编程检查清单</h3>
+
+<ul>
+<li class="task-list-item"><input type="checkbox" disabled >设备初始化时调用 <code>dma_set_mask_and_coherent()</code> 设置 DMA 能力</li>
+<li class="task-list-item"><input type="checkbox" disabled >每次 <code>dma_map_*()</code> 后检查 <code>dma_mapping_error()</code></li>
+<li class="task-list-item"><input type="checkbox" disabled ><code>dma_map_<em>()</code> 和 <code>dma_unmap_</em>()</code> 成对调用，避免泄漏</li>
+<li class="task-list-item"><input type="checkbox" disabled >DMA 缓冲区对齐到 Cache 行大小（<code>ARCH_DMA_MINALIGN</code>）</li>
+<li class="task-list-item"><input type="checkbox" disabled >映射后、设备访问前不要 CPU 写入（DMA_TO_DEVICE 场景）</li>
+<li class="task-list-item"><input type="checkbox" disabled >设备 DMA 完成后、CPU 读取前调用 <code>dma_sync_*_for_cpu()</code></li>
+<li class="task-list-item"><input type="checkbox" disabled >Coherent 内存只在真正需要 CPU/设备同时访问时使用</li>
+<li class="task-list-item"><input type="checkbox" disabled >优先使用 <code>dma_map_sgtable()</code> 替代旧的 <code>dma_map_sg()</code></li>
+<li class="task-list-item"><input type="checkbox" disabled >使用 <code>dmam_alloc_attrs()</code> 等托管版本简化资源管理</li>
+</ul>
+
+<hr>
+
+<h2>第八部分：内核经典 DMA 映射案例分析</h2>
+
+<p>以下案例均取自本内核源码树中的 ARM/ARM64 平台真实驱动，展示不同 DMA 映射模式的工业级用法。</p>
+
+<h3>案例一：流式 DMA 映射 + DMA Engine（PL011 UART TX）</h3>
+
+<blockquote><strong>源码</strong>: <code>drivers/tty/serial/amba-pl011.c</code><br>
+<strong>模式</strong>: <code>dma_map_single()</code> + <code>dmaengine_prep_slave_single()</code> — 需求传输</blockquote>
+
+<p>PL011 是 ARM 经典 UART 控制器，其 DMA 发送路径是学习流式映射最佳范例。</p>
+
+<p><strong>第一步：探测阶段 — 请求 DMA 通道并配置</strong></p>
+
+<pre><code class="language-c">// drivers/tty/serial/amba-pl011.c: pl011_dma_probe()
+
+// 配置从设备参数
+struct dma_slave_config tx_conf = {
+    .dst_addr = uap-&gt;port.mapbase +
+                pl011_reg_to_offset(uap, REG_DR),   // UART 数据寄存器物理地址
+    .dst_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE,     // UART 是字节设备
+    .direction = DMA_MEM_TO_DEV,                      // 内存→UART
+    .dst_maxburst = uap-&gt;fifosize &gt;&gt; 1,               // burst = FIFO 大小 / 2
+    .device_fc = false,                               // DMA 控制器管理流控
+};
+
+// 通过设备树 dma-names = &quot;tx&quot; 请求通道
+chan = dma_request_chan(dev, &quot;tx&quot;);
+
+// 将从设备配置应用到通道
+dmaengine_slave_config(chan, &amp;tx_conf);</code></pre>
+
+<p><strong>第二步：发送数据 — 流式映射 + 提交描述符</strong></p>
+
+<pre><code class="language-c">// drivers/tty/serial/amba-pl011.c: pl011_dma_tx_refill()
+
+// 1. 从内核 FIFO 拷贝待发送数据到 DMA 缓冲区
+count = kfifo_out_peek(&amp;tport-&gt;xmit_fifo, dmatx-&gt;buf, count);
+
+// 2. ★ 流式映射：将 CPU 缓冲区映射为 DMA 地址 ★
+//    内核会自动执行 Cache Clean（ARM64: dcache_clean_poc）
+dmatx-&gt;dma = dma_map_single(dma_dev-&gt;dev, dmatx-&gt;buf, count,
+                             DMA_TO_DEVICE);
+
+// 3. ★ 必须检查映射是否成功 ★
+if (dma_mapping_error(dma_dev-&gt;dev, dmatx-&gt;dma)) {
+    dev_dbg(uap-&gt;port.dev, &quot;unable to map TX DMA\n&quot;);
+    return -EBUSY;
+}
+
+// 4. 准备从设备传输描述符（单缓冲区 → UART DR 寄存器）
+desc = dmaengine_prep_slave_single(chan,
+    dmatx-&gt;dma,                              // 已映射的 DMA 地址
+    dmatx-&gt;len,                              // 传输长度
+    DMA_MEM_TO_DEV,                          // 方向：内存→设备
+    DMA_PREP_INTERRUPT | DMA_CTRL_ACK);      // 完成时中断
+
+// 5. 设置完成回调 + 提交 + 触发
+desc-&gt;callback = pl011_dma_tx_callback;
+desc-&gt;callback_param = uap;
+dmaengine_submit(desc);
+dma_dev-&gt;device_issue_pending(chan);
+
+// 6. 使能 UART 的 DMA 发送模式
+uap-&gt;dmacr |= UART011_TXDMAE;
+pl011_write(uap-&gt;dmacr, uap, REG_DMACR);</code></pre>
+
+<p><strong>第三步：完成回调 — 解除映射</strong></p>
+
+<pre><code class="language-c">// pl011_dma_tx_callback() 中：
+dma_unmap_single(dma_dev-&gt;dev, dmatx-&gt;dma, dmatx-&gt;len, DMA_TO_DEVICE);
+// 映射和解映射必须成对出现！</code></pre>
+
+<p><strong>关键学习要点：</strong></p>
+<pre><code>                完整生命周期
+┌──────────────────────────────────────────────────────────┐
+│ kfifo_out_peek()  → 数据在 CPU Cache 中                   │
+│       │                                                   │
+│ dma_map_single()  → Cache Clean + 返回 DMA 地址           │
+│       │              (CPU 不能再写这块内存！)               │
+│       │                                                   │
+│ dmaengine_submit() → 硬件开始传输                         │
+│       │                                                   │
+│ 回调触发            → DMA 传输完成                         │
+│       │                                                   │
+│ dma_unmap_single() → 释放映射（CPU 可再次使用此内存）       │
+└──────────────────────────────────────────────────────────┘</code></pre>
+
+<hr>
+
+<h3>案例二：Coherent DMA 内存分配（PL011 DMA 缓冲区）</h3>
+
+<blockquote><strong>源码</strong>: <code>drivers/tty/serial/amba-pl011.c</code><br>
+<strong>模式</strong>: <code>dma_alloc_coherent()</code> — 一致性内存</blockquote>
+
+<p>同样是 PL011 驱动，其 DMA 缓冲区本身使用 Coherent 分配：</p>
+
+<pre><code class="language-c">// drivers/tty/serial/amba-pl011.c: pl011_dmabuf_init()
+
+static int pl011_dmabuf_init(struct dma_chan *chan, struct pl011_dmabuf *db,
+                             enum dma_data_direction dir)
+{
+    // ★ 分配一致性 DMA 内存 ★
+    // 返回值: db-&gt;buf = CPU 虚拟地址（可直接读写）
+    //         db-&gt;dma = DMA 地址（给设备使用）
+    db-&gt;buf = dma_alloc_coherent(chan-&gt;device-&gt;dev,
+                                 PL011_DMA_BUFFER_SIZE,  // PAGE_SIZE = 4KB
+                                 &amp;db-&gt;dma,               // 输出 DMA 地址
+                                 GFP_KERNEL);
+    if (!db-&gt;buf)
+        return -ENOMEM;
+    db-&gt;len = PL011_DMA_BUFFER_SIZE;
+    return 0;
+}
+
+// 释放时：
+static void pl011_dmabuf_free(struct dma_chan *chan, struct pl011_dmabuf *db,
+                              enum dma_data_direction dir)
+{
+    if (db-&gt;buf)
+        dma_free_coherent(chan-&gt;device-&gt;dev,
+                          PL011_DMA_BUFFER_SIZE,
+                          db-&gt;buf,     // CPU 虚拟地址
+                          db-&gt;dma);    // DMA 地址
+}</code></pre>
+
+<p><strong>Coherent vs Streaming 选择依据：</strong></p>
+<pre><code>┌───────────────────────────────────────────────────────────────────┐
+│  问题: PL011 为什么用 Coherent 分配 DMA 缓冲区？                   │
+│                                                                   │
+│  答: 因为该缓冲区被 CPU (kfifo_out_peek) 和 DMA 控制器反复使用。   │
+│  如果用流式映射，每次发送都要 map/unmap（Cache flush 开销大）。      │
+│  Coherent 内存在 non-coherent 平台上映射为 uncached，              │
+│  CPU 写入立即可见于设备，无需手动 Cache 维护。                      │
+│                                                                   │
+│  ★ 选择规则:                                                      │
+│  - 缓冲区被多次反复使用 → dma_alloc_coherent()                    │
+│  - 缓冲区一次性使用后释放 → dma_map_single()                      │
+│  - 描述符环（DMA descriptor ring）→ 永远用 dma_alloc_coherent()   │
+└───────────────────────────────────────────────────────────────────┘</code></pre>
+
+<hr>
+
+<h3>案例三：Scatter-Gather DMA 映射（DW MMC 控制器）</h3>
+
+<blockquote><strong>源码</strong>: <code>drivers/mmc/host/dw_mmc.c</code><br>
+<strong>模式</strong>: <code>dma_map_sg()</code> / <code>dma_unmap_sg()</code> — SG 流式映射</blockquote>
+
+<p>DesignWare MMC 控制器是 ARM SoC 常用的 eMMC/SD 控制器。</p>
+
+<pre><code class="language-c">// drivers/mmc/host/dw_mmc.c: dw_mci_pre_dma_transfer()
+
+static int dw_mci_pre_dma_transfer(struct dw_mci *host,
+                                    struct mmc_data *data, int cookie)
+{
+    // 1. ★ 对齐检查：DMA 要求字对齐 ★
+    if (data-&gt;blksz &amp; 3)       // 块大小必须 4 字节对齐
+        return -EINVAL;
+    for_each_sg(data-&gt;sg, sg, data-&gt;sg_len, i) {
+        if (sg-&gt;offset &amp; 3 || sg-&gt;length &amp; 3)  // 每个 SG 段也要对齐
+            return -EINVAL;
+    }
+
+    // 2. ★ 映射 scatter-gather 列表 ★
+    //    将多个不连续物理页映射为 DMA 地址
+    //    如果有 IOMMU，多段可能被合并为一个 IOVA 连续区域
+    sg_len = dma_map_sg(host-&gt;dev,
+                        data-&gt;sg,               // SG 列表
+                        data-&gt;sg_len,            // SG 段数
+                        mmc_get_dma_dir(data));  // 根据读/写决定方向
+    if (sg_len == 0)
+        return -EINVAL;
+
+    // sg_len 可能 &lt;= data-&gt;sg_len（IOMMU 合并了相邻段）
+    data-&gt;host_cookie = cookie;
+    return sg_len;
+}
+
+// 传输完成后解除映射:
+// drivers/mmc/host/dw_mmc.c: dw_mci_post_req()
+static void dw_mci_post_req(struct mmc_host *mmc,
+                            struct mmc_request *mrq, int err)
+{
+    if (data-&gt;host_cookie != COOKIE_UNMAPPED)
+        dma_unmap_sg(slot-&gt;host-&gt;dev,
+                     data-&gt;sg,
+                     data-&gt;sg_len,             // ★ 用原始 sg_len，不是映射后的 ★
+                     mmc_get_dma_dir(data));
+    data-&gt;host_cookie = COOKIE_UNMAPPED;
+}</code></pre>
+
+<p><strong>SG 映射的核心价值：</strong></p>
+<pre><code>  不使用 SG (需要物理连续):           使用 SG (支持离散页):
+  ┌────────────────────────┐         ┌────┐ ┌────┐ ┌────┐ ┌────┐
+  │ 连续 16KB 物理内存       │         │4KB │ │4KB │ │4KB │ │4KB │
+  │ (很难分配到！)          │         │Page│ │Page│ │Page│ │Page│
+  └────────────────────────┘         └──┬─┘ └──┬─┘ └──┬─┘ └──┬─┘
+                                        │      │      │      │
+                                    dma_map_sg() 映射每一段
+                                        │      │      │      │
+                                        ▼      ▼      ▼      ▼
+  如果有 IOMMU:          ┌──────────────────────────────────────┐
+  设备看到连续 IOVA →    │ IOVA 0x1000_0000 ~ 0x1000_3FFF (16KB)│
+                         └──────────────────────────────────────┘</code></pre>
+
+<hr>
+
+<h3>案例四：SPI DMA 全双工传输 + SG（PL022 SPI 控制器）</h3>
+
+<blockquote><strong>源码</strong>: <code>drivers/spi/spi-pl022.c</code><br>
+<strong>模式</strong>: <code>dma_map_sg()</code> + <code>dmaengine_prep_slave_sg()</code> — SG 需求传输</blockquote>
+
+<p>PL022 是最经典的 ARM AMBA SPI 控制器，展示了<strong>全双工 DMA 传输</strong>模式。</p>
+
+<pre><code class="language-c">// drivers/spi/spi-pl022.c: configure_dma()
+
+// 1. 构建收发两个 SG 列表
+setup_dma_scatter(pl022, pl022-&gt;rx, pl022-&gt;cur_transfer-&gt;len, &amp;pl022-&gt;sgt_rx);
+setup_dma_scatter(pl022, pl022-&gt;tx, pl022-&gt;cur_transfer-&gt;len, &amp;pl022-&gt;sgt_tx);
+
+// 2. ★ 分别映射 RX 和 TX 的 SG 列表 ★
+//    注意方向不同：RX 是设备写内存(FROM_DEVICE)，TX 是内存写设备(TO_DEVICE)
+rx_sglen = dma_map_sg(rxchan-&gt;device-&gt;dev,
+                      pl022-&gt;sgt_rx.sgl, pl022-&gt;sgt_rx.nents,
+                      DMA_FROM_DEVICE);       // 设备→内存
+
+tx_sglen = dma_map_sg(txchan-&gt;device-&gt;dev,
+                      pl022-&gt;sgt_tx.sgl, pl022-&gt;sgt_tx.nents,
+                      DMA_TO_DEVICE);         // 内存→设备
+
+// 3. ★ 准备两个方向的 DMA 描述符 ★
+rxdesc = dmaengine_prep_slave_sg(rxchan,
+    pl022-&gt;sgt_rx.sgl, rx_sglen,
+    DMA_DEV_TO_MEM,                           // SPI RX FIFO → 内存
+    DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+
+txdesc = dmaengine_prep_slave_sg(txchan,
+    pl022-&gt;sgt_tx.sgl, tx_sglen,
+    DMA_MEM_TO_DEV,                           // 内存 → SPI TX FIFO
+    DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+
+// 4. ★ 回调只挂在 RX 上（RX 肯定最后完成） ★
+rxdesc-&gt;callback = dma_callback;
+rxdesc-&gt;callback_param = pl022;
+
+// 5. ★ 先提交 RX，再提交 TX ★
+//    SPI 是主从式：主机发 TX 同时收 RX，先启动 RX 确保不丢数据
+dmaengine_submit(rxdesc);
+dmaengine_submit(txdesc);
+dma_async_issue_pending(rxchan);
+dma_async_issue_pending(txchan);</code></pre>
+
+<p><strong>全双工 DMA 时序：</strong></p>
+<pre><code>时间 ──────────────────────────────────────────▶
+
+TX DMA:  ═══════发送数据到SPI TX FIFO══════════▶ 完成
+         │
+SPI总线:  ═══MOSI═══════════════════════════════▶
+         ═══MISO═══════════════════════════════▶
+         │
+RX DMA:  ═══════从SPI RX FIFO读数据════════════▶ 完成 → 回调触发！</code></pre>
+
+<p><strong>错误处理的正确模式（逆序释放资源）：</strong></p>
+<pre><code class="language-c">err_txdesc:
+    dmaengine_terminate_all(txchan);            // 先终止通道
+err_rxdesc:
+    dmaengine_terminate_all(rxchan);
+    dma_unmap_sg(txchan-&gt;device-&gt;dev,           // 再解除 TX SG 映射
+                 pl022-&gt;sgt_tx.sgl, pl022-&gt;sgt_tx.nents, DMA_TO_DEVICE);
+err_tx_sgmap:
+    dma_unmap_sg(rxchan-&gt;device-&gt;dev,           // 再解除 RX SG 映射
+                 pl022-&gt;sgt_rx.sgl, pl022-&gt;sgt_rx.nents, DMA_FROM_DEVICE);
+err_rx_sgmap:
+    sg_free_table(&amp;pl022-&gt;sgt_tx);              // 最后释放 SG 表
+err_alloc_tx_sg:
+    sg_free_table(&amp;pl022-&gt;sgt_rx);</code></pre>
+
+<hr>
+
+<h3>案例五：网络驱动 Coherent 描述符环 + 流式数据映射（STMMAC）</h3>
+
+<blockquote><strong>源码</strong>: <code>drivers/net/ethernet/stmicro/stmmac/stmmac_main.c</code><br>
+<strong>模式</strong>: <code>dma_alloc_coherent()</code>（描述符环）+ <code>dma_map_single()</code>（数据帧）</blockquote>
+
+<p>STMMAC 是 ARM SoC 最常用的千兆以太网驱动，展示了<strong>混合使用两种 DMA 映射</strong>的经典模式。</p>
+
+<pre><code class="language-c">// ★ 第一层：DMA 描述符环 — Coherent 分配 ★
+// 描述符环被 CPU 和 DMA 引擎持续共享访问，必须用 coherent
+
+// drivers/net/ethernet/stmicro/stmmac/stmmac_main.c: alloc_dma_rx_desc_resources()
+rx_q-&gt;dma_rx = dma_alloc_coherent(priv-&gt;device,
+    dma_conf-&gt;dma_rx_size * sizeof(struct dma_desc),   // 256 个描述符
+    &amp;rx_q-&gt;dma_rx_phy,                                  // DMA 地址
+    GFP_KERNEL);
+
+// CPU 直接写描述符（无需 Cache 同步）:
+rx_q-&gt;dma_rx[i].des0 = cpu_to_le32(lower_32_bits(buf_dma_addr));
+rx_q-&gt;dma_rx[i].des1 = cpu_to_le32(upper_32_bits(buf_dma_addr));
+// 设备通过 rx_q-&gt;dma_rx_phy 直接看到描述符更新
+
+
+// ★ 第二层：网络数据帧 — 流式映射 ★
+// 每个 SKB 是一次性使用，用流式映射效率最高
+
+// stmmac_tso_xmit() — 发送路径:
+des = dma_map_single(priv-&gt;device,
+    skb-&gt;data,                     // SKB 线性数据区
+    skb_headlen(skb),              // 头部长度
+    DMA_TO_DEVICE);                // CPU→网卡
+
+if (dma_mapping_error(priv-&gt;device, des))
+    goto dma_map_err;              // ★ 必须检查 ★
+
+// 将 DMA 地址写入 Coherent 描述符环
+stmmac_set_desc_addr(priv, first, des);
+
+// 记录映射信息，供发送完成后 unmap
+tx_q-&gt;tx_skbuff_dma[tx_q-&gt;cur_tx].buf = des;
+tx_q-&gt;tx_skbuff_dma[tx_q-&gt;cur_tx].len = skb_headlen(skb);
+tx_q-&gt;tx_skbuff_dma[tx_q-&gt;cur_tx].map_as_page = false;</code></pre>
+
+<p><strong>双层架构全景：</strong></p>
+<pre><code>CPU 视角:                          设备 (DMA) 视角:
+                                   
+┌──────────────────┐               dma_rx_phy 指向描述符环
+│ rx_q-&gt;dma_rx[]   │ ◄═══════════  (Coherent: CPU/DMA 都能直接访问)
+│ ┌──────────────┐ │               
+│ │ desc[0].des0 │──┼──▶ buf[0] 的 DMA 地址 ──▶ ┌─────────┐
+│ │ desc[0].des1 │ │                             │ SKB buf │ 流式映射
+│ ├──────────────┤ │                             └─────────┘
+│ │ desc[1].des0 │──┼──▶ buf[1] 的 DMA 地址 ──▶ ┌─────────┐
+│ │ desc[1].des1 │ │                             │ SKB buf │ 流式映射
+│ ├──────────────┤ │                             └─────────┘
+│ │    ...       │ │                             
+└──────────────────┘               
+
+描述符环: Coherent DMA — CPU 写描述符，设备读描述符，无需 sync
+数据帧:   Streaming DMA — 每帧 map 一次，传完 unmap，需 Cache 维护</code></pre>
+
+<hr>
+
+<h2>第九部分：QEMU ARM64 DMA 实验</h2>
+
+<p>本节提供可在 QEMU <code>virt</code> 机器上实践的 DMA 实验，帮助理解 DMA Mapping API 的实际行为。</p>
+
+<h3>9.1 实验环境准备</h3>
+
+<p><strong>所需工具：</strong></p>
+<pre><code class="language-bash"># QEMU (支持 ARM64 virt 机器)
+qemu-system-aarch64 --version
+
+# 交叉编译工具链
+aarch64-linux-gnu-gcc --version
+
+# 或者使用本机编译（如果在 ARM64 上）</code></pre>
+
+<p><strong>QEMU 启动命令参考：</strong></p>
+<pre><code class="language-bash">qemu-system-aarch64 \
+    -machine virt \
+    -cpu cortex-a72 \
+    -m 1G \
+    -kernel Image \
+    -initrd rootfs.cpio.gz \
+    -append &quot;console=ttyAMA0 root=/dev/ram rdinit=/init loglevel=8&quot; \
+    -nographic \
+    -smp 4</code></pre>
+
+<h3>9.2 实验一：DMA Coherent 内存分配内核模块</h3>
+
+<p>这个模块演示 <code>dma_alloc_coherent()</code> 的基本用法，可以在 QEMU ARM64 上直接运行。</p>
+
+<p><strong>模块代码：<code>dma_coherent_test.c</code></strong></p>
+
+<pre><code class="language-c">/*
+ * DMA Coherent Memory Allocation Test Module
+ * 演示 dma_alloc_coherent/dma_free_coherent 在 ARM64 上的行为
+ *
+ * 编译: make -C /path/to/kernel M=$PWD modules ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
+ * 加载: insmod dma_coherent_test.ko
+ * 查看: dmesg | grep dma_test
+ * 卸载: rmmod dma_coherent_test
+ */
+#include &lt;linux/module.h&gt;
+#include &lt;linux/platform_device.h&gt;
+#include &lt;linux/dma-mapping.h&gt;
+#include &lt;linux/slab.h&gt;
+
+#define TEST_BUF_SIZE  4096
+#define TEST_PATTERN   0xDEADBEEF
+
+static struct platform_device *test_pdev;
+
+static int dma_coherent_test(struct device *dev)
+{
+    void *cpu_addr;
+    dma_addr_t dma_handle;
+    u32 *buf;
+    int i, errors = 0;
+
+    pr_info(&quot;dma_test: === Coherent DMA Allocation Test ===\n&quot;);
+
+    /* 1. 设置 DMA 掩码 */
+    if (dma_set_mask_and_coherent(dev, DMA_BIT_MASK(64))) {
+        pr_err(&quot;dma_test: Failed to set DMA mask\n&quot;);
+        return -EIO;
+    }
+    pr_info(&quot;dma_test: DMA mask set to 64-bit\n&quot;);
+
+    /* 2. 分配一致性 DMA 内存 */
+    cpu_addr = dma_alloc_coherent(dev, TEST_BUF_SIZE, &amp;dma_handle, GFP_KERNEL);
+    if (!cpu_addr) {
+        pr_err(&quot;dma_test: dma_alloc_coherent failed\n&quot;);
+        return -ENOMEM;
+    }
+
+    pr_info(&quot;dma_test: Coherent alloc OK\n&quot;);
+    pr_info(&quot;dma_test:   CPU virtual addr : %px\n&quot;, cpu_addr);
+    pr_info(&quot;dma_test:   DMA bus addr     : %pad\n&quot;, &amp;dma_handle);
+    pr_info(&quot;dma_test:   Physical addr    : %pa\n&quot;,
+            &amp;(phys_addr_t){virt_to_phys(cpu_addr)});
+    pr_info(&quot;dma_test:   dma_coherent     : %d\n&quot;, dev-&gt;dma_coherent);
+
+    /* 3. CPU 写入测试数据 */
+    buf = (u32 *)cpu_addr;
+    for (i = 0; i &lt; TEST_BUF_SIZE / sizeof(u32); i++)
+        buf[i] = TEST_PATTERN + i;
+
+    /* 4. CPU 立即读回验证（Coherent 内存无需 sync） */
+    for (i = 0; i &lt; TEST_BUF_SIZE / sizeof(u32); i++) {
+        if (buf[i] != (TEST_PATTERN + i)) {
+            errors++;
+            if (errors &lt;= 3)
+                pr_err(&quot;dma_test: Mismatch at [%d]: 0x%08x != 0x%08x\n&quot;,
+                       i, buf[i], TEST_PATTERN + i);
+        }
+    }
+
+    if (errors == 0)
+        pr_info(&quot;dma_test: Coherent R/W verify PASSED (%zu bytes)\n&quot;,
+                (size_t)TEST_BUF_SIZE);
+    else
+        pr_err(&quot;dma_test: Coherent R/W verify FAILED (%d errors)\n&quot;, errors);
+
+    /* 5. 释放 */
+    dma_free_coherent(dev, TEST_BUF_SIZE, cpu_addr, dma_handle);
+    pr_info(&quot;dma_test: Coherent memory freed\n&quot;);
+
+    return errors ? -EIO : 0;
+}
+
+static int __init dma_test_init(void)
+{
+    int ret;
+
+    pr_info(&quot;dma_test: Module loading...\n&quot;);
+
+    /* 创建一个 platform_device 用于测试 */
+    test_pdev = platform_device_register_simple(&quot;dma-test&quot;, -1, NULL, 0);
+    if (IS_ERR(test_pdev)) {
+        pr_err(&quot;dma_test: Failed to create platform device\n&quot;);
+        return PTR_ERR(test_pdev);
+    }
+
+    ret = dma_coherent_test(&amp;test_pdev-&gt;dev);
+
+    return ret;
+}
+
+static void __exit dma_test_exit(void)
+{
+    if (test_pdev)
+        platform_device_unregister(test_pdev);
+    pr_info(&quot;dma_test: Module unloaded\n&quot;);
+}
+
+module_init(dma_test_init);
+module_exit(dma_test_exit);
+MODULE_LICENSE(&quot;GPL&quot;);
+MODULE_DESCRIPTION(&quot;DMA Coherent Memory Test for ARM64&quot;);</code></pre>
+
+<h3>9.3 实验二：流式 DMA 映射 + Cache 同步</h3>
+
+<p>这个模块演示 <code>dma_map_single()</code> / <code>dma_sync_*()</code> 的完整流程，以及 Cache 同步的效果。</p>
+
+<p><strong>模块代码：<code>dma_streaming_test.c</code></strong></p>
+
+<pre><code class="language-c">/*
+ * DMA Streaming Mapping Test Module
+ * 演示 dma_map_single / dma_sync_for_device / dma_sync_for_cpu
+ *
+ * 在 ARM64 non-coherent 场景下，可以观察到 Cache 维护操作的效果
+ */
+#include &lt;linux/module.h&gt;
+#include &lt;linux/platform_device.h&gt;
+#include &lt;linux/dma-mapping.h&gt;
+#include &lt;linux/slab.h&gt;
+#include &lt;linux/ktime.h&gt;
+
+#define BUF_SIZE    (64 * 1024)  /* 64KB */
+#define PATTERN_A   0xAAAAAAAA
+#define PATTERN_B   0xBBBBBBBB
+
+static struct platform_device *test_pdev;
+
+static int streaming_dma_test(struct device *dev)
+{
+    void *buf;
+    dma_addr_t dma_handle;
+    u32 *p;
+    ktime_t t_start, t_end;
+    int i;
+
+    pr_info(&quot;dma_stream: === Streaming DMA Mapping Test ===\n&quot;);
+
+    dma_set_mask_and_coherent(dev, DMA_BIT_MASK(64));
+
+    /* 1. 分配普通内核内存（kmalloc 或页分配） */
+    buf = kmalloc(BUF_SIZE, GFP_KERNEL);
+    if (!buf)
+        return -ENOMEM;
+
+    p = (u32 *)buf;
+
+    /*
+     * ============================================
+     * 测试 A: DMA_TO_DEVICE 流程（CPU→设备）
+     * ============================================
+     */
+    pr_info(&quot;dma_stream: --- Test A: DMA_TO_DEVICE ---\n&quot;);
+
+    /* A1. CPU 写入数据 */
+    for (i = 0; i &lt; BUF_SIZE / sizeof(u32); i++)
+        p[i] = PATTERN_A;
+
+    /* A2. ★ 映射为 DMA 地址 ★
+     * ARM64 上会调用 arch_sync_dma_for_device()
+     * → dcache_clean_poc(): 将 Cache 中的数据刷到内存
+     */
+    t_start = ktime_get();
+    dma_handle = dma_map_single(dev, buf, BUF_SIZE, DMA_TO_DEVICE);
+    t_end = ktime_get();
+
+    if (dma_mapping_error(dev, dma_handle)) {
+        pr_err(&quot;dma_stream: map failed\n&quot;);
+        kfree(buf);
+        return -EIO;
+    }
+
+    pr_info(&quot;dma_stream: map_single(TO_DEVICE) took %lld ns\n&quot;,
+            ktime_to_ns(ktime_sub(t_end, t_start)));
+    pr_info(&quot;dma_stream:   buf virt=%px phys=%pa dma=%pad\n&quot;,
+            buf, &amp;(phys_addr_t){virt_to_phys(buf)}, &amp;dma_handle);
+
+    /* A3. 此时 CPU 不应再写入 buf（CPU 已&quot;交出所有权&quot;给设备） */
+
+    /* A4. ★ 解除映射 ★ — CPU 重新获得所有权 */
+    t_start = ktime_get();
+    dma_unmap_single(dev, dma_handle, BUF_SIZE, DMA_TO_DEVICE);
+    t_end = ktime_get();
+
+    pr_info(&quot;dma_stream: unmap_single(TO_DEVICE) took %lld ns\n&quot;,
+            ktime_to_ns(ktime_sub(t_end, t_start)));
+
+    /*
+     * ============================================
+     * 测试 B: DMA_FROM_DEVICE 流程（设备→CPU）
+     * ============================================
+     */
+    pr_info(&quot;dma_stream: --- Test B: DMA_FROM_DEVICE ---\n&quot;);
+
+    /* B1. 映射为 DMA 地址（设备将写入此缓冲区） */
+    dma_handle = dma_map_single(dev, buf, BUF_SIZE, DMA_FROM_DEVICE);
+    if (dma_mapping_error(dev, dma_handle)) {
+        pr_err(&quot;dma_stream: map failed\n&quot;);
+        kfree(buf);
+        return -EIO;
+    }
+
+    /* B2. 模拟&quot;设备已写入数据&quot;（在真实场景中是硬件 DMA 写入） */
+    /* 注意：这里我们直接写内存来模拟设备行为 */
+
+    /* B3. ★ 同步给 CPU ★
+     * ARM64 上调用 arch_sync_dma_for_cpu()
+     * → dcache_inval_poc(): 使 Cache 行无效化，CPU 将从内存重新读取
+     */
+    t_start = ktime_get();
+    dma_sync_single_for_cpu(dev, dma_handle, BUF_SIZE, DMA_FROM_DEVICE);
+    t_end = ktime_get();
+
+    pr_info(&quot;dma_stream: sync_for_cpu(FROM_DEVICE) took %lld ns\n&quot;,
+            ktime_to_ns(ktime_sub(t_end, t_start)));
+
+    /* B4. 现在 CPU 可以安全读取 buf */
+
+    /* B5. 如果 CPU 需要让设备再次写入 */
+    t_start = ktime_get();
+    dma_sync_single_for_device(dev, dma_handle, BUF_SIZE, DMA_FROM_DEVICE);
+    t_end = ktime_get();
+
+    pr_info(&quot;dma_stream: sync_for_device(FROM_DEVICE) took %lld ns\n&quot;,
+            ktime_to_ns(ktime_sub(t_end, t_start)));
+
+    dma_unmap_single(dev, dma_handle, BUF_SIZE, DMA_FROM_DEVICE);
+
+    /*
+     * ============================================
+     * 测试 C: 映射开销对比
+     * ============================================
+     */
+    pr_info(&quot;dma_stream: --- Test C: Mapping overhead comparison ---\n&quot;);
+    {
+        int iter = 100;
+        ktime_t total = 0;
+        for (i = 0; i &lt; iter; i++) {
+            t_start = ktime_get();
+            dma_handle = dma_map_single(dev, buf, BUF_SIZE, DMA_TO_DEVICE);
+            t_end = ktime_get();
+            total = ktime_add(total, ktime_sub(t_end, t_start));
+            dma_unmap_single(dev, dma_handle, BUF_SIZE, DMA_TO_DEVICE);
+        }
+        pr_info(&quot;dma_stream: avg map_single(%dKB, TO_DEVICE) = %lld ns &quot;
+                &quot;(%d iterations)\n&quot;,
+                BUF_SIZE / 1024,
+                ktime_to_ns(total) / iter, iter);
+    }
+
+    kfree(buf);
+    pr_info(&quot;dma_stream: All tests completed\n&quot;);
+    return 0;
+}
+
+static int __init dma_stream_init(void)
+{
+    test_pdev = platform_device_register_simple(&quot;dma-stream-test&quot;, -1, NULL, 0);
+    if (IS_ERR(test_pdev))
+        return PTR_ERR(test_pdev);
+    return streaming_dma_test(&amp;test_pdev-&gt;dev);
+}
+
+static void __exit dma_stream_exit(void)
+{
+    if (test_pdev)
+        platform_device_unregister(test_pdev);
+    pr_info(&quot;dma_stream: Module unloaded\n&quot;);
+}
+
+module_init(dma_stream_init);
+module_exit(dma_stream_exit);
+MODULE_LICENSE(&quot;GPL&quot;);
+MODULE_DESCRIPTION(&quot;DMA Streaming Mapping Test for ARM64&quot;);</code></pre>
+
+<h3>9.4 实验三：DMA Engine + PL011 UART 观察</h3>
+
+<p>利用 QEMU virt 机器自带的 PL011 UART，观察 DMA Engine 的工作过程。</p>
+
+<p><strong>模块代码：<code>dma_engine_test.c</code></strong></p>
+
+<pre><code class="language-c">/*
+ * DMA Engine Channel Test Module
+ * 演示 DMA Engine memcpy 操作（使用 QEMU 中的 DMA 控制器）
+ *
+ * 注意：QEMU virt 机器默认无独立 DMA 控制器，
+ *       本模块可在有 DMA Engine 的真实硬件或添加了 PL330 的 QEMU 配置上运行。
+ *       即使没有 DMA Engine 硬件，模块也会优雅地报告并退出。
+ */
+#include &lt;linux/module.h&gt;
+#include &lt;linux/dmaengine.h&gt;
+#include &lt;linux/dma-mapping.h&gt;
+#include &lt;linux/platform_device.h&gt;
+#include &lt;linux/completion.h&gt;
+#include &lt;linux/ktime.h&gt;
+
+#define DMA_BUF_SIZE    (16 * 1024)  /* 16KB */
+#define TEST_PATTERN    0xCAFEBABE
+
+static struct platform_device *test_pdev;
+static DECLARE_COMPLETION(dma_done);
+
+static void dma_memcpy_callback(void *param)
+{
+    complete(&amp;dma_done);
+}
+
+static int dma_engine_memcpy_test(struct device *dev)
+{
+    struct dma_chan *chan;
+    struct dma_async_tx_descriptor *desc;
+    dma_cap_mask_t mask;
+    dma_cookie_t cookie;
+    void *src_buf, *dst_buf;
+    dma_addr_t src_dma, dst_dma;
+    ktime_t t_start, t_end;
+    u32 *src, *dst;
+    int i, errors = 0;
+
+    pr_info(&quot;dma_engine: === DMA Engine Memcpy Test ===\n&quot;);
+
+    /* 1. 请求一个支持 MEMCPY 的 DMA 通道 */
+    dma_cap_zero(mask);
+    dma_cap_set(DMA_MEMCPY, mask);
+    chan = dma_request_chan_by_mask(&amp;mask);
+    if (IS_ERR(chan)) {
+        pr_warn(&quot;dma_engine: No DMA MEMCPY channel available (err=%ld)\n&quot;,
+                PTR_ERR(chan));
+        pr_info(&quot;dma_engine: This is expected on QEMU virt without DMA controller\n&quot;);
+        pr_info(&quot;dma_engine: Try on real HW or QEMU with PL330 DMA\n&quot;);
+        return 0;  /* 不算失败 */
+    }
+    pr_info(&quot;dma_engine: Got channel: %s\n&quot;, dma_chan_name(chan));
+
+    dma_set_mask_and_coherent(dev, DMA_BIT_MASK(64));
+
+    /* 2. 分配源和目的 DMA 缓冲区（coherent 避免手动 sync） */
+    src_buf = dma_alloc_coherent(dev, DMA_BUF_SIZE, &amp;src_dma, GFP_KERNEL);
+    dst_buf = dma_alloc_coherent(dev, DMA_BUF_SIZE, &amp;dst_dma, GFP_KERNEL);
+    if (!src_buf || !dst_buf) {
+        pr_err(&quot;dma_engine: Buffer alloc failed\n&quot;);
+        goto out_free;
+    }
+
+    /* 3. 填充源数据，清零目的 */
+    src = (u32 *)src_buf;
+    dst = (u32 *)dst_buf;
+    for (i = 0; i &lt; DMA_BUF_SIZE / sizeof(u32); i++) {
+        src[i] = TEST_PATTERN + i;
+        dst[i] = 0;
+    }
+
+    /* 4. 准备 DMA memcpy 描述符 */
+    desc = dmaengine_prep_dma_memcpy(chan, dst_dma, src_dma, DMA_BUF_SIZE,
+                                     DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+    if (!desc) {
+        pr_err(&quot;dma_engine: prep_dma_memcpy failed\n&quot;);
+        goto out_free;
+    }
+
+    /* 5. 设置完成回调 */
+    desc-&gt;callback = dma_memcpy_callback;
+    desc-&gt;callback_param = NULL;
+
+    /* 6. 提交并触发 */
+    reinit_completion(&amp;dma_done);
+    t_start = ktime_get();
+
+    cookie = dmaengine_submit(desc);
+    if (dma_submit_error(cookie)) {
+        pr_err(&quot;dma_engine: submit failed\n&quot;);
+        goto out_free;
+    }
+    dma_async_issue_pending(chan);
+
+    /* 7. 等待完成 */
+    if (!wait_for_completion_timeout(&amp;dma_done, msecs_to_jiffies(5000))) {
+        pr_err(&quot;dma_engine: DMA timeout!\n&quot;);
+        dmaengine_terminate_all(chan);
+        goto out_free;
+    }
+    t_end = ktime_get();
+
+    /* 8. 验证数据 */
+    for (i = 0; i &lt; DMA_BUF_SIZE / sizeof(u32); i++) {
+        if (dst[i] != (TEST_PATTERN + i)) {
+            errors++;
+            if (errors &lt;= 3)
+                pr_err(&quot;dma_engine: [%d] 0x%08x != 0x%08x\n&quot;,
+                       i, dst[i], TEST_PATTERN + i);
+        }
+    }
+
+    if (errors == 0)
+        pr_info(&quot;dma_engine: DMA memcpy PASSED (%d KB in %lld ns)\n&quot;,
+                DMA_BUF_SIZE / 1024,
+                ktime_to_ns(ktime_sub(t_end, t_start)));
+    else
+        pr_err(&quot;dma_engine: DMA memcpy FAILED (%d errors)\n&quot;, errors);
+
+out_free:
+    if (src_buf)
+        dma_free_coherent(dev, DMA_BUF_SIZE, src_buf, src_dma);
+    if (dst_buf)
+        dma_free_coherent(dev, DMA_BUF_SIZE, dst_buf, dst_dma);
+    dma_release_channel(chan);
+    return errors ? -EIO : 0;
+}
+
+static int __init dma_engine_init(void)
+{
+    test_pdev = platform_device_register_simple(&quot;dma-engine-test&quot;, -1, NULL, 0);
+    if (IS_ERR(test_pdev))
+        return PTR_ERR(test_pdev);
+    return dma_engine_memcpy_test(&amp;test_pdev-&gt;dev);
+}
+
+static void __exit dma_engine_exit(void)
+{
+    if (test_pdev)
+        platform_device_unregister(test_pdev);
+    pr_info(&quot;dma_engine: Module unloaded\n&quot;);
+}
+
+module_init(dma_engine_init);
+module_exit(dma_engine_exit);
+MODULE_LICENSE(&quot;GPL&quot;);
+MODULE_DESCRIPTION(&quot;DMA Engine Memcpy Test for ARM64&quot;);</code></pre>
+
+<h3>9.5 Makefile（通用，适用于以上三个模块）</h3>
+
+<pre><code class="language-makefile"># Makefile for DMA test modules
+# Usage:
+#   内核源码内编译:
+#     make -C /path/to/kernel M=$(pwd) modules ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
+#   或放到内核 kmodules/ 目录下:
+#     make -C .. M=kmodules modules
+
+obj-m += dma_coherent_test.o
+obj-m += dma_streaming_test.o
+obj-m += dma_engine_test.o
+
+# 如果直接执行 make
+KDIR ?= /lib/modules/$(shell uname -r)/build
+
+all:
+	$(MAKE) -C $(KDIR) M=$(PWD) modules ARCH=arm64
+
+clean:
+	$(MAKE) -C $(KDIR) M=$(PWD) clean</code></pre>
+
+<h3>9.6 实验操作步骤</h3>
+
+<pre><code class="language-bash"># === 步骤 1: 编译模块 ===
+cd /path/to/dma_test_modules/
+make -C /path/to/linux-6.18.1 M=$(pwd) modules ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
+
+# === 步骤 2: 将 .ko 文件放入 rootfs ===
+# (打包到 initramfs 或通过 9p/virtio-fs 共享)
+
+# === 步骤 3: 在 QEMU 中加载测试 ===
+
+# 实验1: Coherent DMA 测试
+insmod dma_coherent_test.ko
+dmesg | grep dma_test
+rmmod dma_coherent_test
+
+# 预期输出:
+# dma_test: === Coherent DMA Allocation Test ===
+# dma_test: DMA mask set to 64-bit
+# dma_test: Coherent alloc OK
+# dma_test:   CPU virtual addr : ffff0000xxxxxxxx
+# dma_test:   DMA bus addr     : 0x00000000xxxxxxxx
+# dma_test:   Physical addr    : 0x00000000xxxxxxxx
+# dma_test:   dma_coherent     : 1          ← QEMU virt 默认 coherent
+# dma_test: Coherent R/W verify PASSED (4096 bytes)
+
+# 实验2: Streaming DMA 测试
+insmod dma_streaming_test.ko
+dmesg | grep dma_stream
+rmmod dma_streaming_test
+
+# 预期输出:
+# dma_stream: === Streaming DMA Mapping Test ===
+# dma_stream: map_single(TO_DEVICE) took XXX ns
+# dma_stream:   buf virt=ffff... phys=0x... dma=0x...
+# dma_stream: unmap_single(TO_DEVICE) took XXX ns
+# dma_stream: sync_for_cpu(FROM_DEVICE) took XXX ns
+# dma_stream: avg map_single(64KB, TO_DEVICE) = XXX ns (100 iterations)
+
+# 实验3: DMA Engine 测试（需要 DMA 控制器硬件支持）
+insmod dma_engine_test.ko
+dmesg | grep dma_engine
+rmmod dma_engine_test
+
+# 在 QEMU virt 上预期:
+# dma_engine: No DMA MEMCPY channel available
+# dma_engine: This is expected on QEMU virt without DMA controller
+# 在真实硬件上:
+# dma_engine: Got channel: dma0chan0
+# dma_engine: DMA memcpy PASSED (16 KB in XXXXX ns)</code></pre>
+
+<h3>9.7 实验观察要点</h3>
+
+<pre><code>┌──────────────────────────────────────────────────────────────────────┐
+│  观察点 1: DMA 地址 vs 物理地址                                       │
+│  ─────────────────────────────────                                   │
+│  在 QEMU virt (无 IOMMU) 上: DMA addr == Physical addr              │
+│  在真实硬件 (有 SMMU) 上:     DMA addr 是 IOVA，≠ Physical addr      │
+│                                                                      │
+│  观察点 2: dma_coherent 标志                                         │
+│  ─────────────────────────────                                       │
+│  QEMU virt: dma_coherent = 1 (模拟硬件一致性)                        │
+│  真实 SoC:  取决于设备树 dma-coherent 属性                            │
+│             非 coherent 设备的 map/sync 耗时会明显更长(Cache操作)      │
+│                                                                      │
+│  观察点 3: Streaming vs Coherent 性能                                │
+│  ──────────────────────────────────                                   │
+│  Streaming map/unmap 有开销 (Cache flush)，但单次传输后即释放          │
+│  Coherent 分配较重（可能 vmalloc + 页表修改），但后续无 sync 开销      │
+│  小缓冲区频繁使用 → Streaming 更快                                    │
+│  大缓冲区长期共享 → Coherent 更合适                                   │
+│                                                                      │
+│  观察点 4: QEMU 加 IOMMU 对比                                       │
+│  ────────────────────────────                                        │
+│  # 不加 IOMMU:                                                       │
+│  qemu-system-aarch64 -machine virt ...                               │
+│  → DMA addr = Physical addr (直接映射)                               │
+│                                                                      │
+│  # 加 SMMU:                                                         │
+│  qemu-system-aarch64 -machine virt,iommu=smmuv3 ...                 │
+│  → DMA addr = IOVA (SMMU 翻译后的地址)                               │
+│  → 内核日志会显示 SMMU 初始化信息                                     │
+│                                                                      │
+│  对比两种模式下 dma_map_single 返回的地址和耗时差异                    │
+└──────────────────────────────────────────────────────────────────────┘</code></pre>
+
+<h3>9.8 进阶实验：QEMU 开启 SMMU 对比</h3>
+
+<pre><code class="language-bash"># 无 IOMMU 启动
+qemu-system-aarch64 -machine virt -cpu cortex-a72 -m 1G \
+    -kernel Image -initrd rootfs.cpio.gz \
+    -append &quot;console=ttyAMA0&quot; -nographic
+
+# 有 SMMUv3 启动
+qemu-system-aarch64 -machine virt,iommu=smmuv3 -cpu cortex-a72 -m 1G \
+    -kernel Image -initrd rootfs.cpio.gz \
+    -append &quot;console=ttyAMA0&quot; -nographic
+
+# 在两种模式下分别加载 dma_streaming_test.ko 模块
+# 对比:
+# 1. dma_map_single 返回的 DMA 地址是否不同
+# 2. map/unmap 耗时是否有差异（IOMMU 路径有额外开销）
+# 3. dmesg 中是否有 SMMU 相关初始化日志</code></pre>
+
+<hr>
+
+<h2>第十部分：DMA 面试高频问题与解答</h2>
+
+<h3>Q1：什么是 DMA？为什么需要 DMA？</h3>
+
+<p><strong>答</strong>：DMA（Direct Memory Access）允许外设绕过 CPU 直接与内存进行数据传输。</p>
+
+<p><strong>核心价值</strong>：</p>
+<ul>
+<li><strong>PIO 模式</strong>：CPU 必须逐字节搬运数据，每传一个字需要完整的取指-译码-执行-访存流水线，且 I/O 访问延迟高（100~1000ns），CPU 流水线停顿等待</li>
+<li><strong>DMA 模式</strong>：CPU 只花 ~10 条指令配置 DMA 控制器，然后完全释放去做其他计算。DMA 控制器作为专用硬件以 burst 方式高效搬运数据</li>
+<li><strong>量化对比</strong>：传输 4KB 数据，PIO 需要 ~5000 条 CPU 指令；DMA 只需 ~10 条配置指令 + 1 次完成中断</li>
+</ul>
+
+<hr>
+
+<h3>Q2：DMA 和 CPU 都要访问内存，为什么 DMA 还能提升性能？</h3>
+
+<p><strong>答</strong>：DMA 节省的不是内存带宽，而是 <strong>CPU 指令周期</strong>。</p>
+
+<ol>
+<li><strong>CPU 是通用处理器</strong>，每搬一个字都要走完整流水线（取指→译码→执行→访存→写回），且会占用寄存器、Cache 等资源</li>
+<li><strong>DMA 控制器是专用硬件</strong>，只做数据搬运，使用 burst 传输（一次 16~256 字节）总线效率远高于 CPU 逐字访问</li>
+<li><strong>现代互联总线（CCI/CMN）支持多 Master 并发</strong>，CPU 和 DMA 控制器交替使用总线时隙，DDR 多 Bank 架构允许并行访问不同地址区域</li>
+<li><strong>核心收益</strong>：DMA 传输期间 CPU 100% 释放去执行计算密集型任务，实现 I/O 与计算真正并行</li>
+</ol>
+
+<hr>
+
+<h3>Q3：DMA 传输有哪几种模式？分别应用在什么场景？</h3>
+
+<p><strong>答</strong>：四种基本模式——</p>
+
+<table>
+<thead><tr>
+<th>模式</th>
+<th>机制</th>
+<th>典型场景</th>
+<th>内核 API</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>单次传输</strong></td>
+<td>传一个数据单元即停</td>
+<td>极少单独使用</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>块传输 (Burst)</strong></td>
+<td>连续传输 N 个单元，完成后中断</td>
+<td>内存拷贝加速</td>
+<td><code>dmaengine_prep_dma_memcpy()</code></td>
+</tr>
+<tr>
+<td><strong>需求传输 (Slave)</strong></td>
+<td>外设 DRQ 信号触发，按需传输</td>
+<td>UART/SPI/I2C 收发</td>
+<td><code>dmaengine_prep_slave_sg()</code></td>
+</tr>
+<tr>
+<td><strong>循环传输 (Cyclic)</strong></td>
+<td>环形缓冲区自动回绕，永不停止</td>
+<td>音频流、视频采集</td>
+<td><code>dmaengine_prep_dma_cyclic()</code></td>
+</tr>
+</tbody></table>
+
+<p><strong>面试加分点</strong>：解释需求传输中 DRQ 信号与 maxburst 的关系——外设 FIFO 半满时拉高 DRQ，DMA 传输 maxburst 个数据单元，直到总长度达标。</p>
+
+<hr>
+
+<h3>Q4：<code>dma_alloc_coherent()</code> 和 <code>dma_map_single()</code> 有什么区别？什么时候用哪个？</h3>
+
+<p><strong>答</strong>：这是最高频的 DMA 面试题。</p>
+
+<table>
+<thead><tr>
+<th>维度</th>
+<th><code>dma_alloc_coherent()</code></th>
+<th><code>dma_map_single()</code></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>类型</strong></td>
+<td>一致性映射（Coherent）</td>
+<td>流式映射（Streaming）</td>
+</tr>
+<tr>
+<td><strong>内存来源</strong></td>
+<td>新分配物理页</td>
+<td>映射已有内存（如 kmalloc 的）</td>
+</tr>
+<tr>
+<td><strong>Cache 处理</strong></td>
+<td>映射为 uncached 或硬件保证一致</td>
+<td>每次 map/unmap 做 Cache flush/invalidate</td>
+</tr>
+<tr>
+<td><strong>CPU 可直接读写</strong></td>
+<td>是（无需 sync）</td>
+<td>map 后 CPU 不可写（需先 unmap 或 sync）</td>
+</tr>
+<tr>
+<td><strong>生命周期</strong></td>
+<td>长期（直到 free）</td>
+<td>短期（一次传输后 unmap）</td>
+</tr>
+<tr>
+<td><strong>性能特点</strong></td>
+<td>分配开销大，但后续无 sync 开销</td>
+<td>分配无开销，但每次有 Cache 维护开销</td>
+</tr>
+</tbody></table>
+
+<p><strong>选择规则：</strong></p>
+<pre><code>CPU 和设备反复共享访问（如 DMA 描述符环）  → dma_alloc_coherent()
+一次性传输后释放（如网络发包）              → dma_map_single()
+大块缓冲区长期使用                          → dma_alloc_coherent()
+高频率小缓冲区                              → dma_map_single()</code></pre>
+
+<hr>
+
+<h3>Q5：什么是 DMA 的 Cache 一致性问题？ARM64 上如何解决？</h3>
+
+<p><strong>答</strong>：</p>
+
+<p><strong>问题根源</strong>：CPU 写数据时可能只写到 Cache 而未写回内存，设备 DMA 读内存时读到旧数据；反之设备 DMA 写内存后，CPU 从 Cache 读到的还是旧数据。</p>
+
+<p><strong>ARM64 的解决方案（<code>arch/arm64/mm/dma-mapping.c</code>）：</strong></p>
+
+<table>
+<thead><tr>
+<th>场景</th>
+<th>操作</th>
+<th>ARM64 实现</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>CPU→设备 (DMA_TO_DEVICE)</strong></td>
+<td>传输前 Clean Cache</td>
+<td><code>dcache_clean_poc()</code> — 将 Cache 数据刷到 PoC</td>
+</tr>
+<tr>
+<td><strong>设备→CPU (DMA_FROM_DEVICE)</strong></td>
+<td>传输后 Invalidate Cache</td>
+<td><code>dcache_inval_poc()</code> — 使 Cache 行无效</td>
+</tr>
+<tr>
+<td><strong>双向 (DMA_BIDIRECTIONAL)</strong></td>
+<td>Clean + Invalidate</td>
+<td>两者都做</td>
+</tr>
+<tr>
+<td><strong>Coherent 设备</strong></td>
+<td>无需任何操作</td>
+<td>硬件自动保证一致</td>
+</tr>
+</tbody></table>
+
+<p><strong>PoC（Point of Coherency）</strong>：所有 observer（CPU + I/O 设备）都能看到一致数据的层级点，通常是 L3/LLC。</p>
+
+<hr>
+
+<h3>Q6：什么是 IOMMU？和 MMU 有什么区别？ARM 平台的 IOMMU 叫什么？</h3>
+
+<p><strong>答</strong>：</p>
+
+<ul>
+<li><strong>MMU</strong>：在 CPU 内部，翻译 CPU 虚拟地址 → 物理地址</li>
+<li><strong>IOMMU</strong>：在总线上，翻译设备 DMA 地址 → 物理地址</li>
+<li><strong>ARM SMMU</strong>（System MMU）：ARM 平台对 IOMMU 的具体实现（类比 Intel VT-d）</li>
+</ul>
+
+<p><strong>IOMMU 三大价值：</strong></p>
+<ol>
+<li><strong>地址翻译</strong>：非连续物理页对设备呈现为连续 IOVA，解决内存碎片问题</li>
+<li><strong>安全隔离</strong>：限制设备只能访问分配给它的内存区域，防止恶意/有缺陷设备读写任意物理内存</li>
+<li><strong>虚拟化支持</strong>：设备直通（passthrough）场景隔离不同虚拟机的 DMA 访问</li>
+</ol>
+
+<p><strong>SMMUv3 特性要点</strong>：与 CPU MMU 使用相同格式的页表，支持 SVA（Shared Virtual Addressing）让设备直接使用进程的页表。</p>
+
+<hr>
+
+<h3>Q7：<code>dma_map_single()</code> 之后、<code>dma_unmap_single()</code> 之前，CPU 能不能访问这块内存？</h3>
+
+<p><strong>答</strong>：<strong>取决于方向，但原则上不应该随意访问。</strong></p>
+
+<table>
+<thead><tr>
+<th>方向</th>
+<th>CPU 能读？</th>
+<th>CPU 能写？</th>
+<th>原因</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>DMA_TO_DEVICE</code></td>
+<td>不应该</td>
+<td><strong>绝对不能</strong></td>
+<td>map 时已 Clean Cache，CPU 写入会留在 Cache 中，设备看不到</td>
+</tr>
+<tr>
+<td><code>DMA_FROM_DEVICE</code></td>
+<td><strong>不能</strong></td>
+<td>不应该</td>
+<td>设备正在写内存，CPU 可能读到旧 Cache</td>
+</tr>
+<tr>
+<td><code>DMA_BIDIRECTIONAL</code></td>
+<td><strong>不能</strong></td>
+<td><strong>不能</strong></td>
+<td>双向都不安全</td>
+</tr>
+</tbody></table>
+
+<p><strong>如果必须中途访问</strong>（如查看部分接收数据），需要：</p>
+<pre><code class="language-c">// 暂时交还 CPU 所有权
+dma_sync_single_for_cpu(dev, dma_handle, size, dir);
+// CPU 读写...
+// 再交还设备所有权
+dma_sync_single_for_device(dev, dma_handle, size, dir);</code></pre>
+
+<hr>
+
+<h3>Q8：什么是 Bounce Buffer（swiotlb）？什么时候会触发？</h3>
+
+<p><strong>答</strong>：当设备的 DMA 地址能力不足以访问目标物理内存时，内核自动在低地址区域分配一个"弹跳缓冲区"，在缓冲区和目标内存之间做 memcpy。</p>
+
+<p><strong>触发条件：</strong></p>
+<ul>
+<li>设备 DMA mask 只有 32 位（如 <code>DMA_BIT_MASK(32)</code>），但目标内存在 4GB 以上</li>
+<li>没有 IOMMU 可用</li>
+</ul>
+
+<p><strong>性能影响</strong>：每次 DMA 传输多一次 CPU memcpy，对性能影响很大。</p>
+
+<p><strong>如何避免</strong>：</p>
+<ol>
+<li>使用 64 位 DMA mask：<code>dma_set_mask(dev, DMA_BIT_MASK(64))</code></li>
+<li>启用 IOMMU/SMMU</li>
+<li>使用 CMA 分配低地址物理连续内存</li>
+</ol>
+
+<p><strong>检查手段</strong>：<code>cat /sys/kernel/debug/swiotlb/io_tlb_used</code> 若持续增长说明有设备在用 bounce buffer。</p>
+
+<hr>
+
+<h3>Q9：<code>dma_map_sg()</code> 返回值和传入的 nents 可能不同，为什么？</h3>
+
+<p><strong>答</strong>：<code>dma_map_sg()</code> 返回的是<strong>映射后的 DMA 段数</strong>，可能小于原始 <code>nents</code>。</p>
+
+<p><strong>原因</strong>：</p>
+<ul>
+<li><strong>IOMMU 段合并</strong>：如果多个物理不连续的 SG 段在 IOVA 空间被映射为连续地址，IOMMU 可以将相邻段合并</li>
+<li>举例：4 个离散 4KB 页 → IOMMU 映射后可能变成 1 个 16KB 连续 IOVA 段</li>
+</ul>
+
+<p><strong>关键规则</strong>：</p>
+<pre><code class="language-c">mapped = dma_map_sg(dev, sg, nents, dir);
+// 遍历时用 mapped（映射后的段数）
+for_each_sg(sg, s, mapped, i) { ... }
+
+// 但 unmap 时必须用原始 nents！
+dma_unmap_sg(dev, sg, nents, dir);  // ★ 用 nents，不是 mapped</code></pre>
+
+<hr>
+
+<h3>Q10：DMA 缓冲区为什么必须 Cache 行对齐？</h3>
+
+<p><strong>答</strong>：因为 Cache 维护操作的最小单位是 <strong>Cache 行</strong>（ARM64 通常 64 字节）。</p>
+
+<pre><code>假设 Cache 行 = 64B，DMA buffer 起始于偏移 32：
+
+Cache Line N: [其他数据 32B | DMA buffer 前 32B]
+
+当 Invalidate DMA buffer 时：
+  → Cache Line N 整行被无效化
+  → &quot;其他数据 32B&quot; 也被丢弃！
+  → 如果其他内核代码正在使用这 32B → 数据损坏！</code></pre>
+
+<p><strong>ARM64 内核检查</strong>（<code>arch/arm64/mm/dma-mapping.c</code>）：</p>
+<pre><code class="language-c">void arch_setup_dma_ops(struct device *dev, bool coherent)
+{
+    WARN_TAINT(!coherent &amp;&amp; cls &gt; ARCH_DMA_MINALIGN, ...);
+    // 如果设备非 coherent 且 Cache 行 &gt; DMA 最小对齐，报警！
+}</code></pre>
+
+<p><strong>实践</strong>：<code>kmalloc()</code> 分配的内存默认满足 <code>ARCH_DMA_MINALIGN</code> 对齐，但自己管理的缓冲区需注意。</p>
+
+<hr>
+
+<h3>Q11：Linux DMA 子系统中有几条映射路径？如何选择？</h3>
+
+<p><strong>答</strong>：三条路径，内核自动选择：</p>
+
+<pre><code>dma_map_*() 调用
+    │
+    ├─ ① 直接映射 (Direct DMA)    ← 无 IOMMU，设备 mask 够大
+    │     phys_to_dma() 简单转换
+    │     零开销，最快
+    │
+    ├─ ② IOMMU 映射              ← 有 IOMMU（如 ARM SMMU）
+    │     分配 IOVA，建立 I/O 页表
+    │     支持非连续物理内存聚合
+    │     有 IOTLB miss 开销
+    │
+    └─ ③ Bounce Buffer (swiotlb) ← 设备 mask 不够，无 IOMMU
+          memcpy 到低地址 bounce 区
+          CPU 拷贝开销大，性能最差</code></pre>
+
+<p><strong>选择逻辑</strong>（<code>kernel/dma/mapping.c</code>）：</p>
+<pre><code class="language-c">if (dma_map_direct(dev, ops))         → 直接路径
+else if (use_dma_iommu(dev))          → IOMMU 路径
+else                                  → ops-&gt;map_page()（可能含 swiotlb）</code></pre>
+
+<hr>
+
+<h3>Q12：<code>dma_set_mask()</code> 和 <code>dma_set_coherent_mask()</code> 有什么区别？</h3>
+
+<p><strong>答</strong>：</p>
+
+<table>
+<thead><tr>
+<th>API</th>
+<th>控制什么</th>
+<th>用于哪类 DMA</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>dma_set_mask()</code></td>
+<td><code>dev->dma_mask</code></td>
+<td><strong>流式映射</strong>（<code>dma_map_single/sg</code>）</td>
+</tr>
+<tr>
+<td><code>dma_set_coherent_mask()</code></td>
+<td><code>dev->coherent_dma_mask</code></td>
+<td><strong>一致性分配</strong>（<code>dma_alloc_coherent</code>）</td>
+</tr>
+<tr>
+<td><code>dma_set_mask_and_coherent()</code></td>
+<td>同时设置两者</td>
+<td><strong>推荐使用</strong>，一步到位</td>
+</tr>
+</tbody></table>
+
+<p><strong>为什么分开</strong>：某些设备流式 DMA 支持 64 位地址，但一致性 DMA（如描述符环）只能在 32 位地址范围：</p>
+<pre><code class="language-c">dma_set_mask(dev, DMA_BIT_MASK(64));           // 数据帧可以在任意地址
+dma_set_coherent_mask(dev, DMA_BIT_MASK(32));  // 描述符环必须在低 4GB</code></pre>
+
+<hr>
+
+<h3>Q13：DMA mapping 之后必须检查错误吗？怎么检查？</h3>
+
+<p><strong>答</strong>：<strong>必须检查，不检查是内核代码的典型 bug。</strong></p>
+
+<pre><code class="language-c">// 正确做法：
+dma_addr_t dma = dma_map_single(dev, buf, len, DMA_TO_DEVICE);
+if (dma_mapping_error(dev, dma)) {   // ★ 必须检查 ★
+    dev_err(dev, &quot;DMA mapping failed\n&quot;);
+    return -EIO;
+}
+
+// 对于 SG 映射：
+int mapped = dma_map_sg(dev, sg, nents, dir);
+if (mapped == 0) {                   // ★ 返回 0 表示失败 ★
+    return -EIO;
+}</code></pre>
+
+<p><strong>不检查的后果</strong>：<code>DMA_MAPPING_ERROR</code>（全 1 地址）被写入设备寄存器，设备 DMA 到错误地址 → 内存损坏、内核崩溃。</p>
+
+<p><code>CONFIG_DMA_API_DEBUG=y</code> 内核选项可在开发阶段自动检测遗漏的错误检查。</p>
+
+<hr>
+
+<h3>Q14：什么是 CMA？为什么 DMA 需要 CMA？</h3>
+
+<p><strong>答</strong>：CMA（Contiguous Memory Allocator）解决"系统运行后难以分配大块物理连续内存"的问题。</p>
+
+<p><strong>原理</strong>：</p>
+<ul>
+<li>启动时预留一块内存区域（如 128MB），标记为 <code>MIGRATE_CMA</code></li>
+<li>正常运行时内核可用此区域存放<strong>可迁移页</strong>（page cache、匿名页）</li>
+<li>当设备请求大块连续内存时，迁移走这些页，腾出连续物理区域</li>
+</ul>
+
+<p><strong>为什么 DMA 需要</strong>：</p>
+<ul>
+<li>没有 IOMMU 的设备要求物理连续内存</li>
+<li>视频帧缓冲区、大 DMA 缓冲区等需要数 MB 连续内存</li>
+<li>系统运行后内存碎片化严重，普通 <code>alloc_pages()</code> 无法分配大块连续内存</li>
+</ul>
+
+<p><strong>配置</strong>：内核启动参数 <code>cma=128M</code> 或设备树中 <code>reserved-memory</code> 节点。</p>
+
+<hr>
+
+<h3>Q15：驱动开发中最常见的 DMA bug 有哪些？</h3>
+
+<p><strong>答</strong>：</p>
+
+<table>
+<thead><tr>
+<th>排名</th>
+<th>Bug 类型</th>
+<th>症状</th>
+<th>修复</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>map/unmap 不成对</strong></td>
+<td>内存泄漏或 IOVA 耗尽</td>
+<td>每个 map 必须有对应 unmap</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>未检查 <code>dma_mapping_error()</code></strong></td>
+<td>DMA 到全 1 地址，内存损坏</td>
+<td>map 后立即检查</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>map 后 CPU 继续写 buffer</strong></td>
+<td>设备读到旧数据</td>
+<td>map 后 CPU 不可写（DMA_TO_DEVICE）</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>DMA 完成后未 sync 就读</strong></td>
+<td>CPU 读到 Cache 中的旧数据</td>
+<td><code>dma_sync_single_for_cpu()</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>缓冲区未 Cache 行对齐</strong></td>
+<td>相邻内存数据损坏</td>
+<td>使用 <code>kmalloc()</code>（自动对齐）</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>DMA mask 设置错误</strong></td>
+<td>频繁 bounce buffer，性能差</td>
+<td><code>dma_set_mask_and_coherent(dev, DMA_BIT_MASK(64))</code></td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>SG unmap 用了 mapped 数而非 nents</strong></td>
+<td>部分映射未释放</td>
+<td>unmap 用原始 <code>nents</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Coherent 内存用于高频短周期</strong></td>
+<td>分配/释放开销大</td>
+<td>改用流式映射</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h3>Q16：解释 DMA 地址转换的完整链路（从内核虚拟地址到设备访问物理内存）</h3>
+
+<p><strong>答</strong>：（画图题，按此顺序讲解）</p>
+
+<pre><code>内核虚拟地址 (KVA)
+  例: ffff_0000_8000_0000
+      │
+      │  virt_to_phys() — 线性映射区直接减偏移
+      ▼
+CPU 物理地址 (PA)
+  例: 0x0000_0000_8000_0000
+      │
+      │  phys_to_dma(dev, pa) — 查询 bus_dma_region 映射表
+      │  （大多数 ARM64 平台 DMA addr == PA）
+      ▼
+DMA/总线地址 (dma_addr_t)
+  例: 0x0000_0000_8000_0000
+      │
+      │  如果有 SMMU:
+      │  IOMMU 分配 IOVA，建立 I/O 页表
+      │  设备使用 IOVA 访问
+      │
+      │  如果没有 SMMU:
+      │  设备直接使用此 DMA 地址
+      ▼
+设备通过总线访问 DRAM</code></pre>
+
+<hr>
+
+<h3>Q17：Linux 中 DMA Engine 框架和 DMA Mapping API 是什么关系？</h3>
+
+<p><strong>答</strong>：两者互补，解决不同问题：</p>
+
+<pre><code>┌─────────────────────────┬─────────────────────────────┐
+│   DMA Mapping API       │   DMA Engine API            │
+│   (kernel/dma/)         │   (drivers/dma/)            │
+├─────────────────────────┼─────────────────────────────┤
+│ 解决地址转换和 Cache同步 │ 管理 DMA 控制器硬件通道      │
+│ dma_map_single()        │ dma_request_chan()           │
+│ dma_alloc_coherent()    │ dmaengine_prep_slave_sg()   │
+│ dma_sync_for_cpu()      │ dmaengine_submit()          │
+├─────────────────────────┼─────────────────────────────┤
+│ 谁来用: 所有做DMA的驱动  │ 谁来用: 需要 DMA 控制器的驱动│
+│ 例: 网卡自带 DMA 引擎    │ 例: UART/SPI 无自带 DMA     │
+│     直接操作自己的 DMA    │     需要外部 DMA 控制器      │
+└─────────────────────────┴─────────────────────────────┘</code></pre>
+
+<p><strong>关键区别</strong>：网卡（如 STMMAC）有自己的 DMA 引擎，只用 Mapping API；UART（如 PL011）无 DMA 引擎，需要通过 DMA Engine API 请求系统级 DMA 控制器（如 PL330）的通道。</p>
+
+<hr>
+
+<h3>Q18：ARM64 上 <code>dma_coherent</code> 设备和非 coherent 设备的区别？性能差异？</h3>
+
+<p><strong>答</strong>：</p>
+
+<table>
+<thead><tr>
+<th>维度</th>
+<th>Coherent (dma_coherent=1)</th>
+<th>Non-Coherent (dma_coherent=0)</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>硬件机制</strong></td>
+<td>总线 snoop 协议自动同步</td>
+<td>无硬件同步</td>
+</tr>
+<tr>
+<td><strong><code>dma_map_single()</code></strong></td>
+<td>仅做地址转换</td>
+<td>地址转换 + <code>dcache_clean_poc()</code></td>
+</tr>
+<tr>
+<td><strong><code>dma_sync_for_cpu()</code></strong></td>
+<td>空操作 (nop)</td>
+<td><code>dcache_inval_poc()</code></td>
+</tr>
+<tr>
+<td><strong><code>dma_alloc_coherent()</code></strong></td>
+<td>返回正常 cacheable 内存</td>
+<td>返回 uncached 映射（性能较低）</td>
+</tr>
+<tr>
+<td><strong>性能</strong></td>
+<td>最优</td>
+<td>流式映射有 Cache 维护开销；coherent 分配性能较差</td>
+</tr>
+<tr>
+<td><strong>设备树</strong></td>
+<td>有 <code>dma-coherent</code> 属性</td>
+<td>无此属性</td>
+</tr>
+</tbody></table>
+
+<p><strong>QEMU virt 默认是 coherent</strong>（因为模拟器无真实总线延迟），真实 SoC 需看设备是否连接在 coherent 端口上。</p>
+
+<hr>
+
+<h3>Q19：如何调试 DMA 相关问题？</h3>
+
+<p><strong>答</strong>：按优先级排列的调试手段：</p>
+
+<pre><code>1. CONFIG_DMA_API_DEBUG=y
+   → 内核自动检测: 未检查 mapping error、map/unmap 不配对、
+     方向不匹配、缓冲区未对齐等
+
+2. dmesg | grep -i &quot;dma\|iommu\|smmu\|swiotlb&quot;
+   → 查看 DMA/IOMMU 初始化日志和错误
+
+3. /sys/kernel/debug/swiotlb/
+   → io_tlb_used: 当前使用的 bounce buffer 数量
+   → 持续增长说明有设备走了 bounce 路径
+
+4. /sys/kernel/iommu_groups/
+   → 查看设备到 IOMMU 组的绑定关系
+
+5. ftrace / perf
+   → trace_dma_map_phys / trace_dma_unmap_phys
+   → 跟踪 DMA 映射操作的完整调用栈
+
+6. KASAN + DMA_API_DEBUG
+   → 检测 DMA buffer 的越界访问和 use-after-free</code></pre>
+
+<hr>
+
+<h3>Q20：简述一个网络驱动收包的完整 DMA 流程</h3>
+
+<p><strong>答</strong>：以 STMMAC 千兆网卡为例：</p>
+
+<pre><code>初始化阶段:
+──────────
+① dma_alloc_coherent() 分配 RX 描述符环（256 个描述符）
+② 为每个描述符分配 SKB 缓冲区
+③ dma_map_single(skb-&gt;data, DMA_FROM_DEVICE) 映射每个 SKB
+④ 将 DMA 地址写入对应描述符的 des0/des1 字段
+⑤ 告诉硬件描述符环的起始 DMA 地址
+
+收包流程:
+──────────
+① 网卡 DMA 引擎读描述符环，发现可用描述符
+② 网卡 DMA 将收到的网络帧写入描述符指向的 SKB 内存
+③ 网卡更新描述符状态位（收到的帧长度、校验和等）
+④ 网卡触发 RX 中断 → NAPI 调度
+
+NAPI poll 处理:
+──────────────
+⑤ dma_sync_single_for_cpu() — 使 Cache 无效化，CPU 能看到新数据
+⑥ 或 dma_unmap_single() — 解除映射（归还 CPU 所有权）
+⑦ 从描述符读取帧长度，构建 SKB 元数据
+⑧ netif_receive_skb() — 将 SKB 交给网络协议栈
+⑨ 分配新 SKB + dma_map_single() — 重新填充描述符
+⑩ 更新描述符归还给硬件 DMA</code></pre>
+
+<hr>
+
+<h2>附录：源码文件索引</h2>
+
+<table>
+<thead><tr>
+<th>文件路径</th>
+<th>功能说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>include/linux/dma-mapping.h</code></td>
+<td>DMA Mapping API 头文件</td>
+</tr>
+<tr>
+<td><code>include/linux/dma-direction.h</code></td>
+<td>DMA 方向枚举</td>
+</tr>
+<tr>
+<td><code>include/linux/dmaengine.h</code></td>
+<td>DMA Engine API 头文件</td>
+</tr>
+<tr>
+<td><code>include/linux/dma-map-ops.h</code></td>
+<td>DMA 操作表结构体</td>
+</tr>
+<tr>
+<td><code>kernel/dma/mapping.c</code></td>
+<td>DMA Mapping 核心实现（路由层）</td>
+</tr>
+<tr>
+<td><code>kernel/dma/direct.c</code></td>
+<td>直接 DMA 映射实现</td>
+</tr>
+<tr>
+<td><code>kernel/dma/swiotlb.c</code></td>
+<td>Bounce Buffer 实现</td>
+</tr>
+<tr>
+<td><code>kernel/dma/coherent.c</code></td>
+<td>Coherent DMA 内存池</td>
+</tr>
+<tr>
+<td><code>kernel/dma/contiguous.c</code></td>
+<td>CMA 连续内存分配</td>
+</tr>
+<tr>
+<td><code>drivers/dma/dmaengine.c</code></td>
+<td>DMA Engine 框架核心</td>
+</tr>
+<tr>
+<td><code>arch/arm64/mm/dma-mapping.c</code></td>
+<td>ARM64 平台 DMA Cache 维护</td>
+</tr>
+<tr>
+<td><code>drivers/iommu/arm/arm-smmu-v3/</code></td>
+<td>ARM SMMUv3 驱动</td>
+</tr>
+<tr>
+<td><code>drivers/iommu/dma-iommu.c</code></td>
+<td>IOMMU-DMA 集成层</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<blockquote><strong>学习建议</strong>：建议按 "硬件基础 → Cache 一致性 → Mapping API → Engine API → IOMMU" 的顺序逐步深入，结合实际驱动代码（如网络驱动的 DMA 使用）加深理解。</blockquote>
+
+</body>
+</html>

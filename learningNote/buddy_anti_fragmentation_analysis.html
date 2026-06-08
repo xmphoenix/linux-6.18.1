@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buddy Anti Fragmentation Analysis</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux Buddy Allocator 反碎片化机制深度分析</h1>
+
+<blockquote>基于 Linux 6.18.1，ARM64 架构，源码路径：<code>mm/page_alloc.c</code> · <code>mm/compaction.c</code> · <code>arch/arm64/mm/init.c</code></blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<ol>
+<li><a href="#一碎片化的根源与反碎片化体系总览">碎片化的根源与反碎片化体系总览</a></li>
+<li><a href="#二迁移类型分组按移动性隔离-pageblock">迁移类型分组：按移动性隔离 pageblock</a></li>
+<li><a href="#三分层-fallback-策略claim-vs-steal">分层 Fallback 策略：Claim vs Steal</a></li>
+<li><a href="#四alloc_nofragment-与-defrag_mode">ALLOC_NOFRAGMENT 与 defrag_mode</a></li>
+<li><a href="#五highatomic-原子高阶保留">HIGHATOMIC 原子高阶保留</a></li>
+<li><a href="#六cma可迁移连续内存">CMA：可迁移连续内存</a></li>
+<li><a href="#七水位线提升-watermark-boosting">水位线提升 Watermark Boosting</a></li>
+<li><a href="#八页面回收-page-reclaim"><span style="color:red"><strong>★ 页面回收 Page Reclaim</strong></span></a></li>
+<li><a href="#九内存压缩-compaction">内存压缩 Compaction</a></li>
+<li><a href="#十arm64-架构特殊配置">ARM64 架构特殊配置</a></li>
+<li><a href="#十一反碎片化体系总图">反碎片化体系总图</a></li>
+<li><a href="#十二arm64-典型场景举例">ARM64 典型场景举例</a></li>
+</ol>
+
+<hr>
+
+<h2>一、碎片化的根源与反碎片化体系总图</h2>
+
+<h3>1.1 碎片化的本质</h3>
+
+<p>物理内存碎片化分为两类：</p>
+
+<p><strong>外部碎片</strong>：空闲页被已分配页割裂，导致不存在足够大的<strong>连续</strong>空闲块满足高阶分配请求。</p>
+
+<pre><code>[已分配][空闲][已分配][空闲][空闲][已分配][空闲]   ← order=0 ok，order=3 fail</code></pre>
+
+<p><strong>内部碎片</strong>：分配了 2^order 页但实际只用一小部分，浪费页内空间。</p>
+
+<p>本<br>
+文主要关注<strong>外部碎片</strong>。</p>
+
+<h3>1.2 八层防御体系</h3>
+
+<pre><code>  ┌─────────────────────────────────────────────────────────────┐
+  │ 层 1: 页块迁移类型分组 (Pageblock Grouping by Mobility)       │
+  │    ├─ UNMOVABLE 页组       (内核数据结构/DMA)                │
+  │    ├─ MOVABLE 页组         (用户进程/文件缓存)               │
+  │    └─ RECLAIMABLE 页组     (可回收页)                       │
+  ├─────────────────────────────────────────────────────────────┤
+  │ 层 2: 分层 Fallback (优先同类型，再跨类型)                     │
+  │    NORMAL → CMA → CLAIM → STEAL                             │
+  ├─────────────────────────────────────────────────────────────┤
+  │ 层 3: ALLOC_NOFRAGMENT 标志                                  │
+  │    阻止跨节点 fallback 时的 stealing，保护本地页块完整性       │
+  ├─────────────────────────────────────────────────────────────┤
+  │ 层 4: HIGHATOMIC 保留 (原子高阶分配)                         │
+  │    为高优先级原子分配保留约 1% zone 管理的页块                │
+  ├─────────────────────────────────────────────────────────────┤
+  │ 层 5: CMA 区域 (长期可迁移的连续内存)                        │
+  │    MOVABLE 共享，UNMOVABLE 可临时征用，后台迁移回 CMA         │
+  ├─────────────────────────────────────────────────────────────┤
+  │ 层 6: 水位线提升 (Watermark Boosting)                        │
+  │    fallback 后提高 watermark，加速 kswapd 回收               │
+  ├─────────────────────────────────────────────────────────────┤
+  │ &lt;span style=&quot;color:red&quot;&gt;★ 页面回收 (Page Reclaim)&lt;/span&gt;                                   │
+  │    &lt;span style=&quot;color:red&quot;&gt;kswapd 后台 / Direct 直接回收，LRU 扫描 + shrink_slab，归还 buddy&lt;/span&gt; │
+  ├─────────────────────────────────────────────────────────────┤
+  │ 层 7: kcompactd 后台压缩 (Proactive Compaction)              │
+  │    pageblock 被不同迁移类型侵占后，kcompactd 压缩重构         │
+  ├─────────────────────────────────────────────────────────────┤
+  │ 层 8: 直接压缩 (Direct Compaction)                           │
+  │    高 order 分配失败时直接迁移可移动页，腾出连续空间           │
+  └─────────────────────────────────────────────────────────────┘</code></pre>
+
+<hr>
+
+<h2>二、迁移类型分组：按移动性隔离 pageblock</h2>
+
+<h3>2.1 MIGRATE_TYPES 枚举</h3>
+
+<pre><code class="language-c">// include/linux/mmzone.h:60-89
+enum migratetype {
+    MIGRATE_UNMOVABLE,           // 不可移动：内核数据结构、DMA 缓冲区
+    MIGRATE_MOVABLE,             // 可移动：用户页、文件缓存
+    MIGRATE_RECLAIMABLE,         // 可回收：clean page cache
+    MIGRATE_PCPTYPES,            // = 3，PCP 快速路径包含的类型数
+    MIGRATE_HIGHATOMIC = MIGRATE_PCPTYPES,  // 原子高阶分配预留
+#ifdef CONFIG_CMA
+    MIGRATE_CMA,                 // CMA 可迁移连续区域
+    __MIGRATE_TYPE_END = MIGRATE_CMA,
+#else
+    __MIGRATE_TYPE_END = MIGRATE_HIGHATOMIC,
+#endif
+#ifdef CONFIG_MEMORY_ISOLATION
+    MIGRATE_ISOLATE,             // 内存隔离（热插拔、离线页）
+#endif
+    MIGRATE_TYPES
+};</code></pre>
+
+<p>只有前三类（UNMOVABLE, MOVABLE, RECLAIMABLE）是 <strong>可合并型</strong>（mergeable），前三类也是 PCP 快速路径管理的类型（<code>MIGRATE_PCPTYPES = 3</code>）。</p>
+
+<h3>2.2 ARM64 pageblock 参数</h3>
+
+<pre><code class="language-c">// arch/arm64/Kconfig:1638-1641
+config ARCH_FORCE_MAX_ORDER
+    int
+    default &quot;13&quot; if ARM64_64K_PAGES
+    default &quot;11&quot; if ARM64_16K_PAGES
+    default &quot;10&quot;     // ← 4K pages: MAX_PAGE_ORDER=10, NR_PAGE_ORDERS=11
+
+// include/linux/pageblock-flags.h:65
+// ARM64 启用 THP: HPAGE_PMD_ORDER = 9 (2MB pages)
+#define pageblock_order  MIN_T(unsigned int, HPAGE_PMD_ORDER, PAGE_BLOCK_MAX_ORDER)
+// pageblock_order = 9
+#define pageblock_nr_pages  512  // 每页块 512 页 = 2MB</code></pre>
+
+<table>
+<thead><tr>
+<th>参数</th>
+<th>值</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>MAX_PAGE_ORDER</code></td>
+<td>10</td>
+<td>最大分配阶数，1024 pages (4MB)</td>
+</tr>
+<tr>
+<td><code>NR_PAGE_ORDERS</code></td>
+<td>11</td>
+<td>order 0 ~ order 10</td>
+</tr>
+<tr>
+<td><code>pageblock_order</code></td>
+<td>9</td>
+<td>每个 pageblock 为 2MB</td>
+</tr>
+<tr>
+<td><code>pageblock_nr_pages</code></td>
+<td>512</td>
+<td>每页块 512 页</td>
+</tr>
+</tbody></table>
+
+<h3>2.3 页块初始化与划分</h3>
+
+<p>系统启动时通过 <code>free_area_init_core()</code> 初始化各个 zone 的 free_area。页块的 migratetype 初始化为 <code>MIGRATE_MOVABLE</code>（默认最灵活的类型）。</p>
+
+<pre><code class="language-c">// mm/page_alloc.c --- free_area_init_core() 内
+set_pageblock_migratetype(page, MIGRATE_MOVABLE);</code></pre>
+
+<p><strong>核心约束</strong>：一个 pageblock 内所有空闲页维护在同一条 <code>free_area[order]->free_list[migratetype]</code> 链表中，保证：</p>
+
+<ol>
+<li>同一 pageblock 的空闲页<strong>物理相邻</strong></li>
+<li>同一 pageblock 只有一种 migratetype</li>
+<li>同类页不会与异类页混合形成碎片</li>
+</ol>
+
+<h3>2.4 Buddy 跨 pageblock 合并的约束</h3>
+
+<pre><code class="language-c">// mm/page_alloc.c:982 --- __free_one_page()
+if (buddy_mt != migration_type) {
+    if (!migratetype_is_mergeable(migration_type) ||
+        !migratetype_is_mergeable(buddy_mt)) {
+        // 不能合并！保留碎片隔离
+        break;
+    }
+    // 可合并型之间可以合并
+}</code></pre>
+
+<p><strong>只有三类 mergeable 类型可以跨 pageblock 合并</strong>。CMA、HIGHATOMIC、ISOLATE 不会与其它类型合并。</p>
+
+<h3>2.5 移动性分组动态开关与小内存场景</h3>
+
+<p>当系统总空闲页过少时，内核会<strong>完全禁用</strong>移动性分组，所有页面退化为单一 MIGRATE_MOVABLE 池：</p>
+
+<pre><code class="language-c">// mm/page_alloc.c:5839 --- build_all_zonelists_init() 或 hotadd 后
+if (vm_total_pages &lt; (pageblock_nr_pages * MIGRATE_TYPES))
+    page_group_by_mobility_disabled = 1;
+else
+    page_group_by_mobility_disabled = 0;</code></pre>
+
+<p>对于 ARM64 4K 页配置：<code>pageblock_nr_pages = 512</code>，<code>MIGRATE_TYPES</code> 最多 8 类，即系统空闲页少于 <strong>4096 pages (16MB)</strong> 时，反碎片化第一层（迁移类型分组）关闭。这是小内存嵌入式 ARM64 设备（IoT 网关等）的典型场景。</p>
+
+<pre><code class="language-c">// mm/page_alloc.c:531,556 --- 多处检查此标志
+if (unlikely(page_group_by_mobility_disabled &amp;&amp; ...))
+    // 绕过迁移类型限制，所有页视为 MIGRATE_MOVABLE</code></pre>
+
+<p>同时，<code>PAGE_ALLOC_COSTLY_ORDER = 3</code> 定义了分配代价分水岭：</p>
+
+<pre><code class="language-c">// include/linux/mmzone.h
+#define PAGE_ALLOC_COSTLY_ORDER 3</code></pre>
+
+<table>
+<thead><tr>
+<th>order</th>
+<th>页数</th>
+<th>大小</th>
+<th>分配策略</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>0-3</td>
+<td>1-8</td>
+<td>4KB-32KB</td>
+<td><strong>不容失败</strong>：aggressive reclaim + OOM killer</td>
+</tr>
+<tr>
+<td>4-8</td>
+<td>16-256</td>
+<td>64KB-1MB</td>
+<td>costly order：依赖 compaction，失败不 OOM</td>
+</tr>
+<tr>
+<td>9</td>
+<td>512</td>
+<td>2MB</td>
+<td>pageblock_order = THP 关键大小</td>
+</tr>
+<tr>
+<td>10</td>
+<td>1024</td>
+<td>4MB</td>
+<td>ARM64 4K pages 的 MAX_PAGE_ORDER</td>
+</tr>
+</tbody></table>
+
+<p>对于 ARM64 大页配置：</p>
+
+<table>
+<thead><tr>
+<th>配置</th>
+<th>MAX_PAGE_ORDER</th>
+<th>THP order</th>
+<th>最大连续块</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>4K pages (default)</td>
+<td>10</td>
+<td>9</td>
+<td>4MB</td>
+</tr>
+<tr>
+<td>16K pages</td>
+<td>11</td>
+<td>PMD_SIZE/16K</td>
+<td>32MB</td>
+</tr>
+<tr>
+<td>64K pages</td>
+<td>13</td>
+<td>PMD_SIZE/64K</td>
+<td>512MB</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>三、分层 Fallback 策略：Claim vs Steal</h2>
+
+<h3>3.1 回退优先级</h3>
+
+<p>当某迁移类型空闲列表耗尽，内核按以下优先级回退：</p>
+
+<pre><code>request MIGRATE_A (own type)
+  ├── RMQUEUE_NORMAL:    从 A 类型查找 (__rmqueue_smallest)
+  ├── RMQUEUE_CMA:       从 CMA 区域分配 (仅 ALLOC_CMA || MOVABLE)
+  ├── RMQUEUE_CLAIM:     转化整个 pageblock 为 A 类型 (__rmqueue_claim)
+  └── RMQUEUE_STEAL:     从异类 pageblock 偷一页 (__rmqueue_steal) ⚠ 碎片化</code></pre>
+
+<h3>3.2 <code>__rmqueue_claim()</code>——转化整个 pageblock</h3>
+
+<pre><code class="language-c">// mm/page_alloc.c:2354-2406
+static struct page *__rmqueue_claim(zone, order, start_migratetype, alloc_flags)
+{
+    // 从 MAX_PAGE_ORDER 向下搜索（先看大块）
+    for (current_order = MAX_PAGE_ORDER; current_order &gt;= min_order; --current_order) {
+        fallback_mt = find_suitable_fallback(area, current_order, start_migratetype, true);
+        if (fallback_mt == -2) break;  // 太小不值得转化整个 pageblock
+        page = get_page_from_free_area(area, fallback_mt);
+        page = try_to_claim_block(zone, page, current_order, order,
+                                   start_migratetype, fallback_mt, alloc_flags);
+    }
+}</code></pre>
+
+<p><code>try_to_claim_block()</code> 首先检查 pageblock 中 <strong>空闲页占比 > 50%</strong>，若满足则转化整个 pageblock 的 migratetype，并将 block 中的剩余空闲页移到新类型的 free_list。页块的类型永久改变。</p>
+
+<p><strong>优点</strong>：将来该页块内的同类页不会再次产生碎片<br>
+<strong>缺点</strong>：需转化整个 2MB 页块（可能有消耗）</p>
+
+<h3>3.3 <code>__rmqueue_steal()</code>——偷一页</h3>
+
+<pre><code class="language-c">// mm/page_alloc.c:2409-2434
+static struct page *__rmqueue_steal(zone, order, start_migratetype)
+{
+    // 从请求的 order 向上搜索
+    for (current_order = order; current_order &lt; NR_PAGE_ORDERS; ++current_order) {
+        fallback_mt = find_suitable_fallback(area, current_order, start_migratetype, false);
+        page = get_page_from_free_area(area, fallback_mt);
+        page_del_and_expand(zone, page, order, current_order, fallback_mt);
+        // 注意：pageblock 的类型**不变**！
+    }
+}</code></pre>
+
+<p>Steal 直接从异类的 pageblock 中拿一页，<strong>不改变页块类型</strong>。该页块将来可能被任意迁移类型"偷取"，页面碎片逐渐恶化。</p>
+
+<h3>3.4 Fallback 顺序</h3>
+
+<pre><code class="language-c">// mm/page_alloc.c:1907-1911
+static int fallbacks[MIGRATE_PCPTYPES][MIGRATE_PCPTYPES - 1] = {
+    [MIGRATE_UNMOVABLE]   = { MIGRATE_RECLAIMABLE, MIGRATE_MOVABLE   },
+    [MIGRATE_MOVABLE]     = { MIGRATE_RECLAIMABLE, MIGRATE_UNMOVABLE },
+    [MIGRATE_RECLAIMABLE] = { MIGRATE_UNMOVABLE,   MIGRATE_MOVABLE   },
+};</code></pre>
+
+<table>
+<thead><tr>
+<th>请求类型</th>
+<th>第一选择</th>
+<th>第二选择</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>UNMOVABLE</td>
+<td>RECLAIMABLE</td>
+<td>MOVABLE</td>
+</tr>
+<tr>
+<td>MOVABLE</td>
+<td>RECLAIMABLE</td>
+<td>UNMOVABLE</td>
+</tr>
+<tr>
+<td>RECLAIMABLE</td>
+<td>UNMOVABLE</td>
+<td>MOVABLE</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>四、ALLOC_NOFRAGMENT 与 defrag_mode</h2>
+
+<h3>4.1 标志的含义</h3>
+
+<pre><code class="language-c">// mm/internal.h:1294
+#define ALLOC_NOFRAGMENT   0x100   // 防止混合 pageblock migratetype</code></pre>
+
+<p>当分配标志携带 <code>ALLOC_NOFRAGMENT</code> 时，内核不会执行 RMQUEUE_STEAL 偷取操作，而允许通过 reclaim/compact 来获取连续内存。</p>
+
+<h3>4.2 何时启用</h3>
+
+<pre><code class="language-c">// mm/page_alloc.c:3673-3711 --- alloc_flags_nofragment()
+if (defrag_mode)
+    alloc_flags |= ALLOC_NOFRAGMENT;        // defrag_mode: 总是启用
+#ifdef CONFIG_ZONE_DMA32
+    if (zone_idx(zone) == ZONE_NORMAL)
+        alloc_flags |= ALLOC_NOFRAGMENT;    // ARM64: ZONE_NORMAL 启用
+#endif</code></pre>
+
+<p><strong>defrag_mode</strong> 是一个 sysctl（<code>/proc/sys/vm/defrag_mode</code>），启后会保护所有的分配都尽量不碎片化。</p>
+
+<h3>4.3 对分配路径的影响</h3>
+
+<ol>
+<li><strong>阻止 STEAL</strong>：<code>__rmqueue()</code> 中 RMQUEUE_STEAL 路径被跳过</li>
+<li><strong>强制 claim</strong>：在 <code>__rmqueue_claim()</code> 中，即使 order 小于 pageblock_order 也会尝试 claim（min_order 强制为 pageblock_order）</li>
+<li><strong>zonelist 影响</strong>：遍历到远程节点时会放弃 ALLOC_NOFRAGMENT（位置优先于碎片保护）</li>
+</ol>
+
+<h3>4.4 NR_FREE_PAGES_BLOCKS —— defrag_mode 下的严格空闲计数</h3>
+
+<p><code>defrag_mode</code> 不仅在分配路径施加影响，还改变了 kcompactd 判断"压缩是否完成"的标准：</p>
+
+<pre><code class="language-c">// mm/compaction.c:2292-2300 --- compact_finished()
+/*
+ * When defrag_mode is enabled, make kcompactd target
+ * watermarks in whole pageblocks. Because they can be stolen
+ * without polluting, no further fallback checks are needed.
+ */
+if (defrag_mode &amp;&amp; !cc-&gt;direct_compaction) {
+    if (__zone_watermark_ok(cc-&gt;zone, cc-&gt;order,
+                high_wmark_pages(cc-&gt;zone),
+                cc-&gt;highest_zoneidx, cc-&gt;alloc_flags,
+                zone_page_state(cc-&gt;zone, NR_FREE_PAGES_BLOCKS)))
+        return COMPACT_SUCCESS;
+    return COMPACT_CONTINUE;
+}</code></pre>
+
+<p><code>NR_FREE_PAGES_BLOCKS</code> 只统计<strong>以整个 pageblock 为单位的空闲页面</strong>。例如一个 pageblock 内即使有 511 个空闲页和 1 个占用页，在此计数中也视为 0。这迫使 kcompactd 以极高的标准持续压缩，直到页面以整块 pageblock 的方式空闲。</p>
+
+<p>同时 kcompactd 使用更高的水位线：</p>
+<pre><code class="language-c">// mm/compaction.c:3035,3070
+unsigned int alloc_flags = defrag_mode ?
+    ALLOC_WMARK_HIGH : ALLOC_WMARK_MIN;</code></pre>
+
+<hr>
+
+<h2>五、HIGHATOMIC 原子高阶保留</h2>
+
+<h3>5.1 机制</h3>
+
+<p>内核为原子上下文（tlb、中断等）的高阶分配（order >= pageblock_order）预留约 1% zone 管理页作为 HIGHATOMIC 块。</p>
+
+<pre><code class="language-c">// mm/page_alloc.c:3361-3400 --- reserve_highatomic_pageblock()
+max_managed = ALIGN((zone_managed_pages(zone) / 100), pageblock_nr_pages);
+if (zone-&gt;nr_reserved_highatomic &gt;= max_managed)
+    return;    // 已达上限 ~1%
+move_freepages_block(zone, page, mt, MIGRATE_HIGHATOMIC);</code></pre>
+
+<h3>5.2 回收</h3>
+
+<pre><code class="language-c">// mm/page_alloc.c:3413-3470 --- unreserve_highatomic_pageblock()
+// 当普通分配失败压力大时，释放 HIGHATOMIC 块回到普通迁移类型
+unreserve_highatomic_pageblock(ac, force);</code></pre>
+
+<hr>
+
+<h2>六、CMA：可迁移连续内存</h2>
+
+<h3>6.1 CMA 的两种角色</h3>
+
+<ol>
+<li><strong>为 DMA 设备预留</strong>：确保大块连续物理内存满足设备 DMA 要求</li>
+<li><strong>为 buddy 提供 MOVABLE 池</strong>：空闲 CTRL 区域的页标记为 MIGRATE_CMA，可分配给 MOVABLE 类型使用</li>
+</ol>
+
+<h3>6.2 ARM64 CMA 初始化</h3>
+
+<pre><code class="language-c">// arch/arm64/mm/init.c:327
+dma_contiguous_reserve(arm64_dma_phys_limit);</code></pre>
+
+<p>在 ZONE_DMA/DMA32 内预留 CMA 区域。ARM64 的 ZONE_DMA/DMA32 范围由 arm64_dma_phys_limit 限定。</p>
+
+<h3>6.3 CMA 在 Buddy 中的交互</h3>
+
+<pre><code class="language-c">// mm/page_alloc.c --- RMQUEUE_CMA 路径
+if (alloc_flags &amp; ALLOC_CMA &amp;&amp;
+    zone_page_state(zone, NR_FREE_CMA_PAGES) &gt;
+    zone_page_state(zone, NR_FREE_PAGES) / 2) {
+    page = __rmqueue_cma_fallback(zone, order);
+}
+// 当 CMA 空闲页 &gt; 50% zone 空闲页时，优先从 CMA 分配以减少 CMA 占用</code></pre>
+
+<h3>6.4 迁移类型保护的层次</h3>
+
+| 迁 type | 可从中获取？ | 是否移动？ |
+|-----allocateable?|movable?|
+| UNMOVABLE | ✗ | ✗ |
+| MOVABLE | ✓ | ✓ |
+| RECLAIMABLE | ✓ | ✓ |
+| CMA | ✓ | ✓ (迁移 MOVABLE 页) |
+| HIGHATOMIC | ✗ (仅原子分配) | ✗ |
+| ISOLATE | ✗ | ✗ |
+
+<hr>
+
+<h2>七、水位线提升 Watermark Boosting</h2>
+
+<h3>7.1 设计思想</h3>
+
+<p>当 fallback 偷取发生时，说明某个迁移类型有空闲页但其他类型短缺。系统临时提升 zone 的水位线，使得 kswapd 提早启动回收，尝试释放该类型的页面。</p>
+
+<h3>7.2 实现</h3>
+
+<pre><code class="language-c">// mm/page_alloc.c:2160-2198 --- boost_watermark()
+zone-&gt;watermark_boost += pageblock_nr_pages;  // 每次 fallback 加 512 页
+// 上限: max(pageblock_nr_pages, WMARK_HIGH * 15000 / 10000)</code></pre>
+
+<p>kswapd 在每次回收循环后削减 boost：</p>
+
+<pre><code class="language-c">// mm/vmscan.c --- balance_pgdat()
+zone-&gt;watermark_boost -= min(zone-&gt;watermark_boost, zone_boosts[i]);
+wakeup_kcompactd(pgdat, pageblock_order, highest_zoneidx);  // 然后启动压缩</code></pre>
+
+<blockquote><strong>💡 水位线提升只是"信号"，真正执行内存释放的是页面回收子系统。详见 <a href="#八页面回收-page-reclaim">第八节：页面回收</a>。</strong></blockquote>
+
+<hr>
+
+<h2>八、页面回收 Page Reclaim</h2>
+
+<h3>8.1 一句话理解</h3>
+
+<blockquote><strong>页面回收的任务是：在内存紧张时，找到"可以丢"或"可以换出"的页面，把它们释放回 buddy，避免系统直接 OOM。</strong></blockquote>
+
+<p>通俗类比：buddy 是仓库管理员，当货架（free_area）快空了，页面回收就是<strong>盘点小组</strong>，去各个货架上找出"可以清掉"的存货，腾出空间。</p>
+
+<h3>8.2 回收的主要工作内容：回收哪些页面</h3>
+
+<p>页面回收面对三类可回收内存，从易到难排列：</p>
+
+<table>
+<thead><tr>
+<th><span style="color:green"><strong>优先级</strong></span></th>
+<th><span style="color:green"><strong>回收对象</strong></span></th>
+<th><span style="color:green"><strong>难度</strong></span></th>
+<th><span style="color:green"><strong>说明</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><span style="color:green"><strong>🥇 最优先</strong></span></td>
+<td><strong>clean page cache</strong>（干净文件页）</td>
+<td>⭐</td>
+<td>直接从 page cache 丢弃，零 I/O，最快</td>
+</tr>
+<tr>
+<td><span style="color:orange"><strong>🥈 次优先</strong></span></td>
+<td><strong>dirty page cache</strong>（脏文件页）</td>
+<td>⭐⭐</td>
+<td>需要先回写磁盘，再由 buddy 回收</td>
+</tr>
+<tr>
+<td><span style="color:red"><strong>🥉 最后手段</strong></span></td>
+<td><strong>anonymous pages</strong>（匿名页）</td>
+<td>⭐⭐⭐</td>
+<td>没有文件后端，必须换出到 swap 设备</td>
+</tr>
+<tr>
+<td><span style="color:blue"><strong>🔧 辅助</strong></span></td>
+<td><strong>slab cache</strong>（内核缓存）</td>
+<td>⭐⭐</td>
+<td>通过 shrinker 接口回收 dentry/inode 等</td>
+</tr>
+</tbody></table>
+
+<h3>8.3 页面回收的四种方式</h3>
+
+<pre><code class="language-text">                    ┌──────────────────────────────────────┐
+                    │        页面回收的四种方式               │
+                    │                                      │
+                    │  ① kswapd 后台回收（异步、温和）        │
+                    │     水位 &lt; LOW → 唤醒 per-node 线程    │
+                    │     priority 12→1 渐进加压             │
+                    │                                      │
+                    │  ② Direct Reclaim 直接回收（同步、紧急） │
+                    │     alloc_pages() 分配失败 → 分配者亲自回收 │
+                    │     本质：free &lt; MIN watermark，走投无路    │
+                    │     可能阻塞进程，写回受限               │
+                    │                                      │
+                    │  ③ Proactive Reclaim 主动回收          │
+                    │     用户空间触发（memory.reclaim）       │
+                    │     用于 cgroup 级别的内存管理           │
+                    │                                      │
+                    │  ④ Slab Shrinker 内核缓存回收           │
+                    │     shrink_slab() 回收 dentry/inode    │
+                    │     与 LRU 回收协同工作                 │
+                    └──────────────────────────────────────┘</code></pre>
+
+<h3>8.4 触发条件全景</h3>
+
+<table>
+<thead><tr>
+<th><span style="color:red"><strong>触发方式</strong></span></th>
+<th><span style="color:red"><strong>触发条件</strong></span></th>
+<th><span style="color:red"><strong>代码入口</strong></span></th>
+<th><span style="color:red"><strong>特点</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>kswapd 唤醒</strong></td>
+<td>① <code>alloc_pages()</code> 快路径以 <code>ALLOC_WMARK_LOW</code> 分配失败（<code>__zone_watermark_ok(..., WMARK_LOW, ...)</code> 返回 false）<br>② 或 <code>watermark_boost</code> > 0（因 fallback steal 触发）<br>③ <code>wakeup_kswapd()</code> 内部再检查：<code>!pgdat_balanced()</code> 或 <code>pgdat_watermark_boosted()</code><br>④ 且 <code>kswapd_failures < 16</code>、<code>cpuset_zone_allowed()</code></td>
+<td><code>wake_all_kswapds()</code> → <code>wakeup_kswapd()</code> → <code>kswapd()</code></td>
+<td>异步，不阻塞分配者</td>
+</tr>
+<tr>
+<td><strong>Direct Reclaim</strong></td>
+<td>① <code>alloc_pages()</code> 慢路径以 <code>ALLOC_WMARK_MIN</code> 重试仍失败（<code>free_pages ≤ min_wmark + lowmem_reserve</code>）<br>② <code>gfp_mask & __GFP_DIRECT_RECLAIM</code>（调用者允许阻塞）<br>③ <code>!(current->flags & PF_MEMALLOC)</code>（防止递归回收）</td>
+<td><code><strong>alloc_pages_slowpath()</code> → <code></strong>alloc_pages_direct_reclaim()</code></td>
+<td>同步，阻塞分配者</td>
+</tr>
+<tr>
+<td><strong>Proactive Reclaim</strong></td>
+<td>用户写入 <code>echo "10M" > /sys/fs/cgroup/<group>/memory.reclaim</code><br>→ <code>memory_reclaim()</code> 调用 <code>user_proactive_reclaim()</code><br>→ <code>memparse()</code> 解析字节数 → 设置 <code>sc.proactive = 1</code></td>
+<td><code>memory_reclaim()</code> → <code>try_to_free_mem_cgroup_pages()</code></td>
+<td>用户态驱动，可指定回收量</td>
+</tr>
+<tr>
+<td><strong>Slab Shrinker</strong></td>
+<td>随 reclaim 主循环自动调用，无独立触发条件<br>→ <code>shrink_node()</code> → <code>shrink_slab()</code><br>→ <code>do_shrink_slab()</code>: <code>nr_to_scan = count_objects() >> priority</code></td>
+<td><code>shrink_node()</code> → <code>shrink_slab()</code></td>
+<td>回收内核缓存对象</td>
+</tr>
+</tbody></table>
+
+<p><strong>水位线触发示意</strong>：</p>
+
+<pre><code class="language-text">  free_pages
+     ↑
+     │  ┌─────────────────────────────  HIGH 水位 ──────────────
+     │  │   kswapd 睡眠区间（内存充足）
+     │  │
+     │  ├─────────────────────────────  LOW 水位 ───────────────
+     │  │   ★ kswapd 被唤醒，开始后台回收
+     │  │   分配仍可成功（从 free_area 正常获取）
+     │  │
+     │  ├─────────────────────────────  MIN 水位 ───────────────
+     │  │   ★ 触发 Direct Reclaim，分配者自己回收
+     │  │   ALLOC_MIN_RESERVE 标志被设置
+     │  │
+     │  ├─────────────────────────────  0 ─────────────────────
+     │  │   内存耗尽 → OOM Killer
+     │  └──────────────────────────────────────────────────────</code></pre>
+
+<h3>8.5 回收的总调用框架</h3>
+
+<p>所有回收方式最终都汇聚到同一条核心路径：</p>
+
+<pre><code class="language-text">无论 kswapd / direct reclaim / proactive reclaim
+         │
+         ▼
+    shrink_node()          ← 以 node 为单位回收
+         │
+         ├──► shrink_node_memcgs()    ← 遍历每个 memory cgroup
+         │       │
+         │       └──► shrink_lruvec() ← 回收一个 lruvec 内的 LRU 链表
+         │               │
+         │               ├──► get_scan_count()    ← ★ 决定 anon/file 扫描比例
+         │               ├──► shrink_list()       ← 扫描 inactive/active 链表
+         │               │       └──► shrink_folio_list()  ← ★ 逐页决策
+         │               └──► shrink_slab()       ← 回收 slab 内核缓存
+         │
+         └──► 后处理：reclaim_throttle（节流）、vmpressure（压力通知）</code></pre>
+
+<h3>8.6 核心控制结构：<code>struct scan_control</code></h3>
+
+<p>定义于 <a href="mm/vmscan.c">mm/vmscan.c</a>:75-172。可以理解为回收操作的<span style="color:red"><strong>"遥控器"</strong></span>，所有回收决策都通过它传递参数：</p>
+
+<table>
+<thead><tr>
+<th><span style="color:blue"><strong>字段</strong></span></th>
+<th><span style="color:blue"><strong>含义</strong></span></th>
+<th><span style="color:blue"><strong>关键值</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>nr_to_reclaim</code></td>
+<td>本轮回收目标页数</td>
+<td>通常 <code>SWAP_CLUSTER_MAX = 32</code></td>
+</tr>
+<tr>
+<td><span style="color:red"><strong><code>priority</code></strong></span></td>
+<td>回收优先级，值越小越激进</td>
+<td><code>12</code>(温和) → <code>0</code>(紧急)；kswapd 范围 12→1，direct reclaim 范围 12→0</td>
+</tr>
+<tr>
+<td><code>may_unmap</code></td>
+<td>是否允许拆除 PTE 映射</td>
+<td>direct reclaim 通常为 1</td>
+</tr>
+<tr>
+<td><code>may_swap</code></td>
+<td>是否允许换出匿名页</td>
+<td>boost reclaim 时为 0</td>
+</tr>
+<tr>
+<td><code>may_writepage</code></td>
+<td>是否允许回写脏文件页</td>
+<td>kswapd=1，direct reclaim 受限</td>
+</tr>
+<tr>
+<td><code>cache_trim_mode</code></td>
+<td>仅回收 page cache</td>
+<td>保护匿名页工作集时启用</td>
+</tr>
+<tr>
+<td><code>gfp_mask</code></td>
+<td>GFP 标志</td>
+<td>影响是否允许 FS/IO 操作</td>
+</tr>
+</tbody></table>
+
+<blockquote><strong><code>priority</code> 是理解回收激进程度的关键</strong>：每轮扫描 <code>lruvec_size >> priority</code> 页。<code>priority=12</code> 仅扫描 ~1/4096 的页。kswapd 止于 <code>priority=1</code>（扫描 ~1/2），direct reclaim 可达 <code>priority=0</code>（<strong>全量扫描 LRU</strong>），比 kswapd 更激进。</blockquote>
+
+<h3>8.7 方式一：kswapd 后台回收 —— 主循环</h3>
+
+<p>kswapd 是 <span style="color:green"><strong>per-node</strong></span> 的内核线程，代码在 <a href="mm/vmscan.c">mm/vmscan.c</a>:7326-7392。</p>
+
+<pre><code class="language-c">static int kswapd(void *p) {
+    pg_data_t *pgdat = (pg_data_t *)p;
+    tsk-&gt;flags |= PF_MEMALLOC | PF_KSWAPD;  // 防止递归回收
+
+    for (;;) {
+        // ① 睡眠，直到被 wakeup_kswapd() 唤醒
+        kswapd_try_to_sleep(pgdat, alloc_order, reclaim_order, highest_zoneidx);
+
+        // ② 读取唤醒请求的 order 和最高 zone
+        alloc_order = READ_ONCE(pgdat-&gt;kswapd_order);
+        highest_zoneidx = kswapd_highest_zoneidx(pgdat, highest_zoneidx);
+
+        // ③ ★ 核心：执行回收循环
+        reclaim_order = balance_pgdat(pgdat, alloc_order, highest_zoneidx);
+
+        // ④ 如果回收的 order 仍小于请求 order，尝试以 reclaim_order 级别睡眠
+        //    同时唤醒 kcompactd 处理更高阶压缩
+        if (reclaim_order &lt; alloc_order)
+            goto kswapd_try_sleep;
+    }
+}</code></pre>
+
+<p><strong>睡眠条件</strong>：<code>prepare_kswapd_sleep()</code> 检查所有 zone 都达到 high watermark，或 16 次回收失败后放弃。</p>
+
+<blockquote><strong><span style="color:orange">⚠️ 关键标志</span></strong>：<code>PF_MEMALLOC</code> 保证 kswapd 自己分配内存时 <span style="color:red"><strong>不会递归进入 reclaim</strong></span>，防止死循环。</blockquote>
+
+<h3>8.8 方式一：kswapd 的优先级循环算法 —— <code>balance_pgdat()</code></h3>
+
+<p>代码在 <a href="mm/vmscan.c">mm/vmscan.c</a>:6997-7290。这是 kswapd <span style="color:red"><strong>最核心的算法</strong></span>：</p>
+
+<pre><code class="language-c">static int balance_pgdat(pg_data_t *pgdat, int order, int highest_zoneidx) {
+    sc.priority = DEF_PRIORITY;  // 从 12 开始
+
+    do {
+        // ① 检查是否已经平衡 → 是则退出
+        if (!nr_boost_reclaim &amp;&amp; pgdat_balanced(pgdat, sc.order, highest_zoneidx))
+            goto out;
+
+        // ② ★ 三阶段策略：控制 may_writepage / may_swap
+        sc.may_writepage = !laptop_mode &amp;&amp; !nr_boost_reclaim;
+        sc.may_swap = !nr_boost_reclaim;
+
+        // ③ 老化：将最近被访问的页从 inactive 提升到 active
+        kswapd_age_node(pgdat, &amp;sc);
+
+        // ④ ★ 执行一次节点级 shrink
+        kswapd_shrink_node(pgdat, &amp;sc);
+
+        // ⑤ 无进展 → 提高优先级（priority--）
+    } while (sc.priority &gt;= 1);  // kswapd 止于 priority=1，direct reclaim 可达 priority=0
+}</code></pre>
+
+<p><strong>三阶段渐进加压策略</strong>：</p>
+
+<table>
+<thead><tr>
+<th><span style="color:green"><strong>阶段</strong></span></th>
+<th><span style="color:green"><strong>priority</strong></span></th>
+<th><span style="color:green"><strong>may_writepage</strong></span></th>
+<th><span style="color:green"><strong>may_swap</strong></span></th>
+<th><span style="color:green"><strong>含义</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><span style="color:green"><strong>boost reclaim</strong></span></td>
+<td>12</td>
+<td>❌</td>
+<td>❌</td>
+<td>仅回收 clean cache，<span style="color:blue">零 I/O 开销</span></td>
+</tr>
+<tr>
+<td><span style="color:orange"><strong>正常 reclaim</strong></span></td>
+<td>12→3</td>
+<td>✅</td>
+<td>✅</td>
+<td>渐进加压，回收 page cache + 换出匿名页</td>
+</tr>
+<tr>
+<td><span style="color:red"><strong>紧急 reclaim</strong></span></td>
+<td>2→1(kswapd) / 2→0(direct)</td>
+<td>✅(强制)</td>
+<td>✅</td>
+<td>几乎全量扫描 inactive list，<span style="color:red">即将 OOM</span>。direct reclaim 可达 priority=0（全量扫描），比 kswapd 更激进</td>
+</tr>
+</tbody></table>
+
+<h3>8.9 方式二：Direct Reclaim 直接回收 —— <code>alloc_pages()</code> 失败后的自救</h3>
+
+<blockquote><strong><span style="color:red">一句话</span></strong>：<code>alloc_pages()</code> 实在分配不到内存了（free < MIN watermark），分配者亲自下场回收内存，回收完再试一次。</blockquote>
+
+<p>触发需要经过<span style="color:red"><strong>两轮失败</strong></span>：</p>
+
+<ol>
+<li><strong>快路径</strong>：以 <code>ALLOC_WMARK_LOW</code> 尝试分配 → 失败（free < LOW watermark）</li>
+<li><strong>慢路径初步</strong>：<code>gfp_to_alloc_flags()</code> 降级为 <code>ALLOC_WMARK_MIN</code> 再次尝试 → 仍然失败（free < <span style="color:red"><strong>MIN</strong></span> watermark）</li>
+</ol>
+
+<p>只有两轮都失败，且分配者携带 <code>__GFP_DIRECT_RECLAIM</code> 标志时，才进入直接回收。完整调用链：</p>
+
+<pre><code class="language-text">__alloc_pages_slowpath()                     [mm/page_alloc.c:4626]
+  │   alloc_flags = ALLOC_WMARK_MIN（从 LOW 降级到 MIN）
+  ├─ wake_all_kswapds()                     ← ① 先唤醒后台回收（不阻塞）
+  ├─ get_page_from_freelist()               ← ② 以 MIN watermark 再次尝试
+  │   └─ 仍然失败（free &lt; MIN）→ 进入 direct reclaim
+  │
+  ├─ __alloc_pages_direct_reclaim()         ← ③ ★ 直接回收（阻塞当前进程）
+  │   └─ __perform_reclaim()
+  │       └─ try_to_free_pages()
+  │           └─ do_try_to_free_pages()     [mm/vmscan.c:6383]
+  │               ├─ 优先级循环 (DEF_PRIORITY → 0)
+  │               │   └─ shrink_zones() → shrink_node()
+  │               └─ 失败 → 可能 retry（memcg_full_walk / force_deactivate）
+  │
+  ├─ __alloc_pages_direct_compact()         ← ④ 回收不够 → 尝试压缩
+  ├─ should_reclaim_retry()                 ← ⑤ 判断是否重试
+  └─ __alloc_pages_may_oom()                ← ⑥ 最终手段：OOM killer</code></pre>
+
+<p><strong><span style="color:red">Direct reclaim 的关键限制</span></strong>：</p>
+
+<table>
+<thead><tr>
+<th>限制</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><span style="color:red"><strong>写回受限</strong></span></td>
+<td>priority > 10 时不允许 <code>may_writepage</code>，脏文件页只能标记 reclaim 后放回</td>
+</tr>
+<tr>
+<td><span style="color:red"><strong>可能被节流</strong></span></td>
+<td>回收效率 < 12% 时，<code>reclaim_throttle(NOPROGRESS)</code> 睡眠 1 秒</td>
+</tr>
+<tr>
+<td><span style="color:orange"><strong>memcg 渐进遍历</strong></span></td>
+<td>direct reclaim 做 partial walk（公平+低延迟），kswapd 做 full walk</td>
+</tr>
+</tbody></table>
+
+<h3>8.10 回收的核心算法：<code>shrink_folio_list()</code> 逐页决策</h3>
+
+<p>代码在 <a href="mm/vmscan.c">mm/vmscan.c</a>:1099-1673。这是<span style="color:red"><strong>所有回收方式的公共核心</strong></span>——无论 kswapd 还是 direct reclaim，最终都调用这个函数对每个 folio 做命运判决。</p>
+
+<p><strong>决策流程图</strong>（从上到下，优先级递减）：</p>
+
+<pre><code class="language-text">folio 从 LRU 尾部取出（最冷页）
+│
+├─ ① mlocked（内存锁定）？                → &lt;span style=&quot;color:green&quot;&gt;放回 active（不可回收）&lt;/span&gt;
+│
+├─ ② 正在 writeback？
+│   ├─ kswapd + node 写压力大              → &lt;span style=&quot;color:green&quot;&gt;放回 active（避免死等）&lt;/span&gt;
+│   ├─ 正常 reclaim                        → &lt;span style=&quot;color:orange&quot;&gt;标记 reclaim，放回 active&lt;/span&gt;
+│   └─ legacy memcg                        → &lt;span style=&quot;color:red&quot;&gt;等待 writeback，重试&lt;/span&gt;
+│
+├─ ③ 最近被访问过（PTE_AF=1）？            → &lt;span style=&quot;color:green&quot;&gt;二次机会：放回 active&lt;/span&gt;
+│   └─ 未被访问                            → &lt;span style=&quot;color:red&quot;&gt;继续回收流程&lt;/span&gt;
+│
+├─ ④ 可降级到低 tier 内存？                → &lt;span style=&quot;color:blue&quot;&gt;demote（不丢数据，迁移）&lt;/span&gt;
+│
+├─ ⑤ 匿名页 + 无 swap cache？              → &lt;span style=&quot;color:orange&quot;&gt;分配 swap slot&lt;/span&gt;
+│
+├─ ⑥ 被页表映射？                          → &lt;span style=&quot;color:red&quot;&gt;try_to_unmap() 拆除所有 PTE + 延迟批量 TLB flush&lt;/span&gt;
+│
+├─ ⑦ 脏页？
+│   ├─ 文件页 + direct reclaim             → &lt;span style=&quot;color:orange&quot;&gt;标记 reclaim，放回 active&lt;/span&gt;
+│   └─ kswapd                              → &lt;span style=&quot;color:red&quot;&gt;pageout() 回写到磁盘&lt;/span&gt;
+│
+├─ ⑧ __remove_mapping()                    → &lt;span style=&quot;color:red&quot;&gt;从 address_space 摘除&lt;/span&gt;
+│
+└─ ⑨ free_unref_folios()                   → &lt;span style=&quot;color:green&quot;&gt;✅ 释放回 buddy free_area[]&lt;/span&gt;</code></pre>
+
+<p><strong>不同回收结果的代价</strong>：</p>
+
+<table>
+<thead><tr>
+<th><span style="color:green"><strong>回收对象</strong></span></th>
+<th><span style="color:green"><strong>操作</strong></span></th>
+<th><span style="color:green"><strong>I/O 开销</strong></span></th>
+<th><span style="color:green"><strong>后续 fault 代价</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td>clean page cache</td>
+<td>直接丢</td>
+<td>无</td>
+<td>minor fault（从文件重读）</td>
+</tr>
+<tr>
+<td>dirty page cache</td>
+<td>先 pageout 回写</td>
+<td>写 I/O</td>
+<td>minor fault（从文件重读）</td>
+</tr>
+<tr>
+<td>匿名页</td>
+<td>swapout 换出</td>
+<td>写 I/O</td>
+<td><span style="color:red"><strong>major fault</strong>（从 swap 读回）</span></td>
+</tr>
+</tbody></table>
+
+<h3>8.11 扫描比例算法：<code>get_scan_count()</code> —— 决定扫什么</h3>
+
+<p>代码在 <a href="mm/vmscan.c">mm/vmscan.c</a>:2556-2670。回收 <span style="color:red"><strong>不是盲目全扫</strong></span>，而是根据系统状态动态决定扫多少 anon 页、多少 file 页。</p>
+
+<p><strong>四种扫描模式</strong>：</p>
+
+<table>
+<thead><tr>
+<th><span style="color:blue"><strong>模式</strong></span></th>
+<th><span style="color:blue"><strong>触发条件</strong></span></th>
+<th><span style="color:blue"><strong>行为</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>SCAN_FILE</code></td>
+<td>无 swap / swappiness=0 / cache_trim_mode</td>
+<td><span style="color:green">只回收 file LRU</span></td>
+</tr>
+<tr>
+<td><code>SCAN_ANON</code></td>
+<td>swappiness=200 / file 页极少</td>
+<td><span style="color:red">只回收 anon LRU</span></td>
+</tr>
+<tr>
+<td><code>SCAN_EQUAL</code></td>
+<td>priority=0（即将 OOM）</td>
+<td>按大小等比扫描</td>
+</tr>
+<tr>
+<td><code>SCAN_FRACT</code></td>
+<td><strong>默认</strong></td>
+<td>按 swappiness + 历史效率 <span style="color:orange">自适应加权</span></td>
+</tr>
+</tbody></table>
+
+<p><strong><code>SCAN_FRACT</code> 核心公式</strong>（<span style="color:orange">自适应反馈算法</span>）：</p>
+
+<pre><code>fraction[ANON] = anon_cost × (swappiness + 1) / (total_cost + 1)
+fraction[FILE] = file_cost
+
+实际扫描量 = (lruvec_size &gt;&gt; priority) × fraction[type] / denominator</code></pre>
+
+<blockquote><strong><span style="color:orange">💡 算法直觉</span></strong>：如果匿名页回收效率低（扫了很多但回收很少），<code>anon_cost</code> 自动增大，后续减少匿名页扫描比例，把 CPU 用在更容易回收的 file 页上。这是一种<strong>带反馈的自适应控制</strong>。</blockquote>
+
+<h3>8.12 Slab Shrinker 算法</h3>
+
+<p>内核自身缓存也通过 shrinker 接口参与回收。代码在 <a href="mm/shrinker.c">mm/shrinker.c</a>:614-670。</p>
+
+<p><span style="color:red"><strong>核心公式</strong></span>：<code>nr_to_scan = total_objects >> priority</code></p>
+
+<table>
+<thead><tr>
+<th><span style="color:blue"><strong>Shrinker</strong></span></th>
+<th><span style="color:blue"><strong>回收对象</strong></span></th>
+<th><span style="color:blue"><strong>对 buddy 的影响</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>super_block->s_shrink</code></td>
+<td>dentry / inode cache</td>
+<td>回收的 slab 页 → <code>free_pages()</code> → buddy</td>
+</tr>
+<tr>
+<td><code>zswap_shrinker</code></td>
+<td>zswap 压缩池</td>
+<td>释放压缩内存 → buddy</td>
+</tr>
+<tr>
+<td><code>deferred_split_shrinker</code></td>
+<td>THP 分裂队列</td>
+<td>分裂 THP → 小页回 buddy</td>
+</tr>
+</tbody></table>
+
+<h3>8.13 回收与反碎片化的联动闭环</h3>
+
+<p>将水位线 → 回收 → 压缩串成完整闭环：</p>
+
+<pre><code class="language-text">&lt;span style=&quot;color:red&quot;&gt;fallback steal 发生（迁移类型短缺）&lt;/span&gt;
+  → &lt;span style=&quot;color:orange&quot;&gt;boost_watermark() 提升水位线&lt;/span&gt;
+    → &lt;span style=&quot;color:red&quot;&gt;kswapd 被唤醒&lt;/span&gt;（水位 &lt; LOW+boost）
+      → &lt;span style=&quot;color:orange&quot;&gt;balance_pgdat() 优先级循环 12→1&lt;/span&gt;
+        → &lt;span style=&quot;color:red&quot;&gt;shrink_node() 回收 LRU + shrink_slab()&lt;/span&gt;
+          → &lt;span style=&quot;color:green&quot;&gt;free_unref_folios() 归还 buddy&lt;/span&gt;
+            → &lt;span style=&quot;color:blue&quot;&gt;wakeup_kcompactd() 启动后台压缩&lt;/span&gt;
+              → &lt;span style=&quot;color:green&quot;&gt;compact_zone() 拼出连续大块&lt;/span&gt;
+                → &lt;span style=&quot;color:green&quot;&gt;✅ buddy 恢复健康&lt;/span&gt;</code></pre>
+
+<blockquote><strong><span style="color:red">🔑 关键洞察</span></strong>：反碎片化体系中，<strong>水位线提升是触发器，页面回收是执行器，内存压缩是整理器</strong>。三者缺一不可。</blockquote>
+
+<h3>8.14 ARM64 架构特化</h3>
+
+<p>页面回收主要是通用代码，ARM64 在以下路径提供 <span style="color:green"><strong>硬件加速与架构特化</strong></span>：</p>
+
+<table>
+<thead><tr>
+<th><span style="color:blue"><strong>特化点</strong></span></th>
+<th><span style="color:blue"><strong>代码位置</strong></span></th>
+<th><span style="color:blue"><strong>作用</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>TLB 延迟批量刷新</strong></td>
+<td><a href="arch/arm64/include/asm/tlbflush.h">arch/arm64/include/asm/tlbflush.h</a></td>
+<td><code>try_to_unmap()</code> 拆映射时不逐页 flush，而是通过 <code>arch_tlbbatch</code> 累积 TLBI 操作（不含 DSB），最终一次 <code>dsb(ish)</code> 完成所有失效。<span style="color:green">避免逐页 TLBI+DSB 的高开销</span></td>
+</tr>
+<tr>
+<td><strong>硬件 Access Flag（PTE 级）</strong></td>
+<td>PTE_AF 位</td>
+<td>回收扫描中直接读硬件 AF 判断冷热，<span style="color:green">零软件开销</span>。<code>arch_has_hw_pte_young = cpu_has_hw_af</code></td>
+</tr>
+<tr>
+<td><strong>HAFT PMD 级 Access Flag</strong></td>
+<td>ARMv8.9/v9.5 HAFT 特性</td>
+<td><code>arch_has_hw_nonleaf_pmd_young = system_supports_haft</code>，回收 LRU gen 扫描可在 PMD 级别判断访问，AF 未设置的 PMD 直接跳过。<span style="color:red">对大地址空间回收效率提升显著</span></td>
+</tr>
+<tr>
+<td><strong>arch_wants_old_prefaulted_pte</strong></td>
+<td><a href="arch/arm64/include/asm/pgtable.h">arch/arm64/include/asm/pgtable.h:1626</a></td>
+<td>硬件 AF 可用时，新 fault-in PTE 初始 AF=0（"old"），依赖硬件首次访问时设置 AF。<span style="color:green">避免 prefault 干扰 LRU 冷热判断</span></td>
+</tr>
+<tr>
+<td><strong>Contiguous PTE 回收 aging</strong></td>
+<td><a href="arch/arm64/mm/contpte.c">arch/arm64/mm/contpte.c:491-535</a></td>
+<td>回收 aging 操作（<code>ptep_test_and_clear_young</code>/<code>clear_young_dirty_ptes</code>）<span style="color:green"><strong>无需展开</strong></span> contpte block，直接对整个 CONT_PTES 范围清除 young/dirty 位。注释原文："we can get away with clearing young for the whole contig range here, so we avoid having to unfold." 只有部分修改（如 wrprotect 子集）才需 <code>contpte_try_unfold_partial()</code></td>
+</tr>
+<tr>
+<td><strong>Lazy MMU Mode</strong></td>
+<td><a href="arch/arm64/include/asm/pgtable.h">arch/arm64/include/asm/pgtable.h:83-120</a></td>
+<td><code>__HAVE_ARCH_ENTER_LAZY_MMU_MODE</code>，回收内循环（拆映射/写保护 PTE）进入 lazy MMU mode，设置 <code>TIF_LAZY_MMU</code> 延迟 <code>emit_pte_barriers()</code>。<span style="color:green">批量 PTE 修改时累积 barrier，减少指令开销</span>。vmscan.c 中 6 处调用</td>
+</tr>
+<tr>
+<td><strong>MTE 标签 swap 保存/恢复</strong></td>
+<td><a href="arch/arm64/mm/mteswap.c">arch/arm64/mm/mteswap.c</a></td>
+<td>MTE 开启后每页有 128B allocation tags。swap-out 前通过 <code>arch_prepare_to_swap()</code> 保存到 xarray，swap-in 时通过 <code>arch_swap_restore()</code> 恢复。<span style="color:red">⚠️ <code>arch_prepare_to_swap()</code> 可能返回 -ENOMEM（标签存储分配失败），导致 swap-out 中止</span></td>
+</tr>
+<tr>
+<td><strong>MTE 标签迁移</strong></td>
+<td><a href="arch/arm64/mm/copypage.c">arch/arm64/mm/copypage.c:17</a></td>
+<td><code>copy_highpage()</code> 在页面迁移时必须将源页 MTE 标签复制到目标页，否则迁移后标签丢失触发 tag check fault</td>
+</tr>
+<tr>
+<td><strong>THP swap 整页换出</strong></td>
+<td><a href="arch/arm64/Kconfig">arch/arm64/Kconfig:123</a>（4K 页配置）</td>
+<td><code>ARCH_WANTS_THP_SWAP</code> 允许 PMD 级 swap entry，<span style="color:green">THP swap-out 无需先分裂</span>。16K/64K 页配置不支持此特性</td>
+</tr>
+</tbody></table>
+
+<h4>8.14.1 MTE 标签保存对回收的深度影响</h4>
+
+<p>MTE（Memory Tagging Extension）是 ARM64 独有的内存安全特性，对页面回收有<strong>额外成本和风险</strong>：</p>
+
+<pre><code class="language-c">// arch/arm64/mm/mteswap.c:94
+int arch_prepare_to_swap(struct folio *folio) {
+    for (i = 0; i &lt; nr; i++) {
+        err = mte_save_tags(folio_page(folio, i));  // 每页: kmalloc(128B) + xa_store
+        if (err) goto out;  // 失败 → 回滚已保存的标签
+    }
+    return 0;
+out:
+    while (i--) __mte_invalidate_tags(folio_page(folio, i));  // 清理
+    return err;  // -ENOMEM → swap-out 中止
+}</code></pre>
+
+<table>
+<thead><tr>
+<th><span style="color:blue"><strong>回收阶段</strong></span></th>
+<th><span style="color:blue"><strong>MTE 影响</strong></span></th>
+<th><span style="color:blue"><strong>后果</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td>swap-out</td>
+<td>每页额外 128B <code>kmalloc</code> + <code>xa_store</code></td>
+<td>内存紧张时 <code>arch_prepare_to_swap()</code> 失败 → 匿名页无法换出</td>
+</tr>
+<tr>
+<td>swap-in</td>
+<td><code>arch_swap_restore()</code> 逐页恢复标签</td>
+<td>增加 swap-in 延迟</td>
+</tr>
+<tr>
+<td>swap slot 释放</td>
+<td><code>mte_invalidate_tags()</code> 清理 xarray</td>
+<td>释放 128B 标签存储</td>
+</tr>
+<tr>
+<td>页面迁移</td>
+<td><code>copy_highpage()</code> 复制 MTE 标签</td>
+<td>迁移成本增加</td>
+</tr>
+</tbody></table>
+
+<p><strong>监控</strong>：</p>
+<pre><code class="language-bash">cat /proc/vmstat | grep mte  # MTE 相关回收统计</code></pre>
+
+<h4>8.14.2 HAFT PMD 级 AF 对回收扫描效率的影响</h4>
+
+<p>传统回收扫描需要逐页检查 PTE 的 AF 位来判断冷热。ARMv8.9/v9.5 的 HAFT（Hardware Access Flag for Table descriptors）将 AF 扩展到 PMD 表项，允许 <strong>PMD 级别粗粒度扫描</strong>：</p>
+
+<pre><code class="language-c">// arch/arm64/include/asm/pgtable.h:1618-1619
+#define arch_has_hw_nonleaf_pmd_young  system_supports_haft
+
+// mm/vmscan.c LRU gen 扫描路径：
+// if (arch_has_hw_nonleaf_pmd_young &amp;&amp; !pmd_young(pmd))
+//     → 跳过整个 PMD 范围（512 页 / 2MB），无需逐页扫描 PTE</code></pre>
+
+<p><strong>扫描效率对比</strong>：</p>
+
+<table>
+<thead><tr>
+<th><span style="color:blue"><strong>场景</strong></span></th>
+<th><span style="color:blue"><strong>无 HAFT</strong></span></th>
+<th><span style="color:blue"><strong>有 HAFT</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td>256GB 地址空间，10% 活跃</td>
+<td>逐页扫描 ~6.7M PTE</td>
+<td>仅扫描 ~0.67M PMD，跳过 90% 的冷 PMD</td>
+</tr>
+<tr>
+<td>PostgreSQL 大共享内存</td>
+<td>全量扫描 PTE 表</td>
+<td>PMD 级快速筛选，<span style="color:green">扫描开销降低 ~100 倍</span></td>
+</tr>
+</tbody></table>
+
+<h4>8.14.3 TLB 延迟批量刷新机制详解</h4>
+
+<p>回收拆映射（<code>try_to_unmap()</code>）不是逐页执行 TLBI+DSB，而是通过 <code>arch_tlbbatch</code> 机制累积操作：</p>
+
+<pre><code class="language-c">// 回收路径中的批量 TLB 处理：
+// 1. 判断是否延迟：arch_tlbbatch_should_defer(mm) → true（除非 REPEAT_TLBI errata）
+// 2. 累积 TLBI：arch_tlbbatch_add_pending(batch, mm, start, end)
+//    → __flush_tlb_range_nosync()  // 仅 TLBI，不含 DSB
+// 3. 最终刷新：arch_tlbbatch_flush(batch)
+//    → dsb(ish)  // 一条 DSB 完成所有累积的 TLBI</code></pre>
+
+<p><strong>对比</strong>：</p>
+
+<table>
+<thead><tr>
+<th><span style="color:blue"><strong>方式</strong></span></th>
+<th><span style="color:blue"><strong>回收 1000 页的开销</strong></span></th>
+<th><span style="color:blue"><strong>适用场景</strong></span></th>
+</tr></thead>
+<tbody>
+<tr>
+<td>逐页 TLBI+DSB</td>
+<td>1000 × (TLBI + DSB) ≈ <span style="color:red">数千周期</span></td>
+<td>无批量机制时</td>
+</tr>
+<tr>
+<td>批量 TLBI + 1 DSB</td>
+<td>1000 × TLBI + 1 × DSB ≈ <span style="color:green">数百周期</span></td>
+<td>arm64 回收路径（默认）</td>
+</tr>
+</tbody></table>
+
+<p>同时，回收内循环进入 <strong>Lazy MMU Mode</strong>（<code>arch_enter_lazy_mmu_mode()</code>），延迟 PTE barrier 操作，与 TLB 批量刷新配合进一步减少开销。</p>
+
+<hr>
+
+<h2>九、内存压缩 Compaction</h2>
+
+<h3>9.1 两种触发方式</h3>
+
+<table>
+<thead><tr>
+<th>类型</th>
+<th>触发条件</th>
+<th>流程</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>直接压缩</strong></td>
+<td><code>__alloc_pages_slowpath()</code> 中高 order 分配失败</td>
+<td><code>__alloc_pages_direct_compact()</code> → <code>try_to_compact_pages()</code> → <code>compact_zone()</code></td>
+</tr>
+<tr>
+<td><strong>后台压缩</strong></td>
+<td>kswapd 水位提升后或碎片分数触及阈值</td>
+<td>kcompactd → <code>kcompactd_do_work()</code> → <code>compact_zone()</code></td>
+</tr>
+<tr>
+<td><strong>Proactive</strong></td>
+<td><code>sysctl_compaction_proactiveness > 0</code></td>
+<td>kcompactd 主动检测碎片并压缩</td>
+</tr>
+</tbody></table>
+
+<h3>9.2 compact_zone 流程</h3>
+
+<pre><code>compact_zone()
+  ├── isolate_migratepages()    扫描并隔离可迁移页
+  ├── migrate_pages()           迁移页到新位置
+  ├── isolate_freepages()       扫描连续空闲页
+  └── compact_finished()        检查是否完成
+       ├── COMPACT_SUCCESS     达到所需连续空闲块
+       ├── COMPACT_PARTIAL     部分成功
+       ├── COMPACT_CONTENDED   锁冲突
+       └── COMPACT_SKIPPED    无空闲或无法压缩</code></pre>
+
+<h3>9.3 ARM64 defrag_mode 下的特殊行为</h3>
+
+<p>当 <code>defrag_mode=1</code>，kcompactd 使用 <code>NR_FREE_PAGES_BLOCKS</code> 计数（而非普通空闲页计数），目标水位变高 <code>ALLOC_WMARK_HIGH</code>，更积极地进行碎片预防性压缩。</p>
+
+<h3>9.4 fragmentation_index —— 碎片化程度的量化</h3>
+
+<p><code>fragmentation_index()</code> 在 <code>mm/compaction.c:2414</code> 中调用，决定是否值得为 costly order（order > 3）执行压缩：</p>
+
+<pre><code class="language-c">// mm/compaction.c:2414-2418
+if (order &gt; PAGE_ALLOC_COSTLY_ORDER) {
+    int fragindex = fragmentation_index(zone, order);
+    if (fragindex &gt;= 0 &amp;&amp; fragindex &lt;= sysctl_extfrag_threshold) {
+        suitable = false;  // 碎片化不严重，跳过压缩
+        compact_result = COMPACT_NOT_SUITABLE_ZONE;
+    }
+}</code></pre>
+
+<p><strong>计算公式</strong>（简化）：</p>
+
+<p>$$\text{fragindex} \approx 1000 - \frac{1000 + 1000 \times \frac{\text{free\_pages}}{\text{requested}}}{2^{order}}$$</p>
+
+<p><strong>解读</strong>：</p>
+<ul>
+<li><strong>fragindex → 1000</strong>：内存充足但碎片化严重 → <strong>应该压缩</strong></li>
+<li><strong>fragindex → 0</strong>：系统整体内存不足 → 压缩无意义，应 reclaim</li>
+<li><strong>fragindex < sysctl_extfrag_threshold</strong>（默认 500）：跳过压缩</li>
+</ul>
+
+<p><strong>sysctl 接口</strong>：</p>
+<pre><code class="language-bash">cat /proc/sys/vm/extfrag_threshold  # 默认 500
+# 阈值越低越激进（更容易触发 compaction）
+echo 125 &gt; /proc/sys/vm/extfrag_threshold</code></pre>
+
+<hr>
+
+<h2>十、ARM64 架构特殊配置</h2>
+
+<h3>10.1 MAX_PAGE_ORDER</h3>
+
+<pre><code class="language-c">// arch/arm64/Kconfig:1638
+default &quot;10&quot;  // 4K pages: order 10 = 1024 pages = 4MB</code></pre>
+
+<table>
+<thead><tr>
+<th>配置</th>
+<th>MAX_PAGE_ORDER</th>
+<th>最大连续块</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>4K pages (default)</td>
+<td>10</td>
+<td>1024 page = 4MB</td>
+</tr>
+<tr>
+<td>16K pages</td>
+<td>11</td>
+<td>2048 pages = 32MB</td>
+</tr>
+<tr>
+<td>64K pages</td>
+<td>13</td>
+<td>8192 pages = 512MB</td>
+</tr>
+</tbody></table>
+
+<h3>10.2 zone 配置</h3>
+
+<p>ARM64 支持 ZONE_DMA 和 ZONE_DMA32 分区。<code>arm64_dma_phys_limit</code> 限制 DMA 区域的上限：</p>
+
+<pre><code class="language-c">// arch/arm64/mm/init.c:67
+phys_addr_t arm64_dma_phys_limit;</code></pre>
+
+<ul>
+<li>ZONE_DMA：覆盖 32 位可地址范围，取决于平台（Raspberry Pi 4 限制为 30-bit）</li>
+<li>ZONE_DMA32：覆盖剩余的 32 位可地址范围</li>
+<li>ZONE_NORMAL：剩餘内存 ≥ 32 位地址</li>
+</ul>
+
+<h3>10.3 CMA 初始化流程</h3>
+
+<pre><code class="language-c">// arch/arm64/mm/init.c:185-327
+void __init arm64_memblock_init(void);  // 预留内核/initrd
+void __init bootmem_init(void)
+  ├── early_memtest();
+  ├── arch_numa_init();           // NUMA 拓扑初始化
+  ├── arm64_hugetlb_cma_reserve(); // HugeTLB 预留 CMA
+  ├── sparse_init();              // Sparse Memory Model
+  ├── zone_sizes_init();          // zone 大小初始化
+  ├── dma_contiguous_reserve(arm64_dma_phys_limit); // CMA 预留
+  └── arch_reserve_crashkernel(); // 崩溃内核预留</code></pre>
+
+<p>ARM64 在 bootmem_init() 中初始化 NUMA 拓扑后，预留 HugeTLB CMA，随后执行 <code>dma_contiguous_reserve()</code> 为 DMA 设备保留 CMA 区域。</p>
+
+<h3>10.4 内存模型</h3>
+
+<p>ARM64 使用 <strong>Sparse Memory with VMEMMAP</strong>（<code>CONFIG_SPARSEMEM_VMEMMAP=y</code>），通过 vmemmap 将 <code>struct page[]</code> 数组映射到虚拟地址，实现常数时间 PFN→page 转换。</p>
+
+<h3>10.5 PCP (Per-CPU Pages) 缓存与"伪碎片化"</h3>
+
+<h4>10.5.1 PCP 数据结构：按 migratetype × order 组织的链表数组</h4>
+
+<p>PCP 不是一个简单指针，而是一个完整的 per-CPU 结构体，内部维护了<strong>多个链表</strong>，按迁移类型和 order 二维分桶：</p>
+
+<pre><code class="language-c">// include/linux/mmzone.h:744
+struct per_cpu_pages {
+    spinlock_t lock;          /* 保护 lists 字段 */
+    int count;                /* PCP 中缓存的页面总数（以 page 个数计） */
+    int high;                 /* 高水位，超过则批量刷回 buddy */
+    int high_min;             /* 高水位下限 */
+    int high_max;             /* 高水位上限 */
+    int batch;                /* 每次与 buddy 交换的批量大小 */
+    u8 flags;                 /* PCPF_PREV_FREE_HIGH_ORDER 等标志 */
+    u8 alloc_factor;          /* 分配时 batch 缩放因子 */
+    short free_count;         /* 连续释放计数 */
+
+    /* ★ 核心：链表数组，按 (migratetype × order) 索引 */
+    struct list_head lists[NR_PCP_LISTS];
+} ____cacheline_aligned_in_smp;</code></pre>
+
+<p><strong><code>lists[]</code> 索引计算</strong>（<code>order_to_pindex</code>，位于 <code>mm/page_alloc.c:657</code>）：</p>
+
+<pre><code class="language-c">static inline unsigned int order_to_pindex(int migratetype, int order)
+{
+    // 小 order (0~3): pindex = MIGRATE_PCPTYPES * order + migratetype
+    return (MIGRATE_PCPTYPES * order) + migratetype;
+}</code></pre>
+
+<p>其中 <code>MIGRATE_PCPTYPES = 3</code>（只缓存 UNMOVABLE、MOVABLE、RECLAIMABLE 三种迁移类型），<br>
+<code>PAGE_ALLOC_COSTLY_ORDER = 3</code>，所以 <code>NR_LOWORDER_PCP_LISTS = 3 × 4 = 12</code>。</p>
+
+<p><code>NR_PCP_LISTS</code> 在开启 THP 时额外 +2（THP movable/unmovable 各一个链表）。</p>
+
+<p><strong>PCP 链表数组布局</strong>（12 个链表 = 4 个 order × 3 种迁移类型）：</p>
+
+<pre><code>                 MIGRATE_UNMOVABLE(0)  MIGRATE_MOVABLE(1)  MIGRATE_RECLAIMABLE(2)
+order 0 (1页):    lists[0]              lists[1]             lists[2]
+order 1 (2页):    lists[3]              lists[4]             lists[5]
+order 2 (4页):    lists[6]              lists[7]             lists[8]
+order 3 (8页):    lists[9]              lists[10]            lists[11]</code></pre>
+
+<p><strong>页面如何挂入链表</strong>：每个 <code>struct page</code> 内部有一个 union，复用了 <code>lru</code>/<code>buddy_list</code>/<code>pcp_list</code>：</p>
+
+<pre><code class="language-c">// include/linux/mm_types.h:99
+union {
+    struct list_head lru;           // 在 LRU 链表中时使用
+    struct list_head buddy_list;    // 在 buddy free_area 中时使用
+    struct list_head pcp_list;      // ★ 在 PCP 链表中时使用
+    struct llist_node pcp_llist;    // RT 内核无锁路径使用
+};</code></pre>
+
+<p>页面在 buddy 和 PCP 之间迁移时，<strong>零额外内存分配</strong>——只是把同一个 <code>list_head</code> 从一个链表摘下来挂到另一个链表。</p>
+
+<h4>10.5.2 PCP 链表内存布局全景图</h4>
+
+<pre><code>Zone (struct zone)
+ │
+ ├── per_cpu_pageset ──────────────────→  per-CPU 数组
+ │                                         │
+ │                              ┌──────────┴──────────┐
+ │                              │  CPU 0                │  CPU 1  ...
+ │                              │  struct per_cpu_pages
+ │                              │  ┌──────────────────┐
+ │                              │  │ lock              │
+ │                              │  │ count = 5         │  ← 当前缓存 5 个 page
+ │                              │  │ high  = 186       │  ← 高水位
+ │                              │  │ high_min = 156    │
+ │                              │  │ high_max = 372    │
+ │                              │  │ batch = 31        │  ← 批量操作粒度
+ │                              │  │                   │
+ │                              │  │ lists[0] ────────→ pageA (order0, UNMOVABLE)
+ │                              │  │ lists[1] ────────→ pageC → pageB (order0, MOVABLE)
+ │                              │  │ lists[2] ────────→ (空)
+ │                              │  │ lists[3] ────────→ pageD → pageE (order1, UNMOVABLE)
+ │                              │  │ lists[4] ────────→ (空)
+ │                              │  │    ...            │
+ │                              │  │ lists[11]────────→ (空)
+ │                              │  └──────────────────┘
+ │                              │
+ │                              │  pcp_list 是 page 结构体内的 list_head
+ │                              │  复用 lru/buddy_list 的 union 空间，零额外开销
+ │                              │
+ ├── free_area[0] ────────────────────→ buddy order 0 空闲链表
+ ├── free_area[1] ────────────────────→ buddy order 1 空闲链表
+ ├── free_area[2] ────────────────────→ buddy order 2 空闲链表
+ └── ...</code></pre>
+
+<h4>10.5.3 完整释放路径：从 <code>__free_pages</code> 到挂入 PCP 链表</h4>
+
+<p>以释放一个 <strong>order=0 的 MIGRATE_MOVABLE 页面</strong> 为例，追踪完整路径：</p>
+
+<pre><code>用户调用 __free_pages(page, 0)
+  → ___free_pages(page, 0, FPI_NONE)
+    → put_page_testzero(page) 为真后
+      → __free_frozen_pages(page, 0, FPI_NONE)</code></pre>
+
+<p><strong>第1步：<code>__free_frozen_pages()</code> — 判断是否走 PCP 快速路径</strong></p>
+
+<pre><code class="language-c">// mm/page_alloc.c:2890
+static void __free_frozen_pages(struct page *page, unsigned int order,
+                                fpi_t fpi_flags)
+{
+    // order=0 &lt;= PAGE_ALLOC_COSTLY_ORDER(3) → true，走 PCP 路径
+    if (!pcp_allowed_order(order)) {
+        __free_pages_ok(page, order, fpi_flags);  // 大order直接回 buddy
+        return;
+    }
+    // 准备释放（清理 flags、kasan poison 等）
+    if (!free_pages_prepare(page, order))
+        return;
+
+    zone = page_zone(page);
+    migratetype = get_pfnblock_migratetype(page, pfn);
+    // MIGRATE_MOVABLE(1) &lt; MIGRATE_PCPTYPES(3)，正常处理
+
+    // ★ 获取本 CPU 的 PCP 结构体（spin_trylock 无锁争用则成功）
+    pcp = pcp_spin_trylock(zone-&gt;per_cpu_pageset);
+    if (pcp) {
+        // ★ 核心：把页面提交到 PCP
+        free_frozen_page_commit(zone, pcp, page, migratetype, order, fpi_flags);
+        pcp_spin_unlock(pcp);
+    } else {
+        // 拿不到 PCP 锁（IRQ 重入/并发 drain），直接放回 buddy
+        free_one_page(zone, page, pfn, order, fpi_flags);
+    }
+}</code></pre>
+
+<p><strong>第2步：<code>free_frozen_page_commit()</code> — 挂入链表 + 水位检查</strong></p>
+
+<pre><code class="language-c">// mm/page_alloc.c:2815
+static void free_frozen_page_commit(struct zone *zone,
+        struct per_cpu_pages *pcp, struct page *page, int migratetype,
+        unsigned int order, fpi_t fpi_flags)
+{
+    int high, batch, pindex;
+
+    pcp-&gt;alloc_factor &gt;&gt;= 1;           // 释放时降低分配因子
+    __count_vm_events(PGFREE, 1 &lt;&lt; order);
+
+    // ★ 计算索引: order_to_pindex(MIGRATE_MOVABLE=1, order=0)
+    //           = 3*0 + 1 = 1  → 挂入 lists[1]
+    pindex = order_to_pindex(migratetype, order);
+
+    // ★★★ 关键：将 page-&gt;pcp_list 插入 pcp-&gt;lists[pindex] 链表头部
+    list_add(&amp;page-&gt;pcp_list, &amp;pcp-&gt;lists[pindex]);
+
+    pcp-&gt;count += 1 &lt;&lt; order;          // order=0 → count += 1
+
+    // ... 计算 high 水位 ...
+
+    high = nr_pcp_high(pcp, zone, batch, free_high);
+    if (pcp-&gt;count &lt; high)
+        return;                        // 没超 high，页面留在 PCP
+
+    // 超出 high 水位，批量刷回 buddy
+    free_pcppages_bulk(zone, nr_pcp_free(pcp, batch, high, free_high),
+                       pcp, pindex);
+}</code></pre>
+
+<p><strong>第3步：<code>free_pcppages_bulk()</code> — 超水位时批量归还 buddy</strong></p>
+
+<pre><code class="language-c">// mm/page_alloc.c:1442
+static void free_pcppages_bulk(struct zone *zone, int count,
+                                struct per_cpu_pages *pcp, int pindex)
+{
+    spin_lock_irqsave(&amp;zone-&gt;lock, flags);
+
+    while (count &gt; 0) {
+        // 从各个链表轮询摘取页面
+        order = pindex_to_order(pindex);
+        do {
+            page = list_last_entry(list, struct page, pcp_list);
+            list_del(&amp;page-&gt;pcp_list);         // 从 PCP 链表摘下
+            count -= (1 &lt;&lt; order);
+            pcp-&gt;count -= (1 &lt;&lt; order);
+
+            __free_one_page(page, pfn, zone, order, mt, FPI_NONE);
+            // ↑ 归还给 buddy 分配器的 free_area[]
+        } while (count &gt; 0 &amp;&amp; !list_empty(list));
+    }
+
+    spin_unlock_irqrestore(&amp;zone-&gt;lock, flags);
+}</code></pre>
+
+<h4>10.5.4 释放过程图解：链表变化</h4>
+
+<p><strong>释放前</strong>：<code>pcp->lists[1]</code>（order=0, MIGRATE_MOVABLE）已有 2 个页面：</p>
+
+<pre><code>pcp-&gt;lists[1] (链表头)
+     │
+     ▼
+  ┌──────────┐    ┌──────────┐
+  │  page A  │───→│  page B  │───→ 回到 lists[1]
+  │ pcp_list │←───│ pcp_list │
+  └──────────┘    └──────────┘</code></pre>
+
+<p><strong>释放 page C 后</strong>，<code>list_add</code> 将 page C 插入头部：</p>
+
+<pre><code>pcp-&gt;lists[1] (链表头)
+     │
+     ▼
+  ┌──────────┐    ┌──────────┐    ┌──────────┐
+  │  page C  │───→│  page A  │───→│  page B  │───→ 回到 lists[1]
+  │ pcp_list │←───│ pcp_list │←───│ pcp_list │
+  └──────────┘    └──────────┘    └──────────┘
+         ↑
+    list_add 插入头部，后进先出（LIFO），有利于 cache 热度</code></pre>
+
+<p><strong>分配时逆过程</strong>：从链表尾部 <code>list_last_entry</code> 摘取页面，同样 LIFO。</p>
+
+<h4>10.5.5 高水位触发与伪碎片化</h4>
+
+<p>Per-CPU Pages 缓存可能导致 buddy 视角的"伪碎片化"：大量 order=0 页面滞留在每个 CPU 的 PCP 缓存中，从 <code>/proc/buddyinfo</code> 看似乎 order=0 严重不足，实则被缓存了。</p>
+
+<pre><code class="language-c">// mm/page_alloc.c --- zone_batchsize()
+// batch ≈ min(zone_managed &gt;&gt; 10, 1MB / 4KB) / 4
+// 4GB zone: batch ≈ 256 pages per CPU
+// 64核: 最大缓存 = 64 × 256 × 4KB ≈ 64MB</code></pre>
+
+<p><strong>对高阶分配的间接影响</strong>：<code>rmqueue_bulk()</code> 为 PCP 补充 order=0 页面时，如果 order=0 free_list 空了，会从更高阶拆分。大批量 PCP 补充可能频繁拆散高阶块，不利于大页分配。</p>
+
+<pre><code class="language-bash"># 降低 PCP high watermark，让页面更快回归 buddy
+echo 8 &gt; /proc/sys/vm/percpu_pagelist_high_fraction</code></pre>
+
+<h4>10.5.6 PCP 与 SLUB 的关系：为什么分配页面不直接从 SLUB 拿？</h4>
+
+<p>这是一个常见的疑问：PCP 缓存 order<4 的小页面，SLUB 也管理小对象，为什么分配页面时不从 SLUB 获取？</p>
+
+<p><strong>核心原因：架构层次不同，SLUB 是 buddy+PCP 的上层消费者。</strong></p>
+
+<pre><code>应用层: kmalloc / kmem_cache_alloc
+         │
+    ┌────▼────┐
+    │  SLUB   │  管理页内的固定大小对象（32B~8KB）
+    │ 分配器   │  将 buddy 分配的整页切分为小对象
+    └────┬────┘
+         │ alloc_pages()  ← SLUB 本身从这里拿页！
+    ┌────▼────┐
+    │ Buddy   │  管理物理页（4KB 为最小单位）
+    │ + PCP   │  按 order(0~10) 分配连续物理页
+    └─────────┘</code></pre>
+
+<table>
+<thead><tr>
+<th>维度</th>
+<th>Buddy + PCP</th>
+<th>SLUB</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>分配粒度</td>
+<td>物理页（4KB/8KB/16KB...）</td>
+<td>字节级对象（32B/64B/256B...）</td>
+</tr>
+<tr>
+<td>管理单位</td>
+<td><code>struct page</code></td>
+<td><code>struct slab</code>（含多个对象）</td>
+</tr>
+<tr>
+<td>连续性要求</td>
+<td>物理连续页（order N = 2^N 页）</td>
+<td>不要求——对象在页内</td>
+</tr>
+<tr>
+<td>获取内存方式</td>
+<td>从 free_area[] 或 PCP lists[]</td>
+<td>调用 <code>alloc_pages()</code> 向 buddy 申请</td>
+</tr>
+<tr>
+<td>归还内存方式</td>
+<td><code>__free_pages()</code> → buddy 或 PCP</td>
+<td>整个 slab 空后才 <code>__free_pages()</code></td>
+</tr>
+</tbody></table>
+
+<ol>
+<li><strong>SLUB 是 buddy 的消费者</strong>：SLUB 通过 <code>allocate_slab()</code> → <code>alloc_slab_page()</code> → <code>alloc_frozen_pages()</code> 从 buddy 申请整页，然后切分成固定大小对象。</li>
+<li><strong>粒度不匹配</strong>：当你要一个 order-2（16KB，4个连续页），SLUB 无法提供——它持有的页已被切分为分散的小对象，无法拼出连续物理页。</li>
+<li><strong>归属问题</strong>：SLUB 的页属于特定 <code>kmem_cache</code>，页内对象在 freelist 中流转。无法从 SLUB "抢"一个页来满足 buddy 的分配请求。</li>
+<li><strong>整页归还</strong>：SLUB 只有在整个 slab 的所有对象都释放后，才通过 <code>__free_pages()</code> 把整页归还给 buddy+PCP。</li>
+</ol>
+
+<p><strong>一句话总结</strong>：SLUB 解决的是"页内小对象管理"问题，buddy+PCP 解决的是"物理页分配"问题，二者是<strong>上下层分工</strong>，不是二选一的关系。</p>
+
+<h3>10.6 ARM64 contpte——连续 PTE 对 buddy 的隐式依赖</h3>
+
+<p>ARM64 独有的 <code>arch/arm64/mm/contpte.c</code> 支持将 16 个连续 PTE 合并为一个 TLB 条目（4K 页 + 64K TLB 粒度时）：</p>
+
+<pre><code class="language-c">// arch/arm64/mm/contpte.c --- 将 CONT_PTES 个连续 PTE 折叠
+#define CONT_PTES  16   // 16 × 4KB = 64KB → 1 TLB entry</code></pre>
+
+<p>这意味着：</p>
+<ol>
+<li>用户空间 <code>mmap</code> 需要 order=4（16 页 = 64KB）的连续物理页才能获得 TLB 折叠优化</li>
+<li>buddy 碎片化直接损害 contpte 效率 —— 即使虚拟地址连续，物理页不连续也无法折叠</li>
+<li>对于大量使用 <code>mmap</code> 的 ARM64 服务器（如数据库），order=4 的连续分配能力成为性能关键</li>
+</ol>
+
+<p>ARM64 的 contpte 在缺页异常路径中尝试折叠/展开：</p>
+<pre><code>handle_pte_fault()
+  └── contpte_try_fold()     ← 尝试将 16 个相邻 PTE 折叠为 1 个 contpte
+  └── contpte_try_unfold()   ← 修改部分页面时展开 contpte</code></pre>
+
+<h3>10.7 ARM64 NUMA 下的碎片化不对称</h3>
+
+<p>ARM64 服务器通常为多 NUMA 节点架构。分配请求优先从本地节点获取内存，若本地节点碎片化严重，zonelist 遍历到远程节点时会清除 <code>ALLOC_NOFRAGMENT</code>：</p>
+
+<pre><code class="language-c">// mm/page_alloc.c:3698-3701 --- alloc_flags_nofragment()
+// 遍历到下一个 zone（可能是远程节点）时：
+// ALLOC_NOFRAGMENT 被清除，位置优先级高于碎片保护</code></pre>
+
+<p>这意味着远程节点的 pageblock 完整性可能被跨节点 Steal 破坏。长期运行后，不同 NUMA 节点的碎片化程度会严重不对称 —— 某些节点成为"碎片垃圾场"，某些节点保持整洁。</p>
+
+<hr>
+
+<h2>十一、反碎片化体系总图</h2>
+
+<pre><code>                     ┌───────────────┐
+                     │  alloc_pages() │
+                     └───────┬───────┘
+                             │
+                     ┌───────▼──────────┐
+                     │ get_page_from_   │
+                     │ freelist()       │
+                     └───────┬──────────┘
+                             │
+                    ┌────────┴────────┐
+                    ▼                 ▼
+             水位充足             水位不足
+                    │                 │
+                    ▼                 ▼
+              ┌──────────┐      ┌──────────────┐
+              │ rmqueue()│      │ slowpath:     │
+              └────┬─────┘      │ reclaim/      │
+                   │            │ compact/OOM   │
+        ┌──────────┼──────────┐ └──────────────┘
+        ▼          ▼          ▼
+   PCP (order   buddy      slowpath
+    ≤ 3)        (order      entries
+                ≥ 4)
+        │          │
+        │    ┌─────▼──────────────┐
+        │    │ __rmqueue()        │
+        │    │  RMQUEUE_NORMAL    │ ← 首选同类
+        │    │  RMQUEUE_CMA       │ ← CMA fallback
+        │    │  RMQUEUE_CLAIM     │ ← 整块转化
+        │    │  RMQUEUE_STEAL     │ ← 偷单页 ⚠
+        │    └────────────────────┘
+        │          │
+        └──────────┼──────────────┐
+                   │              │
+         ┌─────────▼──────┐  ┌───▼───────────┐
+         │ anti-fragment  │  │ compaction     │
+         │  layers:       │  │ (direct/       │
+         │  · pageblock   │  │  background)   │
+         │  · claim/steal │  │                │
+         │  · HIGHATOMIC  │  │ 迁移可移动页   │
+         │  · CMA         │  │ 腾出连续空间   │
+         │  · watermark   │  └────────────────┘
+         │  · boosting    │
+         └────────────────┘</code></pre>
+
+<h3>总结</h3>
+
+<table>
+<thead><tr>
+<th>层</th>
+<th>技术</th>
+<th>机制</th>
+<th>防护的碎片类型</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Pageblock Grouping</td>
+<td>页块按迁移类型分组</td>
+<td>外部碎片（同类页分散）</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Fallback Claim</td>
+<td>转化整个 pageblock</td>
+<td>外部碎片（迁移类型杂糅）</td>
+</tr>
+<tr>
+<td>3</td>
+<td>ALLOC_NOFRAGMENT</td>
+<td>拒绝 steal，重试 zonelist</td>
+<td>外部碎片（偷页破坏 pageblock 完整性）</td>
+</tr>
+<tr>
+<td>4</td>
+<td>HIGHATOMIC</td>
+<td>原子高阶保留</td>
+<td>原子分配低阶碎片</td>
+</tr>
+<tr>
+<td>5</td>
+<td>CMA</td>
+<td>永久可迁移连续区域</td>
+<td>DMA 连续页不足</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Watermark Boost</td>
+<td>提高水位线，提前触发回收</td>
+<td>回退后的长期不平衡</td>
+</tr>
+<tr>
+<td><span style="color:red"><strong>★</strong></span></td>
+<td><span style="color:red"><strong>Page Reclaim（页面回收）</strong></span></td>
+<td><span style="color:red">kswapd(12→1) / direct reclaim(12→0) 渐进回收 LRU + shrink_slab，归还 buddy；ARM64 特化：延迟批量 TLB flush、硬件 AF/HAPT、MTE 标签 swap 保存、contpte aging 无展开</span></td>
+<td><span style="color:red">内存不足时的执行器，回收 page cache / 匿名页 / slab 缓存</span></td>
+</tr>
+<tr>
+<td>7</td>
+<td>kcompactd</td>
+<td>后台压缩 pageblock</td>
+<td>pageblock 迁移类型杂糅后的收敛</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Direct Compaction</td>
+<td>按需迁移可移动页</td>
+<td>分配失败时的紧急连续空间释放</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>十二、ARM64 典型场景举例</h2>
+
+<h3>场景 1：ARM64 服务器 THP 分配失败</h3>
+
+<p><strong>背景</strong>：64 核 ARM64 服务器（Neoverse N2），运行 PostgreSQL 数据库，启用 <code>TRANSPARENT_HUGEPAGE_ALWAYS</code>。</p>
+
+<p><strong>症状</strong>：</p>
+<pre><code class="language-bash">cat /proc/buddyinfo
+# Node 0, zone Normal  0  0  0  0  0  0  0  3  1  0  0
+#                                         ↑ order=9 仅剩 1 块
+cat /proc/vmstat | grep thp_fault_fallback
+# thp_fault_fallback 持续增长</code></pre>
+
+<p><strong>根因分析</strong>：</p>
+
+<pre><code>pageblock 0: [U][U][_][U][_][U][U][_]...[U]  ← UNMOVABLE 内核结构，空闲页分散
+pageblock 1: [M][_][M][_][M][M][_][_]...[M]  ← MOVABLE，被文件缓存切碎
+pageblock 2: [R][_][_][R][_][R][_][_]...[R]  ← RECLAIMABLE</code></pre>
+
+<p>THP 请求 order=9（2MB）时：</p>
+<ol>
+<li><code>__rmqueue_smallest()</code> → order=9 free_list 为空</li>
+<li><code>__rmqueue_claim()</code> → 扫描所有 pageblock，无一满足 >50% 空闲</li>
+<li><code>__rmqueue_steal()</code> → <code>ALLOC_NOFRAGMENT</code> 阻止（ZONE_NORMAL）</li>
+<li><strong>slowpath</strong>：direct reclaim 回收页缓存（order=0），无法合并为高阶块</li>
+<li><strong>direct compact</strong>：迁移 MOVABLE 页，腾出 2MB 连续块 → 成功，但延迟高</li>
+</ol>
+
+<p><strong>修复</strong>：</p>
+<pre><code class="language-bash">echo 1 &gt; /proc/sys/vm/defrag_mode            # 保护 pageblock 完整性
+echo 100 &gt; /proc/sys/vm/compaction_proactiveness  # 主动压缩</code></pre>
+
+<hr>
+
+<h3>场景 2：ARM64 嵌入式设备 CMA 碎片化</h3>
+
+<p><strong>背景</strong>：ARM64 边缘 AI 推理设备（4GB RAM，4K pages），NPU 需 16MB 连续 DMA 缓冲区。<code>MAX_PAGE_ORDER=10</code>（最大 4MB 单次分配），必须依赖 CMA 区域。</p>
+
+<p><strong>症状</strong>：</p>
+<pre><code class="language-bash">cat /proc/pagetypeinfo
+# Node 0, zone DMA32, type CMA  0  0  0  0  0  0  0  0  1  0  0
+#                               ↑ CMA 只有 1 个 order=8 (1MB) 块</code></pre>
+
+<p>NPU 请求 16MB → <code>cma_alloc()</code> 扫描 CMA bitmap 找不到连续 16MB 区域 → 失败。</p>
+
+<p><strong>根因</strong>：ARM64 的 DMA CMA 在 zone 初始化<strong>之后</strong>才预留（<code>bootmem_init()</code> 中 <code>dma_contiguous_reserve()</code> 在 <code>zone_sizes_init()</code> 之后），CMA 区域从 buddy 已认领的内存中划分。如果某些 CMA 页被 UNMOVABLE 分配临时征用且无法回收，CMA 内部就变成了"瑞士奶酪"：</p>
+
+<pre><code>CMA 区域（64MB 预留）：
+[CMA空闲][CMA空闲][UNMOVABLE占用][CMA空闲][CMA空闲][MOVABLE占用][CMA空闲]...
+   1MB       1MB        1MB        1MB       1MB        1MB       1MB
+                                 ↑ 虽然总空闲 6MB，但最大连续块仅 2MB</code></pre>
+
+<p><strong>另一个坑</strong>：当 <code>NR_FREE_CMA_PAGES < NR_FREE_PAGES / 2</code> 时，MOVABLE 分配<strong>不会</strong>优先从 CMA 取页，导致 CMA 被"冻住"——空闲但不被使用，而 DMA 分配又需要迁移 CMA 内页。</p>
+
+<p><strong>修复</strong>：</p>
+<pre><code class="language-bash"># 增大 CMA 预留
+cma=256M
+# 或通过设备树配置
+linux,cma { default-size = &lt;0x10000000&gt;; };  # 256MB</code></pre>
+
+<hr>
+
+<h3>场景 3：PCP 缓存导致的伪碎片化</h3>
+
+<p><strong>背景</strong>：ARM64 设备运行高并发网络服务，频繁分配/释放 order=0 skb。</p>
+
+<p><strong>症状</strong>：<code>/proc/buddyinfo</code> 显示 order=0~2 页面极少，但 <code>/proc/meminfo</code> 显示 MemAvailable 充足。系统未 OOM，但偶尔出现 order=3 分配延迟。</p>
+
+<p><strong>根因</strong>：</p>
+
+<pre><code class="language-c">// 每个 CPU 的 PCP 缓存：
+// batch = min(4GB zone &gt;&gt; 10, 256KB / 4KB) / 4 = 256 pages/CPU
+// 64核: 最大缓存 ≈ 16384 pages ≈ 64MB</code></pre>
+
+<p>这些页面在 <code>free_pcppages_bulk()</code> 释放回 buddy 之前，不会出现在 buddyinfo 中。从 buddy 视角看是"碎片化"，实际上是 PCP 缓存。</p>
+
+<p>当 <code>rmqueue_bulk()</code> 为 PCP 补充页面时，如果 order=0 free_list 空了，会从更高阶拆分：</p>
+<pre><code>PCP 补充 order=0 页面:
+  order=0 list 空 → 分拆 order=1 → order=0 + order=0
+  order=1 list 空 → 分拆 order=2 → order=1 + order=1
+  ...
+  不断蚕食高阶块</code></pre>
+
+<p><strong>修复</strong>：</p>
+<pre><code class="language-bash"># 降低 PCP high watermark，页面更快回流 buddy
+echo 8 &gt; /proc/sys/vm/percpu_pagelist_high_fraction</code></pre>
+
+<hr>
+
+<h3>场景 4：ARM64 NUMA 节点间碎片化不对称</h3>
+
+<p><strong>背景</strong>：双 socket ARM64 服务器（2 NUMA nodes），每个节点 256GB RAM。</p>
+
+<p><strong>症状</strong>：<code>numastat -p <pid></code> 显示进程主要在 Node 1 上分配，Node 1 的 THP 分配频繁失败，但 Node 0 还有大量 order=9 空闲块。</p>
+
+<p><strong>根因</strong>：</p>
+
+<pre><code class="language-c">// zonelist: [Node1/Normal] → [Node0/Normal]
+// Node 1 分配 order=9:
+//   1. 本地 __rmqueue_smallest() → 空
+//   2. 本地 __rmqueue_claim() → 无 &gt;50% 空闲 pageblock
+//   3. ALLOC_NOFRAGMENT 阻止 steal
+//   4. 遍历到 Node 0:
+//      alloc_flags_nofragment() → 清除 ALLOC_NOFRAGMENT
+//   5. Node 0 __rmqueue_steal() → 成功但污染 Node 0 pageblock</code></pre>
+
+<p>长期运行后，Node 0 的 pageblock 被跨节点 Steal 逐渐污染，两个节点碎片化程度不对称加剧。</p>
+
+<p><strong>修复</strong>：</p>
+<pre><code class="language-bash"># 交错分配，均衡节点压力
+numactl --interleave=all ./your_app
+
+# 启用 proactive compaction 清理远程节点碎片
+echo 50 &gt; /proc/sys/vm/compaction_proactiveness</code></pre>
+
+<hr>
+
+<h3>场景 5：HIGHATOMIC 在 ARM64 中断上下文中的救命效应</h3>
+
+<p><strong>背景</strong>：ARM64 设备驱动在中断上下文中需分配 2MB 连续内存做 DMA 缓冲区。中断上下文不能睡眠 → 不能 reclaim/compact。</p>
+
+<p><strong>机制</strong>：</p>
+
+<pre><code class="language-c">// mm/page_alloc.c:3361 --- reserve_highatomic_pageblock()
+// 为原子分配预留约 1% zone managed pages
+// 4GB zone: 1% = 40MB ≈ 20 个 2MB pageblock
+max_managed = ALIGN((zone_managed_pages(zone) / 100), pageblock_nr_pages);</code></pre>
+
+<p>当 <code>gfp_mask</code> 包含 <code>__GFP_ATOMIC</code> 且 order >= pageblock_order，内核从 HIGHATOMIC 保留池分配。如果保留池也耗尽且无法 reclaim → 分配失败。</p>
+
+<p><strong>监控</strong>：</p>
+<pre><code class="language-bash">cat /proc/vmstat | grep highatomic
+# nr_highatomic_reserve  → 当前保留的 pageblock 数
+# nr_highatomic_failed   → 从 HIGHATOMIC 分配失败的次数</code></pre>
+
+<p><strong>修复思路</strong>：</p>
+<ol>
+<li>驱动层：预分配 DMA 缓冲区（在可以睡眠的上下文中提前分配）</li>
+<li>系统层：增大 <code>min_free_kbytes</code> 间接增加 HIGHATOMIC 保留</li>
+<li>监控 <code>nr_highatomic_failed</code>，持续增长说明需要加大预留</li>
+</ol>
+
+<hr>
+
+<h3>场景速查表</h3>
+
+<table>
+<thead><tr>
+<th>场景</th>
+<th>症状</th>
+<th>根因</th>
+<th>主要修复手段</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>THP 分配失败</td>
+<td><code>thp_fault_fallback</code> 增长，buddyinfo order=9 少</td>
+<td>UNMOVABLE 页切碎 pageblock</td>
+<td><code>defrag_mode=1</code>, <code>compaction_proactiveness=100</code></td>
+</tr>
+<tr>
+<td>CMA DMA 失败</td>
+<td>NPU/显卡分配大块连续内存失败</td>
+<td>CMA 内页被不可移动分配征用</td>
+<td>增大 <code>cma=</code> 参数</td>
+</tr>
+<tr>
+<td>PCP 伪碎片化</td>
+<td>buddyinfo 低 order 页极少但内存充足</td>
+<td>PCP 缓存滞留 order=0 页</td>
+<td>降低 <code>percpu_pagelist_high_fraction</code></td>
+</tr>
+<tr>
+<td>NUMA 碎片不对称</td>
+<td>某节点 THP 频繁失败，另一节点空闲充足</td>
+<td>跨节点 steal 污染远程 pageblock</td>
+<td><code>numactl --interleave</code>, proactive compaction</td>
+</tr>
+<tr>
+<td>HIGHATOMIC 耗尽</td>
+<td>中断上下文高阶分配返回 NULL</td>
+<td>原子保留池被掏空</td>
+<td>预分配 DMA 缓冲；监控 <code>nr_highatomic_failed</code></td>
+</tr>
+</tbody></table>
+
+</body>
+</html>

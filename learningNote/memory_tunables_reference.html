@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Tunables Reference</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux 6.18.1 ARM64 — Memory Optimization Tunables Reference</h1>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><a href="#1-procsysvm-sysctl-tunables-page_allocc">1. <code>/proc/sys/vm/</code> Sysctl Tunables (page_alloc.c)</a></summary></p>
+
+<ul>
+<li><a href="#helper-variables">Helper variables</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#2-procsysvm-sysctl-tunables-vmscanc">2. <code>/proc/sys/vm/</code> Sysctl Tunables (vmscan.c)</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#3-compaction-tunables-procsysvm">3. Compaction Tunables (<code>/proc/sys/vm/</code>)</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#4-slub-allocator-debugtuning-boot-command-line">4. SLUB Allocator Debug/Tuning (Boot Command Line)</a></summary></p>
+
+<ul>
+<li><a href="#slub-sysfs">SLUB sysfs</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#5-thp-transparent-huge-pages-tunables">5. THP (Transparent Huge Pages) Tunables</a></summary></p>
+
+<ul>
+<li><a href="#global-thp-attributes-mmhuge_memoryc">Global THP attributes (mm/huge_memory.c)</a></li>
+<li><a href="#per-thp-size-attributes-syskernelmmtransparent_hugepagehugepages-kb">Per-THP-size attributes (<code>/sys/kernel/mm/transparent_hugepage/hugepages-*kB/</code>)</a></li>
+<li><a href="#khugepaged-tunables-syskernelmmtransparent_hugepagekhugepaged">khugepaged tunables (<code>/sys/kernel/mm/transparent_hugepage/khugepaged/</code>)</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#6-cma-contiguous-memory-allocator-params">6. CMA (Contiguous Memory Allocator) Params</a></summary></p>
+
+<ul>
+<li><a href="#boot-command-line-kerneldmacontiguousc">Boot command line (kernel/dma/contiguous.c)</a></li>
+<li><a href="#kconfig-defaults">Kconfig defaults</a></li>
+<li><a href="#cma-sysfs">CMA sysfs</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#7-memory-cgroup-controls">7. Memory Cgroup Controls</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#8-watermark-tuning-summary">8. Watermark Tuning (Summary)</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#9-ksm-tunables">9. KSM Tunables</a></summary></p>
+
+<ul>
+<li><a href="#ksm-read-only-stats-also-in-syskernelmmksm">KSM read-only stats (also in <code>/sys/kernel/mm/ksm/</code>)</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#10-zswap-module-parameters">10. zswap Module Parameters</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#11-per-vma-lock-configuration">11. Per-VMA Lock Configuration</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#quick-reference-all-tunable-interfaces-by-type">Quick Reference: All Tunable Interfaces by Type</a></summary></p>
+
+<ul>
+<li><a href="#boot-command-line-parameters">Boot Command Line Parameters</a></li>
+<li><a href="#procsysvm-sysctls"><code>/proc/sys/vm/</code> Sysctls</a></li>
+<li><a href="#syskernelmmtransparent_hugepage"><code>/sys/kernel/mm/transparent_hugepage/</code></a></li>
+<li><a href="#syskernelmmksm"><code>/sys/kernel/mm/ksm/</code></a></li>
+<li><a href="#sysmodulezswapparameters"><code>/sys/module/zswap/parameters/</code></a></li>
+<li><a href="#memory-cgroup-cgroupv2-memory">Memory Cgroup (cgroupv2 <code>memory.*</code>)</a></li>
+<li><a href="#compile-time-only">Compile-Time Only</a></li>
+</ul>
+
+<p></details></p>
+
+<hr>
+
+<h2>1. <code>/proc/sys/vm/</code> Sysctl Tunables (page_alloc.c)</h2>
+
+<p>Registered via <code>register_sysctl_init("vm", page_alloc_sysctl_table)</code> at <strong>mm/page_alloc.c:6730</strong>.</p>
+
+<table>
+<thead><tr>
+<th>Tunable</th>
+<th>Variable</th>
+<th>Default</th>
+<th>Range</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>min_free_kbytes</code></td>
+<td><code>min_free_kbytes</code></td>
+<td>1024 (auto-calculated: <code>sqrt(lowmem_kbytes * 16)</code>, clamped 128–262144)</td>
+<td>≥0</td>
+<td>mm/page_alloc.c:275</td>
+<td>Minimum free memory the kernel keeps. Controls zone watermarks. Higher = more reserved for atomic allocs</td>
+</tr>
+<tr>
+<td><code>watermark_boost_factor</code></td>
+<td><code>watermark_boost_factor</code></td>
+<td>15000</td>
+<td>≥0</td>
+<td>mm/page_alloc.c:277</td>
+<td>Factor for temporarily boosting watermarks after fragmentation events. 15000 = 150% boost. 0 disables boosting</td>
+</tr>
+<tr>
+<td><code>watermark_scale_factor</code></td>
+<td><code>watermark_scale_factor</code></td>
+<td>10</td>
+<td>1–3000</td>
+<td>mm/page_alloc.c:278</td>
+<td>Scale factor (in 0.01% of managed pages) for gap between min/low/high watermarks. 10 = 0.1%</td>
+</tr>
+<tr>
+<td><code>defrag_mode</code></td>
+<td><code>defrag_mode</code></td>
+<td>0</td>
+<td>0–1</td>
+<td>mm/page_alloc.c:279</td>
+<td>When 1, enables aggressive defragmentation in the page allocator by altering fallback behavior</td>
+</tr>
+<tr>
+<td><code>percpu_pagelist_high_fraction</code></td>
+<td><code>percpu_pagelist_high_fraction</code></td>
+<td>0</td>
+<td>0 or ≥8</td>
+<td>mm/page_alloc.c:5900</td>
+<td>Fraction controlling per-cpu pagelist high watermark. 0 = use default batch-based calculation</td>
+</tr>
+<tr>
+<td><code>lowmem_reserve_ratio</code></td>
+<td><code>sysctl_lowmem_reserve_ratio[]</code></td>
+<td>DMA=256, DMA32=256, NORMAL=32, HIGHMEM=0, MOVABLE=0</td>
+<td>—</td>
+<td>mm/page_alloc.c:231</td>
+<td>Per-zone ratios for lowmem reservation protecting lower zones from higher-zone allocations</td>
+</tr>
+<tr>
+<td><code>numa_zonelist_order</code></td>
+<td><code>numa_zonelist_order</code></td>
+<td>(string)</td>
+<td>—</td>
+<td>mm/page_alloc.c:5521</td>
+<td>NUMA zone list ordering policy (NUMA only)</td>
+</tr>
+<tr>
+<td><code>min_unmapped_ratio</code></td>
+<td><code>sysctl_min_unmapped_ratio</code></td>
+<td>1</td>
+<td>0–100</td>
+<td>mm/vmscan.c:7587</td>
+<td>% of zone pages that must be unmapped before node reclaim claims pages (NUMA)</td>
+</tr>
+<tr>
+<td><code>min_slab_ratio</code></td>
+<td><code>sysctl_min_slab_ratio</code></td>
+<td>5</td>
+<td>0–100</td>
+<td>mm/vmscan.c:7593</td>
+<td>% threshold of slab pages beyond which slab reclaim occurs (NUMA)</td>
+</tr>
+</tbody></table>
+
+<h3>Helper variables</h3>
+
+<table>
+<thead><tr>
+<th>Variable</th>
+<th>Default</th>
+<th>File:Line</th>
+<th>Note</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>user_min_free_kbytes</code></td>
+<td>-1</td>
+<td>mm/page_alloc.c:276</td>
+<td>Tracks whether user explicitly set min_free_kbytes</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>2. <code>/proc/sys/vm/</code> Sysctl Tunables (vmscan.c)</h2>
+
+<p>Registered via <code>register_sysctl_init("vm", vmscan_sysctl_table)</code> at <strong>mm/vmscan.c:7561</strong>.</p>
+
+<table>
+<thead><tr>
+<th>Tunable</th>
+<th>Variable</th>
+<th>Default</th>
+<th>Range</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>swappiness</code></td>
+<td><code>vm_swappiness</code></td>
+<td>60</td>
+<td>0–200</td>
+<td>mm/vmscan.c:202</td>
+<td>Relative tendency to swap out anonymous vs reclaim file-backed pages. 0 = minimal swapping, 200 = max</td>
+</tr>
+<tr>
+<td><code>zone_reclaim_mode</code></td>
+<td><code>node_reclaim_mode</code></td>
+<td>0</td>
+<td>≥0</td>
+<td>mm/vmscan.c:7574</td>
+<td>NUMA node reclaim mode bitmask: 1=RECLAIM_ZONE, 2=RECLAIM_WRITE, 4=RECLAIM_UNMAP (NUMA only)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>3. Compaction Tunables (<code>/proc/sys/vm/</code>)</h2>
+
+<p>Registered via <code>register_sysctl_init("vm", vm_compaction)</code> at <strong>mm/compaction.c:3329</strong>.</p>
+
+<table>
+<thead><tr>
+<th>Tunable</th>
+<th>Variable</th>
+<th>Default</th>
+<th>Range</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>compact_memory</code></td>
+<td><code>sysctl_compact_memory</code></td>
+<td>0</td>
+<td>write-only</td>
+<td>mm/compaction.c:1892</td>
+<td>Write 1 to trigger system-wide compaction. Resets after completion</td>
+</tr>
+<tr>
+<td><code>compaction_proactiveness</code></td>
+<td><code>sysctl_compaction_proactiveness</code></td>
+<td>20</td>
+<td>0–100</td>
+<td>mm/compaction.c:1890</td>
+<td>Aggressiveness of background proactive compaction. 0 disables it. Higher = more aggressive</td>
+</tr>
+<tr>
+<td><code>extfrag_threshold</code></td>
+<td><code>sysctl_extfrag_threshold</code></td>
+<td>500</td>
+<td>0–1000</td>
+<td>mm/compaction.c:1891</td>
+<td>External fragmentation threshold. Below this, compaction is deferred as fragmentation is considered acceptable</td>
+</tr>
+<tr>
+<td><code>compact_unevictable_allowed</code></td>
+<td><code>sysctl_compact_unevictable_allowed</code></td>
+<td>CONFIG_COMPACT_UNEVICTABLE_DEFAULT</td>
+<td>0–1</td>
+<td>mm/compaction.c:1884</td>
+<td>Whether compaction can scan the unevictable LRU for movable pages</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>4. SLUB Allocator Debug/Tuning (Boot Command Line)</h2>
+
+<p>All set via <code>__setup()</code> boot parameters in <strong>mm/slub.c</strong>.</p>
+
+<table>
+<thead><tr>
+<th>Boot Param</th>
+<th>Alias</th>
+<th>Variable</th>
+<th>Default</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>slab_debug</code></td>
+<td><code>slub_debug</code></td>
+<td><code>slub_debug</code> flags</td>
+<td>0 (or <code>DEBUG_DEFAULT_FLAGS</code> if <code>CONFIG_SLUB_DEBUG_ON</code>)</td>
+<td>mm/slub.c:976–978</td>
+<td>Enable slab debug flags (F=sanity, Z=redzoning, P=poisoning, U=track user, T=trace, A=failslab, O=orig_size). Format: <code>slub_debug=<flags>[,<slab_name>]</code></td>
+</tr>
+<tr>
+<td><code>slab_min_order=</code></td>
+<td><code>slub_min_order=</code></td>
+<td><code>slub_min_order</code></td>
+<td>0</td>
+<td>mm/slub.c:7525</td>
+<td>Minimum page order for slab allocations</td>
+</tr>
+<tr>
+<td><code>slab_max_order=</code></td>
+<td><code>slub_max_order=</code></td>
+<td><code>slub_max_order</code></td>
+<td>PAGE_ALLOC_COSTLY_ORDER (3), or 1 if <code>CONFIG_SLUB_TINY</code></td>
+<td>mm/slub.c:7526</td>
+<td>Maximum page order for slab allocations. Capped at MAX_PAGE_ORDER</td>
+</tr>
+<tr>
+<td><code>slab_min_objects=</code></td>
+<td><code>slub_min_objects=</code></td>
+<td><code>slub_min_objects</code></td>
+<td>0 (auto-calculated)</td>
+<td>mm/slub.c:7528</td>
+<td>Minimum number of objects per slab. 0 = auto-size based on nr_cpu_ids</td>
+</tr>
+<tr>
+<td><code>slab_strict_numa</code></td>
+<td>—</td>
+<td>static key <code>strict_numa</code></td>
+<td>disabled</td>
+<td>mm/slub.c:8186–8193</td>
+<td>Enable strict per-NUMA-node slab allocation (NUMA only)</td>
+</tr>
+</tbody></table>
+
+<h3>SLUB sysfs</h3>
+
+<p>SLUB exposes per-cache attributes under <code>/sys/kernel/slab/<cache>/</code> when <code>CONFIG_SYSFS</code> is enabled (registered at mm/slub.c:351). Per-cache files include: <code>object_size</code>, <code>objs_per_slab</code>, <code>order</code>, <code>slab_size</code>, <code>partial</code>, <code>cpu_slabs</code>, <code>shrink</code>, <code>aliases</code>, <code>align</code>, etc.</p>
+
+<hr>
+
+<h2>5. THP (Transparent Huge Pages) Tunables</h2>
+
+<p>Exposed via sysfs under <code>/sys/kernel/mm/transparent_hugepage/</code>.</p>
+
+<h3>Global THP attributes (mm/huge_memory.c)</h3>
+
+<table>
+<thead><tr>
+<th>sysfs File</th>
+<th>Variable/Flag</th>
+<th>Default</th>
+<th>Values</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td><code>TRANSPARENT_HUGEPAGE_FLAG</code> / <code>REQ_MADV_FLAG</code></td>
+<td><code>madvise</code> (or <code>always</code> if <code>CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS</code>)</td>
+<td>always, madvise, never</td>
+<td>mm/huge_memory.c:299–342</td>
+<td>Global THP policy for PMD-sized hugepages</td>
+</tr>
+<tr>
+<td><code>defrag</code></td>
+<td><code>DEFRAG_DIRECT</code>, <code>_KSWAPD</code>, <code>_KSWAPD_OR_MADV</code>, <code>_REQ_MADV</code> flags</td>
+<td>madvise</td>
+<td>always, defer, defer+madvise, madvise, never</td>
+<td>mm/huge_memory.c:375–432</td>
+<td>When to trigger direct reclaim/compaction for THP allocation</td>
+</tr>
+<tr>
+<td><code>use_zero_page</code></td>
+<td><code>TRANSPARENT_HUGEPAGE_USE_ZERO_PAGE_FLAG</code></td>
+<td>1 (set in default flags)</td>
+<td>0, 1</td>
+<td>mm/huge_memory.c:435–448</td>
+<td>Use the huge zero page for read faults on zero-filled areas</td>
+</tr>
+<tr>
+<td><code>hpage_pmd_size</code></td>
+<td>—</td>
+<td>arch-dependent</td>
+<td>read-only</td>
+<td>mm/huge_memory.c:451–454</td>
+<td>Size in bytes of a PMD-level THP</td>
+</tr>
+<tr>
+<td><code>shrink_underused</code></td>
+<td><code>split_underused_thp</code></td>
+<td>true</td>
+<td>0, 1</td>
+<td>mm/huge_memory.c:75, 456–475</td>
+<td>Automatically split underused THPs to reclaim memory</td>
+</tr>
+</tbody></table>
+
+<h3>Per-THP-size attributes (<code>/sys/kernel/mm/transparent_hugepage/hugepages-*kB/</code>)</h3>
+
+<table>
+<thead><tr>
+<th>sysfs File</th>
+<th>Variable</th>
+<th>Default</th>
+<th>Values</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td><code>huge_anon_orders_always/inherit/madvise</code> bitmasks</td>
+<td>PMD_ORDER=inherit, others=never</td>
+<td>always, inherit, madvise, never</td>
+<td>mm/huge_memory.c:497–548</td>
+<td>Per-order THP enablement policy for anonymous mappings</td>
+</tr>
+</tbody></table>
+
+<h3>khugepaged tunables (<code>/sys/kernel/mm/transparent_hugepage/khugepaged/</code>)</h3>
+
+<table>
+<thead><tr>
+<th>sysfs File</th>
+<th>Variable</th>
+<th>Default</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>scan_sleep_millisecs</code></td>
+<td><code>khugepaged_scan_sleep_millisecs</code></td>
+<td>10000 (10s)</td>
+<td>mm/khugepaged.c:74</td>
+<td>Sleep between khugepaged scan cycles</td>
+</tr>
+<tr>
+<td><code>alloc_sleep_millisecs</code></td>
+<td><code>khugepaged_alloc_sleep_millisecs</code></td>
+<td>60000 (60s)</td>
+<td>mm/khugepaged.c:76</td>
+<td>Sleep After allocation failure before retry</td>
+</tr>
+<tr>
+<td><code>pages_to_scan</code></td>
+<td><code>khugepaged_pages_to_scan</code></td>
+<td>(uninitialized, set at runtime)</td>
+<td>mm/khugepaged.c:71</td>
+<td>Number of pages khugepaged scans per pass</td>
+</tr>
+<tr>
+<td><code>max_ptes_none</code></td>
+<td><code>khugepaged_max_ptes_none</code></td>
+<td>(set at init, up to HPAGE_PMD_NR-1)</td>
+<td>mm/khugepaged.c:87</td>
+<td>Max unmapped PTEs allowed when collapsing. Higher = more aggressive collapse, may increase memory use</td>
+</tr>
+<tr>
+<td><code>max_ptes_swap</code></td>
+<td><code>khugepaged_max_ptes_swap</code></td>
+<td>(set at init)</td>
+<td>mm/khugepaged.c:88</td>
+<td>Max swap entries allowed when collapsing a hugepage</td>
+</tr>
+<tr>
+<td><code>max_ptes_shared</code></td>
+<td><code>khugepaged_max_ptes_shared</code></td>
+<td>(set at init)</td>
+<td>mm/khugepaged.c:89</td>
+<td>Max shared PTEs allowed when collapsing</td>
+</tr>
+<tr>
+<td><code>defrag</code></td>
+<td><code>TRANSPARENT_HUGEPAGE_DEFRAG_KHUGEPAGED_FLAG</code></td>
+<td>1 (enabled in default flags)</td>
+<td>0, 1</td>
+<td>mm/khugepaged.c:233–251</td>
+<td>Whether khugepaged uses defrag for hugepage allocation</td>
+</tr>
+<tr>
+<td><code>pages_collapsed</code></td>
+<td><code>khugepaged_pages_collapsed</code></td>
+<td>—</td>
+<td>read-only</td>
+<td>mm/khugepaged.c:72</td>
+<td>Counter of pages collapsed</td>
+</tr>
+<tr>
+<td><code>full_scans</code></td>
+<td><code>khugepaged_full_scans</code></td>
+<td>—</td>
+<td>read-only</td>
+<td>mm/khugepaged.c:73</td>
+<td>Counter of full scan cycles completed</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>6. CMA (Contiguous Memory Allocator) Params</h2>
+
+<h3>Boot command line (kernel/dma/contiguous.c)</h3>
+
+<table>
+<thead><tr>
+<th>Boot Param</th>
+<th>Variable(s)</th>
+<th>Default</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>cma=<size>[@<base>[-<limit>]]</code></td>
+<td><code>size_cmdline</code>, <code>base_cmdline</code>, <code>limit_cmdline</code></td>
+<td>CONFIG_CMA_SIZE_MBYTES (Kconfig, default 0 if unset)</td>
+<td>kernel/dma/contiguous.c:72–91</td>
+<td>Set global CMA area size, optional base address and limit</td>
+</tr>
+<tr>
+<td><code>numa_cma=<node>:<size>[,...]</code></td>
+<td><code>numa_cma_size[]</code></td>
+<td>0</td>
+<td>kernel/dma/contiguous.c:93+</td>
+<td>Per-NUMA-node CMA area sizes (CONFIG_DMA_NUMA_CMA)</td>
+</tr>
+</tbody></table>
+
+<h3>Kconfig defaults</h3>
+
+<table>
+<thead><tr>
+<th>Config</th>
+<th>Definition</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>CONFIG_CMA_SIZE_MBYTES</code></td>
+<td><code>CMA_SIZE_MBYTES</code></td>
+<td>kernel/dma/contiguous.c:49–52</td>
+<td>Default CMA size in MB if cma= not specified on cmdline</td>
+</tr>
+</tbody></table>
+
+<h3>CMA sysfs</h3>
+
+<p>Each CMA area has sysfs stats under <code>/sys/kernel/mm/cma/<name>/</code> (registered in mm/cma_sysfs.c) exposing <code>alloc_pages_success</code>, <code>alloc_pages_fail</code>, <code>release_pages_success</code>.</p>
+
+<hr>
+
+<h2>7. Memory Cgroup Controls</h2>
+
+<p>Exposed via cgroupv2 under <code>memory.*</code> files. Defined in <strong>mm/memcontrol.c:4587–4656</strong>.</p>
+
+<table>
+<thead><tr>
+<th>cgroup File</th>
+<th>Handler</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>memory.current</code></td>
+<td><code>memory_current_read</code></td>
+<td>mm/memcontrol.c:4587</td>
+<td>Current memory usage (read-only)</td>
+</tr>
+<tr>
+<td><code>memory.peak</code></td>
+<td><code>memory_peak_show/write</code></td>
+<td>mm/memcontrol.c:4592</td>
+<td>Peak memory usage; write to reset</td>
+</tr>
+<tr>
+<td><code>memory.min</code></td>
+<td><code>memory_min_write</code></td>
+<td>mm/memcontrol.c:4303</td>
+<td>Hard memory protection floor — pages below this are never reclaimed. Default: 0 (no protection)</td>
+</tr>
+<tr>
+<td><code>memory.low</code></td>
+<td><code>memory_low_write</code></td>
+<td>mm/memcontrol.c:4326</td>
+<td>Soft memory protection threshold — best-effort, reclaim avoids pages below this. Default: 0</td>
+</tr>
+<tr>
+<td><code>memory.high</code></td>
+<td><code>memory_high_write</code></td>
+<td>mm/memcontrol.c:4349</td>
+<td>High usage throttle point — kernel aggressively reclaims when exceeded. Default: max (unlimited)</td>
+</tr>
+<tr>
+<td><code>memory.max</code></td>
+<td><code>memory_max_write</code></td>
+<td>mm/memcontrol.c:4401</td>
+<td>Hard memory limit — triggers OOM killer when truly exceeded. Default: max (unlimited)</td>
+</tr>
+<tr>
+<td><code>memory.events</code></td>
+<td><code>memory_events_show</code></td>
+<td>mm/memcontrol.c:4623</td>
+<td>Event counters: low, high, max, oom, oom_kill, oom_group_kill (read-only)</td>
+</tr>
+<tr>
+<td><code>memory.oom.group</code></td>
+<td><code>memory_oom_group_write</code></td>
+<td>mm/memcontrol.c:4546</td>
+<td>0 or 1 — when 1, OOM kills entire cgroup instead of single task. Default: 0</td>
+</tr>
+<tr>
+<td><code>memory.reclaim</code></td>
+<td><code>memory_reclaim</code></td>
+<td>mm/memcontrol.c:4573</td>
+<td>Write bytes to trigger proactive reclaim from this cgroup</td>
+</tr>
+<tr>
+<td><code>memory.stat</code></td>
+<td><code>memory_stat_show</code></td>
+<td>mm/memcontrol.c:4634</td>
+<td>Detailed memory statistics (read-only)</td>
+</tr>
+<tr>
+<td><code>memory.numa_stat</code></td>
+<td><code>memory_numa_stat_show</code></td>
+<td>mm/memcontrol.c:4638</td>
+<td>Per-NUMA-node statistics (read-only, NUMA only)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>8. Watermark Tuning (Summary)</h2>
+
+<p>All in <strong>mm/page_alloc.c</strong>:</p>
+
+<table>
+<thead><tr>
+<th>Param</th>
+<th>Value</th>
+<th>Line</th>
+<th>How It Works</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>min_free_kbytes</code></td>
+<td>1024 (auto: <code>sqrt(lowmem_kbytes * 16)</code>)</td>
+<td>275</td>
+<td>Sets WMARK_MIN. Auto-calculated at boot, clamped 128–262144</td>
+</tr>
+<tr>
+<td><code>watermark_boost_factor</code></td>
+<td>15000</td>
+<td>277</td>
+<td>Temporary multiplier (in basis points / 10000) to boost watermarks when fragmentation detected. 0 = disabled</td>
+</tr>
+<tr>
+<td><code>watermark_scale_factor</code></td>
+<td>10</td>
+<td>278</td>
+<td>Gap between watermarks (WMARK_LOW, WMARK_HIGH) in 0.01% of managed pages. Range: 1–3000</td>
+</tr>
+</tbody></table>
+
+<p>Watermark calculation (mm/page_alloc.c:6340–6389):</p>
+<ul>
+<li><code>WMARK_MIN = min_free_kbytes >> (PAGE_SHIFT - 10)</code> (proportionally distributed across zones)</li>
+<li><code>WMARK_LOW = WMARK_MIN + max(WMARK_MIN/4, managed_pages * watermark_scale_factor / 10000)</code></li>
+<li><code>WMARK_HIGH = WMARK_MIN + max(WMARK_MIN/2, managed_pages * watermark_scale_factor / 10000)</code></li>
+</ul>
+
+<hr>
+
+<h2>9. KSM Tunables</h2>
+
+<p>Exposed via sysfs under <code>/sys/kernel/mm/ksm/</code>. All in <strong>mm/ksm.c</strong>.</p>
+
+<table>
+<thead><tr>
+<th>sysfs File</th>
+<th>Variable</th>
+<th>Default</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>sleep_millisecs</code></td>
+<td><code>ksm_thread_sleep_millisecs</code></td>
+<td>20</td>
+<td>mm/ksm.c:285</td>
+<td>Sleep between KSM scan iterations (ms)</td>
+</tr>
+<tr>
+<td><code>pages_to_scan</code></td>
+<td><code>ksm_thread_pages_to_scan</code></td>
+<td>100 (<code>DEFAULT_PAGES_TO_SCAN</code>)</td>
+<td>mm/ksm.c:252, 282</td>
+<td>Pages scanned per iteration</td>
+</tr>
+<tr>
+<td><code>run</code></td>
+<td><code>ksm_run</code></td>
+<td>0 (<code>KSM_RUN_STOP</code>)</td>
+<td>mm/ksm.c:482</td>
+<td>0=stop, 1=run (merge), 2=run+unmerge</td>
+</tr>
+<tr>
+<td><code>merge_across_nodes</code></td>
+<td><code>ksm_merge_across_nodes</code></td>
+<td>1</td>
+<td>mm/ksm.c:471</td>
+<td>Whether to merge pages across NUMA nodes (NUMA only)</td>
+</tr>
+<tr>
+<td><code>use_zero_pages</code></td>
+<td><code>ksm_use_zero_pages</code></td>
+<td>false</td>
+<td>mm/ksm.c:291</td>
+<td>Map zero-filled pages to the kernel zero page</td>
+</tr>
+<tr>
+<td><code>max_page_sharing</code></td>
+<td><code>ksm_max_page_sharing</code></td>
+<td>256</td>
+<td>mm/ksm.c:279</td>
+<td>Max number of mappings sharing a single KSM page</td>
+</tr>
+<tr>
+<td><code>stable_node_chains_prune_millisecs</code></td>
+<td><code>ksm_stable_node_chains_prune_millisecs</code></td>
+<td>2000</td>
+<td>mm/ksm.c:276</td>
+<td>Interval for pruning stable node chains</td>
+</tr>
+<tr>
+<td><code>smart_scan</code></td>
+<td><code>ksm_smart_scan</code></td>
+<td>true</td>
+<td>mm/ksm.c:295</td>
+<td>Enable smart scan to skip pages unlikely to merge</td>
+</tr>
+<tr>
+<td><code>advisor_mode</code></td>
+<td><code>ksm_advisor</code></td>
+<td>NONE (0)</td>
+<td>mm/ksm.c:338</td>
+<td>Auto-tuning mode: none or scan-time</td>
+</tr>
+<tr>
+<td><code>advisor_max_cpu</code></td>
+<td><code>ksm_advisor_max_cpu</code></td>
+<td>70</td>
+<td>mm/ksm.c:310</td>
+<td>Max CPU% for scan-time advisor</td>
+</tr>
+<tr>
+<td><code>advisor_min_pages_to_scan</code></td>
+<td><code>ksm_advisor_min_pages_to_scan</code></td>
+<td>500</td>
+<td>mm/ksm.c:346</td>
+<td>Advisor floor for pages_to_scan</td>
+</tr>
+<tr>
+<td><code>advisor_max_pages_to_scan</code></td>
+<td><code>ksm_advisor_max_pages_to_scan</code></td>
+<td>30000</td>
+<td>mm/ksm.c:304</td>
+<td>Advisor ceiling for pages_to_scan</td>
+</tr>
+<tr>
+<td><code>advisor_target_scan_time</code></td>
+<td><code>ksm_advisor_target_scan_time</code></td>
+<td>200 (seconds)</td>
+<td>mm/ksm.c:313</td>
+<td>Target full-scan cycle time for advisor</td>
+</tr>
+</tbody></table>
+
+<h3>KSM read-only stats (also in <code>/sys/kernel/mm/ksm/</code>)</h3>
+
+<table>
+<thead><tr>
+<th>File</th>
+<th>Variable</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>pages_scanned</code></td>
+<td><code>ksm_pages_scanned</code></td>
+<td>Total pages scanned</td>
+</tr>
+<tr>
+<td><code>pages_shared</code></td>
+<td><code>ksm_pages_shared</code></td>
+<td>Pages actually shared (deduplicated)</td>
+</tr>
+<tr>
+<td><code>pages_sharing</code></td>
+<td><code>ksm_pages_sharing</code></td>
+<td>Extra mappings sharing shared pages</td>
+</tr>
+<tr>
+<td><code>pages_unshared</code></td>
+<td><code>ksm_pages_unshared</code></td>
+<td>Pages scanned but unique</td>
+</tr>
+<tr>
+<td><code>pages_volatile</code></td>
+<td>computed</td>
+<td>Rapidly changing pages (not merged)</td>
+</tr>
+<tr>
+<td><code>pages_skipped</code></td>
+<td><code>ksm_pages_skipped</code></td>
+<td>Pages skipped by smart_scan</td>
+</tr>
+<tr>
+<td><code>ksm_zero_pages</code></td>
+<td><code>ksm_zero_pages</code></td>
+<td>Pages mapped to zero page</td>
+</tr>
+<tr>
+<td><code>full_scans</code></td>
+<td><code>ksm_scan.seqnr</code></td>
+<td>Full scan cycles completed</td>
+</tr>
+<tr>
+<td><code>stable_node_dups</code></td>
+<td><code>ksm_stable_node_dups</code></td>
+<td>Stable nodes with duplicates</td>
+</tr>
+<tr>
+<td><code>stable_node_chains</code></td>
+<td><code>ksm_stable_node_chains</code></td>
+<td>Number of stable node chains</td>
+</tr>
+<tr>
+<td><code>general_profit</code></td>
+<td>computed</td>
+<td>Memory saved (bytes) = (sharing + zero_pages) <em> PAGE_SIZE - rmap_items </em> sizeof(rmap_item)</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>10. zswap Module Parameters</h2>
+
+<p>Module params under <code>/sys/module/zswap/parameters/</code>. All in <strong>mm/zswap.c</strong>.</p>
+
+<table>
+<thead><tr>
+<th>Parameter</th>
+<th>Variable</th>
+<th>Default</th>
+<th>Permissions</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td><code>zswap_enabled</code></td>
+<td><code>CONFIG_ZSWAP_DEFAULT_ON</code> (typically false)</td>
+<td>0644</td>
+<td>mm/zswap.c:90, 96</td>
+<td>Enable/disable zswap compressed swap cache</td>
+</tr>
+<tr>
+<td><code>compressor</code></td>
+<td><code>zswap_compressor</code></td>
+<td><code>CONFIG_ZSWAP_COMPRESSOR_DEFAULT</code> (e.g. "lzo-rle")</td>
+<td>0644</td>
+<td>mm/zswap.c:100, 107</td>
+<td>Compression algorithm name</td>
+</tr>
+<tr>
+<td><code>max_pool_percent</code></td>
+<td><code>zswap_max_pool_percent</code></td>
+<td>20</td>
+<td>0644</td>
+<td>mm/zswap.c:112</td>
+<td>Max % of total memory for compressed pool</td>
+</tr>
+<tr>
+<td><code>accept_threshold_percent</code></td>
+<td><code>zswap_accept_thr_percent</code></td>
+<td>90</td>
+<td>0644</td>
+<td>mm/zswap.c:116</td>
+<td>% of max pool at which to start rejecting new pages</td>
+</tr>
+<tr>
+<td><code>shrinker_enabled</code></td>
+<td><code>zswap_shrinker_enabled</code></td>
+<td><code>CONFIG_ZSWAP_SHRINKER_DEFAULT_ON</code></td>
+<td>0644</td>
+<td>mm/zswap.c:122</td>
+<td>Enable memory pressure-based shrinker for zswap pool</td>
+</tr>
+</tbody></table>
+
+<hr>
+
+<h2>11. Per-VMA Lock Configuration</h2>
+
+<p>Compile-time only (no runtime tunables). Defined in <strong>mm/Kconfig:1325–1340</strong>.</p>
+
+<table>
+<thead><tr>
+<th>Config</th>
+<th>Default</th>
+<th>Depends</th>
+<th>File:Line</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>CONFIG_ARCH_SUPPORTS_PER_VMA_LOCK</code></td>
+<td>n (per-arch)</td>
+<td>—</td>
+<td>mm/Kconfig:1325</td>
+<td>Arch declares support for per-VMA locking</td>
+</tr>
+<tr>
+<td><code>CONFIG_PER_VMA_LOCK</code></td>
+<td>y (auto)</td>
+<td><code>ARCH_SUPPORTS_PER_VMA_LOCK && MMU && SMP</code></td>
+<td>mm/Kconfig:1328</td>
+<td>Lock each VMA separately during page fault handling instead of taking mmap_lock</td>
+</tr>
+<tr>
+<td><code>CONFIG_PER_VMA_LOCK_STATS</code></td>
+<td>n</td>
+<td><code>PER_VMA_LOCK</code></td>
+<td>mm/Kconfig.debug:300</td>
+<td>Debug statistics for per-VMA lock usage</td>
+</tr>
+</tbody></table>
+
+<p>ARM64 enables <code>ARCH_SUPPORTS_PER_VMA_LOCK</code>, so PER_VMA_LOCK is active by default on SMP ARM64 kernels. Fault path at mm/memory.c:6449.</p>
+
+<hr>
+
+<h2>Quick Reference: All Tunable Interfaces by Type</h2>
+
+<h3>Boot Command Line Parameters</h3>
+<table>
+<thead><tr>
+<th>Param</th>
+<th>Source File</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>cma=<size>[@<base>[-<limit>]]</code></td>
+<td>kernel/dma/contiguous.c:91</td>
+</tr>
+<tr>
+<td><code>numa_cma=...</code></td>
+<td>kernel/dma/contiguous.c:93+</td>
+</tr>
+<tr>
+<td><code>slub_debug=<flags>[,<slab>]</code> / <code>slab_debug</code></td>
+<td>mm/slub.c:1923–1924</td>
+</tr>
+<tr>
+<td><code>slub_min_order=N</code> / <code>slab_min_order=N</code></td>
+<td>mm/slub.c:8152–8153</td>
+</tr>
+<tr>
+<td><code>slub_max_order=N</code> / <code>slab_max_order=N</code></td>
+<td>mm/slub.c:8167–8168</td>
+</tr>
+<tr>
+<td><code>slub_min_objects=N</code> / <code>slab_min_objects=N</code></td>
+<td>mm/slub.c:8177–8178</td>
+</tr>
+<tr>
+<td><code>slab_strict_numa</code></td>
+<td>mm/slub.c:8193</td>
+</tr>
+</tbody></table>
+
+<h3><code>/proc/sys/vm/</code> Sysctls</h3>
+<table>
+<thead><tr>
+<th>Tunable</th>
+<th>Source</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>min_free_kbytes</code></td>
+<td>mm/page_alloc.c</td>
+</tr>
+<tr>
+<td><code>watermark_boost_factor</code></td>
+<td>mm/page_alloc.c</td>
+</tr>
+<tr>
+<td><code>watermark_scale_factor</code></td>
+<td>mm/page_alloc.c</td>
+</tr>
+<tr>
+<td><code>defrag_mode</code></td>
+<td>mm/page_alloc.c</td>
+</tr>
+<tr>
+<td><code>percpu_pagelist_high_fraction</code></td>
+<td>mm/page_alloc.c</td>
+</tr>
+<tr>
+<td><code>lowmem_reserve_ratio</code></td>
+<td>mm/page_alloc.c</td>
+</tr>
+<tr>
+<td><code>numa_zonelist_order</code></td>
+<td>mm/page_alloc.c</td>
+</tr>
+<tr>
+<td><code>min_unmapped_ratio</code></td>
+<td>mm/page_alloc.c (NUMA)</td>
+</tr>
+<tr>
+<td><code>min_slab_ratio</code></td>
+<td>mm/page_alloc.c (NUMA)</td>
+</tr>
+<tr>
+<td><code>swappiness</code></td>
+<td>mm/vmscan.c</td>
+</tr>
+<tr>
+<td><code>zone_reclaim_mode</code></td>
+<td>mm/vmscan.c (NUMA)</td>
+</tr>
+<tr>
+<td><code>compact_memory</code></td>
+<td>mm/compaction.c</td>
+</tr>
+<tr>
+<td><code>compaction_proactiveness</code></td>
+<td>mm/compaction.c</td>
+</tr>
+<tr>
+<td><code>extfrag_threshold</code></td>
+<td>mm/compaction.c</td>
+</tr>
+<tr>
+<td><code>compact_unevictable_allowed</code></td>
+<td>mm/compaction.c</td>
+</tr>
+</tbody></table>
+
+<h3><code>/sys/kernel/mm/transparent_hugepage/</code></h3>
+<table>
+<thead><tr>
+<th>File</th>
+<th>Source</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>mm/huge_memory.c</td>
+</tr>
+<tr>
+<td><code>defrag</code></td>
+<td>mm/huge_memory.c</td>
+</tr>
+<tr>
+<td><code>use_zero_page</code></td>
+<td>mm/huge_memory.c</td>
+</tr>
+<tr>
+<td><code>hpage_pmd_size</code></td>
+<td>mm/huge_memory.c</td>
+</tr>
+<tr>
+<td><code>shrink_underused</code></td>
+<td>mm/huge_memory.c</td>
+</tr>
+<tr>
+<td><code>hugepages-*kB/enabled</code></td>
+<td>mm/huge_memory.c</td>
+</tr>
+<tr>
+<td><code>khugepaged/scan_sleep_millisecs</code></td>
+<td>mm/khugepaged.c</td>
+</tr>
+<tr>
+<td><code>khugepaged/alloc_sleep_millisecs</code></td>
+<td>mm/khugepaged.c</td>
+</tr>
+<tr>
+<td><code>khugepaged/pages_to_scan</code></td>
+<td>mm/khugepaged.c</td>
+</tr>
+<tr>
+<td><code>khugepaged/max_ptes_none</code></td>
+<td>mm/khugepaged.c</td>
+</tr>
+<tr>
+<td><code>khugepaged/max_ptes_swap</code></td>
+<td>mm/khugepaged.c</td>
+</tr>
+<tr>
+<td><code>khugepaged/max_ptes_shared</code></td>
+<td>mm/khugepaged.c</td>
+</tr>
+<tr>
+<td><code>khugepaged/defrag</code></td>
+<td>mm/khugepaged.c</td>
+</tr>
+</tbody></table>
+
+<h3><code>/sys/kernel/mm/ksm/</code></h3>
+<table>
+<thead><tr>
+<th>File</th>
+<th>Source</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>sleep_millisecs</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>pages_to_scan</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>run</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>merge_across_nodes</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>use_zero_pages</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>max_page_sharing</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>smart_scan</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>advisor_mode</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>advisor_max_cpu</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>advisor_min_pages_to_scan</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>advisor_max_pages_to_scan</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>advisor_target_scan_time</code></td>
+<td>mm/ksm.c</td>
+</tr>
+<tr>
+<td><code>stable_node_chains_prune_millisecs</code></td>
+<td>mm/ksm.c</td>
+</tr>
+</tbody></table>
+
+<h3><code>/sys/module/zswap/parameters/</code></h3>
+<table>
+<thead><tr>
+<th>File</th>
+<th>Source</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>mm/zswap.c</td>
+</tr>
+<tr>
+<td><code>compressor</code></td>
+<td>mm/zswap.c</td>
+</tr>
+<tr>
+<td><code>max_pool_percent</code></td>
+<td>mm/zswap.c</td>
+</tr>
+<tr>
+<td><code>accept_threshold_percent</code></td>
+<td>mm/zswap.c</td>
+</tr>
+<tr>
+<td><code>shrinker_enabled</code></td>
+<td>mm/zswap.c</td>
+</tr>
+</tbody></table>
+
+<h3>Memory Cgroup (cgroupv2 <code>memory.*</code>)</h3>
+<table>
+<thead><tr>
+<th>File</th>
+<th>Source</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>memory.min</code></td>
+<td>mm/memcontrol.c</td>
+</tr>
+<tr>
+<td><code>memory.low</code></td>
+<td>mm/memcontrol.c</td>
+</tr>
+<tr>
+<td><code>memory.high</code></td>
+<td>mm/memcontrol.c</td>
+</tr>
+<tr>
+<td><code>memory.max</code></td>
+<td>mm/memcontrol.c</td>
+</tr>
+<tr>
+<td><code>memory.oom.group</code></td>
+<td>mm/memcontrol.c</td>
+</tr>
+<tr>
+<td><code>memory.reclaim</code></td>
+<td>mm/memcontrol.c</td>
+</tr>
+</tbody></table>
+
+<h3>Compile-Time Only</h3>
+<table>
+<thead><tr>
+<th>Config</th>
+<th>Source</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>CONFIG_PER_VMA_LOCK</code></td>
+<td>mm/Kconfig</td>
+</tr>
+<tr>
+<td><code>CONFIG_CMA_SIZE_MBYTES</code></td>
+<td>Kconfig</td>
+</tr>
+</tbody></table>
+
+</body>
+</html>

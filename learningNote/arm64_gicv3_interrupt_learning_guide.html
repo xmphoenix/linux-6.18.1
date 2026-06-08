@@ -1,0 +1,6832 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arm64 Gicv3 Interrupt Learning Guide</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+img[src$=".svg"] {
+    max-width: 100%;
+    height: auto;
+    min-width: 200px;
+    background: #fff;
+    border-radius: 6px;
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Task list ========== */
+.task-list-item { list-style: none; margin-left: -24px; }
+.task-list-item input { margin-right: 8px; accent-color: var(--accent); }
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+</style>
+
+</head>
+<body>
+<h1>Linux ARM64 GICv3 中断子系统完全学习指南</h1>
+
+<blockquote><strong>环境</strong>：Linux 6.18.1 / ARM64 / ARMv8 / GICv3 / 可选 ITS / 可选 GICv4<br>
+<strong>源码基线</strong>：当前工作区内核源码树<br>
+<strong>编写视角</strong>：顶级 Linux ARM64 中断子系统专家<br>
+<strong>学习方法论</strong>：架构文档 + 内核源码 + 调试实验 + 数据结构 + 算法</blockquote>
+
+<hr>
+
+<h2>目录</h2>
+
+<p><details><br>
+<summary><a href="#学习路线总览">学习路线总览</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#先给结论研究-gicv3-应该抓住什么">先给结论：研究 GICv3 应该抓住什么</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第0课gicv3-架构总图">第0课：GICv3 架构总图</a></summary></p>
+
+<ul>
+<li><a href="#01-硬件组件图">0.1 硬件组件图</a></li>
+<li><a href="#011-distributorredistributorcpu-interface-三者从架构上分别代表什么">0.1.1 Distributor、Redistributor、CPU Interface 三者从架构上分别代表什么</a></li>
+<li><a href="#012-distributor-的架构意义">0.1.2 Distributor 的架构意义</a></li>
+<li><a href="#013-redistributor-的架构意义">0.1.3 Redistributor 的架构意义</a></li>
+<li><a href="#014-cpu-interface-的架构意义">0.1.4 CPU Interface 的架构意义</a></li>
+<li><a href="#015-为什么架构上必须拆成这三层">0.1.5 为什么架构上必须拆成这三层</a></li>
+<li><a href="#016-三者在一条中断路径里怎么协作">0.1.6 三者在一条中断路径里怎么协作</a></li>
+<li><a href="#017-站在普通世界-linux-视角三者各自最常对应什么问题">0.1.7 站在普通世界 Linux 视角，三者各自最常对应什么问题</a></li>
+<li><a href="#02-中断类型一定要先分清">0.2 中断类型一定要先分清</a></li>
+<li><a href="#03-gicv3-的四状态模型">0.3 GICv3 的四状态模型</a></li>
+<li><a href="#04-架构文档与源码对照阅读法">0.4 架构文档与源码对照阅读法</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第1课先掌握-linux-通用-irq-四件套">第1课：先掌握 Linux 通用 IRQ 四件套</a></summary></p>
+
+<ul>
+<li><a href="#11-irq_desc">1.1 <code>irq_desc</code></a></li>
+<li><a href="#12-irq_data">1.2 <code>irq_data</code></a></li>
+<li><a href="#13-irq_chip">1.3 <code>irq_chip</code></a></li>
+<li><a href="#14-irq_domain">1.4 <code>irq_domain</code></a></li>
+<li><a href="#141-把设备树里的中断描述变成-irq_desc最短静态建链图">1.4.1 把“设备树里的中断描述”变成 <code>irq_desc</code>：最短静态建链图</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第2课arm64-从异常入口走到-gic-驱动">第2课：ARM64 从异常入口走到 GIC 驱动</a></summary></p>
+
+<ul>
+<li><a href="#21-异常向量表内容">2.1 异常向量表内容</a></li>
+<li><a href="#22-kernel_ventry-和-entry_handler-宏展开后的真实含义">2.2 <code>kernel_ventry</code> 和 <code>entry_handler</code> 宏展开后的真实含义</a></li>
+<li><a href="#23-入口总链路">2.3 入口总链路</a></li>
+<li><a href="#24-关键源码点">2.4 关键源码点</a></li>
+<li><a href="#25-nmipseudo-nmi-特殊路径">2.5 NMI/Pseudo-NMI 特殊路径</a></li>
+<li><a href="#26-pseudo-nmi-专题">2.6 Pseudo-NMI 专题</a></li>
+<li><a href="#2616-fiq-和-irq区别联系以及在内核代码里的具体实现">2.6.16 FIQ 和 IRQ：区别、联系，以及在内核代码里的具体实现</a></li>
+<li><a href="#27-linux-中断处理全景hardirq--softirq--tasklet--threaded-irq">2.7 Linux 中断处理全景：Hardirq / Softirq / Tasklet / Threaded IRQ</a></li>
+<li><a href="#28-中断与同步真正容易出错的部分">2.8 中断与同步：真正容易出错的部分</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第3课gicv3-初始化总流程">第3课：GICv3 初始化总流程</a></summary></p>
+
+<ul>
+<li><a href="#31-device-treeacpi-初始化入口">3.1 Device Tree/ACPI 初始化入口</a></li>
+<li><a href="#311-如果从设备树-bring-up-角度看最容易记住的入口链">3.1.1 如果从设备树 bring-up 角度看，最容易记住的入口链</a></li>
+<li><a href="#32-distributor-初始化gic_dist_init">3.2 Distributor 初始化：<code>gic_dist_init()</code></a></li>
+<li><a href="#33-redistributor-初始化gic_populate_rdist--gic_cpu_init">3.3 Redistributor 初始化：<code>gic_populate_rdist()</code> + <code>gic_cpu_init()</code></a></li>
+<li><a href="#34-cpu-interface-初始化gic_cpu_sys_reg_init">3.4 CPU Interface 初始化：<code>gic_cpu_sys_reg_init()</code></a></li>
+<li><a href="#35-把三层寄存器配置串起来看到底要配哪些寄存器">3.5 把三层寄存器配置串起来看：到底要配哪些寄存器</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第4课核心数据结构必须建立对象图">第4课：核心数据结构必须建立对象图</a></summary></p>
+
+<ul>
+<li><a href="#41-gicv3-核心对象图">4.1 GICv3 核心对象图</a></li>
+<li><a href="#42-struct-gic_chip_data">4.2 <code>struct gic_chip_data</code></a></li>
+<li><a href="#43-struct-rdists">4.3 <code>struct rdists</code></a></li>
+<li><a href="#44-its-核心结构">4.4 ITS 核心结构</a></li>
+<li><a href="#45-关系要这样记">4.5 关系要这样记</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第5课运行时中断路径的关键算法">第5课：运行时中断路径的关键算法</a></summary></p>
+
+<ul>
+<li><a href="#51-intid-分类算法<strong>get_intid_range">5.1 INTID 分类算法：<code></strong>get_intid_range()</code></a></li>
+<li><a href="#52-寄存器地址换算convert_offset_index">5.2 寄存器地址换算：<code>convert_offset_index()</code></a></li>
+<li><a href="#53-ackeoideactivate-路径">5.3 ACK/EOI/Deactivate 路径</a></li>
+<li><a href="#54-中断路由算法gic_set_affinity">5.4 中断路由算法：<code>gic_set_affinity()</code></a></li>
+<li><a href="#55-sgi-目标列表算法gic_compute_target_list">5.5 SGI 目标列表算法：<code>gic_compute_target_list()</code></a></li>
+<li><a href="#56-its-lpi-分配算法">5.6 ITS LPI 分配算法</a></li>
+<li><a href="#57-its-命令队列算法">5.7 ITS 命令队列算法</a></li>
+<li><a href="#58-its-负载均衡算法its_select_cpu">5.8 ITS 负载均衡算法：<code>its_select_cpu()</code></a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第6课gicv3-的-irq-domain-实现">第6课：GICv3 的 IRQ domain 实现</a></summary></p>
+
+<ul>
+<li><a href="#61-顶层-gic-domain">6.1 顶层 GIC domain</a></li>
+<li><a href="#62-gic_irq_domain_translate-很重要">6.2 <code>gic_irq_domain_translate()</code> 很重要</a></li>
+<li><a href="#63-gic_irq_domain_map-把-hwirq-绑定到-flow-handler">6.3 <code>gic_irq_domain_map()</code> 把 hwirq 绑定到 flow handler</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第7课itslpimsi-是第二战场">第7课：ITS/LPI/MSI 是第二战场</a></summary></p>
+
+<ul>
+<li><a href="#71-必须先建立翻译模型">7.1 必须先建立翻译模型</a></li>
+<li><a href="#72-its-初始化主线">7.2 ITS 初始化主线</a></li>
+<li><a href="#73-lpi-两张表">7.3 LPI 两张表</a></li>
+<li><a href="#74-msi-domain-层次">7.4 MSI domain 层次</a></li>
+<li><a href="#75-最关键的-its-命令">7.5 最关键的 ITS 命令</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第8课gicv4-是高级专题但必须知道边界">第8课：GICv4 是高级专题，但必须知道边界</a></summary></p>
+
+<ul>
+<li><a href="#81-gicv4-解决的核心问题">8.1 GICv4 解决的核心问题</a></li>
+<li><a href="#82-三个核心对象">8.2 三个核心对象</a></li>
+<li><a href="#83-当前源码中的体现">8.3 当前源码中的体现</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第9课按源码文件建立研究地图">第9课：按源码文件建立研究地图</a></summary></p>
+
+<ul>
+<li><a href="#91-必读源码优先级">9.1 必读源码优先级</a></li>
+<li><a href="#92-推荐阅读顺序">9.2 推荐阅读顺序</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第10课源码结合实践的四阶段研究规划">第10课：源码结合实践的四阶段研究规划</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#阶段a打基础建立对象模型第1周">阶段A：打基础，建立对象模型（第1周）</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#阶段b跑通中断入口与本地中断第2周">阶段B：跑通中断入口与本地中断（第2周）</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#阶段c跑通-affinity-与-ipi第3周">阶段C：跑通 affinity 与 IPI（第3周）</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#阶段d跑通-itslpimsi最后看-gicv4第4-5周">阶段D：跑通 ITS/LPI/MSI，最后看 GICv4（第4-5周）</a></summary></p>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第11课结合你当前仓库的实操建议">第11课：结合你当前仓库的实操建议</a></summary></p>
+
+<ul>
+<li><a href="#111-启动环境建议">11.1 启动环境建议</a></li>
+<li><a href="#112-最实用的实验命令">11.2 最实用的实验命令</a></li>
+<li><a href="#113-研究-its-的实验切入点">11.3 研究 ITS 的实验切入点</a></li>
+<li><a href="#114-结合-qemu-的分组实验设计">11.4 结合 QEMU 的分组实验设计</a></li>
+<li><a href="#实验组a最小化-gicv3-启动确认实验">实验组A：最小化 GICv3 启动确认实验</a></li>
+<li><a href="#实验组a-1pseudo-nmi-启用验证实验">实验组A-1：Pseudo-NMI 启用验证实验</a></li>
+<li><a href="#实验组bppi-路径实验盯住本地-timer-中断">实验组B：PPI 路径实验，盯住本地 timer 中断</a></li>
+<li><a href="#实验组cspi-路径实验观察共享设备中断和-affinity-迁移">实验组C：SPI 路径实验，观察共享设备中断和 affinity 迁移</a></li>
+<li><a href="#实验组dipisgi-路径实验观察核间中断">实验组D：IPI/SGI 路径实验，观察核间中断</a></li>
+<li><a href="#实验组eitslpimsi-进阶实验">实验组E：ITS/LPI/MSI 进阶实验</a></li>
+<li><a href="#实验组fgdb-单步实验从异常入口走到-flow-handler">实验组F：GDB 单步实验，从异常入口走到 flow handler</a></li>
+<li><a href="#115-一个建议的实验顺序">11.5 一个建议的实验顺序</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第12课学完这部分内容能解决哪些问题">第12课：学完这部分内容能解决哪些问题</a></summary></p>
+
+<ul>
+<li><a href="#121-能判断问题到底在架构层irq-core-层还是驱动层">12.1 能判断问题到底在架构层、IRQ core 层，还是驱动层</a></li>
+<li><a href="#122-能解释为什么中断只在某个-cpu-上跑">12.2 能解释“为什么中断只在某个 CPU 上跑”</a></li>
+<li><a href="#123-能解释为什么改了-affinity-但流量中断没有按预期迁移">12.3 能解释“为什么改了 affinity 但流量/中断没有按预期迁移”</a></li>
+<li><a href="#124-能区分-hardirq-高softirq-高ksoftirqd-高threaded-irq-卡住这几类不同现场">12.4 能区分 hardirq 高、softirq 高、ksoftirqd 高、threaded irq 卡住这几类不同现场</a></li>
+<li><a href="#125-能解释为什么某类中断根本不能像预期那样绑核">12.5 能解释“为什么某类中断根本不能像预期那样绑核”</a></li>
+<li><a href="#126-能处理-itsmsilpi-相关的看起来像普通-spi其实不是的问题">12.6 能处理 ITS/MSI/LPI 相关的“看起来像普通 SPI，其实不是”的问题</a></li>
+<li><a href="#127-能把性能问题和同步问题联系起来看">12.7 能把性能问题和同步问题联系起来看</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第13课经典问题处理手册">第13课：经典问题处理手册</a></summary></p>
+
+<ul>
+<li><a href="#130-一套真正能落地的-irq-debug-方案">13.0 一套真正能落地的 IRQ Debug 方案</a></li>
+<li><a href="#131-经典问题一中断绑定-cpu">13.1 经典问题一：中断绑定 CPU</a></li>
+<li><a href="#132-经典问题二softirq-过高">13.2 经典问题二：softirq 过高</a></li>
+<li><a href="#133-中断绑核和-softirq-过高正确的整体处置思路">13.3 中断绑核和 softirq 过高，正确的整体处置思路</a></li>
+<li><a href="#134-一条最实用的现场排查清单">13.4 一条最实用的现场排查清单</a></li>
+<li><a href="#135-用-qemu-复现中断绑定-cpu问题">13.5 用 QEMU 复现“中断绑定 CPU”问题</a></li>
+<li><a href="#136-用-qemu-复现softirq-过高问题">13.6 用 QEMU 复现“softirq 过高”问题</a></li>
+<li><a href="#137-经典问题的源码定位清单">13.7 经典问题的源码定位清单</a></li>
+<li><a href="#138-处理这类问题的一条总原则">13.8 处理这类问题的一条总原则</a></li>
+<li><a href="#139-经典问题三关中断时间过长">13.9 经典问题三：关中断时间过长</a></li>
+<li><a href="#1310-经典问题四中断上下文里出现-loop风暴或反复-pending">13.10 经典问题四：中断上下文里出现 loop、风暴或反复 pending</a></li>
+<li><a href="#1311-这几类问题的实战判断口诀">13.11 这几类问题的实战判断口诀</a></li>
+<li><a href="#1312-把源码读成闭环的一份函数级阅读地图">13.12 把源码读成闭环的一份函数级阅读地图</a></li>
+<li><a href="#1313-常用-irq-经典问题总表">13.13 常用 IRQ 经典问题总表</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#第14课最值得你亲手画的三张图">第14课：最值得你亲手画的三张图</a></summary></p>
+
+<ul>
+<li><a href="#图1从异常向量到设备-isr-的调用链">图1：从异常向量到设备 ISR 的调用链</a></li>
+<li><a href="#图2gicv3-初始化对象图">图2：GICv3 初始化对象图</a></li>
+<li><a href="#图3its-翻译图">图3：ITS 翻译图</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#总总结顶级内核工程师视角下的-gicv3-研究结论">总总结：顶级内核工程师视角下的 GICv3 研究结论</a></summary></p>
+
+<ul>
+<li><a href="#结论1gicv3-的本质不是寄存器集合而是分层中断路由系统">结论1：GICv3 的本质不是寄存器集合，而是“分层中断路由系统”</a></li>
+<li><a href="#结论2研究-gicv3-最容易走偏的地方是只盯寄存器不盯-irq-core">结论2：研究 GICv3 最容易走偏的地方，是只盯寄存器，不盯 IRQ core</a></li>
+<li><a href="#结论3gicv3-真正复杂的部分不是普通-spippi而是-itslpigicv4">结论3：GICv3 真正复杂的部分，不是普通 SPI/PPI，而是 ITS/LPI/GICv4</a></li>
+<li><a href="#结论4算法层面最值得反复咀嚼的是四个点">结论4：算法层面最值得反复咀嚼的是四个点</a></li>
+<li><a href="#结论5最有效的学习方式不是看完所有源码而是按路径验证源码">结论5：最有效的学习方式不是“看完所有源码”，而是“按路径验证源码”</a></li>
+</ul>
+
+<p></details></p>
+
+<p><details><br>
+<summary><a href="#最后给你的研究建议">最后给你的研究建议</a></summary></p>
+
+<p></details></p>
+
+<hr>
+
+<h2>学习路线总览</h2>
+
+<pre><code class="language-mermaid">graph TD
+    A[第0课: GICv3 架构总图&lt;br/&gt;中断状态机 + 组件边界&lt;br/&gt;⏰ 2天] --&gt; B[第1课: IRQ 通用框架&lt;br/&gt;irq_desc / irq_data / irq_chip / irq_domain&lt;br/&gt;⏰ 2天]
+    B --&gt; C[第2课: ARM64 异常入口&lt;br/&gt;向量表到 handle_arch_irq&lt;br/&gt;⏰ 2天]
+    C --&gt; D[第3课: GICv3 初始化&lt;br/&gt;GICD/GICR/CPU IF/Domain&lt;br/&gt;⏰ 4天]
+    D --&gt; E[第4课: 运行时中断路径&lt;br/&gt;ACK/EOI/Deactivate/Affinity/IPI&lt;br/&gt;⏰ 4天]
+    E --&gt; F[第5课: ITS/LPI/MSI&lt;br/&gt;DeviceID/EventID/Collection/Command Queue&lt;br/&gt;⏰ 6天]
+    F --&gt; G[第6课: GICv4 虚拟中断&lt;br/&gt;vLPI/vPE/Doorbell&lt;br/&gt;⏰ 4天]
+    G --&gt; H[第7课: 实验与追踪&lt;br/&gt;ftrace / procfs / affinity / QEMU/GDB&lt;br/&gt;⏰ 5天]
+    H --&gt; I[第8课: 综合总结&lt;br/&gt;架构-实现-性能-虚拟化统一理解&lt;br/&gt;⏰ 2天]
+
+    style A fill:#2E7D32,color:#fff
+    style B fill:#1565C0,color:#fff
+    style C fill:#EF6C00,color:#fff
+    style D fill:#6A1B9A,color:#fff
+    style E fill:#00838F,color:#fff
+    style F fill:#C62828,color:#fff
+    style G fill:#AD1457,color:#fff
+    style H fill:#5D4037,color:#fff
+    style I fill:#37474F,color:#fff</code></pre>
+
+<p><strong>绿色</strong>=架构基础 <strong>蓝色</strong>=Linux 通用框架 <strong>橙色</strong>=异常入口 <strong>紫色</strong>=初始化 <strong>青色</strong>=运行路径 <strong>红色</strong>=ITS/MSI <strong>洋红</strong>=虚拟化 <strong>棕色</strong>=实验</p>
+
+<hr>
+
+<h2>先给结论：研究 GICv3 应该抓住什么</h2>
+
+<p>如果你站在内核实现者视角看 GICv3，中断子系统不是“几个寄存器读写”，而是三层叠加：</p>
+
+<ol>
+<li><strong>ARM GIC 架构层</strong>：Distributor、Redistributor、CPU Interface、ITS、vPE/vLPI 这些硬件对象和状态机。</li>
+<li><strong>Linux 通用 IRQ 抽象层</strong>：<code>irq_desc</code>、<code>irq_data</code>、<code>irq_chip</code>、<code>irq_domain</code> 负责把“硬件中断号”和“Linux IRQ 编号”解耦。</li>
+<li><strong>平台驱动实现层</strong>：<code>drivers/irqchip/irq-gic-v3.c</code>、<code>irq-gic-v3-its.c</code>、<code>irq-gic-v4.c</code> 把架构语义映射为 Linux IRQ core 能消费的操作集。</li>
+</ol>
+
+<p>真正的研究重点有五个：</p>
+
+<ol>
+<li><strong>异常入口到设备 ISR 的完整调用链</strong>。</li>
+<li><strong>初始化阶段怎样把 GICD/GICR/ICC sysreg 建起来</strong>。</li>
+<li><strong>irq_domain 怎样把 hwirq 翻译成 virq</strong>。</li>
+<li><strong>ITS 怎样把 DeviceID/EventID 翻译成 LPI，并维护命令队列与表项</strong>。</li>
+<li><strong>GICv4 怎样把物理 LPI 扩展成 guest 可见的 vLPI/vPE</strong>。</li>
+</ol>
+
+<p>如果这五条线打通，你对 ARM64 GICv3 中断子系统就不是“会用”，而是“能读、能改、能调、能定位性能与虚拟化问题”。</p>
+
+<hr>
+
+<h2>第0课：GICv3 架构总图</h2>
+
+<h3>0.1 硬件组件图</h3>
+
+<pre><code class="language-text">设备/外设 ──&gt; SPI/ESPI ───────┐
+                               │
+CPU本地源 ─&gt; SGI/PPI/EPPI ─┐   │
+                           │   │
+PCIe/MSI ─&gt; ITS -&gt; LPI ────┴──&gt; GIC 逻辑 ──&gt; CPU Interface(ICC_*) ──&gt; ARM64 IRQ 异常入口
+
+其中：
+- GICD 负责全局中断：SPI / ESPI 路由与配置
+- GICR 负责每 CPU 局部中断：SGI / PPI / EPPI / LPI 相关状态
+- ICC_* system registers 是 CPU 侧中断接口
+- ITS 负责 MSI/LPI 翻译
+- GICv4 再往上扩展出 vLPI / vPE</code></pre>
+
+<h3>0.1.1 Distributor、Redistributor、CPU Interface 三者从架构上分别代表什么</h3>
+
+<p>这三个名字如果只按“寄存器块”去记，很容易越学越乱。更准确的理解方式是：它们代表 <strong>三个不同层次的中断职责分工</strong>。</p>
+
+<ol>
+<li><strong>Distributor</strong></li>
+</ol>
+<p>   代表系统级、全局共享中断的控制与路由中心。</p>
+<ol>
+<li><strong>Redistributor</strong></li>
+</ol>
+<p>   代表每个 CPU/PE 自己那一份本地中断状态和本地投递前站。</p>
+<ol>
+<li><strong>CPU Interface</strong></li>
+</ol>
+<p>   代表 GIC 最终把中断交给 CPU 核心时的接口层。</p>
+
+<p>如果把它压成一句最不容易忘的话，就是：</p>
+
+<pre><code class="language-text">Distributor 管全局
+Redistributor 管每核本地
+CPU Interface 负责最后把中断真正送进 CPU</code></pre>
+
+<h3>0.1.2 Distributor 的架构意义</h3>
+
+<p>Distributor 站在 <strong>整个 SoC/系统</strong> 的视角看中断。</p>
+
+<p>它最重要的职责不是“离 CPU 最近”，而是：</p>
+
+<ol>
+<li>定义和管理全局共享中断，典型就是 SPI/ESPI。</li>
+<li>保存这些全局中断的组别、使能、优先级、触发方式等属性。</li>
+<li>决定这类全局中断应该被路由到哪个目标 PE 或 affinity。</li>
+</ol>
+
+<p>所以从架构语义上说，Distributor 更像：</p>
+
+<ol>
+<li>全局中断命名空间的控制中心。</li>
+<li>共享中断的属性仓库。</li>
+<li>SPI 路由决策点。</li>
+</ol>
+
+<p>对 Linux 来说，凡是你在研究：</p>
+
+<ol>
+<li>共享设备中断。</li>
+<li><code>GICD_IROUTER</code>。</li>
+<li>affinity 迁移。</li>
+</ol>
+
+<p>本质上都是在研究 Distributor 这一层。</p>
+
+<h3>0.1.3 Redistributor 的架构意义</h3>
+
+<p>Redistributor 是 GICv3 相比 GICv2 最关键的架构拆分之一。</p>
+
+<p>它的本质是：把“每 CPU 本地相关的中断状态”从全局中心拆出来，变成每个 PE 自己维护一份。</p>
+
+<p>它主要承载：</p>
+
+<ol>
+<li>SGI：核间中断。</li>
+<li>PPI/EPPI：每 CPU 私有中断。</li>
+<li>LPI 在目标 CPU 侧的本地状态和表项落点。</li>
+</ol>
+
+<p>所以 Redistributor 从架构上代表的是：</p>
+
+<ol>
+<li>每 CPU 的本地中断入口管理单元。</li>
+<li>本地 pending/active/config 状态的宿主。</li>
+<li>LPI 最终落到某个 CPU 时的本地承接点。</li>
+</ol>
+
+<p>这也是为什么在 GICv3 里：</p>
+
+<ol>
+<li>timer/PPI 研究要盯 GICR。</li>
+<li>IPI/SGI 研究要盯 GICR 和 <code>ICC_SGI1R_EL1</code>。</li>
+<li>ITS/LPI 最终也要落回某个 Redistributor。</li>
+</ol>
+
+<h3>0.1.4 CPU Interface 的架构意义</h3>
+
+<p>CPU Interface 不是“大而全的配置中心”，而是 <strong>GIC 和 CPU 核心之间真正发生中断握手的那一层</strong>。</p>
+
+<p>在 GICv3 里，这一层主要体现为 <code>ICC_*</code> system registers。</p>
+
+<p>它负责的不是“系统里有哪些中断”，而是：</p>
+
+<ol>
+<li>当前 CPU 此刻能看到哪条最高优先级中断。</li>
+<li>CPU 通过哪条接口把 INTID 读出来。</li>
+<li>CPU 如何做 ACK、EOI、Deactivate。</li>
+<li>CPU 通过 PMR/BPR/IGRPEN 控制可接收的优先级和 Group。</li>
+</ol>
+
+<p>所以从架构语义上说，CPU Interface 代表的是：</p>
+
+<ol>
+<li>GIC 到 CPU 核心的最终交付接口。</li>
+<li>优先级屏蔽和激活优先级栈的承载层。</li>
+<li>普通 IRQ 与 pseudo-NMI 等执行语义真正生效的地方。</li>
+</ol>
+
+<p>对普通世界 Linux 来说，这一层最典型的寄存器就是：</p>
+
+<ol>
+<li><code>ICC_IAR1_EL1</code></li>
+<li><code>ICC_EOIR1_EL1</code></li>
+<li><code>ICC_DIR_EL1</code></li>
+<li><code>ICC_PMR_EL1</code></li>
+<li><code>ICC_IGRPEN1_EL1</code></li>
+</ol>
+
+<h3>0.1.5 为什么架构上必须拆成这三层</h3>
+
+<p>如果不拆，所有共享中断、本地中断、优先级交付都堆在一个全局块里，多核扩展、LPI、虚拟化都会变得非常笨重。</p>
+
+<p>GICv3 把它拆开，本质上解决了三个问题：</p>
+
+<ol>
+<li><strong>全局共享中断</strong> 继续由 Distributor 集中管理。</li>
+<li><strong>每 CPU 本地中断状态</strong> 下沉到 Redistributor，避免所有本地状态都挤在一个全局中心。</li>
+<li><strong>真正的 CPU 接口语义</strong> 留在 ICC system register 层，方便优先级、屏蔽、NMI-like 语义和异常入口配合。</li>
+</ol>
+
+<p>所以这不是“为了寄存器分类好看”，而是 GICv3 为了多核扩展、LPI/ITS 和更复杂的优先级语义做的架构分层。</p>
+
+<h3>0.1.6 三者在一条中断路径里怎么协作</h3>
+
+<h4>情况一：共享 SPI 中断</h4>
+
+<pre><code class="language-text">设备
+  -&gt; Distributor 看到这是一条全局 SPI
+  -&gt; Distributor 按路由规则选择目标 CPU
+  -&gt; 目标 CPU 对应的本地侧接收这条中断
+  -&gt; CPU Interface 把最高优先级 pending interrupt 交给 CPU
+  -&gt; ARM64 异常入口</code></pre>
+
+<p>这里最该记住的是：<strong>SPI 的“全局属性和路由”在 Distributor。</strong></p>
+
+<h4>情况二：PPI/SGI 这类每 CPU 本地中断</h4>
+
+<pre><code class="language-text">本地 timer / IPI
+  -&gt; 直接进入当前 CPU 对应的 Redistributor 语义范围
+  -&gt; CPU Interface 呈现给 CPU
+  -&gt; ARM64 异常入口</code></pre>
+
+<p>这里最该记住的是：<strong>PPI/SGI 不是先绕 Distributor 再回来，它本来就是 per-CPU 本地对象。</strong></p>
+
+<h4>情况三：LPI/MSI</h4>
+
+<pre><code class="language-text">MSI write
+  -&gt; ITS 翻译成 LPI
+  -&gt; collection 选定目标 CPU
+  -&gt; 落到目标 CPU 的 Redistributor
+  -&gt; CPU Interface 交给 CPU</code></pre>
+
+<p>这里最该记住的是：<strong>ITS 负责翻译，Redistributor 负责本地落点，CPU Interface 负责最终交付。</strong></p>
+
+<h3>0.1.7 站在普通世界 Linux 视角，三者各自最常对应什么问题</h3>
+
+<p>如果你的研究视角是普通世界 Linux，可以把三者直接对应到三类常见问题：</p>
+
+<ol>
+<li><strong>Distributor</strong></li>
+</ol>
+<p>   重点对应 SPI、共享中断、绑核、<code>GICD_IROUTER</code>、affinity。</p>
+<ol>
+<li><strong>Redistributor</strong></li>
+</ol>
+<p>   重点对应 PPI、SGI、timer、本地中断、LPI 落点、每 CPU 初始化。</p>
+<ol>
+<li><strong>CPU Interface</strong></li>
+</ol>
+<p>   重点对应 <code>ICC_IAR1_EL1</code>、<code>ICC_EOIR1_EL1</code>、<code>ICC_DIR_EL1</code>、<code>ICC_PMR_EL1</code>、pseudo-NMI 与优先级屏蔽。</p>
+
+<p>这三类问题分清楚之后，你看源码时就不会把：</p>
+
+<ol>
+<li>“共享中断怎么路由”</li>
+<li>“本地中断状态存在哪”</li>
+<li>“CPU 为什么此刻真的进了 IRQ”</li>
+</ol>
+
+<p>混成同一个层次的问题。</p>
+
+<h3>0.2 中断类型一定要先分清</h3>
+
+<p>在当前源码里，<code>drivers/irqchip/irq-gic-v3.c</code> 通过 <code>__get_intid_range()</code> 把中断分成：</p>
+
+<ol>
+<li><code>SGI_RANGE</code>：0-15，核间中断。</li>
+<li><code>PPI_RANGE</code>：16-31，每 CPU 私有外设中断。</li>
+<li><code>SPI_RANGE</code>：32-1019，共享外设中断。</li>
+<li><code>EPPI_RANGE</code>：从 <code>EPPI_BASE_INTID=1056</code> 开始，扩展 PPI。</li>
+<li><code>ESPI_RANGE</code>：从 <code>ESPI_BASE_INTID=4096</code> 开始，扩展 SPI。</li>
+<li><code>LPI_RANGE</code>：8192 及以上，ITS 管理的 Locality-specific Peripheral Interrupt。</li>
+</ol>
+
+<p>这个分类非常关键，因为它直接决定：</p>
+
+<ol>
+<li>中断状态寄存器在 GICD 还是 GICR。</li>
+<li>是否可设置 affinity。</li>
+<li>使用什么 flow handler。</li>
+<li>是否走 ITS/LPI 特殊路径。</li>
+</ol>
+
+<h3>0.3 GICv3 的四状态模型</h3>
+
+<p>阅读 <code>arm64-reference/gic/IHI0069H_b_gic_architecture_specification.pdf</code> 时，必须把中断状态机和 Linux 路径对上：</p>
+
+<ol>
+<li><code>Inactive</code></li>
+<li><code>Pending</code></li>
+<li><code>Active</code></li>
+<li><code>Active+Pending</code></li>
+</ol>
+
+<p>Linux 中最关键的对应点是：</p>
+
+<ol>
+<li><code>ICC_IAR1_EL1</code> 读取时完成 ACK，获得 INTID。</li>
+<li><code>ICC_EOIR1_EL1</code> 做优先级 drop。</li>
+<li><code>ICC_DIR_EL1</code> 或 <code>GICD/GICR ICACTIVER</code> 做 deactivate。</li>
+</ol>
+
+<p>当前内核默认优先使用 <strong>EOI mode 1</strong>，也就是把 <strong>priority drop</strong> 和 <strong>deactivate</strong> 拆开。这在 <code>supports_deactivate_key</code>、<code>gic_eoimode1_chip</code>、<code>gic_eoimode1_eoi_irq()</code> 里体现得很清楚。</p>
+
+<h3>0.4 架构文档与源码对照阅读法</h3>
+
+<p>你当前目录 <code>arm64-reference/gic</code> 下的 PDF 建议这样用：</p>
+
+<ol>
+<li><code>IHI0069H_b_gic_architecture_specification.pdf</code></li>
+</ol>
+<p>   作用：权威规范。重点看 Distributor、Redistributor、Interrupt state、System register interface、ITS、GICv4。</p>
+<ol>
+<li><code>GICv3_Software_Overview_Official_Release_B.pdf</code></li>
+</ol>
+<p>   作用：适合先建立全局图，再回到规范。</p>
+<ol>
+<li><code>GICv3_v4_overview.pdf</code></li>
+</ol>
+<p>   作用：理解从 GICv3 到 GICv4 的扩展动机。</p>
+<ol>
+<li><code>learn_the_architecture_-_generic_interrupt_controller_v3_and_v4__overview_198123_0302_03_en.pdf</code></li>
+</ol>
+<p>   作用：适合查概念，不适合做最终结论。</p>
+
+<p>建议原则：</p>
+
+<ol>
+<li><strong>架构结论以 IHI0069 为准</strong>。</li>
+<li><strong>Linux 行为以当前源码为准</strong>。</li>
+<li><strong>不把文档概念直接等同于 Linux 数据结构</strong>，而是逐一映射。</li>
+</ol>
+
+<hr>
+
+<h2>第1课：先掌握 Linux 通用 IRQ 四件套</h2>
+
+<p>如果不先掌握 IRQ core，看 GIC 驱动一定会陷入“读得懂寄存器，读不懂框架”。</p>
+
+<h3>1.1 <code>irq_desc</code></h3>
+
+<p>定义在 <code>include/linux/irqdesc.h</code>。</p>
+
+<p>它是 Linux 侧真正的 IRQ 描述符，关键字段：</p>
+
+<ol>
+<li><code>irq_data</code>：和硬件控制器交互的那一层。</li>
+<li><code>handle_irq</code>：flow handler，例如 <code>handle_fasteoi_irq</code>。</li>
+<li><code>action</code>：设备驱动注册的 ISR 链表。</li>
+<li><code>lock</code>：描述符锁。</li>
+<li><code>percpu_enabled</code> / <code>affinity_hint</code>：亲和性与 per-cpu 语义。</li>
+</ol>
+
+<p>一句话理解：<strong><code>irq_desc</code> 是 Linux 中断对象本体</strong>。</p>
+
+<h3>1.2 <code>irq_data</code></h3>
+
+<p>定义在 <code>include/linux/irq.h</code>。</p>
+
+<p>关键字段：</p>
+
+<ol>
+<li><code>irq</code>：Linux IRQ 号。</li>
+<li><code>hwirq</code>：硬件中断号。</li>
+<li><code>chip</code>：底层控制器操作集。</li>
+<li><code>domain</code>：hwirq 和 virq 的映射域。</li>
+<li><code>chip_data</code>：控制器私有数据。</li>
+</ol>
+
+<p>一句话理解：<strong><code>irq_data</code> 是 Linux IRQ 与硬件控制器之间的桥</strong>。</p>
+
+<h3>1.3 <code>irq_chip</code></h3>
+
+<p>它定义控制器可做的动作，例如：</p>
+
+<ol>
+<li><code>irq_mask</code></li>
+<li><code>irq_unmask</code></li>
+<li><code>irq_eoi</code></li>
+<li><code>irq_set_type</code></li>
+<li><code>irq_set_affinity</code></li>
+<li><code>irq_set_vcpu_affinity</code></li>
+<li><code>ipi_send_mask</code></li>
+</ol>
+
+<p>在 GICv3 中，核心实现是：</p>
+
+<ol>
+<li><code>gic_chip</code></li>
+<li><code>gic_eoimode1_chip</code></li>
+<li><code>its_irq_chip</code></li>
+<li><code>mbi_irq_chip</code></li>
+</ol>
+
+<p>一句话理解：<strong><code>irq_chip</code> 是硬件控制器的虚函数表</strong>。</p>
+
+<h3>1.4 <code>irq_domain</code></h3>
+
+<p>定义在 <code>include/linux/irqdomain.h</code>。</p>
+
+<p>核心职责：把固件/设备树/ACPI 描述的中断，翻译成 Linux 内部能管理的 virq。</p>
+
+<p>关键操作：</p>
+
+<ol>
+<li><code>translate</code></li>
+<li><code>alloc</code></li>
+<li><code>free</code></li>
+<li><code>select</code></li>
+<li><code>map</code></li>
+</ol>
+
+<p>GICv3 里最关键的是 <code>gic_irq_domain_ops</code>。ITS 进一步在 GIC domain 上叠出 MSI domain。</p>
+
+<p>一句话理解：<strong><code>irq_domain</code> 是 Linux 里“中断命名空间”的翻译层</strong>。</p>
+
+<h3>1.4.1 把“设备树里的中断描述”变成 <code>irq_desc</code>：最短静态建链图</h3>
+
+<p>如果你总觉得 <code>irq_domain</code> 很抽象，最有效的办法不是死记结构体，而是把“控制器先注册自己”和“设备再来申请映射”这两条线分开看。</p>
+
+<p>先是控制器侧把自己的翻译能力挂进系统：</p>
+
+<pre><code class="language-text">IRQCHIP_DECLARE(arm,gic-v3, gic_of_init)
+   -&gt; of_irq_init()
+   -&gt; gic_of_init()
+   -&gt; gic_init_bases()
+   -&gt; irq_domain_create_tree()</code></pre>
+
+<p>然后才是普通设备侧根据固件描述申请一条可管理的 Linux IRQ：</p>
+
+<pre><code class="language-text">设备节点 interrupts 属性
+   -&gt; of_irq_parse_one()
+   -&gt; irq_create_of_mapping() / irq_create_fwspec_mapping()
+   -&gt; irq_find_matching_fwspec()
+   -&gt; gic_irq_domain_translate()
+   -&gt; irq_domain_alloc_descs()
+   -&gt; gic_irq_domain_alloc() / gic_irq_domain_map()
+   -&gt; irq_domain_set_info()
+   -&gt; irq_desc-&gt;handle_irq = handle_fasteoi_irq 或 handle_percpu_devid_irq</code></pre>
+
+<p>这一段最该记住的不是 API 名字，而是三件事：</p>
+
+<ol>
+<li><code>irq_domain</code> 先由中断控制器注册出来，设备驱动只是后来拿它做翻译。</li>
+<li><code>translate</code> 解决“这串固件 cell 到底代表哪个 hwirq 和 trigger type”。</li>
+<li><code>map/alloc</code> 解决“给它分配 virq，并把 <code>irq_chip</code>、flow handler、<code>irq_data</code> 绑定起来”。</li>
+</ol>
+
+<p>所以你在现场看到“设备树写了 interrupts，但驱动拿到 irq 后行为不对”，排查顺序通常应该是：</p>
+
+<ol>
+<li>DTS cell 是否写对。</li>
+<li><code>gic_irq_domain_translate()</code> 解析出的 hwirq/type 是否对。</li>
+<li><code>irq_domain_set_info()</code> 最终给 <code>irq_desc</code> 绑定了哪个 flow handler。</li>
+</ol>
+
+<hr>
+
+<h2>第2课：ARM64 从异常入口走到 GIC 驱动</h2>
+
+<h3>2.1 异常向量表内容</h3>
+
+<p>ARM64 中断研究如果不先看 <code>arch/arm64/kernel/entry.S</code> 里的向量表，后面所有“IRQ 从哪里来”都会是悬空的。</p>
+
+<p>当前源码里的核心对象是 <code>vectors</code>：</p>
+
+<pre><code class="language-text">SYM_CODE_START(vectors)
+   EL1t: sync / irq / fiq / error
+   EL1h: sync / irq / fiq / error
+   EL0 64-bit: sync / irq / fiq / error
+   EL0 32-bit: sync / irq / fiq / error
+SYM_CODE_END(vectors)</code></pre>
+
+<p>也就是说，<code>VBAR_EL1</code> 指向的是一张 <strong>16 项异常向量表</strong>，每组 4 类异常：</p>
+
+<table>
+<thead><tr>
+<th>来源上下文</th>
+<th>sync</th>
+<th>irq</th>
+<th>fiq</th>
+<th>error</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>EL1t</td>
+<td><code>kernel_ventry 1, t, 64, sync</code></td>
+<td><code>kernel_ventry 1, t, 64, irq</code></td>
+<td><code>kernel_ventry 1, t, 64, fiq</code></td>
+<td><code>kernel_ventry 1, t, 64, error</code></td>
+</tr>
+<tr>
+<td>EL1h</td>
+<td><code>kernel_ventry 1, h, 64, sync</code></td>
+<td><code>kernel_ventry 1, h, 64, irq</code></td>
+<td><code>kernel_ventry 1, h, 64, fiq</code></td>
+<td><code>kernel_ventry 1, h, 64, error</code></td>
+</tr>
+<tr>
+<td>EL0 64-bit</td>
+<td><code>kernel_ventry 0, t, 64, sync</code></td>
+<td><code>kernel_ventry 0, t, 64, irq</code></td>
+<td><code>kernel_ventry 0, t, 64, fiq</code></td>
+<td><code>kernel_ventry 0, t, 64, error</code></td>
+</tr>
+<tr>
+<td>EL0 32-bit</td>
+<td><code>kernel_ventry 0, t, 32, sync</code></td>
+<td><code>kernel_ventry 0, t, 32, irq</code></td>
+<td><code>kernel_ventry 0, t, 32, fiq</code></td>
+<td><code>kernel_ventry 0, t, 32, error</code></td>
+</tr>
+</tbody></table>
+
+<p>这里有三个关键点：</p>
+
+<ol>
+<li>ARM64 并不是只有 “IRQ 向量”，而是按异常来源和异常类型做二维展开。</li>
+<li><code>EL1t</code> 与 <code>EL1h</code> 不是两种“中断类型”，而是指 CPU 已经运行在 EL1 时，当前使用的是哪一个栈指针寄存器：<code>EL1t</code> 表示此时 EL1 代码使用 <code>SP_EL0</code>，<code>EL1h</code> 表示此时 EL1 代码使用当前异常级自己的栈指针，在 EL1 上就是 <code>SP_EL1</code>。</li>
+<li>Linux 真正关心的硬中断主路径，大多会落到 <code>EL1h IRQ</code> 或 <code>EL0 64-bit IRQ</code> 这一类入口。</li>
+</ol>
+
+<p>换句话说，这里的 <code>t/h</code> 重点不在“异常是什么”，而在“异常发生前 CPU 正在 EL1 下用哪根栈指针”。</p>
+
+<ol>
+<li>如果内核代码当时跑在 EL1，并且 <code>SP</code> 选择的是 <code>SP_EL1</code>，那么命中的是 <code>EL1h</code> 对应的向量槽。</li>
+<li>如果某段 EL1 代码当时改成使用 <code>SP_EL0</code>，那么命中的是 <code>EL1t</code> 对应的向量槽。</li>
+</ol>
+
+<p>其中所谓 <code>SP_ELx</code> 只是一个泛称，意思是“当前异常级自己的栈指针”：</p>
+
+<ol>
+<li>对 EL1 来说是 <code>SP_EL1</code>。</li>
+<li>对 EL2 来说是 <code>SP_EL2</code>。</li>
+<li>对 EL3 来说是 <code>SP_EL3</code>。</li>
+</ol>
+
+<p>在 Linux ARM64 主线里，内核正常运行基本都在 <code>EL1h</code> 语义下，也就是用内核自己的栈，所以 <code>EL1t</code> 更多是架构上完整保留的入口，而不是你平时最常踩到的主路径。</p>
+
+<h3>2.2 <code>kernel_ventry</code> 和 <code>entry_handler</code> 宏展开后的真实含义</h3>
+
+<p>向量表项不是简单的函数指针。每个向量槽位本质上都是 <code>kernel_ventry</code> 宏展开出来的一小段入口汇编，它负责：</p>
+
+<ol>
+<li>为异常分配 <code>pt_regs</code> 栈空间。</li>
+<li>做栈溢出检测。</li>
+<li>在需要时处理 trampoline 和 PAN/TTBR0 等入口细节。</li>
+<li>跳到 <code>elX...label</code> 的具体入口。</li>
+</ol>
+
+<p>随后，<code>entry_handler el, ht, regsize, label</code> 宏又把这些入口统一成：</p>
+
+<pre><code class="language-text">kernel_entry
+   -&gt; x0 = sp (pt_regs)
+   -&gt; bl el..._handler
+   -&gt; ret_to_user / ret_to_kernel</code></pre>
+
+<p>所以从结构上看，ARM64 异常入口有三层：</p>
+
+<pre><code class="language-text">vectors
+   -&gt; kernel_ventry
+   -&gt; entry_handler 生成的 el1h_64_irq / el0t_64_irq ...
+   -&gt; C 语言 handler，例如 el1h_64_irq_handler</code></pre>
+
+<p>这也是为什么你研究 GICv3 时，既要看 <code>entry.S</code>，也要看 <code>entry-common.c</code>。</p>
+
+<h4>2.2.1 一个最有价值的验证实验：亲眼看到 EL0 向量会先跳过 cleanup，而 EL1h 不会</h4>
+
+<p>前面关于 <code>EL1h</code>、<code>EL0 64-bit</code>、<code>kernel_ventry</code> 和 trampoline 的讨论，如果只停在文字层面，很容易越看越绕。最有效的办法是直接在 QEMU + GDB 里做一个两步实验：</p>
+
+<ol>
+<li><strong>静态看向量槽反汇编</strong>，确认 EL0 入口最前面确实多了一条 branch，而 EL1h 没有。</li>
+<li><strong>动态命中一次 EL0 IRQ 入口</strong>，确认正常路径会先执行这条 branch，直接跳过 cleanup 代码。</li>
+</ol>
+
+<p>这个实验的目的不是构造一个罕见的 <code>EL1t</code> 现场，而是把下面三件事一次看实：</p>
+
+<ol>
+<li><code>kernel_ventry 1, h, 64, irq</code> 和 <code>kernel_ventry 0, t, 64, irq</code> 展开的第一批指令不一样。</li>
+<li>EL0 向量里的 <code>b .Lskip_tramp_vectors_cleanup</code> 在正常入口下确实会先执行。</li>
+<li>Linux 主线日常最常命中的仍然是 <code>EL1h</code> 和 <code>EL0 64-bit</code>，不是 <code>EL1t</code>。</li>
+</ol>
+
+<h5>实验准备</h5>
+
+<p>沿用前面实验组 F 的调试方式启动：</p>
+
+<pre><code class="language-bash">./launch.sh arm64 debug</code></pre>
+
+<p>另开一个终端连接 GDB：</p>
+
+<pre><code class="language-bash">gdb-multiarch vmlinux</code></pre>
+
+<pre><code class="language-gdb">target remote localhost:1234
+set pagination off
+set confirm off
+set disassemble-next-line on</code></pre>
+
+<h5>第一步：静态比较两个向量槽的前几条指令</h5>
+
+<p><code>vectors</code> 里每个 slot 固定 128 字节，所以：</p>
+
+<ol>
+<li><code>EL1h IRQ</code> 是第 6 个槽，偏移 <code>5 * 128 = 0x280</code></li>
+<li><code>EL0 64-bit IRQ</code> 是第 10 个槽，偏移 <code>9 * 128 = 0x480</code></li>
+</ol>
+
+<p>在 GDB 里直接看：</p>
+
+<pre><code class="language-gdb">x/8i vectors+0x280
+x/10i vectors+0x480</code></pre>
+
+<p>你应当看到类似的差异：</p>
+
+<ol>
+<li><code>vectors+0x280</code> 对应 <code>EL1h IRQ</code>，开头就是 <code>sub sp, sp, #PT_REGS_SIZE</code> 一类指令。</li>
+<li><code>vectors+0x480</code> 对应 <code>EL0 64-bit IRQ</code>，最前面会多一条 <code>b .Lskip_tramp_vectors_cleanup...</code>，后面才是 <code>mrs x30, tpidrro_el0</code> / <code>msr tpidrro_el0, xzr</code>。</li>
+</ol>
+
+<p>这一步只回答一个问题：<strong>宏展开后的代码形态到底是不是你以为的那样。</strong></p>
+
+<h5>第二步：动态命中一次 EL0 IRQ，验证 normal path 会跳过 cleanup</h5>
+
+<p>先在 EL0 IRQ 的正式入口和 C handler 上下断点：</p>
+
+<pre><code class="language-gdb">tb el0t_64_irq
+tb el0t_64_irq_handler
+c</code></pre>
+
+<p>然后在 guest 里找一个最简单的用户态忙循环，让 timer IRQ 更容易在 EL0 上下文打进来：</p>
+
+<pre><code class="language-bash">while :; do :; done</code></pre>
+
+<p>如果系统里有 shell，这个实验很稳定；没有 shell 时，也可以让任意用户态程序持续运行，核心目标只是让 CPU 长时间停留在 EL0。</p>
+
+<p>当 GDB 命中 <code>el0t_64_irq</code> 后，不要急着继续，先回头看这个向量槽的第一条是否真的是 branch：</p>
+
+<pre><code class="language-gdb">x/6i vectors+0x480</code></pre>
+
+<p>然后看当前 <code>pc</code>：</p>
+
+<pre><code class="language-gdb">p/x $pc</code></pre>
+
+<p>你要确认的不是“cleanup 存不存在”，而是：</p>
+
+<ol>
+<li>当前这次正常 EL0 IRQ 入口已经越过了第一条 branch 之后的跳转语义。</li>
+<li>普通入口最终会落到 <code>el0t_64_irq</code>，而不会停在 cleanup 的 <code>mrs/msr</code> 那两条上。</li>
+</ol>
+
+<p>如果你想更直观看到“第一条 branch 确实先执行了”，可以在 <code>vectors+0x480</code> 这个槽位附近下地址断点：</p>
+
+<pre><code class="language-gdb">delete breakpoints
+tb * (vectors + 0x480)
+tb el0t_64_irq
+c</code></pre>
+
+<p>命中第一条后单步一条：</p>
+
+<pre><code class="language-gdb">si
+p/x $pc</code></pre>
+
+<p>这时你会看到 <code>pc</code> 已经跳到 <code>.Lskip_tramp_vectors_cleanup</code> 之后的位置，而不是顺序落到 <code>mrs x30, tpidrro_el0</code>。这正是“正常 EL0 入口默认跳过 cleanup”的直接证据。</p>
+
+<h5>第三步：对照看 EL1h IRQ 为什么没有这条 branch</h5>
+
+<p>再补一组断点：</p>
+
+<pre><code class="language-gdb">delete breakpoints
+tb el1h_64_irq
+tb el1h_64_irq_handler
+c</code></pre>
+
+<p>这次你通常会在内核态被 timer 或其他中断打进来时命中。然后对照反汇编：</p>
+
+<pre><code class="language-gdb">x/6i vectors+0x280</code></pre>
+
+<p>你应当看到：</p>
+
+<ol>
+<li><code>EL1h IRQ</code> 的槽位前面没有那条 trampoline cleanup branch。</li>
+<li>它会直接从 <code>sub sp, sp, #PT_REGS_SIZE</code> 开始进入通用入口壳。</li>
+</ol>
+
+<h5>实验结论应该是什么</h5>
+
+<p>如果这组实验做通，你应该能把下面三句话真正坐实，而不是停留在“好像懂了”：</p>
+
+<ol>
+<li><code>EL0 64-bit IRQ</code> 的 <code>kernel_ventry</code> 比 <code>EL1h IRQ</code> 多一段只给 trampoline/cleanup 预留的前导代码。</li>
+<li>这段前导代码在普通入口下默认会被第一条 <code>b</code> 跳过去。</li>
+<li>Linux ARM64 日常最常见的运行时路径，仍然是 <code>EL0 64-bit</code> 进内核和 <code>EL1h</code> 内核态再被中断打断；<code>EL1t</code> 在 stock Linux 中通常不是主路径。</li>
+</ol>
+
+<h5>一个现实提醒</h5>
+
+<p>不要把这个实验目标定成“在 stock Linux 上硬造一次 <code>EL1t</code>”。那通常既不自然，也不重要。这个实验最应该验证的是：</p>
+
+<ol>
+<li>你能看懂异常向量槽不是“函数指针表”，而是 128B 小汇编片段。</li>
+<li>你能分清 EL0 向量和 EL1h 向量在入口前几条指令上的差异。</li>
+<li>你能把 <code>kernel_ventry -> entry_handler -> kernel_entry -> el..._handler</code> 这四层串起来。</li>
+</ol>
+
+<h4>2.2.2 沿着 <code>EL1h IRQ</code> 继续拆：<code>entry_handler</code>、<code>kernel_entry</code>、<code>el1h_64_irq_handler</code></h4>
+
+<p>如果你已经把 <code>kernel_ventry 1, h, 64, irq</code> 看明白了，下一步最容易卡住的地方就是：</p>
+
+<ol>
+<li><code>entry_handler</code> 到底只是个壳，还是已经做了大量工作。</li>
+<li><code>kernel_entry</code> 到底什么时候才真正把寄存器保存成 <code>pt_regs</code>。</li>
+<li><code>el1h_64_irq_handler</code> 是不是一进来就直接到 GIC。</li>
+</ol>
+
+<p>最常见这条路径实际长这样：</p>
+
+<pre><code class="language-text">kernel_ventry 1, h, 64, irq
+  -&gt; el1h_64_irq
+  -&gt; kernel_entry 1, 64
+  -&gt; mov x0, sp
+  -&gt; bl el1h_64_irq_handler
+  -&gt; el1_interrupt(regs, handle_arch_irq)
+  -&gt; __el1_irq(...) 或 __el1_pnmi(...)</code></pre>
+
+<p>这里默认你走的是 <strong>正常的 <code>EL1h IRQ</code> 路径</strong>，并且上一层 <code>kernel_ventry</code> 已经正常结束，所以此时：</p>
+
+<ol>
+<li><code>sp = 原始内核栈顶 - PT_REGS_SIZE</code></li>
+<li><code>x0</code> 已恢复成异常打进来时的原值</li>
+<li><code>ELR_EL1</code> 里保存被打断 PC</li>
+<li><code>SPSR_EL1</code> 里保存被打断 PSTATE</li>
+</ol>
+
+<h5>2.2.2.1 <code>entry_handler 1, h, 64, irq</code> 实际展开成什么</h5>
+
+<p>这一行会生成：</p>
+
+<pre><code class="language-asm">el1h_64_irq:
+    kernel_entry 1, 64
+    mov x0, sp
+    bl el1h_64_irq_handler
+    b ret_to_kernel</code></pre>
+
+<p>所以 <code>entry_handler</code> 本身非常薄，它真正只干两件事：</p>
+
+<ol>
+<li>调 <code>kernel_entry</code>，把异常现场写成 <code>pt_regs</code>。</li>
+<li>把当前 <code>sp</code> 当成 <code>struct pt_regs *</code> 放进 <code>x0</code>，再调 C 入口。</li>
+</ol>
+
+<p>也就是说，<strong>完整寄存器保存不是在 <code>entry_handler</code> 里逐条写的，而是在它调用的 <code>kernel_entry</code> 里完成的。</strong></p>
+
+<h5>2.2.2.2 <code>kernel_entry 1, 64</code> 先做的第一件事：把 <code>x0..x29</code> 压到 <code>pt_regs</code></h5>
+
+<p>开头这 15 条：</p>
+
+<pre><code class="language-asm">stp x0, x1, [sp, #16 * 0]
+stp x2, x3, [sp, #16 * 1]
+...
+stp x28, x29, [sp, #16 * 14]</code></pre>
+
+<p>执行完以后，栈上这块 <code>pt_regs</code> 区域里已经有：</p>
+
+<ol>
+<li>原始 <code>x0..x29</code></li>
+<li>但此时还没有单独写入 <code>lr/x30</code></li>
+<li>也还没有写入被打断时的 <code>pc/pstate</code></li>
+</ol>
+
+<p>这一步最重要的认识是：<strong>直到这里，异常现场才第一次真正落到内存里。</strong></p>
+
+<h5>2.2.2.3 对 <code>EL1</code> 路径来说，<code>x21/x22/x23</code> 分别被拿来装什么</h5>
+
+<p>因为现在是 <code>el == 1</code>，所以走的是 <code>kernel_entry</code> 的内核态分支：</p>
+
+<pre><code class="language-asm">add x21, sp, #PT_REGS_SIZE
+get_current_task tsk</code></pre>
+
+<p>执行后：</p>
+
+<ol>
+<li><code>x21 = 被打断时的原始 SP</code></li>
+<li><code>tsk</code> 是别名寄存器 <code>x28</code>，此时会被装成 current task</li>
+</ol>
+
+<p>接着：</p>
+
+<pre><code class="language-asm">mrs x22, elr_el1
+mrs x23, spsr_el1
+stp lr, x21, [sp, #S_LR]</code></pre>
+
+<p>执行后：</p>
+
+<ol>
+<li><code>x22 = ELR_EL1 = 被打断时的 PC</code></li>
+<li><code>x23 = SPSR_EL1 = 被打断时的 PSTATE</code></li>
+<li><code>pt_regs</code> 里 <code>S_LR</code> 位置写入了当前 <code>lr/x30</code></li>
+<li><code>pt_regs</code> 里 <code>S_SP</code> 位置写入了刚才算出的原始 <code>SP</code></li>
+</ol>
+
+<p>所以到这里为止，<code>pt_regs</code> 已经不只是通用寄存器快照，还开始拥有：</p>
+
+<ol>
+<li>被打断时的栈顶</li>
+<li>被打断时的返回地址语义</li>
+</ol>
+
+<h5>2.2.2.4 元数据 frame 和 <code>pc/pstate</code> 是什么时候写进去的</h5>
+
+<p>后面这几句：</p>
+
+<pre><code class="language-asm">stp xzr, xzr, [sp, #S_STACKFRAME]
+mov x0, #FRAME_META_TYPE_PT_REGS
+str x0, [sp, #S_STACKFRAME_TYPE]
+add x29, sp, #S_STACKFRAME
+stp x22, x23, [sp, #S_PC]</code></pre>
+
+<p>它们分别完成：</p>
+
+<ol>
+<li>清空异常 frame 元数据区域</li>
+<li>标记这是一帧 <code>PT_REGS</code> 类型的异常边界</li>
+<li>让 <code>x29</code> 指向这帧的 <code>S_STACKFRAME</code></li>
+<li>把 <code>x22/x23</code>，也就是被打断时的 <code>PC/PSTATE</code>，写入 <code>pt_regs</code></li>
+</ol>
+
+<p>因此 <code>kernel_entry 1,64</code> 结束时，最关键的临时寄存器含义是：</p>
+
+<ol>
+<li><code>x21 = 被打断时的 SP</code></li>
+<li><code>x22 = 被打断时的 PC</code></li>
+<li><code>x23 = 被打断时的 PSTATE</code></li>
+<li><code>x28 = current task</code></li>
+<li><code>x29 = 当前异常 frame 的元数据指针</code></li>
+</ol>
+
+<p>而 <code>sp</code> 始终保持指向当前这份 <code>pt_regs</code> 基址。</p>
+
+<p>如果内核启用了 pseudo-NMI，<code>kernel_entry</code> 还会额外保存 <code>ICC_PMR_EL1</code> 到 <code>pt_regs->pmr</code>，并把 PMR 改到异常入口需要的值。这一段属于优先级屏蔽机制，不影响“<code>pt_regs</code> 是什么时候建出来的”这个主线判断。</p>
+
+<h5>2.2.2.5 <code>mov x0, sp</code> 这句为什么是关键分界线</h5>
+
+<p><code>kernel_entry</code> 返回后立刻就是：</p>
+
+<pre><code class="language-asm">mov x0, sp</code></pre>
+
+<p>执行后：</p>
+
+<ol>
+<li><code>x0 = 当前 pt_regs 基址</code></li>
+</ol>
+
+<p>这一步的意义非常大，因为从这里开始：</p>
+
+<ol>
+<li>汇编世界里的当前异常栈帧</li>
+<li>C 代码里看到的 <code>struct pt_regs *regs</code></li>
+</ol>
+
+<p>两者正式等价了。</p>
+
+<p>也就是说，后面 <code>el1h_64_irq_handler(struct pt_regs *regs)</code> 里的 <code>regs</code>，本质上就是当前 <code>sp</code>。</p>
+
+<h5>2.2.2.6 <code>el1h_64_irq_handler</code> 本身其实很薄</h5>
+
+<p>在 <code>arch/arm64/kernel/entry-common.c</code> 里：</p>
+
+<pre><code class="language-c">asmlinkage void noinstr el1h_64_irq_handler(struct pt_regs *regs)
+{
+    el1_interrupt(regs, handle_arch_irq);
+}</code></pre>
+
+<p>所以它不是“复杂 IRQ 总调度器”，而只是做了一次非常关键的转交：</p>
+
+<ol>
+<li>把刚建好的 <code>regs</code> 传下去</li>
+<li>把架构层已经注册好的 <code>handle_arch_irq</code> 传下去</li>
+</ol>
+
+<p>对当前 GICv3 系统来说，这个 <code>handle_arch_irq</code> 最终通常就是 <code>gic_handle_irq</code> 那条根路径。</p>
+
+<h5>2.2.2.7 <code>el1_interrupt()</code> 才决定这次进入普通 IRQ 还是 pseudo-NMI 路径</h5>
+
+<p><code>el1_interrupt()</code> 的关键逻辑可以压成：</p>
+
+<pre><code class="language-c">write_sysreg(DAIF_PROCCTX_NOIRQ, daif);
+
+if (CONFIG_ARM64_PSEUDO_NMI &amp;&amp; regs_irqs_disabled(regs))
+    __el1_pnmi(regs, handler);
+else
+    __el1_irq(regs, handler);</code></pre>
+
+<p>这里最容易误解的一点是：</p>
+
+<ol>
+<li>它判断的不是“现在 DAIF 里 IRQ 位是什么”</li>
+<li>而是 <code>regs</code> 里保存的旧 <code>PSTATE</code>，也就是<strong>异常打进来之前</strong> IRQ 是不是已经被关掉了</li>
+</ol>
+
+<p>于是就分出两条路：</p>
+
+<ol>
+<li>普通情况走 <code>__el1_irq()</code></li>
+<li>开了 pseudo-NMI 且被打断现场本来就是 IRQ-off 时，走 <code>__el1_pnmi()</code></li>
+</ol>
+
+<h5>2.2.2.8 最常见的普通路径最终怎么接到 GIC</h5>
+
+<p>在普通 IRQ 路径里，<code>__el1_irq()</code> 的关键骨架是：</p>
+
+<pre><code class="language-c">state = enter_from_kernel_mode(regs);
+irq_enter_rcu();
+do_interrupt_handler(regs, handler);
+irq_exit_rcu();
+exit_to_kernel_mode(regs, state);</code></pre>
+
+<p>这里最关键的一句其实是：</p>
+
+<ol>
+<li><code>do_interrupt_handler(regs, handler)</code></li>
+</ol>
+
+<p>因为这里的 <code>handler</code> 就是 <code>handle_arch_irq</code>，所以这一步之后就正式离开 ARM64 通用异常入口框架，进入 GICv3 根处理函数那条主线。</p>
+
+<p>也就是：</p>
+
+<pre><code class="language-text">el1h_64_irq
+  -&gt; kernel_entry
+  -&gt; x0 = sp
+  -&gt; el1h_64_irq_handler(regs)
+  -&gt; el1_interrupt(regs, handle_arch_irq)
+  -&gt; __el1_irq(...)
+  -&gt; do_interrupt_handler(regs, handle_arch_irq)
+  -&gt; gic_handle_irq(...)</code></pre>
+
+<h5>2.2.2.9 只看寄存器的话，这三层最该抓哪几个值</h5>
+
+<p>如果你在 GDB 里单步这段代码，最值得盯的不是所有寄存器，而是下面几个：</p>
+
+<ol>
+<li><code>sp</code></li>
+</ol>
+<p>   它从 <code>kernel_ventry</code> 之后开始一直指向当前 <code>pt_regs</code>。</p>
+<ol>
+<li><code>x21</code></li>
+</ol>
+<p>   在 <code>kernel_entry</code> 中被赋值成“被打断时的原始 SP”。</p>
+<ol>
+<li><code>x22</code></li>
+</ol>
+<p>   被赋值成 <code>ELR_EL1</code>，也就是被打断时的 PC。</p>
+<ol>
+<li><code>x23</code></li>
+</ol>
+<p>   被赋值成 <code>SPSR_EL1</code>，也就是被打断时的 PSTATE。</p>
+<ol>
+<li><code>x0</code></li>
+</ol>
+<p>   在进入 C 入口前被重写成 <code>sp</code>，也就是 <code>regs</code> 参数。</p>
+
+<p>如果这几个值你在 GDB 里都能对上，就说明你已经不是“看懂结构图”，而是已经真正把 <code>entry_handler -> kernel_entry -> el1h_64_irq_handler</code> 这段吃透了。</p>
+
+<h3>2.3 入口总链路</h3>
+
+<p>当前源码里的关键路径是：</p>
+
+<pre><code class="language-text">ARM64 异常向量
+  -&gt; el1h_64_irq_handler()                     arch/arm64/kernel/entry-common.c
+  -&gt; el1_interrupt()
+  -&gt; handle_arch_irq                          由 set_handle_irq() 注册
+  -&gt; gic_handle_irq()                         drivers/irqchip/irq-gic-v3.c
+  -&gt; gic_read_iar()
+  -&gt; gic_complete_ack()
+  -&gt; generic_handle_domain_irq()
+  -&gt; irq_resolve_mapping()
+  -&gt; handle_irq_desc()
+  -&gt; desc-&gt;handle_irq()
+  -&gt; handle_fasteoi_irq() / handle_percpu_devid_irq()
+  -&gt; action-&gt;handler()</code></pre>
+
+<h3>2.4 关键源码点</h3>
+
+<ol>
+<li><code>arch/arm64/kernel/entry-common.c</code></li>
+</ol>
+<p>   <code>el1h_64_irq_handler()</code> 调用 <code>el1_interrupt(regs, handle_arch_irq)</code>。</p>
+<ol>
+<li><code>kernel/irq/handle.c</code></li>
+</ol>
+<p>   <code>set_handle_irq()</code> 把 <code>handle_arch_irq</code> 指向 GIC 驱动的根处理函数。</p>
+<ol>
+<li><code>drivers/irqchip/irq-gic-v3.c</code></li>
+</ol>
+<p>   <code>gic_init_bases()</code> 中调用 <code>set_handle_irq(gic_handle_irq)</code>。</p>
+<ol>
+<li><code>kernel/irq/irqdesc.c</code></li>
+</ol>
+<p>   <code>generic_handle_domain_irq()</code> 用 <code>irq_resolve_mapping(domain, hwirq)</code> 找到 desc，然后进入 flow handler。</p>
+
+<h3>2.5 NMI/Pseudo-NMI 特殊路径</h3>
+
+<p>GICv3 在 ARM64 上支持 pseudo-NMI 的关键点：</p>
+
+<ol>
+<li><code>supports_pseudo_nmis</code></li>
+<li><code>gic_rpr_is_nmi_prio()</code></li>
+<li><code>__gic_handle_irq_from_irqsoff()</code></li>
+<li><code>generic_handle_domain_nmi()</code></li>
+</ol>
+
+<p>这里的本质是：<strong>同一个 GIC CPU interface，通过优先级空间和 PMR/RPR 机制，把 NMI 语义模拟出来</strong>。这部分一定要同时看架构文档里的优先级模型和 <code>gic_prio_init()</code> 的实现。</p>
+
+<h3>2.6 Pseudo-NMI 专题</h3>
+
+<p>Pseudo-NMI 是 ARM64 上一个非常值得单独研究的点，因为它不是“多一种中断类型”，而是 <strong>利用 GICv3 的优先级屏蔽能力，把普通 Group1 interrupt 中的一部分提升成 NMI-like 语义</strong>。</p>
+
+<h4>2.6.1 启用条件</h4>
+
+<p>这项能力不是默认就有，至少要同时满足下面几层条件：</p>
+
+<ol>
+<li>内核配置打开 <code>CONFIG_ARM64_PSEUDO_NMI</code>。</li>
+<li>启动参数显式带 <code>irqchip.gicv3_pseudo_nmi=1</code>。</li>
+<li>平台具备 GICv3 及其优先级屏蔽支持。</li>
+<li>当前 GIC 集成没有被 <code>nmi_support_forbidden</code> 判定为不可用。</li>
+</ol>
+
+<p>源码依据：</p>
+
+<ol>
+<li><code>arch/arm64/Kconfig</code> 中 <code>config ARM64_PSEUDO_NMI</code> 明确要求 ARM GICv3。</li>
+<li><code>Documentation/admin-guide/kernel-parameters.txt</code> 明确要求 <code>irqchip.gicv3_pseudo_nmi</code> 启用。</li>
+<li><code>drivers/irqchip/irq-gic-v3.c</code> 中 <code>gic_enable_nmi_support()</code> 要求 <code>gic_prio_masking_enabled()</code> 为真，且 <code>nmi_support_forbidden</code> 为假。</li>
+</ol>
+
+<h4>2.6.2 它到底是怎么工作的</h4>
+
+<p>本质机制有三步：</p>
+
+<ol>
+<li>选定一档比普通 IRQ 更高的优先级，当前驱动里由 <code>dist_prio_nmi = GICV3_PRIO_NMI</code> 表示。</li>
+<li>在异常入口保存并重设 <code>ICC_PMR_EL1</code>，让 CPU 在关普通 IRQ 的情况下仍能响应这档高优先级中断。</li>
+<li>收到中断后通过 <code>ICC_RPR_EL1</code> 判断当前激活优先级是否等于 <code>GICV3_PRIO_NMI</code>，如果相等就走 NMI 处理路径。</li>
+</ol>
+
+<p>因此 pseudo-NMI 不是架构里凭空多出的另一类 INTID，而是 <strong>同一套 INTID + 不同优先级 + PMR/RPR 协议</strong>。</p>
+
+<h4>2.6.3 ARM64 异常入口发生了什么变化</h4>
+
+<p><code>arch/arm64/kernel/entry.S</code> 在 <code>CONFIG_ARM64_PSEUDO_NMI</code> 打开时，会在异常入口额外处理 <code>ICC_PMR_EL1</code>：</p>
+
+<ol>
+<li>保存旧的 <code>ICC_PMR_EL1</code> 到栈上。</li>
+<li>写入 <code>GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET</code> 相关值，让高优先级中断可见。</li>
+<li>异常退出时恢复 <code>ICC_PMR_EL1</code>。</li>
+<li>在不支持 relaxed sync 的实现上，还要做同步保证优先级变化被 redistributor 看到。</li>
+</ol>
+
+<p>这说明 pseudo-NMI 不只是 GIC 驱动自己的事，它已经深入到 ARM64 异常入口汇编。</p>
+
+<h4>2.6.4 GIC 驱动里的核心路径</h4>
+
+<p>在 <code>drivers/irqchip/irq-gic-v3.c</code> 中，核心路径是：</p>
+
+<pre><code class="language-text">gic_enable_nmi_support()
+   -&gt; static_branch_enable(&amp;supports_pseudo_nmis)
+   -&gt; gic_{eoimode1_,}chip.flags |= IRQCHIP_SUPPORTS_NMI
+
+irq_set_nmi()
+   -&gt; gic_irq_nmi_setup()
+   -&gt; 切换 desc-&gt;handle_irq
+   -&gt; 把中断优先级写成 dist_prio_nmi
+
+异常到来
+   -&gt; gic_handle_irq()
+   -&gt; gic_read_iar()
+   -&gt; gic_rpr_is_nmi_prio()
+   -&gt; __gic_handle_nmi()
+   -&gt; generic_handle_domain_nmi()</code></pre>
+
+<p>关键函数含义：</p>
+
+<ol>
+<li><code>gic_enable_nmi_support()</code>：全局打开 pseudo-NMI 能力。</li>
+<li><code>gic_irq_nmi_setup()</code>：把某条 IRQ 切到 NMI 语义，并改 flow handler。</li>
+<li><code>gic_irq_nmi_teardown()</code>：撤销 NMI 语义。</li>
+<li><code>gic_rpr_is_nmi_prio()</code>：通过 <code>ICC_RPR_EL1</code> 判断当前中断是不是 NMI 优先级。</li>
+<li><code>__gic_handle_irq_from_irqsoff()</code>：在本来 IRQ 关闭的上下文中，只允许 pseudo-NMI 进入。</li>
+</ol>
+
+<h4>2.6.5 flow handler 是怎么变的</h4>
+
+<p>这点很容易被忽略，但其实非常关键。</p>
+
+<p>当一条 IRQ 被切换成 pseudo-NMI 后，<code>irq_desc->handle_irq</code> 也会变：</p>
+
+<ol>
+<li>对 SPI/ESPI，切到 <code>handle_fasteoi_nmi</code>。</li>
+<li>对 PPI/EPPI/SGI 这类 redistributor 本地中断，切到 <code>handle_percpu_devid_fasteoi_nmi</code>。</li>
+</ol>
+
+<p>对应地，teardown 时会再切回：</p>
+
+<ol>
+<li><code>handle_fasteoi_irq</code></li>
+<li><code>handle_percpu_devid_irq</code></li>
+</ol>
+
+<p>也就是说 pseudo-NMI 不只是“优先级改高”，而是 <strong>Linux IRQ core 处理语义也一起切换成 NMI-safe flow handler</strong>。</p>
+
+<h4>2.6.6 为什么 <code>gic_prio_init()</code> 很重要</h4>
+
+<p><code>gic_prio_init()</code> 是 pseudo-NMI 能不能成立的根基，因为它要统一处理三件事：</p>
+
+<ol>
+<li><code>GICD_CTLR.DS</code> 是否置位。</li>
+<li><code>SCR_EL3.FIQ</code> 是否影响非安全态优先级视图。</li>
+<li>Distributor priority 和 <code>ICC_PMR_EL1</code>/<code>ICC_RPR_EL1</code> 之间的编码是否一致。</li>
+</ol>
+
+<p>如果这个映射关系没有对齐，那么：</p>
+
+<ol>
+<li>你以为写进去的是 NMI 优先级。</li>
+<li>CPU interface 实际看到的却可能是另一档优先级。</li>
+<li>最终 <code>gic_rpr_is_nmi_prio()</code> 就会判断错误。</li>
+</ol>
+
+<p>所以 pseudo-NMI 的本质不是“多开一个开关”，而是 <strong>把优先级空间从 GICD/GICR 一直到 ICC sysreg 整体校准</strong>。</p>
+
+<h4>2.6.7 限制与边界</h4>
+
+<p>当前实现里有几个边界一定要记住：</p>
+
+<ol>
+<li>LPI 不走这里，<code>gic_irq_nmi_setup()</code> 明确拒绝 <code>hwirq >= 8192</code>。</li>
+<li>已经 enable 的 IRQ 不能直接切成 NMI，否则返回错误。</li>
+<li>如果平台集成有安全态/固件问题，驱动可能直接禁止 pseudo-NMI。</li>
+<li>pseudo-NMI 依赖优先级屏蔽，不等价于某些架构里的“硬件绝对不可屏蔽中断”。</li>
+</ol>
+
+<h4>2.6.8 研究 pseudo-NMI 时要重点看哪几处源码</h4>
+
+<ol>
+<li><code>arch/arm64/Kconfig</code> 中 <code>CONFIG_ARM64_PSEUDO_NMI</code>。</li>
+<li><code>arch/arm64/kernel/entry.S</code> 中 <code>ICC_PMR_EL1</code> 的保存与恢复。</li>
+<li><code>arch/arm64/kernel/entry-common.c</code> 中 <code>__el1_pnmi()</code> 与 <code>el1_interrupt()</code>。</li>
+<li><code>kernel/entry/common.c</code> 中 <code>irqentry_nmi_enter()</code> / <code>irqentry_nmi_exit()</code>。</li>
+<li><code>drivers/irqchip/irq-gic-v3.c</code> 中：</li>
+</ol>
+<p>    <code>gic_prio_init()</code>、<code>gic_enable_nmi_support()</code>、<code>gic_irq_nmi_setup()</code>、<code>gic_rpr_is_nmi_prio()</code>、<code>__gic_handle_irq_from_irqsoff()</code>。</p>
+
+<h4>2.6.9 一句话总结 pseudo-NMI</h4>
+
+<p>在 ARM64 GICv3 上，pseudo-NMI 的本质是：<strong>用优先级屏蔽替代传统的不可屏蔽线语义，再让 ARM64 异常入口和 Linux IRQ core 一起配合，构造出 NMI-like 执行环境</strong>。</p>
+
+<h4>2.6.10 站在普通世界看 Group0 和 Group1，真正该关心什么</h4>
+
+<p>如果你的研究对象是 <strong>普通世界的 Linux 内核中断</strong>，那这件事可以先大幅简化。</p>
+
+<p>先记结论：</p>
+
+<ol>
+<li>Linux 日常处理的主线，几乎总是 <strong>Group 1 Non-secure</strong>。</li>
+<li>Group 0 通常不是普通世界 Linux 的主路径。</li>
+<li>所谓“普通世界里看到的一条正常设备中断”，绝大多数都可以先按 Group1 来理解。</li>
+</ol>
+
+<p>也就是说，从普通世界视角看，最实用的理解不是反复纠结 Group0/Group1 的完整安全态拓扑，而是先抓住：</p>
+
+<ol>
+<li>这条中断是不是会被 Linux 接收。</li>
+<li>Linux 接收时走的是不是 Group1 CPU interface 路径。</li>
+<li>它是否只是 Group1 中被提升成 pseudo-NMI 语义的一部分。</li>
+</ol>
+
+<h4>2.6.11 为什么 Linux 主线几乎都站在 Group1 上</h4>
+
+<p>当前这棵源码已经把这个立场写得很清楚。</p>
+
+<p>头文件 <code>include/linux/irqchip/arm-gic-v3.h</code> 开头就说明：驱动假设自己运行在 <strong>non-secure</strong> 状态。</p>
+
+<p>驱动初始化阶段，<code>gic_dist_init()</code> 又明确做了两件事：</p>
+
+<ol>
+<li>把 SPI 配成 <strong>non-secure Group-1</strong>。</li>
+<li>使能 Distributor 的 <strong>Group1</strong> 路径。</li>
+</ol>
+
+<p>而在 CPU interface 这边，<code>gic_cpu_sys_reg_init()</code> 最终会通过 <code>gic_write_grpen1(1)</code> 打开 <code>ICC_IGRPEN1_EL1</code>，这意味着普通世界 CPU 真正启用的是 <strong>Group1 接收路径</strong>。</p>
+
+<p>再配合 <code>arch/arm64/include/asm/arch_gicv3.h</code> 里的 <code>gic_read_iar()</code> 可以看到，普通路径读取的也是 <code>ICC_IAR1_EL1</code>，而不是 Group0 那套接口。</p>
+
+<p>所以对 Linux 来说，主线实际上是：</p>
+
+<pre><code class="language-text">设备中断
+   -&gt; 被配置成 Group 1 Non-secure
+   -&gt; CPU 从 ICC_IAR1_EL1 取到 INTID
+   -&gt; gic_handle_irq
+   -&gt; generic_handle_domain_irq
+   -&gt; handle_fasteoi_irq / handle_percpu_devid_irq
+   -&gt; 具体驱动 ISR</code></pre>
+
+<h4>2.6.12 普通世界里，Group0 什么时候才值得你分心</h4>
+
+<p>如果你当前专注 Linux 主线，Group0 可以先只在下面两类问题里出现：</p>
+
+<ol>
+<li>硬件明明在报中断，但 Linux 完全收不到。</li>
+<li>某些平台上固件、EL3、TrustZone 先把这条中断截走了。</li>
+</ol>
+
+<p>也就是说，Group0 对普通世界研究更像一个 <strong>排障边界条件</strong>，而不是日常主线。</p>
+
+<p>更直接一点说：</p>
+
+<ol>
+<li>正常做 Linux 设备驱动、中断亲和性、softirq、ITS/LPI 分析时，默认按 Group1 看。</li>
+<li>只有当 Linux 这条路径根本不成立时，才把视角拉回 secure world / Group0。</li>
+</ol>
+
+<h4>2.6.13 不要把 Group0/Group1 和 FIQ/IRQ 简单画等号</h4>
+
+<p>学习材料里经常会把它粗略记成：</p>
+
+<ol>
+<li>Group0 对应 FIQ。</li>
+<li>Group1 对应 IRQ。</li>
+</ol>
+
+<p>这对入门记忆有帮助，但对 ARM64 GICv3/Linux 来说不够精确。</p>
+
+<p>更本质的理解应该是：</p>
+
+<ol>
+<li>Group0/Group1 先是 <strong>安全域和 CPU interface 路径分组</strong>。</li>
+<li>IRQ/FIQ 是最终异常表现和更高层路由策略的问题。</li>
+<li>在 Linux 普通世界的研究里，真正稳定成立的事实是：<strong>主线走 Group1</strong>。</li>
+</ol>
+
+<h4>2.6.14 pseudo-NMI 和 Group0 不是一回事</h4>
+
+<p>这是最容易混淆的点。</p>
+
+<p>在普通世界 Linux 里，pseudo-NMI 不是“把中断切到 Group0 去处理”，而是：</p>
+
+<ol>
+<li>仍然站在普通世界的 GICv3/Linux 处理框架内。</li>
+<li>仍然依赖 Group1 路径。</li>
+<li>只是借助更高优先级和 <code>ICC_PMR_EL1</code> / <code>ICC_RPR_EL1</code> 协议，让其中一部分 Group1 interrupt 获得 NMI-like 语义。</li>
+</ol>
+
+<p>所以你做 pseudo-NMI 调试时，如果从概念上把它想成“普通世界里的 Group0”，通常会把自己带偏。</p>
+
+<h4>2.6.15 一句真正适合当前研究任务的总结</h4>
+
+<p>如果你现在的关注点是 <strong>普通世界 Linux ARM64 GICv3 中断主线</strong>，那最该牢牢记住的是：</p>
+
+<ol>
+<li>普通设备中断主线 = Group1 Non-secure 主线。</li>
+<li>pseudo-NMI = Group1 内部的高优先级特殊语义，不是回到 Group0。</li>
+<li>Group0 更多是 Linux 收不到中断时才需要怀疑的边界条件。</li>
+</ol>
+
+<h3>2.6.16 FIQ 和 IRQ：区别、联系，以及在内核代码里的具体实现</h3>
+
+<p>FIQ 和 IRQ 是 ARM 架构异常模型里两类不同的异常入口，但在你当前这个 <strong>普通世界 Linux + ARM64 + GICv3</strong> 的研究任务里，它们的实际地位并不对称。</p>
+
+<p>先记结论：</p>
+
+<ol>
+<li><strong>IRQ</strong> 是普通世界 Linux 的主中断路径。</li>
+<li><strong>FIQ</strong> 在 ARM64 架构里仍然有独立异常入口，但在当前 GICv3 普通世界主线里通常不是日常处理中断的主路径。</li>
+<li>Linux 在 GICv3 上解决“更高优先级、近似不可屏蔽”需求时，主流做法是 <strong>pseudo-NMI</strong>，而不是把普通设备中断改走 FIQ 根路径。</li>
+</ol>
+
+<h4>2.6.17 先从架构语义看：FIQ 和 IRQ 到底差在哪</h4>
+
+<p>在 ARM64 异常模型里，IRQ 和 FIQ 是两类不同异常：</p>
+
+<ol>
+<li>IRQ</li>
+</ol>
+<p>   普通中断异常。</p>
+<ol>
+<li>FIQ</li>
+</ol>
+<p>   快速中断异常。</p>
+
+<p>最直接的架构区别有三个：</p>
+
+<ol>
+<li><strong>异常入口不同</strong></li>
+</ol>
+<p>   向量表里 IRQ 和 FIQ 有不同入口。</p>
+<ol>
+<li><strong>屏蔽位不同</strong></li>
+</ol>
+<p>   <code>PSTATE/DAIF</code> 里，IRQ 主要对应 <code>I</code> 位，FIQ 对应 <code>F</code> 位。</p>
+<ol>
+<li><strong>路由与安全语义可能不同</strong></li>
+</ol>
+<p>   在结合 GIC 和安全态时，FIQ 往往更容易出现在 secure/EL3 语境里。</p>
+
+<p>所以从架构上说，它们首先是两类不同异常入口，而不是“同一条线的两个名字”。</p>
+
+<h4>2.6.18 但不要把 FIQ/IRQ 和 Group0/Group1 机械画等号</h4>
+
+<p>这是最容易学偏的地方。</p>
+
+<p>很多材料会粗略记成：</p>
+
+<ol>
+<li>Group0 = FIQ</li>
+<li>Group1 = IRQ</li>
+</ol>
+
+<p>这个记忆法只能当非常粗的入门类比，不能当 Linux/GICv3 的精确定义。</p>
+
+<p>更准确的理解应该是：</p>
+
+<ol>
+<li>Group0/Group1 是 <strong>GIC 的中断分组和 CPU interface 路径语义</strong>。</li>
+<li>IRQ/FIQ 是 <strong>ARM CPU 侧的异常入口类型</strong>。</li>
+<li>两者经常有关联，但不是同一个维度的概念。</li>
+</ol>
+
+<p>所以你分析 Linux 源码时，千万不要把：</p>
+
+<ol>
+<li>“这条中断属于 Group0 还是 Group1”</li>
+<li>“CPU 最后进的是 IRQ 向量还是 FIQ 向量”</li>
+</ol>
+
+<p>当成完全同义的问题。</p>
+
+<h4>2.6.19 在 ARM64 异常入口里，FIQ 和 IRQ 的代码长什么样</h4>
+
+<p>当前源码里，ARM64 确实给 IRQ 和 FIQ 都保留了独立入口。</p>
+
+<p>在 <code>arch/arm64/kernel/entry-common.c</code> 里：</p>
+
+<ol>
+<li><code>el1h_64_irq_handler()</code></li>
+</ol>
+<p>   调 <code>el1_interrupt(regs, handle_arch_irq)</code>。</p>
+<ol>
+<li><code>el1h_64_fiq_handler()</code></li>
+</ol>
+<p>   调 <code>el1_interrupt(regs, handle_arch_fiq)</code>。</p>
+
+<p>也就是说，从异常入口这一层看，Linux ARM64 并没有把 FIQ 删除掉，而是：</p>
+
+<ol>
+<li>给 IRQ 留了一套 root handler 指针。</li>
+<li>给 FIQ 也留了一套 root handler 指针。</li>
+</ol>
+
+<h4>2.6.20 但在当前普通世界 Linux 主线里，IRQ 被真正注册了，FIQ 往往没有</h4>
+
+<p>这一点看 <code>arch/arm64/kernel/irq.c</code> 最清楚。</p>
+
+<p>这里定义了两套根处理器：</p>
+
+<ol>
+<li><code>handle_arch_irq</code></li>
+<li><code>handle_arch_fiq</code></li>
+</ol>
+
+<p>也提供了两套注册接口：</p>
+
+<ol>
+<li><code>set_handle_irq()</code></li>
+<li><code>set_handle_fiq()</code></li>
+</ol>
+
+<p>但当前 GICv3 主驱动实际会调用的是：</p>
+
+<ol>
+<li><code>set_handle_irq(gic_handle_irq)</code></li>
+</ol>
+
+<p>也就是说，普通世界 GICv3 的根中断处理函数被注册到 <strong>IRQ 根路径</strong>。</p>
+
+<p>而 FIQ 这边如果没有平台驱动显式注册，默认处理器是：</p>
+
+<ol>
+<li><code>default_handle_fiq()</code></li>
+<li>它会直接 <code>panic("FIQ taken without a root FIQ handler\n")</code></li>
+</ol>
+
+<p>这就说明一个非常关键的现实：</p>
+
+<ol>
+<li>ARM64 Linux 支持 FIQ 异常入口。</li>
+<li>但在当前 GICv3 普通世界主线里，FIQ 通常没有像 IRQ 那样被设置成日常根处理路径。</li>
+</ol>
+
+<h4>2.6.21 当前树里哪个平台真的会注册 FIQ 根处理器</h4>
+
+<p>这棵树里并不是完全没人用 <code>set_handle_fiq()</code>。</p>
+
+<p>一个现成例子是：</p>
+
+<ol>
+<li><code>drivers/irqchip/irq-apple-aic.c</code></li>
+</ol>
+<p>   会调用 <code>set_handle_fiq(aic_handle_fiq)</code>。</p>
+
+<p>这很有代表性，因为它说明：</p>
+
+<ol>
+<li>Linux ARM64 架构层确实支持平台走 FIQ 根路径。</li>
+<li>但这不是当前 GICv3 普通世界主线的默认形态。</li>
+</ol>
+
+<p>所以你在当前任务里要得出的正确结论不是“Linux 没有 FIQ”，而是：</p>
+
+<ol>
+<li>Linux 有 FIQ 机制。</li>
+<li>但 GICv3 普通世界主线主要走 IRQ 根路径。</li>
+</ol>
+
+<h4>2.6.22 那 pseudo-NMI 和 FIQ 到底是什么关系</h4>
+
+<p>这是当前研究任务里最值得讲清的点。</p>
+
+<p>在 GICv3 普通世界 Linux 里，pseudo-NMI 不是“把普通中断改成走 FIQ 向量”。</p>
+
+<p>它真正做的是：</p>
+
+<ol>
+<li>仍然通过 GICv3 的普通 Group1/ICC 路径拿到中断。</li>
+<li>通过 <code>ICC_PMR_EL1</code> / <code>ICC_RPR_EL1</code> 做优先级屏蔽和识别。</li>
+<li>在 IRQ core 里切到 NMI-safe flow handler。</li>
+</ol>
+
+<p>也就是说：</p>
+
+<ol>
+<li>FIQ 是 <strong>CPU 异常入口类型</strong>。</li>
+<li>pseudo-NMI 是 <strong>Linux 在 GICv3/Group1 路径上构造出的 NMI-like 处理语义</strong>。</li>
+</ol>
+
+<p>它们都和“高优先级中断”有关，但不是同一个实现层面。</p>
+
+<h4>2.6.23 pseudo-NMI 在代码里到底走哪条线</h4>
+
+<p>当前这棵树里，pseudo-NMI 这条线非常明确：</p>
+
+<ol>
+<li><code>gic_handle_irq()</code> 先读 IAR。</li>
+<li><code>gic_rpr_is_nmi_prio()</code> 用 <code>ICC_RPR_EL1</code> 判断当前是不是 NMI 优先级。</li>
+<li>若是，则走 <code>__gic_handle_nmi()</code>。</li>
+<li>再走 <code>generic_handle_domain_nmi()</code>。</li>
+<li>最终落到 <code>handle_fasteoi_nmi()</code> 或 <code>handle_percpu_devid_fasteoi_nmi()</code>。</li>
+</ol>
+
+<p>这条路径说明：</p>
+
+<ol>
+<li>pseudo-NMI 是 GICv3 IRQ 根路径内部的“高优先级分支”。</li>
+<li>它不是“换了一个 FIQ root handler”。</li>
+</ol>
+
+<h4>2.6.24 Linux IRQ core 对 NMI 有什么特殊限制</h4>
+
+<p>从 <code>kernel/irq/manage.c</code> 的 <code>request_nmi()</code> 和 <code>kernel/irq/chip.c</code> 的 NMI-safe flow handler 可以看到，Linux 对 NMI 语义要求更严格：</p>
+
+<ol>
+<li>NMI 不能共享。</li>
+<li>NMI 不能线程化。</li>
+<li>对 per-CPU NMI 有更严格的约束。</li>
+</ol>
+
+<p>这也是为什么当前代码里专门有：</p>
+
+<ol>
+<li><code>handle_fasteoi_nmi()</code></li>
+<li><code>handle_percpu_devid_fasteoi_nmi()</code></li>
+<li><code>generic_handle_domain_nmi()</code></li>
+</ol>
+
+<p>它们的存在说明：Linux 不是把 NMI 当“普通 IRQ 提高一点优先级”来处理，而是给它单独定义了一套处理约束。</p>
+
+<h4>2.6.25 普通世界下，FIQ 和 IRQ 最实用的区别总结</h4>
+
+<p>如果只从你现在最需要的角度总结，可以记成下面这张表：</p>
+
+<pre><code class="language-text">IRQ
+  - Linux GICv3 普通世界主路径
+  - root handler 是 handle_arch_irq -&gt; gic_handle_irq
+  - 普通设备中断、PPI、SPI、ITS/LPI 主线都在这条路上
+
+FIQ
+  - ARM64 架构仍有独立异常入口
+  - 需要平台显式注册 root FIQ handler
+  - 在当前 GICv3 普通世界主线里通常不是默认日常路径
+
+pseudo-NMI
+  - 不是 FIQ
+  - 仍然站在 GICv3 Group1/IRQ 主路径上
+  - 通过优先级屏蔽 + NMI-safe flow handler 构造 NMI-like 语义</code></pre>
+
+<h4>2.6.26 研究和排障时该怎么用这层知识</h4>
+
+<p>以后你遇到高优先级中断相关问题，先问自己三个问题：</p>
+
+<ol>
+<li>这是在问 CPU 异常入口类型，还是在问 GIC 的 Group/优先级语义。</li>
+<li>这是平台真的注册了 FIQ 根处理器，还是 Linux 在 IRQ 主路径里做 pseudo-NMI。</li>
+<li>当前问题应该去看 <code>handle_arch_fiq</code>，还是去看 <code>gic_handle_irq -> __gic_handle_nmi</code>。</li>
+</ol>
+
+<p>这三个问题答清之后，FIQ、IRQ、Group0/Group1、pseudo-NMI 这四组概念就不会再混成一锅。</p>
+
+<h4>2.6.27 一张图看清 FIQ、IRQ、pseudo-NMI 三条代码路径</h4>
+
+<pre><code class="language-text">普通 IRQ 主线
+   异常入口: el1h_64_irq_handler
+      -&gt; el1_interrupt(regs, handle_arch_irq)
+      -&gt; gic_handle_irq
+      -&gt; gic_read_iar / generic_handle_domain_irq
+      -&gt; handle_fasteoi_irq 或 handle_percpu_devid_irq
+      -&gt; 普通设备 ISR
+
+真正 FIQ 主线
+   异常入口: el1h_64_fiq_handler
+      -&gt; el1_interrupt(regs, handle_arch_fiq)
+      -&gt; 平台显式注册的 root FIQ handler
+      -&gt; 平台自定义 FIQ 处理逻辑
+
+pseudo-NMI 主线
+   入口外观: 仍然从 IRQ 根路径进入
+      -&gt; gic_handle_irq
+      -&gt; gic_rpr_is_nmi_prio
+      -&gt; __gic_handle_nmi
+      -&gt; generic_handle_domain_nmi
+      -&gt; handle_fasteoi_nmi 或 handle_percpu_devid_fasteoi_nmi
+      -&gt; NMI-safe handler</code></pre>
+
+<p>这张图最该带走的结论是：</p>
+
+<ol>
+<li>pseudo-NMI 不是 FIQ 分支。</li>
+<li>pseudo-NMI 是 IRQ 根路径里的高优先级特殊分支。</li>
+<li>真正 FIQ 只有在平台显式注册 root FIQ handler 时，才会变成可用执行路径。</li>
+</ol>
+
+<h4>2.6.28 当前这棵 GICv3 普通世界树里，三条线的现实优先级</h4>
+
+<p>如果只看你当前这棵 Linux 6.18.1 + GICv3 + 普通世界主线，可以把三条线按“现实重要性”排序成：</p>
+
+<ol>
+<li><strong>IRQ</strong></li>
+</ol>
+<p>    日常最重要，普通设备中断主线都在这里。</p>
+<ol>
+<li><strong>pseudo-NMI</strong></li>
+</ol>
+<p>    高优先级特殊路径，重要但不是默认所有平台都有。</p>
+<ol>
+<li><strong>FIQ</strong></li>
+</ol>
+<p>    架构上存在，但对当前 GICv3 普通世界主线通常是边缘路径，除非平台显式注册。</p>
+
+<h3>2.7 Linux 中断处理全景：Hardirq / Softirq / Tasklet / Threaded IRQ</h3>
+
+<p>研究 GICv3 很容易把注意力全部放在 top half，也就是“硬中断来了以后怎么 ack/eoi”。但 Linux 真正完整的处理中断模型，至少包含四层。</p>
+
+<h4>2.7.1 Hardirq：真正的硬中断顶半部</h4>
+
+<p>对 GICv3 来说，hardirq 主路径是：</p>
+
+<pre><code class="language-text">异常入口
+   -&gt; irq_enter_rcu()
+   -&gt; handle_arch_irq
+   -&gt; gic_handle_irq
+   -&gt; generic_handle_domain_irq
+   -&gt; handle_fasteoi_irq / handle_percpu_devid_irq
+   -&gt; primary handler
+   -&gt; irq_exit_rcu()</code></pre>
+
+<p>hardirq 的特征：</p>
+
+<ol>
+<li>运行在中断上下文。</li>
+<li>不能睡眠。</li>
+<li>能抢占普通进程上下文。</li>
+<li>退出时可能顺手触发 softirq 处理。</li>
+</ol>
+
+<p>在 <code>kernel/softirq.c</code> 中，<code>irq_exit_rcu()</code> 会在离开 hardirq 前检查 <code>local_softirq_pending()</code>，必要时调用 <code>invoke_softirq()</code>。</p>
+
+<h4>2.7.2 Softirq：延后到下半部的每 CPU 位图调度</h4>
+
+<p>softirq 的本质是一组 <strong>per-CPU pending bit + 一组 action 表</strong>：</p>
+
+<ol>
+<li><code>softirq_vec[]</code> 保存每类 softirq 的处理函数。</li>
+<li><code>raise_softirq_irqoff()</code> 置位 pending bit。</li>
+<li><code>__do_softirq()</code> 遍历 pending bit，逐个执行 action。</li>
+<li>若现场不适合长时间执行，则唤醒 <code>ksoftirqd/<cpu></code> 线程接管。</li>
+</ol>
+
+<p>从 <code>kernel/softirq.c</code> 可以看出它的核心设计是：</p>
+
+<ol>
+<li>按 CPU 本地化，减少全局锁。</li>
+<li>不要求通用框架提供统一串行化。</li>
+<li>如果某类 softirq 要串行，由它自己内部加锁。</li>
+</ol>
+
+<p>当前内核里，常见 softirq 名字包括：</p>
+
+<ol>
+<li><code>HI</code></li>
+<li><code>TIMER</code></li>
+<li><code>NET_TX</code></li>
+<li><code>NET_RX</code></li>
+<li><code>BLOCK</code></li>
+<li><code>IRQ_POLL</code></li>
+<li><code>TASKLET</code></li>
+<li><code>SCHED</code></li>
+<li><code>HRTIMER</code></li>
+<li><code>RCU</code></li>
+</ol>
+
+<h4>2.7.3 Tasklet：构建在 softirq 之上的轻量串行回调</h4>
+
+<p>tasklet 不是独立于 softirq 的第五种上下文，而是建立在 softirq 之上的封装：</p>
+
+<ol>
+<li><code>__tasklet_schedule()</code> 把 tasklet 加到 per-CPU 链表。</li>
+<li>然后触发 <code>TASKLET_SOFTIRQ</code> 或 <code>HI_SOFTIRQ</code>。</li>
+<li><code>tasklet_action_common()</code> 在 softirq 上下文里逐个执行 tasklet。</li>
+</ol>
+
+<p>tasklet 的关键语义：</p>
+
+<ol>
+<li>同一个 tasklet 实例不会并发执行。</li>
+<li>仍然运行在 softirq 上下文，本质上还是不能睡眠。</li>
+<li>更像是“给驱动的一个串行化 bottom half 便利层”。</li>
+</ol>
+
+<p>但你必须注意当前内核的现实方向：<code>kernel/workqueue.c</code> 已经明确写了：</p>
+
+<pre><code class="language-text">TODO: Convert all tasklet users to workqueue and use softirq directly.</code></pre>
+
+<p>所以 tasklet 依然重要，但它更像是 <strong>理解历史与存量驱动</strong> 的对象，而不是新设计首选。</p>
+
+<h4>2.7.4 Threaded IRQ：把下半部显式线程化</h4>
+
+<p><code>request_threaded_irq()</code> 是 Linux 中断处理里最实用的一种现代模式。</p>
+
+<p>语义是：</p>
+
+<ol>
+<li>primary handler 仍然运行在 hardirq 上下文。</li>
+<li>它只做“快速确认、判断来源、必要时关设备中断”。</li>
+<li>若需要慢路径处理，就返回 <code>IRQ_WAKE_THREAD</code>。</li>
+<li>内核唤醒对应 irq thread 执行 <code>thread_fn</code>。</li>
+</ol>
+
+<p>这条路径在 <code>kernel/irq/manage.c</code> 里非常清楚：</p>
+
+<ol>
+<li><code>request_threaded_irq()</code> 建立 <code>irqaction</code>。</li>
+<li>若 <code>handler == NULL</code>，内核给一个默认 primary handler，直接返回 <code>IRQ_WAKE_THREAD</code>。</li>
+<li><code>irq_thread_fn()</code> 在线程上下文运行 <code>thread_fn</code>。</li>
+<li><code>IRQF_ONESHOT</code> 用来保证在线程结束前中断线保持屏蔽，避免重入混乱。</li>
+</ol>
+
+<p>这类设计的本质是：<strong>把必须快处理的部分留在 hardirq，把可能睡眠或耗时的部分安全地下沉到进程上下文</strong>。</p>
+
+<h4>2.7.4.1 Threaded IRQ 和 workqueue 怎么分工最合理</h4>
+
+<p>很多资料会把 threaded irq 和 workqueue 混着讲，但工程上它们解决的问题并不完全一样。</p>
+
+<p>可以这样分：</p>
+
+<ol>
+<li><strong>threaded irq</strong> 适合“这件事就是这条 IRQ 的后半段处理”，并且希望保留和该中断源强绑定的串行语义。</li>
+<li><strong>workqueue</strong> 适合“这已经不再是硬中断语义本身，而是后续异步工作”，例如重试、批处理、状态机推进、延时重采样。</li>
+</ol>
+
+<p>最常见的合理分层是：</p>
+
+<pre><code class="language-text">hardirq primary handler
+   -&gt; 快速 ack / mask / 判断是否本设备
+   -&gt; IRQ_WAKE_THREAD
+
+irq thread
+   -&gt; 做需要睡眠的慢路径
+   -&gt; 如仍需延后、合并、重试
+   -&gt; queue_work() / mod_delayed_work()</code></pre>
+
+<p>这样做的好处是：</p>
+
+<ol>
+<li>IRQ 语义边界清楚，线级同步仍由 IRQ core 管。</li>
+<li>真正耗时或需要延时的工作，交给 workqueue，不把 irq thread 也拖成“大杂烩”。</li>
+<li>像按键去抖、链路恢复、批量收包后整理这类逻辑，更容易表达成 <code>delayed_work</code> 或普通 <code>work_struct</code>。</li>
+</ol>
+
+<p>所以不要把 workqueue 当成 threaded irq 的替代品。更准确地说：<strong>threaded irq 是中断处理模型的一部分，workqueue 是更通用的异步执行机制。</strong></p>
+
+<h4>2.7.5 四层关系要这样理解</h4>
+
+<pre><code class="language-text">Hardirq
+   -&gt; 必须快、不能睡眠
+   -&gt; 可能 raise softirq
+
+Softirq
+   -&gt; 每 CPU 执行
+   -&gt; 仍不能睡眠
+
+Tasklet
+   -&gt; 构建在 softirq 上
+   -&gt; 提供单实例串行语义
+
+Threaded IRQ
+   -&gt; 由 hardirq 唤醒内核线程
+   -&gt; 线程上下文，可睡眠</code></pre>
+
+<p>对于 GICv3 研究，这个分层非常重要，因为 GIC 驱动基本只直接负责 hardirq 这一层；而驱动作者真正写业务处理时，往往是在 threaded IRQ、softirq 或 tasklet 里完成后续动作。</p>
+
+<h3>2.8 中断与同步：真正容易出错的部分</h3>
+
+<p>GICv3 研究如果不进入同步问题，最后很容易只得到“流程图理解”，但一到真实驱动或并发 bug 就完全失效。</p>
+
+<h4>2.8.1 先分清四种常见上下文</h4>
+
+<ol>
+<li>进程上下文：可以睡眠。</li>
+<li>hardirq 上下文：不能睡眠。</li>
+<li>softirq/tasklet 上下文：也不能睡眠。</li>
+<li>threaded irq 上下文：本质是内核线程，可以睡眠。</li>
+</ol>
+
+<p>这四者的差异，直接决定你能不能拿 mutex、能不能调用 <code>synchronize_irq()</code>、能不能做阻塞 I/O。</p>
+
+<h4>2.8.2 <code>local_irq_disable()</code> 保护的是什么</h4>
+
+<p><code>local_irq_disable()</code> 只禁止 <strong>当前 CPU 的本地硬中断响应</strong>，它不解决：</p>
+
+<ol>
+<li>其他 CPU 并发访问。</li>
+<li>已经在别的 CPU 上运行的 handler。</li>
+<li>NMI/pseudo-NMI 语义层面的更高优先级打断。</li>
+</ol>
+
+<p>因此它通常只适合：</p>
+
+<ol>
+<li>很短的临界区。</li>
+<li>和 per-CPU 数据结构配合使用。</li>
+<li>与 <code>spin_lock_irqsave()</code> 配合，既关本地 IRQ 又拿锁。</li>
+</ol>
+
+<h4>2.8.3 <code>local_bh_disable()</code> 保护的是什么</h4>
+
+<p><code>local_bh_disable()</code> 不是关硬中断，它的目标是：<strong>阻止当前 CPU 的 softirq/bottom half 在本地被执行</strong>。</p>
+
+<p>所以它适合的场景是：</p>
+
+<ol>
+<li>当前代码与 softirq 共享数据。</li>
+<li>你不想被本地 bottom half 重入。</li>
+<li>但你又不想完全关闭本地硬中断。</li>
+</ol>
+
+<p>这也是为什么一些网络栈代码爱用它，而不是直接 <code>local_irq_disable()</code>。</p>
+
+<h4>2.8.4 <code>spin_lock_irqsave()</code> / <code>raw_spin_lock_irqsave()</code></h4>
+
+<p>这是中断相关同步里最常见的一对。</p>
+
+<p>理解方式：</p>
+
+<ol>
+<li><code>spin_lock_irqsave()</code>：拿自旋锁，并保存/关闭当前 CPU 的本地硬中断。</li>
+<li><code>raw_spin_lock_irqsave()</code>：更底层、更少封装，适合 irq core、低层架构代码和极端敏感路径。</li>
+</ol>
+
+<p>在 IRQ 核心和 GIC 驱动里你会频繁看到 <code>raw_spin_lock_irqsave()</code>，因为这些位置：</p>
+
+<ol>
+<li>不能睡眠。</li>
+<li>需要精确控制上下文。</li>
+<li>经常运行在 hardirq/NMI 邻近路径。</li>
+</ol>
+
+<h4>2.8.5 <code>disable_irq_nosync()</code>、<code>disable_irq()</code>、<code>synchronize_irq()</code> 的区别</h4>
+
+<p>这是驱动里最容易误用的三件套。</p>
+
+<ol>
+<li><code>disable_irq_nosync(irq)</code></li>
+</ol>
+<p>    只做禁止，不等待正在运行的 handler 结束。</p>
+<ol>
+<li><code>disable_irq(irq)</code></li>
+</ol>
+<p>    先禁止，再调用 <code>synchronize_irq()</code> 等当前 handler 彻底退出。</p>
+<ol>
+<li><code>synchronize_irq(irq)</code></li>
+</ol>
+<p>    不一定改变 enable 状态，但会等待这条 IRQ 的 hardirq 和 threaded handler 都跑完。</p>
+
+<p>从 <code>kernel/irq/manage.c</code> 看得很清楚：</p>
+
+<ol>
+<li><code>__synchronize_irq()</code> 先确保 hardirq handler 结束。</li>
+<li>再等待 <code>threads_active</code> 变成 0。</li>
+</ol>
+
+<p>所以这几个 API 的实际使用原则是：</p>
+
+<ol>
+<li>只想阻止未来中断，且允许当前 handler 收尾，用 <code>disable_irq_nosync()</code>。</li>
+<li>要拆设备、释放共享资源前，通常要 <code>disable_irq()</code> 或 <code>disable_irq_nosync() + synchronize_irq()</code>。</li>
+<li>如果持有 handler 可能依赖的锁去调用 <code>synchronize_irq()</code>，非常容易死锁。</li>
+</ol>
+
+<h4>2.8.6 <code>synchronize_hardirq()</code> 和 <code>synchronize_irq()</code> 不一样</h4>
+
+<p>如果一条中断带有 irq thread：</p>
+
+<ol>
+<li><code>synchronize_hardirq()</code> 只保证硬中断部分结束。</li>
+<li><code>synchronize_irq()</code> 还会等待 threaded handler 结束。</li>
+</ol>
+
+<p>这在 threaded IRQ 驱动里非常关键。</p>
+
+<h4>2.8.7 <code>IRQF_ONESHOT</code> 的同步意义</h4>
+
+<p>很多人把 <code>IRQF_ONESHOT</code> 当成“线程化中断的一个普通 flag”，这是不够的。</p>
+
+<p>它真正解决的是：</p>
+
+<ol>
+<li>hardirq primary handler 唤醒 thread 后。</li>
+<li>在线程还没处理完成前，不让同一中断线重新放开造成混乱。</li>
+</ol>
+
+<p><code>irq_finalize_oneshot()</code> 这一段代码就是专门在处理这类竞态。</p>
+
+<h4>2.8.8 研究 GICv3 时最该警惕的同步错觉</h4>
+
+<ol>
+<li>“关本地中断就等于没有并发”是错的，因为还有别的 CPU。</li>
+<li>“disable_irq() 之后硬件就完全安静了”也不一定成立，因为还可能有 in-flight handler 和 threaded handler。</li>
+<li>“tasklet 比 softirq 安全”不准确，它只是多了一层串行语义，仍然不能睡眠。</li>
+<li>“threaded irq 就完全不需要关中断”也不对，因为 primary handler 和线级 mask/unmask 仍然决定竞态窗口。</li>
+</ol>
+
+<h4>2.8.9 中断同步的一条实战规则</h4>
+
+<p>如果你在分析一段驱动代码，先问自己四个问题：</p>
+
+<ol>
+<li>这段代码运行在哪个上下文。</li>
+<li>它会不会被同一 IRQ 的 hardirq 重入。</li>
+<li>它会不会被 softirq/tasklet 并发访问。</li>
+<li>它需要等待的是“未来不再进中断”，还是“当前所有 handler 全部退出”。</li>
+</ol>
+
+<p>这四个问题一旦答清，锁和同步 API 的选择基本就不会偏。</p>
+
+<hr>
+
+<h2>第3课：GICv3 初始化总流程</h2>
+
+<h3>3.1 Device Tree/ACPI 初始化入口</h3>
+
+<p>当前源码里有两条主入口：</p>
+
+<ol>
+<li><code>gic_of_init()</code></li>
+<li><code>gic_acpi_init()</code></li>
+</ol>
+
+<p>它们最终都汇聚到：</p>
+
+<pre><code class="language-text">gic_init_bases()
+  -&gt; irq_domain_create_tree()
+  -&gt; set_handle_irq(gic_handle_irq)
+  -&gt; gic_update_rdist_properties()
+  -&gt; gic_cpu_sys_reg_enable()
+  -&gt; gic_prio_init()
+  -&gt; gic_dist_init()
+  -&gt; gic_cpu_init()
+  -&gt; gic_enable_nmi_support()
+  -&gt; gic_smp_init()
+  -&gt; gic_cpu_pm_init()
+  -&gt; its_init() / gicv2m_init()</code></pre>
+
+<h3>3.1.1 如果从设备树 bring-up 角度看，最容易记住的入口链</h3>
+
+<p>把 GICv3 初始化只背成 <code>gic_init_bases()</code> 还不够，因为工程上很多问题其实卡在它之前。</p>
+
+<p>对 DT 平台，一条更完整、也更适合排障的入口链是：</p>
+
+<pre><code class="language-text">IRQCHIP_DECLARE(gic_v3, &quot;arm,gic-v3&quot;, gic_of_init)
+   -&gt; __irqchip_of_table
+   -&gt; of_irq_init()
+   -&gt; 匹配到 gic 节点 compatible = &quot;arm,gic-v3&quot;
+   -&gt; gic_of_init()
+   -&gt; of_iomap() 映射 GICD/GICR
+   -&gt; gic_validate_dist_version()
+   -&gt; 读取 #redistributor-regions / redistributor-stride
+   -&gt; gic_init_bases()</code></pre>
+
+<p>这条链最有用的地方在于它能把启动失败快速分层：</p>
+
+<ol>
+<li>连 <code>gic_of_init()</code> 都没进，优先看 DT compatible 和 irqchip early init。</li>
+<li>进了 <code>gic_of_init()</code> 但 distributor 版本校验失败，优先看寄存器映射和基地址。</li>
+<li>GICD 没问题但 Redistributor 遍历异常，优先看 redist region 和 stride 描述。</li>
+<li><code>gic_init_bases()</code> 之后才异常，才开始进入 domain、ICC sysreg、ITS 这些更靠后的问题。</li>
+</ol>
+
+<h3>3.2 Distributor 初始化：<code>gic_dist_init()</code></h3>
+
+<p>这里完成的是全局中断面配置：</p>
+
+<ol>
+<li>关闭 Distributor。</li>
+<li>把 SPI/ESPI 配置为 Non-secure Group-1。</li>
+<li>设置默认优先级。</li>
+<li>配置触发方式默认值。</li>
+<li>打开 <code>ARE_NS</code> 和 Group1。</li>
+<li>通过 <code>GICD_IROUTER</code> 把所有 SPI 默认路由到 boot CPU。</li>
+</ol>
+
+<p>这里要理解两件事：</p>
+
+<ol>
+<li><strong>ARE 打开后，路由基于 affinity，而不是旧式 CPU mask</strong>。</li>
+<li><strong>SPI/ESPI 路由在 GICD，SGI/PPI/EPPI 在 GICR</strong>。</li>
+</ol>
+
+<h3>3.3 Redistributor 初始化：<code>gic_populate_rdist()</code> + <code>gic_cpu_init()</code></h3>
+
+<p>GICv3 的 per-CPU 本地初始化核心就是找到“当前 CPU 对应的 GICR”。</p>
+
+<p>流程：</p>
+
+<ol>
+<li><code>gic_iterate_rdists()</code> 遍历所有 redist region。</li>
+<li><code>__gic_populate_rdist()</code> 读取 <code>GICR_TYPER</code>，用 MPIDR affinity 匹配当前 CPU。</li>
+<li>保存当前 CPU 的 <code>rd_base</code>、<code>phys_base</code>。</li>
+<li><code>gic_enable_redist(true)</code> 唤醒 redistributor。</li>
+<li>对 SGI/PPI 配置 Group1、优先级、触发方式。</li>
+<li><code>gic_cpu_sys_reg_init()</code> 初始化 ICC system registers。</li>
+</ol>
+
+<h3>3.4 CPU Interface 初始化：<code>gic_cpu_sys_reg_init()</code></h3>
+
+<p>这部分是理解 GICv3 的关键：</p>
+
+<ol>
+<li><code>ICC_PMR_EL1</code>：优先级屏蔽。</li>
+<li><code>ICC_BPR1_EL1</code>：二进制优先级分组。</li>
+<li><code>ICC_CTLR_EL1</code>：EOI 模式、RSS 等能力。</li>
+<li><code>ICC_AP0R<em></code> / <code>ICC_AP1R</em></code>：活跃优先级寄存器清理。</li>
+<li><code>ICC_IGRPEN1_EL1</code>：使能 Group1。</li>
+</ol>
+
+<p>这一步完成后，CPU 才真正能从系统寄存器接口接收 GICv3 中断。</p>
+
+<h3>3.5 把三层寄存器配置串起来看：到底要配哪些寄存器</h3>
+
+<p>前面讲了三层的架构意义，这里把问题落到最实用的层面：<strong>初始化时这三层到底各要配置哪些寄存器，为什么要配，当前源码是怎么配的。</strong></p>
+
+<p>先记一个原则：</p>
+
+<ol>
+<li>Distributor 更偏“全局属性和路由配置”。</li>
+<li>Redistributor 更偏“每 CPU 本地中断状态配置”。</li>
+<li>CPU Interface 更偏“CPU 当前接收/确认/屏蔽语义配置”。</li>
+</ol>
+
+<h4>3.5.1 Distributor 层：典型要配哪些寄存器</h4>
+
+<p>在当前源码里，Distributor 的主初始化函数是 <code>gic_dist_init()</code>，再配合 <code>gic_dist_config()</code> 批量做通用配置。</p>
+
+<p>最关键的寄存器有：</p>
+
+<ol>
+<li><code>GICD_CTLR</code></li>
+</ol>
+<p>   用来总开关 Distributor，并打开 <code>ARE_NS</code>、<code>ENABLE_G1</code>、<code>ENABLE_G1A</code>。</p>
+<ol>
+<li><code>GICD_IGROUPR</code></li>
+</ol>
+<p>   把 SPI 配成 non-secure Group-1。</p>
+<ol>
+<li><code>GICD_IPRIORITYR</code></li>
+</ol>
+<p>   给全局中断设置默认优先级。</p>
+<ol>
+<li><code>GICD_ICFGR</code></li>
+</ol>
+<p>   配置 SPI 是 level 还是 edge，默认通常先按 level 初始化。</p>
+<ol>
+<li><code>GICD_ICENABLER</code> / <code>GICD_ICACTIVER</code></li>
+</ol>
+<p>   初始化时先把全局中断 disable/deactivate，避免遗留状态。</p>
+<ol>
+<li><code>GICD_IROUTER</code></li>
+</ol>
+<p>   给每条 SPI 指定目标 affinity，也就是“这条共享中断送哪个 CPU”。</p>
+
+<p>当前代码里的典型动作非常清楚：</p>
+
+<pre><code class="language-text">gic_dist_init()
+  -&gt; 写 GICD_CTLR=0，先关 distributor
+  -&gt; 写 GICD_IGROUPR，把 SPI 设成 Group1
+  -&gt; gic_dist_config()
+       -&gt; 写 GICD_ICFGR，设默认触发方式
+       -&gt; 写 GICD_IPRIORITYR，设默认优先级
+       -&gt; 写 GICD_ICACTIVER / GICD_ICENABLER，先清 active/enable
+  -&gt; 写 GICD_CTLR = ARE_NS | ENABLE_G1A | ENABLE_G1
+  -&gt; 写 GICD_IROUTER，把 SPI 默认都路由到 boot CPU</code></pre>
+
+<p>这套配置背后的架构含义是：</p>
+
+<ol>
+<li>先把全局共享中断放到一个已知、干净的初始状态。</li>
+<li>再声明它们属于普通世界 Group1。</li>
+<li>再设置谁有资格接收这些共享中断。</li>
+</ol>
+
+<p>如果你后面研究的是：</p>
+
+<ol>
+<li>为什么某个 SPI 总打到 CPU0。</li>
+<li>为什么 affinity 改了不生效。</li>
+<li>为什么某条共享中断触发类型不对。</li>
+</ol>
+
+<p>那第一反应就该回到 Distributor 这层。</p>
+
+<h4>3.5.2 Redistributor 层：典型要配哪些寄存器</h4>
+
+<p>Redistributor 的主初始化函数是 <code>gic_cpu_init()</code>，更早还会通过 <code>gic_populate_rdist()</code> 和 <code>gic_enable_redist(true)</code> 找到并唤醒当前 CPU 对应的 GICR。</p>
+
+<p>最关键的寄存器有：</p>
+
+<ol>
+<li><code>GICR_WAKER</code></li>
+</ol>
+<p>   控制当前 Redistributor 的睡眠/唤醒状态。</p>
+<ol>
+<li><code>GICR_IGROUPR0</code></li>
+</ol>
+<p>   把 SGI/PPI 配成 Group1。</p>
+<ol>
+<li><code>GICR_IPRIORITYR0</code></li>
+</ol>
+<p>   给本地 SGI/PPI 设置优先级。</p>
+<ol>
+<li><code>GICR_ICFGR0</code> / <code>GICR_ICFGR1</code></li>
+</ol>
+<p>   设置本地中断触发方式。</p>
+<ol>
+<li><code>GICR_ICENABLER0</code> / <code>GICR_ICACTIVER0</code></li>
+</ol>
+<p>   初始化时先把本地中断 disable/deactivate。</p>
+<ol>
+<li><code>GICR_PROPBASER</code> / <code>GICR_PENDBASER</code></li>
+</ol>
+<p>   这是 LPI 才需要的本地表基址寄存器，用于 property table 和 pending table。</p>
+
+<p>当前源码的典型动作是：</p>
+
+<pre><code class="language-text">gic_cpu_init()
+  -&gt; gic_populate_rdist() 找当前 CPU 对应的 GICR
+  -&gt; gic_enable_redist(true)
+       -&gt; 写 GICR_WAKER，清 ProcessorSleep
+       -&gt; 轮询 ChildrenAsleep 消失
+  -&gt; 写 GICR_IGROUPR0，把 SGI/PPI 设成 Group1
+  -&gt; gic_cpu_config()
+       -&gt; 写 GICR_ICACTIVER0 / GICR_ICENABLER0，先清 active/enable
+       -&gt; 写 GICR_IPRIORITYR0，设本地中断优先级
+  -&gt; 后续若启用 LPI，再配置 GICR_PROPBASER / GICR_PENDBASER</code></pre>
+
+<p>这套配置背后的架构含义是：</p>
+
+<ol>
+<li>先把当前 CPU 的本地中断入口唤醒。</li>
+<li>再把 SGI/PPI 这些 per-CPU 中断初始化到已知状态。</li>
+<li>若系统使用 ITS/LPI，再给本地 LPI 建立 property/pending 表落点。</li>
+</ol>
+
+<p>所以一旦你分析的是：</p>
+
+<ol>
+<li>timer PPI 为什么只在本 CPU 上起作用。</li>
+<li>IPI 为什么属于本地中断语义。</li>
+<li>LPI 为什么最终落到某个具体 CPU。</li>
+</ol>
+
+<p>你就应该优先看 Redistributor，而不是去翻 <code>GICD_IROUTER</code>。</p>
+
+<h4>3.5.3 CPU Interface 层：典型要配哪些寄存器</h4>
+
+<p>CPU Interface 的初始化主函数是 <code>gic_cpu_sys_reg_init()</code>，更早还有 <code>gic_cpu_sys_reg_enable()</code> 负责打开 system register interface。</p>
+
+<p>最关键的寄存器有两类。</p>
+
+<p>第一类是“初始化语义寄存器”：</p>
+
+<ol>
+<li><code>ICC_SRE_EL1</code></li>
+</ol>
+<p>   打开 system register interface，不走老式内存映射 CPU IF。</p>
+<ol>
+<li><code>ICC_PMR_EL1</code></li>
+</ol>
+<p>   设置当前 CPU 的优先级屏蔽门限。</p>
+<ol>
+<li><code>ICC_BPR1_EL1</code></li>
+</ol>
+<p>   恢复/设置二进制优先级分组。</p>
+<ol>
+<li><code>ICC_CTLR_EL1</code></li>
+</ol>
+<p>   配 EOI mode、RSS 等 CPU interface 行为。</p>
+<ol>
+<li><code>ICC_AP0R<em></code> / <code>ICC_AP1R</em></code></li>
+</ol>
+<p>   清理 active priority state，避免固件遗留状态污染。</p>
+<ol>
+<li><code>ICC_IGRPEN1_EL1</code></li>
+</ol>
+<p>   真正打开 Group1 接收。</p>
+
+<p>第二类是“运行期交互寄存器”：</p>
+
+<ol>
+<li><code>ICC_IAR1_EL1</code></li>
+</ol>
+<p>   读 INTID，同时完成 ACK 语义。</p>
+<ol>
+<li><code>ICC_EOIR1_EL1</code></li>
+</ol>
+<p>   做 priority drop。</p>
+<ol>
+<li><code>ICC_DIR_EL1</code></li>
+</ol>
+<p>   在 EOImode1 下做 deactivate。</p>
+<ol>
+<li><code>ICC_RPR_EL1</code></li>
+</ol>
+<p>   读当前 running priority，pseudo-NMI 判断会用到。</p>
+
+<p>当前源码里的典型动作是：</p>
+
+<pre><code class="language-text">gic_cpu_sys_reg_enable()
+  -&gt; 使能 ICC_SRE_EL1
+
+gic_cpu_sys_reg_init()
+  -&gt; 写 ICC_PMR_EL1
+  -&gt; 写 ICC_BPR1_EL1=0
+  -&gt; 写 ICC_CTLR_EL1，选择 EOI mode
+  -&gt; 清 ICC_AP0R* / ICC_AP1R*
+  -&gt; 写 ICC_IGRPEN1_EL1=1
+
+运行时
+  -&gt; 读 ICC_IAR1_EL1 取 INTID
+  -&gt; 写 ICC_EOIR1_EL1 做 priority drop
+  -&gt; 必要时写 ICC_DIR_EL1 做 deactivate</code></pre>
+
+<p>这套配置背后的架构含义是：</p>
+
+<ol>
+<li>Distributor/Redistributor 决定“中断对象和本地状态”。</li>
+<li>CPU Interface 决定“CPU 此刻是否真的能看到它，以及怎么确认/完成它”。</li>
+</ol>
+
+<p>所以如果你的问题是：</p>
+
+<ol>
+<li>为什么 CPU 现在看不到某条本来应该来的中断。</li>
+<li>为什么 pseudo-NMI 在关普通 IRQ 时还能进来。</li>
+<li>为什么 ACK/EOI/Deactivate 的时序会影响行为。</li>
+</ol>
+
+<p>那就说明你已经进入 CPU Interface 这一层了。</p>
+
+<h4>3.5.4 一张最实用的寄存器分层表</h4>
+
+<pre><code class="language-text">Distributor（全局共享）
+  GICD_CTLR
+  GICD_IGROUPR
+  GICD_IPRIORITYR
+  GICD_ICFGR
+  GICD_ICENABLER / GICD_ICACTIVER
+  GICD_IROUTER
+
+Redistributor（每 CPU 本地）
+  GICR_WAKER
+  GICR_IGROUPR0
+  GICR_IPRIORITYR0
+  GICR_ICFGR0 / GICR_ICFGR1
+  GICR_ICENABLER0 / GICR_ICACTIVER0
+  GICR_PROPBASER / GICR_PENDBASER
+
+CPU Interface（CPU 交付与握手）
+  ICC_SRE_EL1
+  ICC_PMR_EL1
+  ICC_BPR1_EL1
+  ICC_CTLR_EL1
+  ICC_AP0R* / ICC_AP1R*
+  ICC_IGRPEN1_EL1
+  ICC_IAR1_EL1 / ICC_EOIR1_EL1 / ICC_DIR_EL1</code></pre>
+
+<h4>3.5.5 一句最值得带走的理解</h4>
+
+<p>如果只允许保留一句最有用的话，那就是：</p>
+
+<ol>
+<li>Distributor 配“共享中断是什么、送给谁”。</li>
+<li>Redistributor 配“本地中断和本地落点长什么样”。</li>
+<li>CPU Interface 配“CPU 现在怎么接、怎么屏蔽、怎么确认这条中断”。</li>
+</ol>
+
+<h4>3.5.6 Distributor 关键寄存器逐个展开</h4>
+
+<p>下面这部分不再只停留在“寄存器名单”，而是逐个说清楚：<strong>它到底管什么、当前代码怎么写、你排障时该想到什么。</strong></p>
+
+<h5>3.5.6.1 <code>GICD_CTLR</code></h5>
+
+<p>这是 Distributor 的总控寄存器。</p>
+
+<p>当前代码里最关键的位有：</p>
+
+<ol>
+<li><code>GICD_CTLR_ARE_NS</code></li>
+</ol>
+<p>   打开 affinity routing，表示非安全态下 SPI 路由不再走老式 CPU mask，而走 affinity 路由。</p>
+<ol>
+<li><code>GICD_CTLR_ENABLE_G1</code></li>
+</ol>
+<p>   打开 Group1 中断投递。</p>
+<ol>
+<li><code>GICD_CTLR_ENABLE_G1A</code></li>
+</ol>
+<p>   打开 Group1A 语义。</p>
+<ol>
+<li><code>GICD_CTLR_nASSGIreq</code></li>
+</ol>
+<p>   某些实现支持“SGI 无 active state”，当前代码会按 <code>GICD_TYPER2_nASSGIcap</code> 条件打开。</p>
+
+<p>当前 <code>gic_dist_init()</code> 的核心写法是：</p>
+
+<pre><code class="language-text">先写 0 到 GICD_CTLR，把 distributor 关掉
+完成 SPI 属性初始化后
+再写 ARE_NS | ENABLE_G1A | ENABLE_G1</code></pre>
+
+<p>这一步的真正意义是：</p>
+
+<ol>
+<li>先冻结全局共享中断面。</li>
+<li>配好属性后再统一放开。</li>
+<li>明确系统走的是 non-secure Group1 路径。</li>
+</ol>
+
+<p>如果你碰到：</p>
+
+<ol>
+<li><code>GICD_IROUTER</code> 看起来改了，但路由表现不对。</li>
+<li>平台仍像 GICv2 那样在用旧 target mask 语义。</li>
+</ol>
+
+<p>第一反应就是检查 <code>ARE_NS</code> 是否真的打开。</p>
+
+<h5>3.5.6.2 <code>GICD_IGROUPR</code></h5>
+
+<p>这个寄存器决定 SPI 属于哪一组。</p>
+
+<p>在当前 Linux 普通世界路径里，它最重要的作用只有一个：</p>
+
+<ol>
+<li>把 SPI 配成 non-secure Group1。</li>
+</ol>
+
+<p>代码里最直接的动作就是：</p>
+
+<pre><code class="language-text">for (i = 32; i &lt; GIC_LINE_NR; i += 32)
+    writel_relaxed(~0, base + GICD_IGROUPR + i / 8)</code></pre>
+
+<p>这里写全 1，本质上就是把这一批 SPI 都放进 Group1。</p>
+
+<p>所以如果你研究对象是普通世界 Linux，这个寄存器最值得记住的一句话是：</p>
+
+<ol>
+<li>Linux 主线默认希望普通 SPI 都属于 Group1。</li>
+</ol>
+
+<h5>3.5.6.3 <code>GICD_IPRIORITYR</code></h5>
+
+<p>这是共享中断优先级寄存器。</p>
+
+<p>它的要点有三个：</p>
+
+<ol>
+<li>通常每条中断占一个字节。</li>
+<li>数值越小，优先级越高。</li>
+<li>它要和 CPU interface 侧的 <code>ICC_PMR_EL1</code> 配合起来理解，单独看没有意义。</li>
+</ol>
+
+<p>当前初始化里，<code>gic_dist_config()</code> 和 <code>gic_dist_init()</code> 都会批量把 SPI/ESPI 写成默认优先级 <code>dist_prio_irq</code>。</p>
+
+<p>所以它的架构意义不是“决定这条中断最终去哪”，而是：</p>
+
+<ol>
+<li>决定当这条中断到了 CPU interface 之后，它和别的中断比谁优先。</li>
+</ol>
+
+<p>如果你在研究 pseudo-NMI，就一定要记住：</p>
+
+<ol>
+<li>Distributor/GICR 侧优先级编码</li>
+<li><code>ICC_PMR_EL1</code> / <code>ICC_RPR_EL1</code> 侧优先级解释</li>
+</ol>
+
+<p>这两边必须能对上。</p>
+
+<h5>3.5.6.4 <code>GICD_ICFGR</code></h5>
+
+<p>这个寄存器控制 SPI 的触发方式。</p>
+
+<p>最实用的理解是：</p>
+
+<ol>
+<li>它决定某条共享中断是 level 还是 edge。</li>
+<li>当前 <code>gic_configure_irq()</code> 里，真正操作的关键位就是 <code>0x2 << ((irq % 16) * 2)</code>。</li>
+<li>level 会清该位，edge 会置该位。</li>
+</ol>
+
+<p>初始化阶段，<code>gic_dist_config()</code> 默认先把所有全局中断设成 level-triggered。</p>
+
+<p>这也是为什么很多设备驱动最终还会通过 <code>irq_set_irq_type()</code> 或 flow setup 再精调一次。</p>
+
+<p>如果现场出现：</p>
+
+<ol>
+<li>中断风暴。</li>
+<li><code>nobody cared</code>。</li>
+<li>明明清了设备状态却还是重复进中断。</li>
+</ol>
+
+<p>那么 <code>GICD_ICFGR</code> 是否和设备真实电气行为匹配，永远是优先检查项。</p>
+
+<h5>3.5.6.5 <code>GICD_ISENABLER</code> / <code>GICD_ICENABLER</code></h5>
+
+<p>这对寄存器是共享中断 enable/disable 的主开关。</p>
+
+<p>最实用的理解：</p>
+
+<ol>
+<li><code>ISENABLER</code> 用来使能。</li>
+<li><code>ICENABLER</code> 用来禁止。</li>
+<li><code>gic_mask_irq()</code> / <code>gic_unmask_irq()</code> 运行期就会打到这类寄存器。</li>
+</ol>
+
+<p>初始化时，内核往往先用 <code>ICENABLER</code> 把它们都关掉，避免带着固件或上电遗留状态进入系统。</p>
+
+<p>所以它是“线是否允许进入 GIC 主状态机”的第一层布尔门。</p>
+
+<h5>3.5.6.6 <code>GICD_ISACTIVER</code> / <code>GICD_ICACTIVER</code></h5>
+
+<p>这对寄存器表示 active 状态，而不是 enable 状态。</p>
+
+<p>这个区别非常重要：</p>
+
+<ol>
+<li>enable 说的是“以后还接不接新中断”。</li>
+<li>active 说的是“当前这条中断是否仍被认为处于已激活状态”。</li>
+</ol>
+
+<p>当前初始化阶段会先清 active。</p>
+
+<p>运行时更关键的是：</p>
+
+<ol>
+<li>在 EOImode1 下，priority drop 和 deactivate 被拆开。</li>
+<li>某些路径最终会通过 <code>ICC_DIR_EL1</code> 或 <code>GICD_ICACTIVER</code> 完成 deactivate。</li>
+</ol>
+
+<p>如果你在调 ACK/EOI/Deactivate 时序，这对寄存器比 enable 位更关键。</p>
+
+<h5>3.5.6.7 <code>GICD_IROUTER</code></h5>
+
+<p>这是 Distributor 层最“架构味”的一个寄存器，因为它直接承载 SPI 的 affinity 路由。</p>
+
+<p>最关键的语义有两个：</p>
+
+<ol>
+<li><code>Aff3:Aff0</code></li>
+</ol>
+<p>   指定目标 PE 的 affinity 编码。</p>
+<ol>
+<li><code>GICD_IROUTER_SPI_MODE_ONE</code> / <code>GICD_IROUTER_SPI_MODE_ANY</code></li>
+</ol>
+<p>   决定是单目标还是任何符合条件的目标。</p>
+
+<p>当前代码里：</p>
+
+<ol>
+<li>初始化阶段把所有 SPI 默认路由到 boot CPU。</li>
+<li>运行期 <code>gic_set_affinity()</code> 会重新计算目标 CPU 的 affinity，然后写 <code>GICD_IROUTER</code>。</li>
+</ol>
+
+<p>所以如果你研究的是：</p>
+
+<ol>
+<li><code>/proc/irq/N/smp_affinity_list</code> 为什么能影响某条 SPI。</li>
+<li><code>effective_affinity</code> 为什么最后落到某个 CPU。</li>
+</ol>
+
+<p>本质上都是在研究 <code>GICD_IROUTER</code> 的写入结果。</p>
+
+<h4>3.5.7 Redistributor 关键寄存器逐个展开</h4>
+
+<h5>3.5.7.1 <code>GICR_WAKER</code></h5>
+
+<p>这是 Redistributor 层最重要的“电源/唤醒语义”寄存器。</p>
+
+<p>当前代码主要关心两个位：</p>
+
+<ol>
+<li><code>GICR_WAKER_ProcessorSleep</code></li>
+</ol>
+<p>   表示该 Redistributor 对应 PE 是否处于 sleep 语义。</p>
+<ol>
+<li><code>GICR_WAKER_ChildrenAsleep</code></li>
+</ol>
+<p>   用来确认相关子逻辑是否已经真的睡下或醒来。</p>
+
+<p><code>gic_enable_redist(true)</code> 的关键动作就是：</p>
+
+<ol>
+<li>清 <code>ProcessorSleep</code>。</li>
+<li>轮询直到 <code>ChildrenAsleep</code> 消失。</li>
+</ol>
+
+<p>所以它的真正含义不是“一个普通 enable 位”，而是：</p>
+
+<ol>
+<li>当前 CPU 对应的本地中断入口是否真的被唤醒、可接收本地中断。</li>
+</ol>
+
+<p>如果某个 CPU 的 PPI/SGI 行为异常，<code>GICR_WAKER</code> 是必须先看的点。</p>
+
+<h5>3.5.7.2 <code>GICR_IGROUPR0</code></h5>
+
+<p>它是本地 SGI/PPI 的分组寄存器，对应 Redistributor 本地视角的 Group 设置。</p>
+
+<p>当前代码里会批量写全 1：</p>
+
+<pre><code class="language-text">for (i = 0; i &lt; gic_data.ppi_nr + SGI_NR; i += 32)
+    writel_relaxed(~0, rbase + GICR_IGROUPR0 + i / 8)</code></pre>
+
+<p>本质上就是把 SGI/PPI 放进 Group1。</p>
+
+<p>这和前面 <code>GICD_IGROUPR</code> 的关系是：</p>
+
+<ol>
+<li><code>GICD_IGROUPR</code> 管全局 SPI。</li>
+<li><code>GICR_IGROUPR0</code> 管每 CPU 本地 SGI/PPI。</li>
+</ol>
+
+<h5>3.5.7.3 <code>GICR_IPRIORITYR0</code></h5>
+
+<p>它是 SGI/PPI 的本地优先级寄存器。</p>
+
+<p>当前 <code>gic_cpu_config()</code> 会批量写默认优先级。</p>
+
+<p>最关键的理解不是“它和 <code>GICD_IPRIORITYR</code> 名字像”，而是：</p>
+
+<ol>
+<li>前者管共享中断。</li>
+<li>后者管当前 CPU 本地中断。</li>
+</ol>
+
+<p>如果你在研究 timer PPI 的优先级或 pseudo-NMI 的本地优先级语义，这一层就会参与其中。</p>
+
+<h5>3.5.7.4 <code>GICR_ICFGR0</code> / <code>GICR_ICFGR1</code></h5>
+
+<p>这组寄存器管本地中断触发方式。</p>
+
+<p>最实用的理解：</p>
+
+<ol>
+<li>SGI 的行为大体是架构固定的，不是你随便改的重点。</li>
+<li>PPI 的触发方式在某些场景下会依赖这组寄存器或相关配置路径。</li>
+</ol>
+
+<p>所以本地中断的 trigger type 问题，不要下意识去查 <code>GICD_ICFGR</code>，要先分清它是不是 PPI/SGI。</p>
+
+<h5>3.5.7.5 <code>GICR_ISENABLER0</code> / <code>GICR_ICENABLER0</code></h5>
+
+<p>它们对应本地中断的 enable/disable。</p>
+
+<p>最关键的区别是：</p>
+
+<ol>
+<li>这组是当前 CPU 本地中断的开关。</li>
+<li>它不控制全局 SPI。</li>
+</ol>
+
+<p>所以 PPI 看不到时，去翻 Distributor 的 enable 位通常是方向错了。</p>
+
+<h5>3.5.7.6 <code>GICR_ISACTIVER0</code> / <code>GICR_ICACTIVER0</code></h5>
+
+<p>这组对应本地中断的 active 状态。</p>
+
+<p>和 Distributor 那组一样，要把它和 enable 语义分开看。</p>
+
+<p>特别是你在分析：</p>
+
+<ol>
+<li>PPI 重入。</li>
+<li>本地中断没有完全退出。</li>
+<li>本地 active 状态残留。</li>
+</ol>
+
+<p>这组寄存器会比 enable 位更接近真相。</p>
+
+<h5>3.5.7.7 <code>GICR_PROPBASER</code></h5>
+
+<p>这是 LPI property table 的基址寄存器。</p>
+
+<p>对 LPI 来说，它至少承载三类信息：</p>
+
+<ol>
+<li>property table 的物理地址。</li>
+<li>cacheability / shareability。</li>
+<li>IDbits 等表规模相关信息。</li>
+</ol>
+
+<p>所以它的本质是：</p>
+
+<ol>
+<li>告诉 Redistributor 去哪里找“每个 LPI 的属性字节”。</li>
+</ol>
+
+<p>而每个属性字节里又会继续编码：</p>
+
+<ol>
+<li>优先级。</li>
+<li>使能。</li>
+<li>Group1 属性。</li>
+</ol>
+
+<h5>3.5.7.8 <code>GICR_PENDBASER</code></h5>
+
+<p>这是 LPI pending table 的基址寄存器。</p>
+
+<p>它决定的是：</p>
+
+<ol>
+<li>Redistributor 去哪里看/改某个 LPI 的 pending 状态位图。</li>
+</ol>
+
+<p>所以如果你理解 <code>GICR_PROPBASER</code> 是“LPI 属性表地址”，那 <code>GICR_PENDBASER</code> 就是“LPI pending 位图地址”。</p>
+
+<p>ITS/LPI 问题只要开始涉及“为什么某个 MSI 翻译成了 LPI 但没有在目标 CPU 表现出来”，这两个寄存器就必须一起看。</p>
+
+<h4>3.5.8 CPU Interface 关键寄存器逐个展开</h4>
+
+<h5>3.5.8.1 <code>ICC_SRE_EL1</code></h5>
+
+<p>这是 system register interface 的入口开关。</p>
+
+<p>最关键的位是：</p>
+
+<ol>
+<li><code>ICC_SRE_EL1_SRE</code></li>
+</ol>
+<p>   打开 system register interface。</p>
+<ol>
+<li><code>ICC_SRE_EL1_DIB</code> / <code>ICC_SRE_EL1_DFB</code></li>
+</ol>
+<p>   与 bypass 行为相关。</p>
+
+<p>当前 <code>gic_cpu_sys_reg_enable()</code> 的本质动作就是：</p>
+
+<ol>
+<li>尝试把 SRE 打开。</li>
+<li>如果 EL2 不允许，内核直接报严重错误。</li>
+</ol>
+
+<p>所以这不是一个“可有可无的小位”，而是 GICv3 CPU interface 能不能按 <code>ICC_*</code> sysreg 工作的前提。</p>
+
+<h5>3.5.8.2 <code>ICC_PMR_EL1</code></h5>
+
+<p>这是 CPU priority mask register，也是 ARM64 pseudo-NMI 研究里最关键的寄存器之一。</p>
+
+<p>最重要的理解是：</p>
+
+<ol>
+<li>它定义当前 CPU 愿意看到的优先级门限。</li>
+<li>数值越小的中断优先级越高。</li>
+<li>所以它不是“开关”，而是“阈值门”。</li>
+</ol>
+
+<p>当前代码里：</p>
+
+<ol>
+<li>没启用 priority masking 时，会写默认值。</li>
+<li>启用 pseudo-NMI 时，异常入口还会临时改它，让高优先级中断在普通 IRQ-off 场景下仍能进来。</li>
+</ol>
+
+<p>所以只要你在分析：</p>
+
+<ol>
+<li>为什么某条中断被屏蔽。</li>
+<li>为什么 pseudo-NMI 还能打断。</li>
+</ol>
+
+<p>最终都会回到 <code>ICC_PMR_EL1</code>。</p>
+
+<h5>3.5.8.3 <code>ICC_BPR1_EL1</code></h5>
+
+<p>这是 binary point register。</p>
+
+<p>它的架构意义是：</p>
+
+<ol>
+<li>决定优先级中哪些位参与抢占分组。</li>
+<li>哪些位只作为子优先级。</li>
+</ol>
+
+<p>当前内核在初始化时直接写 0，目的很明确：</p>
+
+<ol>
+<li>把被固件改乱的值恢复到一个可预测状态。</li>
+</ol>
+
+<p>所以你研究 Linux 主线时，不需要一开始就把 BPR 学到极细，但一定要知道：</p>
+
+<ol>
+<li>如果 BPR 被固件留成异常值，CPU 可能连正常抢占式中断行为都表现不对。</li>
+</ol>
+
+<h5>3.5.8.4 <code>ICC_CTLR_EL1</code></h5>
+
+<p>这是 CPU interface 的行为控制寄存器。</p>
+
+<p>当前 Linux 最关心的两个点：</p>
+
+<ol>
+<li><code>EOImode</code></li>
+</ol>
+<p>   决定写 EOI 时是只做 priority drop，还是同时做 deactivate。</p>
+<ol>
+<li><code>RSS</code></li>
+</ol>
+<p>   影响 SGI routing 扩展能力。</p>
+
+<p>当前内核会在两种模式里二选一：</p>
+
+<ol>
+<li><code>ICC_CTLR_EL1_EOImode_drop</code></li>
+</ol>
+<p>   EOI mode 1，只做 priority drop。</p>
+<ol>
+<li><code>ICC_CTLR_EL1_EOImode_drop_dir</code></li>
+</ol>
+<p>   EOI mode 0，EOI 同时完成 deactivate。</p>
+
+<p>这就是为什么 Linux GICv3 路径里，常常要分开讨论：</p>
+
+<ol>
+<li>ACK</li>
+<li>EOI</li>
+<li>Deactivate</li>
+</ol>
+
+<h5>3.5.8.5 <code>ICC_AP0R<em></code> / <code>ICC_AP1R</em></code></h5>
+
+<p>这组寄存器保存 active priority state。</p>
+
+<p>当前内核初始化时会把它们清零，目的不是“常规配置”，而是：</p>
+
+<ol>
+<li>清掉固件或前一阶段遗留的 active priority 状态。</li>
+<li>避免 CPU interface 从一开始就带着脏优先级栈运行。</li>
+</ol>
+
+<p>所以它们更像“启动清场寄存器”，不是你日常调 IRQ affinity 会直接碰的对象。</p>
+
+<h5>3.5.8.6 <code>ICC_IGRPEN1_EL1</code></h5>
+
+<p>这是普通世界 Linux 主线非常关键的一个寄存器。</p>
+
+<p>它的作用非常直接：</p>
+
+<ol>
+<li>打开 Group1 接收。</li>
+</ol>
+
+<p>当前 <code>gic_cpu_sys_reg_init()</code> 的最后关键一步就是：</p>
+
+<ol>
+<li><code>gic_write_grpen1(1)</code></li>
+</ol>
+
+<p>所以如果把 <code>GICD_IGROUPR</code> 视为“这条中断被归到哪组”，那 <code>ICC_IGRPEN1_EL1</code> 就是：</p>
+
+<ol>
+<li>CPU 这一端愿不愿意真的接这组中断。</li>
+</ol>
+
+<h5>3.5.8.7 <code>ICC_IAR1_EL1</code></h5>
+
+<p>这是运行期最关键的寄存器之一。</p>
+
+<p>它的语义不是“普通读取状态”，而是：</p>
+
+<ol>
+<li>CPU 从这里取当前最高优先级 pending interrupt 的 INTID。</li>
+<li>读取动作本身带 ACK 语义。</li>
+<li>没有可交付中断时，会返回 spurious 值 <code>0x3ff</code>。</li>
+</ol>
+
+<p>当前 Linux 通过 <code>gic_read_iar()</code> 读它，而后进入 <code>gic_handle_irq()</code>。</p>
+
+<p>所以只要你在 GDB 或 trace 里想回答“CPU 这次到底拿到了哪条中断”，最终都要落到它。</p>
+
+<h5>3.5.8.8 <code>ICC_EOIR1_EL1</code></h5>
+
+<p>这是 end of interrupt register，但在 GICv3/Linux 主线上，它更准确的理解是：</p>
+
+<ol>
+<li>在 EOImode1 下主要做 priority drop。</li>
+</ol>
+
+<p>当前 <code>gic_complete_ack()</code> 会写它。</p>
+
+<p>所以不要把它简单理解成“中断彻底结束了”，因为在 EOImode1 下：</p>
+
+<ol>
+<li>写 <code>ICC_EOIR1_EL1</code> 只代表把当前中断从“正在运行的最高优先级”上拿下来。</li>
+<li>真正的 deactivate 还可能在后面单独发生。</li>
+</ol>
+
+<h5>3.5.8.9 <code>ICC_DIR_EL1</code></h5>
+
+<p>这是 deactivate register。</p>
+
+<p>当前 <code>gic_eoimode1_eoi_irq()</code> 的核心工作就是：</p>
+
+<ol>
+<li>在需要时写 <code>ICC_DIR_EL1</code>，把这条中断真正 deactivate。</li>
+</ol>
+
+<p>所以如果你在研究 <code>EOI mode 1</code>，那一定要把这两个寄存器分清：</p>
+
+<ol>
+<li><code>ICC_EOIR1_EL1</code> 管 priority drop。</li>
+<li><code>ICC_DIR_EL1</code> 管 deactivate。</li>
+</ol>
+
+<p>这也是理解 active / active+pending 状态机的关键。</p>
+
+<h5>3.5.8.10 <code>ICC_RPR_EL1</code></h5>
+
+<p>这是 running priority register。</p>
+
+<p>当前普通 IRQ 主线平时不太直接盯它，但 pseudo-NMI 路径非常依赖它。</p>
+
+<p>内核通过 <code>gic_rpr_is_nmi_prio()</code> 读取它，判断当前激活优先级是不是 NMI 优先级那一档。</p>
+
+<p>所以它最关键的作用不是“中断号识别”，而是：</p>
+
+<ol>
+<li>当前 CPU 正在运行的优先级层级判断。</li>
+</ol>
+
+<h5>3.5.8.11 <code>ICC_SGI1R_EL1</code></h5>
+
+<p>这是 SGI 发送寄存器，也是 IPI 分析里必须盯住的那个点。</p>
+
+<p>它主要编码：</p>
+
+<ol>
+<li>SGI ID。</li>
+<li>目标 cluster 的 affinity。</li>
+<li>target list。</li>
+<li>RS 等扩展路由信息。</li>
+</ol>
+
+<p>当前 <code>gic_ipi_send_mask()</code> 会按 cluster 压缩目标 CPU，再写 <code>ICC_SGI1R_EL1</code>。</p>
+
+<p>所以它和 <code>GICD_IROUTER</code> 的关系一定要分清：</p>
+
+<ol>
+<li><code>GICD_IROUTER</code> 主要是 SPI 路由。</li>
+<li><code>ICC_SGI1R_EL1</code> 是 SGI/IPI 主动发送路径。</li>
+</ol>
+
+<h4>3.5.9 研究寄存器时最容易犯的三个错误</h4>
+
+<ol>
+<li>把 enable 和 active 混为一谈。</li>
+<li>把 Distributor 的全局路由问题和 Redistributor 的本地状态问题混为一谈。</li>
+<li>把 <code>ICC_EOIR1_EL1</code> 误当成“已经完全结束中断”，忽略了 <code>ICC_DIR_EL1</code> 的 deactivate 语义。</li>
+</ol>
+
+<h4>3.5.10 一个最值得带走的寄存器阅读方法</h4>
+
+<p>以后你只要遇到一个 GICv3 寄存器，先问自己三个问题：</p>
+
+<ol>
+<li>它属于 GICD、GICR、还是 ICC system register。</li>
+<li>它管的是分组/优先级/路由/唤醒，还是 ACK/EOI/Deactivate。</li>
+<li>它影响的是“全局共享中断”“本地中断状态”，还是“CPU 当前交付语义”。</li>
+</ol>
+
+<p>这三个问题一旦答清，寄存器就不会再是一堆零散名字，而会自动落回正确的架构层次。</p>
+
+<h4>3.5.11 从寄存器反查源码：最实用的函数对照表</h4>
+
+<p>如果你已经知道寄存器名字，下一步最有价值的能力就是：<strong>看到寄存器就能想到该去哪个函数下断点或读代码。</strong></p>
+
+<p>下面这张表只列当前这棵树里最值得反复看的函数。</p>
+
+<h5>3.5.11.1 Distributor 侧</h5>
+
+<ol>
+<li><code>GICD_CTLR</code></li>
+</ol>
+<p>   先看 <code>gic_dist_init()</code>。<br>
+   这是全局开关、<code>ARE_NS</code>、<code>ENABLE_G1</code>、<code>ENABLE_G1A</code> 的主写入点。</p>
+<ol>
+<li><code>GICD_IGROUPR</code></li>
+</ol>
+<p>   先看 <code>gic_dist_init()</code>。<br>
+   这是 SPI 批量设成 Group1 的主位置。</p>
+<ol>
+<li><code>GICD_IPRIORITYR</code></li>
+</ol>
+<p>   先看 <code>gic_dist_config()</code>。<br>
+   这是共享中断默认优先级批量初始化点。</p>
+<ol>
+<li><code>GICD_ICFGR</code></li>
+</ol>
+<p>   先看 <code>gic_dist_config()</code>，再看 <code>gic_configure_irq()</code>。<br>
+   前者给默认值，后者在具体设置 trigger type 时精调。</p>
+<ol>
+<li><code>GICD_ISENABLER</code> / <code>GICD_ICENABLER</code></li>
+</ol>
+<p>   先看 <code>gic_unmask_irq()</code> / <code>gic_mask_irq()</code>。<br>
+   这就是运行期 enable/disable 主路径。</p>
+<ol>
+<li><code>GICD_ISACTIVER</code> / <code>GICD_ICACTIVER</code></li>
+</ol>
+<p>   先看 <code>gic_eoimode1_eoi_irq()</code>、<code>gic_irq_set_irqchip_state()</code>。<br>
+   这是 active 状态管理和某些异常路径修正的关键点。</p>
+<ol>
+<li><code>GICD_IROUTER</code></li>
+</ol>
+<p>   先看 <code>gic_dist_init()</code>，再看 <code>gic_set_affinity()</code>。<br>
+   前者给默认 boot CPU 路由，后者处理运行期绑核。</p>
+
+<h5>3.5.11.2 Redistributor 侧</h5>
+
+<ol>
+<li><code>GICR_WAKER</code></li>
+</ol>
+<p>   先看 <code>gic_enable_redist()</code>。<br>
+   这是唤醒/休眠当前 CPU redistributor 的主函数。</p>
+<ol>
+<li><code>GICR_IGROUPR0</code></li>
+</ol>
+<p>   先看 <code>gic_cpu_init()</code>。<br>
+   这是 SGI/PPI 批量设成 Group1 的主位置。</p>
+<ol>
+<li><code>GICR_IPRIORITYR0</code></li>
+</ol>
+<p>   先看 <code>gic_cpu_config()</code>。<br>
+   这是本地中断默认优先级初始化点。</p>
+<ol>
+<li><code>GICR_ICFGR0</code> / <code>GICR_ICFGR1</code></li>
+</ol>
+<p>   先看 <code>gic_cpu_config()</code> 和 <code>gic_configure_irq()</code>。<br>
+   路径和 Distributor 类似，但对象换成了本地中断。</p>
+<ol>
+<li><code>GICR_ICENABLER0</code> / <code>GICR_ICACTIVER0</code></li>
+</ol>
+<p>   先看 <code>gic_cpu_config()</code>、<code>gic_mask_irq()</code>、<code>gic_irq_set_irqchip_state()</code>。<br>
+   这是本地中断 disable/active 管理路径。</p>
+<ol>
+<li><code>GICR_PROPBASER</code> / <code>GICR_PENDBASER</code></li>
+</ol>
+<p>   先看 ITS/LPI 初始化路径，以及 <code>lpi_update_config()</code> 相关逻辑。<br>
+   真正深入时要跟 ITS 表建立和 redistributor LPI 使能一起看。</p>
+
+<h5>3.5.11.3 CPU Interface 侧</h5>
+
+<ol>
+<li><code>ICC_SRE_EL1</code></li>
+</ol>
+<p>   先看 <code>gic_cpu_sys_reg_enable()</code>。<br>
+   这是 system register interface 能不能工作的前置点。</p>
+<ol>
+<li><code>ICC_PMR_EL1</code></li>
+</ol>
+<p>   先看 <code>gic_cpu_sys_reg_init()</code>，再看 pseudo-NMI 的异常入口汇编。<br>
+   这是优先级门限的核心寄存器。</p>
+<ol>
+<li><code>ICC_BPR1_EL1</code></li>
+</ol>
+<p>   先看 <code>gic_cpu_sys_reg_init()</code>。<br>
+   这是恢复 binary point 的地方。</p>
+<ol>
+<li><code>ICC_CTLR_EL1</code></li>
+</ol>
+<p>   先看 <code>gic_cpu_sys_reg_init()</code>。<br>
+   这里会选 EOImode0 还是 EOImode1。</p>
+<ol>
+<li><code>ICC_AP0R<em></code> / <code>ICC_AP1R</em></code></li>
+</ol>
+<p>   先看 <code>gic_cpu_sys_reg_init()</code>。<br>
+   这是清理 active priority 栈的地方。</p>
+<ol>
+<li><code>ICC_IGRPEN1_EL1</code></li>
+</ol>
+<p>   先看 <code>gic_cpu_sys_reg_init()</code>。<br>
+   这是普通世界 Group1 真正被 CPU 侧打开的时刻。</p>
+<ol>
+<li><code>ICC_IAR1_EL1</code></li>
+</ol>
+<p>   先看 <code>gic_read_iar()</code>、<code>gic_handle_irq()</code>。<br>
+   这是取 INTID 和 ACK 的真正入口。</p>
+<ol>
+<li><code>ICC_EOIR1_EL1</code></li>
+</ol>
+<p>   先看 <code>gic_complete_ack()</code>。<br>
+   这是 priority drop 的关键动作点。</p>
+<ol>
+<li><code>ICC_DIR_EL1</code></li>
+</ol>
+<p>   先看 <code>gic_eoimode1_eoi_irq()</code>。<br>
+   这是 EOImode1 下单独 deactivate 的关键点。</p>
+<ol>
+<li><code>ICC_RPR_EL1</code></li>
+</ol>
+<p>    先看 <code>gic_rpr_is_nmi_prio()</code>。<br>
+    这是 pseudo-NMI 判断当前 running priority 的锚点。</p>
+<ol>
+<li><code>ICC_SGI1R_EL1</code></li>
+</ol>
+<p>    先看 <code>gic_ipi_send_mask()</code>。<br>
+    这是 IPI/SGI 发送链路的主写点。</p>
+
+<h5>3.5.11.4 ITS/LPI 额外补一条</h5>
+
+<p>如果你已经进入 MSI/LPI 研究，就再额外记住四个函数：</p>
+
+<ol>
+<li><code>its_send_mapti()</code></li>
+</ol>
+<p>   负责把 DevID/EventID 映射到 LPI。</p>
+<ol>
+<li><code>its_send_mapc()</code></li>
+</ol>
+<p>   负责把 collection 绑到目标 redistributor/CPU。</p>
+<ol>
+<li><code>its_send_movi()</code></li>
+</ol>
+<p>   负责把某个 event 对应的 LPI 迁移到新的 collection/CPU。</p>
+<ol>
+<li><code>its_set_affinity()</code></li>
+</ol>
+<p>   这是 LPI 绑核时最关键的运行期入口。</p>
+
+<p>所以如果问题是 MSI/LPI 的 affinity，不要再盯 <code>GICD_IROUTER</code>，而是要转向 <code>its_set_affinity()</code> 和 <code>its_send_movi()</code>。</p>
+
+<h4>3.5.12 SPI / PPI / IPI / LPI 四类路径分别会碰哪些寄存器</h4>
+
+<p>这一节的目的只有一个：让你看到一种中断类型时，能立刻联想到它大概率会碰哪些寄存器层。</p>
+
+<h5>3.5.12.1 SPI：共享外设中断</h5>
+
+<p>最常见路径：</p>
+
+<pre><code class="language-text">设备
+  -&gt; GICD_IGROUPR / GICD_IPRIORITYR / GICD_ICFGR
+  -&gt; GICD_IROUTER 选目标 CPU
+  -&gt; ICC_IAR1_EL1 取 INTID
+  -&gt; ICC_EOIR1_EL1 / ICC_DIR_EL1 完成结束语义</code></pre>
+
+<p>SPI 最该盯的寄存器集合：</p>
+
+<ol>
+<li><code>GICD_IROUTER</code></li>
+<li><code>GICD_ICFGR</code></li>
+<li><code>GICD_ISENABLER</code> / <code>GICD_ICENABLER</code></li>
+<li><code>ICC_IAR1_EL1</code></li>
+<li><code>ICC_EOIR1_EL1</code></li>
+<li><code>ICC_DIR_EL1</code></li>
+</ol>
+
+<p>所以 SPI 的主线特点是：</p>
+
+<ol>
+<li>全局属性看 GICD。</li>
+<li>最终交付看 ICC。</li>
+</ol>
+
+<h5>3.5.12.2 PPI：每 CPU 私有中断</h5>
+
+<p>最常见路径：</p>
+
+<pre><code class="language-text">本地 timer / 本地设备源
+  -&gt; GICR_IGROUPR0 / GICR_IPRIORITYR0 / GICR_ICFGR1
+  -&gt; GICR_ISENABLER0 / GICR_ICENABLER0
+  -&gt; ICC_IAR1_EL1
+  -&gt; handle_percpu_devid_irq</code></pre>
+
+<p>PPI 最该盯的寄存器集合：</p>
+
+<ol>
+<li><code>GICR_IGROUPR0</code></li>
+<li><code>GICR_IPRIORITYR0</code></li>
+<li><code>GICR_ICFGR0/1</code></li>
+<li><code>GICR_ISENABLER0</code> / <code>GICR_ICENABLER0</code></li>
+<li><code>ICC_IAR1_EL1</code></li>
+</ol>
+
+<p>所以 PPI 的主线特点是：</p>
+
+<ol>
+<li>不靠 <code>GICD_IROUTER</code> 绑核。</li>
+<li>先看 GICR，本地语义非常强。</li>
+</ol>
+
+<h5>3.5.12.3 SGI/IPI：核间中断</h5>
+
+<p>最常见路径：</p>
+
+<pre><code class="language-text">发送 CPU
+  -&gt; ICC_SGI1R_EL1 编码目标 cluster/target list
+
+接收 CPU
+  -&gt; 本地 GICR 语义范围接收 SGI
+  -&gt; ICC_IAR1_EL1 取 INTID
+  -&gt; handle_percpu_devid_irq 或相近 percpu flow</code></pre>
+
+<p>IPI 最该盯的寄存器集合：</p>
+
+<ol>
+<li><code>ICC_SGI1R_EL1</code></li>
+<li><code>GICR_IGROUPR0</code></li>
+<li><code>GICR_IPRIORITYR0</code></li>
+<li><code>ICC_IAR1_EL1</code></li>
+</ol>
+
+<p>所以 IPI 的主线特点是：</p>
+
+<ol>
+<li>发送动作看 <code>ICC_SGI1R_EL1</code>。</li>
+<li>它不是 SPI，不看 <code>GICD_IROUTER</code>。</li>
+</ol>
+
+<h5>3.5.12.4 LPI：ITS/MSI 过来的本地中断</h5>
+
+<p>最常见路径：</p>
+
+<pre><code class="language-text">MSI write
+  -&gt; ITS command path: MAPTI / MAPC / MOVI
+  -&gt; GICR_PROPBASER / GICR_PENDBASER 对应的表项生效
+  -&gt; 目标 CPU 的 redistributor 接收 LPI
+  -&gt; ICC_IAR1_EL1 取到 INTID</code></pre>
+
+<p>LPI 最该盯的寄存器和对象集合：</p>
+
+<ol>
+<li><code>GICR_PROPBASER</code></li>
+<li><code>GICR_PENDBASER</code></li>
+<li>ITS 命令：<code>MAPTI</code> / <code>MAPC</code> / <code>MOVI</code> / <code>INV</code></li>
+<li><code>ICC_IAR1_EL1</code></li>
+</ol>
+
+<p>所以 LPI 的主线特点是：</p>
+
+<ol>
+<li>不走普通 SPI 的 <code>GICD_IROUTER</code> 路由模型。</li>
+<li>它的“绑核”本质是 ITS collection / MOVI 迁移问题。</li>
+</ol>
+
+<h5>3.5.12.5 一张最实用的速查图</h5>
+
+<pre><code class="language-text">SPI
+  主看: GICD_CTLR / GICD_IGROUPR / GICD_ICFGR / GICD_IROUTER / ICC_IAR1_EL1
+
+PPI
+  主看: GICR_WAKER / GICR_IGROUPR0 / GICR_ICFGR1 / GICR_ISENABLER0 / ICC_IAR1_EL1
+
+IPI/SGI
+  主看: ICC_SGI1R_EL1 / GICR_IGROUPR0 / ICC_IAR1_EL1
+
+LPI
+  主看: GICR_PROPBASER / GICR_PENDBASER / ITS MAPTI-MAPC-MOVI / ICC_IAR1_EL1</code></pre>
+
+<p>这张速查图的价值在于：以后你只要先判定中断类型，就能立刻把寄存器搜索范围缩到正确的那一层，不会在 GICD、GICR、ICC、ITS 之间盲跳。</p>
+
+<hr>
+
+<h2>第4课：核心数据结构必须建立对象图</h2>
+
+<h3>4.1 GICv3 核心对象图</h3>
+
+<pre><code class="language-text">gic_chip_data
+  |- dist_base / dist_phys_base
+  |- redist_regions[]
+  |- rdists
+  |    |- per-cpu rdist
+  |    |    |- rd_lock
+  |    |    |- rd_base
+  |    |    |- pend_page
+  |    |    |- phys_base
+  |    |- prop_table_pa / prop_table_va
+  |    |- gicd_typer / gicd_typer2
+  |    |- has_vlpis / has_rvpeid / has_direct_lpi
+  |- domain
+  |- flags / has_rss / ppi_nr</code></pre>
+
+<h3>4.2 <code>struct gic_chip_data</code></h3>
+
+<p>作用：<strong>整个 GIC 控制器实例的全局状态</strong>。</p>
+
+<p>重点字段：</p>
+
+<ol>
+<li><code>dist_base</code>：GICD 虚拟基址。</li>
+<li><code>redist_regions</code>：所有 GICR 区域。</li>
+<li><code>rdists</code>：per-CPU redistributor 与 LPI 表管理。</li>
+<li><code>domain</code>：GIC 的顶层 irq_domain。</li>
+<li><code>has_rss</code>：是否支持 RSS。</li>
+<li><code>ppi_descs</code>：partitioned PPI 描述。</li>
+</ol>
+
+<h3>4.3 <code>struct rdists</code></h3>
+
+<p>定义在 <code>include/linux/irqchip/arm-gic-v3.h</code>。</p>
+
+<p>这是 GICv3 LPI/vPE 时代最重要的“per-CPU 中断本地资源容器”：</p>
+
+<ol>
+<li><code>rdist</code>：每 CPU 的 redistributor 状态。</li>
+<li><code>prop_table_pa/va</code>：全局 LPI property table。</li>
+<li><code>has_vlpis</code>：是否支持虚拟 LPI。</li>
+<li><code>has_rvpeid</code>：是否支持 RVPEID。</li>
+<li><code>has_direct_lpi</code>：是否支持 direct LPI invalidation。</li>
+</ol>
+
+<h3>4.4 ITS 核心结构</h3>
+
+<p>ITS 相关最重要的结构体在 <code>irq-gic-v3-its.c</code>：</p>
+
+<ol>
+<li><code>its_node</code></li>
+</ol>
+<p>   表示一个 ITS 实例，包含命令队列、BASER 表、collection、设备链表。</p>
+<ol>
+<li><code>its_device</code></li>
+</ol>
+<p>   表示挂到某个 ITS 上的一个 DeviceID 视图，维护 ITT 和 event->LPI 映射。</p>
+<ol>
+<li><code>its_collection</code></li>
+</ol>
+<p>   表示目标 redistributor/CPU 的抽象。</p>
+<ol>
+<li><code>event_lpi_map</code></li>
+</ol>
+<p>   管理一段 LPI 分配区间与 event id 的对应。</p>
+<ol>
+<li><code>its_cmd_desc</code></li>
+</ol>
+<p>   Linux 侧命令描述符。</p>
+<ol>
+<li><code>its_cmd_block</code></li>
+</ol>
+<p>   硬件真正消费的 4x64-bit 命令块。</p>
+
+<h3>4.5 关系要这样记</h3>
+
+<pre><code class="language-text">一个 ITS 节点 its_node
+  -&gt; 管多个 its_device
+  -&gt; 每个 its_device 有多个 EventID
+  -&gt; EventID 映射到 LPI
+  -&gt; LPI 通过 collection 路由到某个 CPU/redistributor
+  -&gt; 命令通过 cmd_queue 发给 ITS 完成 MAPD/MAPTI/MOVI/INV/INT/CLEAR</code></pre>
+
+<hr>
+
+<h2>第5课：运行时中断路径的关键算法</h2>
+
+<p>这一课是源码研究的核心，因为这里把数据结构、寄存器和并发语义全部串起来了。</p>
+
+<h3>5.1 INTID 分类算法：<code>__get_intid_range()</code></h3>
+
+<p>特点：</p>
+
+<ol>
+<li>纯范围判断。</li>
+<li>$O(1)$。</li>
+<li>后续所有寄存器选择、flow handler 选择、affinity 能力判断都依赖它。</li>
+</ol>
+
+<p>这是整个 GICv3 驱动里最基础的“分流器”。</p>
+
+<h3>5.2 寄存器地址换算：<code>convert_offset_index()</code></h3>
+
+<p>难点在扩展中断：</p>
+
+<ol>
+<li>EPPI 在寄存器布局上和普通 PPI 连续，需要重算 index。</li>
+<li>ESPI 使用 <code>GICD_*nE</code> 系列寄存器，需要把原 offset 映射到扩展寄存器窗口。</li>
+</ol>
+
+<p>这就是典型的“架构抽象不规整，软件做统一归一化”的代码。</p>
+
+<h3>5.3 ACK/EOI/Deactivate 路径</h3>
+
+<p>运行时最关键路径：</p>
+
+<pre><code class="language-text">gic_handle_irq()
+  -&gt; gic_read_iar()
+  -&gt; gic_complete_ack()
+  -&gt; generic_handle_domain_irq()
+  -&gt; handle_fasteoi_irq() / handle_percpu_devid_irq()
+  -&gt; gic_eoi_irq() 或 gic_eoimode1_eoi_irq()</code></pre>
+
+<p>要点：</p>
+
+<ol>
+<li><code>gic_complete_ack()</code> 在 EOI mode 1 下先写 <code>ICC_EOIR1_EL1</code> 做 priority drop。</li>
+<li>真正 deactivate 由 <code>gic_eoimode1_eoi_irq()</code> 决定是否写 <code>ICC_DIR_EL1</code> 或 <code>GICD_ICACTIVER</code>。</li>
+<li>对 forwarded-to-vcpu 的中断，deactivate 逻辑又不同。</li>
+</ol>
+
+<h3>5.4 中断路由算法：<code>gic_set_affinity()</code></h3>
+
+<p>SPI/ESPI 的 affinity 设置路径：</p>
+
+<ol>
+<li>选 CPU。</li>
+<li>若中断当前启用，先 mask。</li>
+<li>计算 <code>GICD_IROUTER</code> 对应寄存器地址。</li>
+<li>用 <code>gic_cpu_to_affinity(cpu)</code> 生成 Aff3:Aff0 路由值。</li>
+<li>写回后重新 unmask。</li>
+</ol>
+
+<p>复杂度是 $O(1)$，但必须满足硬件时序：<strong>改路由前后要处理 enable 状态和 RWP 同步</strong>。</p>
+
+<h3>5.5 SGI 目标列表算法：<code>gic_compute_target_list()</code></h3>
+
+<p>这是研究 IPI 必看的函数。</p>
+
+<p>思路：</p>
+
+<ol>
+<li>把目标 CPU 按 cluster 分组。</li>
+<li>同 cluster 的 CPU 压成 16-bit target list。</li>
+<li>不同 cluster 分多次写 <code>ICC_SGI1R_EL1</code>。</li>
+</ol>
+
+<p>本质：<strong>GICv3 的 SGI 发送不是“遍历每个 CPU 单播”，而是“按 affinity cluster 压缩发送”</strong>。</p>
+
+<h3>5.6 ITS LPI 分配算法</h3>
+
+<p>ITS 里最漂亮的一段算法是 LPI allocator。</p>
+
+<p>数据结构：</p>
+
+<ol>
+<li><code>lpi_range_list</code>：空闲 LPI 区间链表。</li>
+<li><code>struct lpi_range { base_id, span }</code></li>
+</ol>
+
+<p>分配策略：</p>
+
+<ol>
+<li><code>alloc_lpi_range()</code>：顺序扫描第一个能容纳的区间，属于 <strong>first-fit</strong>。</li>
+<li><code>free_lpi_range()</code>：按 base 排序插入，再做相邻区间合并。</li>
+</ol>
+
+<p>复杂度：</p>
+
+<ol>
+<li>分配近似 $O(n)$。</li>
+<li>释放近似 $O(n)$。</li>
+</ol>
+
+<p>这不是最复杂的分配器，但对于“释放少、分配多”的 MSI/LPI 场景非常合适。</p>
+
+<h3>5.7 ITS 命令队列算法</h3>
+
+<p>ITS 命令队列是一个 ring buffer：</p>
+
+<ol>
+<li><code>its_allocate_entry()</code>：检查 <code>CWRITER</code>/<code>CREADR</code>，分配下一个命令槽位。</li>
+<li><code>its_post_commands()</code>：推进 <code>GITS_CWRITER</code>。</li>
+<li><code>its_wait_for_range_completion()</code>：轮询 <code>GITS_CREADR</code> 等待硬件消费。</li>
+</ol>
+
+<p>这个设计的本质不是“发命令”，而是：</p>
+
+<ol>
+<li><strong>软件队列可见性</strong></li>
+<li><strong>缓存一致性</strong></li>
+<li><strong>硬件消费进度跟踪</strong></li>
+<li><strong>必要时补一个 SYNC/VSYNC 保证命令完成语义</strong></li>
+</ol>
+
+<h3>5.8 ITS 负载均衡算法：<code>its_select_cpu()</code></h3>
+
+<p>ITS 给 LPI 选目标 CPU 时，不是随便找一个在线核，而是：</p>
+
+<ol>
+<li>优先考虑 NUMA node。</li>
+<li>再结合 online mask 与 affinity mask。</li>
+<li>最终调用 <code>cpumask_pick_least_loaded()</code> 选负载最轻 CPU。</li>
+</ol>
+
+<p>这是中断平衡和内存局部性的折中实现。</p>
+
+<hr>
+
+<h2>第6课：GICv3 的 IRQ domain 实现</h2>
+
+<h3>6.1 顶层 GIC domain</h3>
+
+<p><code>gic_irq_domain_ops</code> 实现了四个关键动作：</p>
+
+<ol>
+<li><code>translate</code></li>
+<li><code>alloc</code></li>
+<li><code>free</code></li>
+<li><code>select</code></li>
+</ol>
+
+<h3>6.2 <code>gic_irq_domain_translate()</code> 很重要</h3>
+
+<p>它负责把不同来源的中断描述翻译成 hwirq：</p>
+
+<ol>
+<li>Device Tree SPI：<code>param[0] == 0</code>，hwirq = <code>param[1] + 32</code></li>
+<li>Device Tree PPI：<code>param[0] == 1</code>，hwirq = <code>param[1] + 16</code></li>
+<li>ESPI / EPPI：分别加上 <code>ESPI_BASE_INTID</code> / <code>EPPI_BASE_INTID</code></li>
+<li>LPI：直接使用传入 hwirq</li>
+<li>SGI：参数个数为 1 且 <code><16</code></li>
+</ol>
+
+<p>这说明 <strong>IRQ domain 并不是只做“编号映射”，它还承担了固件语义翻译</strong>。</p>
+
+<h3>6.3 <code>gic_irq_domain_map()</code> 把 hwirq 绑定到 flow handler</h3>
+
+<p>映射规则：</p>
+
+<ol>
+<li>SGI/PPI/EPPI -> <code>handle_percpu_devid_irq</code></li>
+<li>SPI/ESPI -> <code>handle_fasteoi_irq</code></li>
+<li>LPI -> <code>handle_fasteoi_irq</code></li>
+</ol>
+
+<p>同时会设置：</p>
+
+<ol>
+<li><code>irq_chip</code> 选择 <code>gic_chip</code> 或 <code>gic_eoimode1_chip</code></li>
+<li><code>irq_set_percpu_devid()</code></li>
+<li><code>irqd_set_single_target()</code></li>
+<li><code>irqd_set_handle_enforce_irqctx()</code></li>
+</ol>
+
+<p>这就是 <strong>架构中断类型 -> Linux flow handler</strong> 的绑定点。</p>
+
+<hr>
+
+<h2>第7课：ITS/LPI/MSI 是第二战场</h2>
+
+<h3>7.1 必须先建立翻译模型</h3>
+
+<pre><code class="language-text">MSI 写事务
+  -&gt; ITS_TRANSLATER
+  -&gt; DeviceID + EventID
+  -&gt; ITT 表项
+  -&gt; 映射到某个 LPI
+  -&gt; LPI 路由到 collection 对应的 redistributor
+  -&gt; CPU 接收中断</code></pre>
+
+<p>GICv3 的 ITS 研究，本质上是在研究一个“中断地址翻译与投递引擎”。</p>
+
+<h3>7.2 ITS 初始化主线</h3>
+
+<p>主线在 <code>its_init()</code>：</p>
+
+<ol>
+<li>扫描 DT/ACPI 发现 ITS 节点。</li>
+<li><code>its_probe_one()</code> 初始化每个 ITS。</li>
+<li>分配命令队列 <code>CBASER</code>。</li>
+<li>配置 <code>BASER</code> 表：Device table、Collection table、可能的 VPE table。</li>
+<li>初始化 MSI domain。</li>
+<li><code>allocate_lpi_tables()</code> 建立 PROPBASE/PENDBASE。</li>
+<li>CPU online 时执行 <code>its_cpu_init()</code>、<code>its_cpu_init_lpis()</code>、<code>its_cpu_init_collections()</code>。</li>
+</ol>
+
+<h3>7.3 LPI 两张表</h3>
+
+<ol>
+<li><strong>PROPBASE</strong>：每个 LPI 一个配置字节，记录优先级、使能、Group1 属性。</li>
+<li><strong>PENDBASE</strong>：pending bitmap。</li>
+</ol>
+
+<p>代码关键点：</p>
+
+<ol>
+<li><code>its_setup_lpi_prop_table()</code></li>
+<li><code>its_cpu_init_lpis()</code></li>
+<li><code>lpi_write_config()</code></li>
+<li><code>lpi_update_config()</code></li>
+</ol>
+
+<h3>7.4 MSI domain 层次</h3>
+
+<p>ITS 不是直接给设备 IRQ，而是在 GIC parent domain 上叠加一个 MSI domain：</p>
+
+<ol>
+<li>GIC 顶层 domain 管理 hwirq。</li>
+<li>ITS parent MSI domain 为设备分配中断。</li>
+<li><code>its_irq_chip</code> 提供 mask/unmask/eoi/compose_msi_msg/set_affinity 等操作。</li>
+</ol>
+
+<p>所以 ITS 学习时一定要理解 <strong>hierarchical irq_domain</strong>。</p>
+
+<h3>7.5 最关键的 ITS 命令</h3>
+
+<ol>
+<li><code>MAPD</code>：映射 DeviceID 到 ITT。</li>
+<li><code>MAPC</code>：映射 collection 到目标 redistributor。</li>
+<li><code>MAPTI</code>：把 DeviceID/EventID 绑定到物理 INTID/LPI。</li>
+<li><code>MOVI</code>：改投递目标 collection。</li>
+<li><code>INV</code>：失效单个 event 对应缓存。</li>
+<li><code>INVALL</code>：失效整个 collection。</li>
+<li><code>INT</code>：置 pending。</li>
+<li><code>CLEAR</code>：清 pending。</li>
+<li><code>DISCARD</code>：丢弃映射。</li>
+</ol>
+
+<p>如果你读 <code>its_build_*_cmd()</code> 这一组函数，就能把规范里的命令编码和 Linux 软件对象一一对上。</p>
+
+<hr>
+
+<h2>第8课：GICv4 是高级专题，但必须知道边界</h2>
+
+<h3>8.1 GICv4 解决的核心问题</h3>
+
+<p>它不是“又多了几条命令”，而是：</p>
+
+<ol>
+<li>让 guest 可见的虚拟中断更直接地下沉到 GIC 硬件。</li>
+<li>减少 hypervisor 在虚拟中断注入路径上的软件参与。</li>
+</ol>
+
+<h3>8.2 三个核心对象</h3>
+
+<ol>
+<li><code>vLPI</code>：guest 可见的虚拟 LPI。</li>
+<li><code>vPE</code>：virtual Processing Element，对应 guest vCPU 的 GIC 视角。</li>
+<li><code>doorbell</code>：当 vPE 不在当前运行状态时，用 doorbell LPI 提醒 hypervisor。</li>
+</ol>
+
+<h3>8.3 当前源码中的体现</h3>
+
+<ol>
+<li><code>drivers/irqchip/irq-gic-v4.c</code> 提供 hypervisor 友好的接口封装。</li>
+<li><code>irq_set_vcpu_affinity()</code> 被扩展成一个“半 ioctl 式”控制入口。</li>
+<li><code>its_vlpi_map()</code> / <code>its_vlpi_unmap()</code> / <code>its_prop_update_vlpi()</code> 管理物理 LPI 和虚拟 LPI 的切换。</li>
+<li><code>its_make_vpe_resident()</code> / <code>its_make_vpe_non_resident()</code> / <code>its_commit_vpe()</code> 管理 vPE 调度状态。</li>
+</ol>
+
+<p>研究建议：</p>
+
+<ol>
+<li>先把 GICv3 + ITS 完全吃透。</li>
+<li>再看 GICv4，否则很容易把 host 语义和 guest 语义混在一起。</li>
+</ol>
+
+<hr>
+
+<h2>第9课：按源码文件建立研究地图</h2>
+
+<h3>9.1 必读源码优先级</h3>
+
+<p><strong>第一层：必须完全读懂</strong></p>
+
+<ol>
+<li><code>drivers/irqchip/irq-gic-v3.c</code></li>
+<li><code>drivers/irqchip/irq-gic-v3-its.c</code></li>
+<li><code>arch/arm64/kernel/entry-common.c</code></li>
+<li><code>kernel/irq/irqdesc.c</code></li>
+<li><code>kernel/irq/chip.c</code></li>
+<li><code>include/linux/irq.h</code></li>
+<li><code>include/linux/irqdesc.h</code></li>
+<li><code>include/linux/irqdomain.h</code></li>
+<li><code>include/linux/irqchip/arm-gic-v3.h</code></li>
+</ol>
+
+<p><strong>第二层：建议深入</strong></p>
+
+<ol>
+<li><code>drivers/irqchip/irq-gic-v4.c</code></li>
+<li><code>drivers/irqchip/irq-gic-v3-mbi.c</code></li>
+<li><code>arch/arm64/include/asm/irq.h</code></li>
+<li><code>drivers/irqchip/irq-gic-common.h</code></li>
+</ol>
+
+<h3>9.2 推荐阅读顺序</h3>
+
+<ol>
+<li><code>include/linux/irq.h</code></li>
+<li><code>include/linux/irqdesc.h</code></li>
+<li><code>include/linux/irqdomain.h</code></li>
+<li><code>kernel/irq/chip.c</code></li>
+<li><code>kernel/irq/irqdesc.c</code></li>
+<li><code>arch/arm64/kernel/entry-common.c</code></li>
+<li><code>drivers/irqchip/irq-gic-v3.c</code></li>
+<li><code>drivers/irqchip/irq-gic-v3-its.c</code></li>
+<li><code>drivers/irqchip/irq-gic-v4.c</code></li>
+<li><code>drivers/irqchip/irq-gic-v3-mbi.c</code></li>
+</ol>
+
+<p>这个顺序比“直接怼 <code>irq-gic-v3.c</code>”有效得多。</p>
+
+<hr>
+
+<h2>第10课：源码结合实践的四阶段研究规划</h2>
+
+<h2>阶段A：打基础，建立对象模型（第1周）</h2>
+
+<p>目标：不用跑实验，也能画出 GICv3 软件对象图。</p>
+
+<p>任务：</p>
+
+<ol>
+<li>通读 <code>irq_desc</code>、<code>irq_data</code>、<code>irq_chip</code>、<code>irq_domain</code>。</li>
+<li>手画一张 “hwirq -> irq_domain -> virq -> irq_desc -> action” 图。</li>
+<li>通读 <code>irq-gic-v3.c</code> 中：</li>
+</ol>
+<p>   <code>gic_init_bases</code>、<code>gic_irq_domain_translate</code>、<code>gic_irq_domain_map</code>、<code>gic_handle_irq</code>、<code>gic_set_affinity</code>、<code>gic_ipi_send_mask</code>。</p>
+<ol>
+<li>对照 <code>arm64-reference/gic</code> 文档，把寄存器分成四类：GICD、GICR、ICC、GITS。</li>
+</ol>
+
+<p>产出：</p>
+
+<ol>
+<li>一张数据结构关系图。</li>
+<li>一张中断运行时调用链图。</li>
+<li>一张初始化流程图。</li>
+</ol>
+
+<h2>阶段B：跑通中断入口与本地中断（第2周）</h2>
+
+<p>目标：在系统上实际看到 IRQ 从异常入口进入设备 ISR。</p>
+
+<p>任务：</p>
+
+<ol>
+<li>启动 ARM64 内核，确认是否使用 GICv3。</li>
+<li>观察 <code>dmesg | grep -i gic</code>。</li>
+<li>观察 <code>/proc/interrupts</code>。</li>
+<li>用 ftrace 或 trace-cmd 跟踪：</li>
+</ol>
+<p>   <code>gic_handle_irq</code>、<code>generic_handle_domain_irq</code>、<code>handle_fasteoi_irq</code>、<code>irq_handler_entry</code>。</p>
+<ol>
+<li>分析一个 SPI 和一个 PPI 的路径差异。</li>
+</ol>
+
+<p>关键问题：</p>
+
+<ol>
+<li>为什么 PPI 走 <code>handle_percpu_devid_irq</code>？</li>
+<li>为什么 SPI 走 <code>handle_fasteoi_irq</code>？</li>
+<li>EOI mode 1 下 priority drop 和 deactivate 为什么要分离？</li>
+</ol>
+
+<h2>阶段C：跑通 affinity 与 IPI（第3周）</h2>
+
+<p>目标：把多核路由机制彻底打通。</p>
+
+<p>任务：</p>
+
+<ol>
+<li>修改某个 SPI 的 affinity，观察 <code>/proc/irq/N/smp_affinity_list</code>。</li>
+<li>阅读并验证 <code>gic_set_affinity()</code>。</li>
+<li>跟踪 <code>gic_ipi_send_mask()</code> 与 <code>ICC_SGI1R_EL1</code> 写入。</li>
+<li>研究 RSS 能力位和 cluster 路由的关系。</li>
+</ol>
+
+<p>关键问题：</p>
+
+<ol>
+<li><code>gic_compute_target_list()</code> 为什么按 cluster 压缩目标？</li>
+<li><code>gic_cpu_to_affinity()</code> 如何从 MPIDR 生成 Aff3:Aff0？</li>
+<li><code>GICD_IROUTER</code> 和 <code>ICC_SGI1R_EL1</code> 是两套不同的路由接口，软件上怎么统一理解？</li>
+</ol>
+
+<h2>阶段D：跑通 ITS/LPI/MSI，最后看 GICv4（第4-5周）</h2>
+
+<p>目标：从 MSI 写事务一路跟到 LPI delivery。</p>
+
+<p>任务：</p>
+
+<ol>
+<li>确认平台是否有 ITS。</li>
+<li>阅读 <code>its_init()</code>、<code>its_probe_one()</code>、<code>its_cpu_init_lpis()</code>、<code>its_irq_chip</code>。</li>
+<li>把 <code>MAPD/MAPC/MAPTI/MOVI/INV</code> 的生命周期画成图。</li>
+<li>如果平台支持虚拟化，再读 <code>irq-gic-v4.c</code>。</li>
+</ol>
+
+<p>关键问题：</p>
+
+<ol>
+<li>PROPBASE 和 PENDBASE 分别保存什么。</li>
+<li>为什么 ITS 命令队列必须做 flush / sync。</li>
+<li>为什么 GICv4 要引入 vPE 和 doorbell。</li>
+</ol>
+
+<hr>
+
+<h2>第11课：结合你当前仓库的实操建议</h2>
+
+<h3>11.1 启动环境建议</h3>
+
+<p>当前仓库已有 <code>launch.sh</code>，可以直接作为 ARM64 QEMU 启动入口。但如果你要严肃研究 GICv3，建议显式确认 QEMU 使用 GICv3，而不是依赖默认值。</p>
+
+<p>建议检查：</p>
+
+<ol>
+<li>QEMU 命令行是否显式带 <code>gic-version=3</code>。</li>
+<li>启动后 <code>dmesg</code> 是否打印 GICv3 相关初始化信息。</li>
+<li>如果要研究 ITS，平台和 QEMU 机型要确保真的暴露 ITS 能力。</li>
+</ol>
+
+<h3>11.2 最实用的实验命令</h3>
+
+<h4>实验1：确认 GICv3 初始化结果</h4>
+
+<pre><code class="language-bash">dmesg | grep -i gic
+cat /proc/interrupts</code></pre>
+
+<p>观察点：</p>
+
+<ol>
+<li><code>GICv3 features</code></li>
+<li><code>Pseudo-NMIs enabled</code></li>
+<li><code>ITS: Enabling GICv4 support</code></li>
+<li>各 CPU 的 redistributor 探测日志</li>
+</ol>
+
+<h4>实验2：追踪 IRQ 主路径</h4>
+
+<pre><code class="language-bash">echo function_graph &gt; /sys/kernel/tracing/current_tracer
+echo gic_handle_irq &gt; /sys/kernel/tracing/set_graph_function
+echo generic_handle_domain_irq &gt;&gt; /sys/kernel/tracing/set_graph_function
+echo handle_fasteoi_irq &gt;&gt; /sys/kernel/tracing/set_graph_function
+echo 1 &gt; /sys/kernel/tracing/tracing_on
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>如果系统里不方便用 <code>function_graph</code>，至少打开 trace event：</p>
+
+<pre><code class="language-bash">echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<h4>实验3：观察 affinity</h4>
+
+<pre><code class="language-bash">cat /proc/irq/&lt;irq&gt;/smp_affinity_list
+echo 2 &gt; /proc/irq/&lt;irq&gt;/smp_affinity_list
+cat /proc/irq/&lt;irq&gt;/smp_affinity_list</code></pre>
+
+<p>研究问题：</p>
+
+<ol>
+<li>Linux 侧 affinity 改了。</li>
+<li>GICD <code>IROUTER</code> 是否也按预期变了。</li>
+<li><code>/proc/interrupts</code> 是否迁移到目标 CPU 计数。</li>
+</ol>
+
+<h4>实验4：观察 IPI</h4>
+
+<pre><code class="language-bash">echo 1 &gt; /sys/kernel/tracing/events/ipi/enable
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>然后触发多核调度、workqueue、TLB shootdown 或 smp_call_function 场景。</p>
+
+<h4>实验5：GDB 看异常入口</h4>
+
+<p>当前仓库 <code>launch.sh arm64 debug</code> 已经给了一个可调试入口。可以重点断在：</p>
+
+<ol>
+<li><code>el1h_64_irq_handler</code></li>
+<li><code>gic_handle_irq</code></li>
+<li><code>generic_handle_domain_irq</code></li>
+<li><code>handle_fasteoi_irq</code></li>
+<li>目标设备 ISR</li>
+</ol>
+
+<p>这样你可以把“汇编入口”和“驱动入口”真正接起来。</p>
+
+<h3>11.3 研究 ITS 的实验切入点</h3>
+
+<p>如果平台支持 ITS，建议按这个顺序验证：</p>
+
+<ol>
+<li>启动日志确认 ITS 节点被 probe。</li>
+<li>确认 LPI property table 和 pending table 已分配。</li>
+<li>找一个 MSI 设备，观察其中断是否落入 LPI 范围。</li>
+<li>跟踪 <code>its_irq_compose_msi_msg()</code>、<code>its_set_affinity()</code>、<code>its_send_mapti()</code>、<code>its_send_inv()</code>。</li>
+</ol>
+
+<h3>11.4 结合 QEMU 的分组实验设计</h3>
+
+<p>下面这几组实验按“侵入性从低到高”排序。前两组可以直接复用你当前仓库里的 <code>launch.sh</code> 思路，后面几组需要调整 QEMU 参数，但都围绕当前源码主线设计。</p>
+
+<h3>实验组A：最小化 GICv3 启动确认实验</h3>
+
+<h4>目标</h4>
+
+<p>确认当前 QEMU 虚拟机确实以 GICv3 方式启动，并验证 <code>gic_of_init()</code> 到 <code>gic_init_bases()</code> 的主初始化链路。</p>
+
+<h4>推荐启动命令</h4>
+
+<p>建议你把当前 <code>launch.sh</code> 的 <code>-machine virt</code> 明确成 <code>-M virt,gic-version=3</code>，最小命令如下：</p>
+
+<pre><code class="language-bash">qemu-system-aarch64 \
+   -M virt,gic-version=3 \
+   -cpu cortex-a57 \
+   -smp 4 \
+   -m 1024 \
+   -kernel arch/arm64/boot/Image \
+   --append &quot;nokaslr rdinit=/linuxrc console=ttyAMA0&quot; \
+   -nographic \
+   --fsdev local,id=kmod_dev,path=$PWD/kmodules,security_model=none \
+   -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount</code></pre>
+
+<p>这个参数形式和内核自测脚本里常见的 <code>-M virt,gic-version=3</code> 一致，研究时比依赖默认值可靠得多。</p>
+
+<h4>观察点</h4>
+
+<pre><code class="language-bash">dmesg | grep -Ei &quot;gic|its|redistributor|ppi|lpi&quot;
+cat /proc/interrupts</code></pre>
+
+<p>重点观察：</p>
+
+<ol>
+<li>是否出现 GICv3 相关初始化日志。</li>
+<li>是否出现每 CPU redistributor 匹配日志。</li>
+<li>是否有 <code>GICv3 features</code>、<code>Pseudo-NMIs enabled</code>、<code>ITS</code> 相关信息。</li>
+<li><code>/proc/interrupts</code> 里是否能看到 timer、IPI、串口等来源。</li>
+</ol>
+
+<h4>源码对应</h4>
+
+<ol>
+<li><code>gic_of_init()</code></li>
+<li><code>gic_init_bases()</code></li>
+<li><code>gic_update_rdist_properties()</code></li>
+<li><code>gic_dist_init()</code></li>
+<li><code>gic_cpu_init()</code></li>
+</ol>
+
+<h4>预期收获</h4>
+
+<p>这组实验主要解决一个问题：<strong>你看到的日志和你读的初始化源码是否一一对应</strong>。</p>
+
+<h3>实验组A-1：Pseudo-NMI 启用验证实验</h3>
+
+<h4>目标</h4>
+
+<p>验证当前内核和 QEMU 组合下，ARM64 GICv3 pseudo-NMI 是否真的被启用，而不是只有配置项和文档支持。</p>
+
+<h4>启动建议</h4>
+
+<p>在实验组A的基础上，把内核命令行改成：</p>
+
+<pre><code class="language-bash">--append &quot;nokaslr rdinit=/linuxrc console=ttyAMA0 irqchip.gicv3_pseudo_nmi=1&quot;</code></pre>
+
+<p>同时建议先确认内核配置里已经打开：</p>
+
+<pre><code class="language-bash">grep CONFIG_ARM64_PSEUDO_NMI .config</code></pre>
+
+<h4>观察点</h4>
+
+<p>启动后先看：</p>
+
+<pre><code class="language-bash">dmesg | grep -Ei &quot;Pseudo-NMI|PMR|GICv3&quot;</code></pre>
+
+<p>最关键的成功信号是类似下面这条日志：</p>
+
+<pre><code class="language-text">Pseudo-NMIs enabled using ... ICC_PMR_EL1 synchronisation</code></pre>
+
+<p>这说明 <code>gic_enable_nmi_support()</code> 已经执行成功，并且 <code>supports_pseudo_nmis</code> 对应的 static key 被打开。</p>
+
+<h4>进一步验证路径</h4>
+
+<p>如果只做“启用验证”，看到上面的日志就足够了。若你还想验证执行路径，可以在 GDB 里断：</p>
+
+<pre><code class="language-gdb">b gic_rpr_is_nmi_prio
+b __gic_handle_irq_from_irqsoff
+b __gic_handle_nmi
+b generic_handle_domain_nmi</code></pre>
+
+<h4>一个现实限制</h4>
+
+<p>在通用 QEMU <code>virt</code> 机型里，<strong>能否方便地产生一条真正走 pseudo-NMI flow handler 的中断</strong>，取决于：</p>
+
+<ol>
+<li>内核里是否有合适的用户可触发 NMI 请求者。</li>
+<li>QEMU CPU 模型是否暴露足够的 PMU/优先级屏蔽相关能力。</li>
+<li>你是否有驱动或调试手段把某条 IRQ 显式切成 NMI。</li>
+</ol>
+
+<p>所以这组实验最稳妥的目标应该分两层：</p>
+
+<ol>
+<li>第一层：验证 pseudo-NMI 能力已经真正启用。</li>
+<li>第二层：在具备 PMU 或特定驱动条件时，再去验证真实的 NMI handler 进入。</li>
+</ol>
+
+<h4>源码对应</h4>
+
+<ol>
+<li><code>gic_enable_nmi_support()</code></li>
+<li><code>gic_irq_nmi_setup()</code></li>
+<li><code>gic_rpr_is_nmi_prio()</code></li>
+<li><code>__gic_handle_irq_from_irqsoff()</code></li>
+<li><code>irqentry_nmi_enter()</code> / <code>irqentry_nmi_exit()</code></li>
+</ol>
+
+<h4>预期收获</h4>
+
+<p>你会清楚地区分三件事：</p>
+
+<ol>
+<li>内核编译支持 pseudo-NMI。</li>
+<li>启动参数请求启用 pseudo-NMI。</li>
+<li>平台实际成功打开 pseudo-NMI 运行机制。</li>
+</ol>
+
+<hr>
+
+<h3>实验组B：PPI 路径实验，盯住本地 timer 中断</h3>
+
+<h4>目标</h4>
+
+<p>验证每 CPU 本地中断走 <code>GICR + handle_percpu_devid_irq</code> 路径，而不是走全局 SPI 路径。</p>
+
+<h4>思路</h4>
+
+<p>QEMU <code>virt</code> 机型下，最稳定、最容易持续产生的中断就是架构 timer。它通常表现为 PPI，非常适合研究：</p>
+
+<ol>
+<li>GICR 本地寄存器控制。</li>
+<li>per-cpu 中断处理。</li>
+<li><code>handle_percpu_devid_irq()</code> 调用路径。</li>
+</ol>
+
+<h4>运行步骤</h4>
+
+<pre><code class="language-bash">cat /proc/interrupts
+cat /proc/interrupts | grep -Ei &quot;arch|timer|cntv|phys&quot;</code></pre>
+
+<p>打开 trace：</p>
+
+<pre><code class="language-bash">echo 0 &gt; /sys/kernel/tracing/tracing_on
+echo nop &gt; /sys/kernel/tracing/current_tracer
+echo &gt; /sys/kernel/tracing/trace
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable
+echo 1 &gt; /sys/kernel/tracing/tracing_on
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>为了放大 timer 活动，可以在用户态启动多个忙循环：</p>
+
+<pre><code class="language-bash">for i in 1 2 3 4; do
+   sh -c &#x27;while :; do :; done&#x27; &amp;
+done</code></pre>
+
+<h4>你要验证什么</h4>
+
+<ol>
+<li>中断是否在多个 CPU 上分别增长。</li>
+<li>timer 类中断是否表现出 per-cpu 特征。</li>
+<li>trace 中是否能看到 timer ISR 被频繁进入。</li>
+<li>从源码角度，它为什么映射到 <code>handle_percpu_devid_irq()</code>。</li>
+</ol>
+
+<h4>源码对应</h4>
+
+<ol>
+<li><code>gic_irq_domain_map()</code> 中 PPI 映射分支。</li>
+<li><code>handle_percpu_devid_irq()</code>。</li>
+<li><code>gic_cpu_init()</code> 对 GICR SGI/PPI 区域的初始化。</li>
+</ol>
+
+<h4>预期收获</h4>
+
+<p>你会把“PPI 是每 CPU 本地中断”从概念变成可观测事实。</p>
+
+<hr>
+
+<h3>实验组C：SPI 路径实验，观察共享设备中断和 affinity 迁移</h3>
+
+<h4>目标</h4>
+
+<p>验证共享中断走 <code>GICD + IROUTER + handle_fasteoi_irq</code> 路径，并观察 affinity 调整后的中断迁移。</p>
+
+<h4>推荐设备来源</h4>
+
+<p>这组实验可以优先用两类设备：</p>
+
+<ol>
+<li>当前命令行里已有的 <code>virtio-9p-device</code>。</li>
+<li>如果你愿意再加一个设备，建议加 <code>virtio-blk-device</code> 或 <code>virtio-net-device</code>，这样更容易产生稳定 I/O 中断。</li>
+</ol>
+
+<h4>一个更适合 SPI 研究的 QEMU 启动模板</h4>
+
+<pre><code class="language-bash">qemu-system-aarch64 \
+   -M virt,gic-version=3 \
+   -cpu cortex-a57 \
+   -smp 4 \
+   -m 1024 \
+   -kernel arch/arm64/boot/Image \
+   --append &quot;nokaslr rdinit=/linuxrc console=ttyAMA0&quot; \
+   -nographic \
+   --fsdev local,id=kmod_dev,path=$PWD/kmodules,security_model=none \
+   -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount \
+   -drive if=none,file=disk.img,format=raw,id=vdisk \
+   -device virtio-blk-device,drive=vdisk</code></pre>
+
+<p>如果你暂时没有 <code>disk.img</code>，这组实验也可以先只用 9p 设备和串口中断做基础观察。</p>
+
+<h4>实验步骤</h4>
+
+<ol>
+<li>找到一个会持续增加计数的共享中断。</li>
+<li>记录初始 CPU 分布。</li>
+<li>修改 affinity。</li>
+<li>继续压 I/O，观察中断是否迁移。</li>
+</ol>
+
+<p>示例：</p>
+
+<pre><code class="language-bash">cat /proc/interrupts
+cat /proc/irq/&lt;irq&gt;/smp_affinity_list
+echo 2 &gt; /proc/irq/&lt;irq&gt;/smp_affinity_list
+cat /proc/irq/&lt;irq&gt;/smp_affinity_list
+watch -n 1 cat /proc/interrupts</code></pre>
+
+<p>如果有块设备或 9p 挂载，可以反复读文件放大中断：</p>
+
+<pre><code class="language-bash">while true; do
+   find / &gt; /dev/null 2&gt;&amp;1
+done</code></pre>
+
+<h4>你要验证什么</h4>
+
+<ol>
+<li>共享中断是否只在目标 CPU 上明显增长。</li>
+<li>affinity 修改后，计数是否从旧 CPU 向新 CPU 迁移。</li>
+<li>这和 <code>gic_set_affinity()</code> 中 <code>GICD_IROUTER</code> 写入语义是否一致。</li>
+</ol>
+
+<h4>源码对应</h4>
+
+<ol>
+<li><code>gic_set_affinity()</code></li>
+<li><code>gic_cpu_to_affinity()</code></li>
+<li><code>handle_fasteoi_irq()</code></li>
+<li><code>gic_eoimode1_eoi_irq()</code></li>
+</ol>
+
+<h4>预期收获</h4>
+
+<p>你会真正理解 <strong>SPI 是怎么从 GICD 路由到指定 CPU 的</strong>，而不只是知道 <code>IROUTER</code> 这个寄存器名字。</p>
+
+<hr>
+
+<h3>实验组D：IPI/SGI 路径实验，观察核间中断</h3>
+
+<h4>目标</h4>
+
+<p>验证 SGI 发送路径 <code>gic_ipi_send_mask()</code>，理解 cluster 压缩目标列表和 <code>ICC_SGI1R_EL1</code> 写入。</p>
+
+<h4>运行步骤</h4>
+
+<p>开启 IPI trace event：</p>
+
+<pre><code class="language-bash">echo 0 &gt; /sys/kernel/tracing/tracing_on
+echo &gt; /sys/kernel/tracing/trace
+echo 1 &gt; /sys/kernel/tracing/events/ipi/enable
+echo 1 &gt; /sys/kernel/tracing/tracing_on
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>然后制造多核活动。最简单的方式仍然是多个忙循环：</p>
+
+<pre><code class="language-bash">for i in 1 2 3 4; do
+   sh -c &#x27;while :; do :; done&#x27; &amp;
+done</code></pre>
+
+<p>如果内核开启了 CPU hotplug，也可以做一次 CPU offline/online 观察 IPI 与重配置行为：</p>
+
+<pre><code class="language-bash">echo 0 &gt; /sys/devices/system/cpu/cpu3/online
+echo 1 &gt; /sys/devices/system/cpu/cpu3/online</code></pre>
+
+<h4>更强的放大方式</h4>
+
+<p>如果你愿意写一个很小的测试模块，可以在模块里周期性调用：</p>
+
+<ol>
+<li><code>smp_call_function_many()</code></li>
+<li><code>on_each_cpu()</code></li>
+</ol>
+
+<p>这样能更稳定地产生 SGI。</p>
+
+<h4>你要验证什么</h4>
+
+<ol>
+<li><code>/proc/interrupts</code> 中 IPI 计数是否在多 CPU 上增长。</li>
+<li>trace 中是否能看到 IPI 进入事件。</li>
+<li>为什么 SGI 不走 <code>GICD_IROUTER</code>，而是走 <code>ICC_SGI1R_EL1</code>。</li>
+<li><code>gic_compute_target_list()</code> 为什么按 cluster 压缩发送目标。</li>
+</ol>
+
+<h4>源码对应</h4>
+
+<ol>
+<li><code>gic_ipi_send_mask()</code></li>
+<li><code>gic_compute_target_list()</code></li>
+<li><code>gic_send_sgi()</code></li>
+<li><code>gic_smp_init()</code></li>
+</ol>
+
+<h4>预期收获</h4>
+
+<p>你会把“IPI 是 SGI 的 Linux 使用形态”这个抽象关系彻底吃透。</p>
+
+<hr>
+
+<h3>实验组E：ITS/LPI/MSI 进阶实验</h3>
+
+<h4>目标</h4>
+
+<p>如果你的 QEMU 支持 ITS，这组实验用来打通 <code>MSI -> ITS -> LPI -> collection -> redistributor</code> 整条路径。</p>
+
+<h4>前置条件</h4>
+
+<p>内核至少要具备这些能力，缺一项都可能看不到你想要的现象：</p>
+
+<ol>
+<li><code>CONFIG_ARM_GIC_V3_ITS=y</code></li>
+<li><code>CONFIG_PCI=y</code></li>
+<li><code>CONFIG_PCI_HOST_GENERIC=y</code> 或等价平台 PCI host 支持</li>
+<li><code>CONFIG_VIRTIO_PCI=y</code> 或你选用设备对应的 PCI 驱动</li>
+</ol>
+
+<h4>QEMU 启动模板</h4>
+
+<pre><code class="language-bash">qemu-system-aarch64 \
+   -M virt,gic-version=3,its=on \
+   -cpu cortex-a57 \
+   -smp 4 \
+   -m 1024 \
+   -kernel arch/arm64/boot/Image \
+   --append &quot;nokaslr rdinit=/linuxrc console=ttyAMA0&quot; \
+   -nographic \
+   -netdev user,id=n1 \
+   -device virtio-net-pci,netdev=n1 \
+   -device virtio-rng-pci</code></pre>
+
+<p>如果你有块镜像，也可以把 <code>virtio-net-pci</code> 换成 <code>virtio-blk-pci</code>。关键不是设备类型，而是：<strong>它必须真的走 PCI MSI/MSI-X，才能把 ITS/LPI 路径激活起来</strong>。</p>
+
+<h4>启动后先看什么</h4>
+
+<pre><code class="language-bash">dmesg | grep -Ei &quot;ITS|LPI|GICv4|VPE|redistributor&quot;
+cat /proc/interrupts</code></pre>
+
+<p>关注：</p>
+
+<ol>
+<li>是否有 ITS probe 成功日志。</li>
+<li>是否打印了 property table / pending table 分配信息。</li>
+<li>中断号是否出现 8192 以上的 LPI 痕迹，或出现 MSI/LPI 相关描述。</li>
+</ol>
+
+<h4>触发设备活动</h4>
+
+<ol>
+<li><code>virtio-net-pci</code> 可通过网络流量触发。</li>
+<li><code>virtio-blk-pci</code> 可通过读写块设备触发。</li>
+<li><code>virtio-rng-pci</code> 可通过读取随机源触发。</li>
+</ol>
+
+<h4>你要验证什么</h4>
+
+<ol>
+<li>ITS 是否被初始化。</li>
+<li>LPI property/pending table 是否被建立。</li>
+<li>设备中断是否已经不是普通 SPI，而进入 ITS/LPI 体系。</li>
+<li><code>its_set_affinity()</code> 是否把 LPI 在 collection 之间迁移。</li>
+</ol>
+
+<h4>源码对应</h4>
+
+<ol>
+<li><code>its_init()</code></li>
+<li><code>its_probe_one()</code></li>
+<li><code>its_cpu_init_lpis()</code></li>
+<li><code>its_irq_chip</code></li>
+<li><code>its_send_mapd()</code> / <code>its_send_mapti()</code> / <code>its_send_inv()</code> / <code>its_send_movi()</code></li>
+</ol>
+
+<h4>预期收获</h4>
+
+<p>你会真正把“MSI 在 GICv3 上不是直接进 GICD，而是先进 ITS 再转成 LPI”这个关键事实观察出来。</p>
+
+<hr>
+
+<h3>实验组F：GDB 单步实验，从异常入口走到 flow handler</h3>
+
+<h4>目标</h4>
+
+<p>把“ARM64 异常入口 -> GIC 根处理 -> IRQ core flow handler -> 设备 ISR”这条链真正踩一遍，并且让你知道不同类型中断该下哪组断点。</p>
+
+<h4>启动与连接</h4>
+
+<p>当前仓库已经有：</p>
+
+<pre><code class="language-bash">./launch.sh arm64 debug</code></pre>
+
+<p>这个脚本会用 QEMU 的 <code>-s -S</code> 方式启动，也就是：</p>
+
+<ol>
+<li>GDB stub 监听 <code>localhost:1234</code>。</li>
+<li>CPU 在第一条指令前暂停。</li>
+</ol>
+
+<p>建议另开一个终端，用带符号的内核镜像连上：</p>
+
+<pre><code class="language-bash">gdb-multiarch vmlinux</code></pre>
+
+<p>如果你本机没有 <code>gdb-multiarch</code>，也可以用：</p>
+
+<pre><code class="language-bash">aarch64-linux-gnu-gdb vmlinux</code></pre>
+
+<p>连上后先做最小初始化：</p>
+
+<pre><code class="language-gdb">target remote localhost:1234
+set pagination off
+set confirm off
+set disassemble-next-line on</code></pre>
+
+<p>如果你要从非常早的启动阶段开始看，当前仓库根目录还有 <code>fix_vmlinux_head_entry.sh</code> 可辅助修正早期入口符号。但对 IRQ 单步手册来说，通常不需要从 <code>_text</code> 开始。</p>
+
+<h4>一套最稳的基础断点</h4>
+
+<p>如果你只是想先抓住“一次 IRQ 是怎么走进来的”，建议用下面这组断点，而不是一开始就断太多层：</p>
+
+<pre><code class="language-gdb">b el1h_64_irq_handler
+b el1_interrupt
+b gic_handle_irq
+b __gic_handle_irq_from_irqson
+b __gic_handle_irq_from_irqsoff
+b __gic_handle_irq
+b generic_handle_domain_irq
+b handle_fasteoi_irq
+b handle_percpu_devid_irq
+b __handle_irq_event_percpu
+c</code></pre>
+
+<p>这些断点的意义分别是：</p>
+
+<ol>
+<li><code>el1h_64_irq_handler</code></li>
+</ol>
+<p>   看 EL1 IRQ 最终进到哪个 C handler。</p>
+<ol>
+<li><code>el1_interrupt</code></li>
+</ol>
+<p>   看 pseudo-NMI 开启后，是走 <code><strong>el1_pnmi()</code> 还是普通 <code></strong>el1_irq()</code>。</p>
+<ol>
+<li><code>gic_handle_irq</code></li>
+</ol>
+<p>   看 ARM64 根 IRQ handler 最终是否已经切到 GICv3。</p>
+<ol>
+<li><code>__gic_handle_irq_from_irqson</code></li>
+</ol>
+<p>   看正常 IRQ 上下文读取 IAR、判断 NMI 优先级的逻辑。</p>
+<ol>
+<li><code>__gic_handle_irq_from_irqsoff</code></li>
+</ol>
+<p>   看 IRQ-off 场景下为什么只允许 pseudo-NMI 继续进来。</p>
+<ol>
+<li><code>__gic_handle_irq</code></li>
+</ol>
+<p>   看 <code>irqnr</code> 被 ACK 后如何交给 domain 层。</p>
+<ol>
+<li><code>generic_handle_domain_irq</code></li>
+</ol>
+<p>   看 <code>hwirq -> virq/desc</code> 的映射入口。</p>
+<ol>
+<li><code>handle_fasteoi_irq</code></li>
+</ol>
+<p>   常见于 GICv3 的 SPI/shared 中断路径。</p>
+<ol>
+<li><code>handle_percpu_devid_irq</code></li>
+</ol>
+<p>   常见于 timer 等 per-CPU PPI 路径。</p>
+<ol>
+<li><code>__handle_irq_event_percpu</code></li>
+</ol>
+<p>    最终会调用具体设备 ISR。</p>
+
+<h4>第一次停住以后，推荐这样走</h4>
+
+<p>不要从头到尾都用 <code>si</code>。更高效的办法是：</p>
+
+<ol>
+<li>汇编入口附近用 <code>ni</code>/<code>si</code> 看 3 到 10 条指令，确认已经从异常向量切到 C。</li>
+<li>进入 C 函数后优先用 <code>n</code>。</li>
+<li>想进入下一层关键函数时，再用 <code>s</code>。</li>
+<li>如果 timer 中断太频繁，删掉旧断点，改用临时断点 <code>tb</code> 只抓一条链。</li>
+</ol>
+
+<p>一个很实用的做法是，在第一次打到 <code>el1h_64_irq_handler</code> 后执行：</p>
+
+<pre><code class="language-gdb">delete breakpoints
+tb el1_interrupt
+tb gic_handle_irq
+tb __gic_handle_irq_from_irqson
+tb __gic_handle_irq
+tb generic_handle_domain_irq
+tb handle_fasteoi_irq
+tb handle_percpu_devid_irq
+tb __handle_irq_event_percpu
+c</code></pre>
+
+<p>这样 GDB 会像接力一样，一次只抓这条中断路径，避免被后续 timer 打断得太碎。</p>
+
+<h4>每个关键断点停住后看什么</h4>
+
+<p>在 <code>el1h_64_irq_handler</code>：</p>
+
+<pre><code class="language-gdb">p/x regs-&gt;pc
+p/x regs-&gt;pstate</code></pre>
+
+<p>你要确认：</p>
+
+<ol>
+<li>当前确实是 EL1 IRQ 入口。</li>
+<li><code>regs</code> 已经建立好了，后面整个 IRQ 链都会围绕这份现场展开。</li>
+</ol>
+
+<p>在 <code>el1_interrupt</code>：</p>
+
+<pre><code class="language-gdb">p regs_irqs_disabled(regs)
+p handler</code></pre>
+
+<p>你要确认：</p>
+
+<ol>
+<li>这次异常来自 IRQ-on 还是 IRQ-off 上下文。</li>
+<li><code>handler</code> 指针是否已经是 <code>handle_arch_irq</code>。</li>
+</ol>
+
+<p>在 <code>__gic_handle_irq_from_irqson</code>：</p>
+
+<pre><code class="language-gdb">n
+p/x irqnr
+p is_nmi</code></pre>
+
+<p>这里最关键的是：</p>
+
+<ol>
+<li><code>irqnr = gic_read_iar()</code> 读出来的 INTID 是多少。</li>
+<li><code>is_nmi</code> 是否把当前中断识别成 pseudo-NMI。</li>
+</ol>
+
+<p>在 <code>__gic_handle_irq</code>：</p>
+
+<pre><code class="language-gdb">p/x irqnr
+n</code></pre>
+
+<p>你要看：</p>
+
+<ol>
+<li>这是不是一个 special INTID（1020-1023）。</li>
+<li>普通 INTID 是否会继续落到 <code>generic_handle_domain_irq()</code>。</li>
+</ol>
+
+<p>在 <code>generic_handle_domain_irq</code>：</p>
+
+<pre><code class="language-gdb">p/x hwirq
+n</code></pre>
+
+<p>这里的核心不是背 API，而是确认：<strong>GIC 硬件号已经正式进入 Linux IRQ domain 映射层。</strong></p>
+
+<p>在 <code>handle_fasteoi_irq</code>：</p>
+
+<pre><code class="language-gdb">p desc-&gt;irq_data.irq
+p/x desc-&gt;istate
+p desc-&gt;action-&gt;name</code></pre>
+
+<p>你要确认：</p>
+
+<ol>
+<li>现在看到的是 Linux virq，而不是 GIC hwirq。</li>
+<li>这条线走的是 fasteoi flow handler。</li>
+<li><code>desc->action->name</code> 是否已经指向具体设备驱动。</li>
+</ol>
+
+<p>在 <code>handle_percpu_devid_irq</code>：</p>
+
+<pre><code class="language-gdb">p desc-&gt;irq_data.irq
+p desc-&gt;action-&gt;name</code></pre>
+
+<p>如果这里命中，通常说明你抓到的是 PPI/per-CPU 中断，例如架构 timer。</p>
+
+<p>在 <code>__handle_irq_event_percpu</code>：</p>
+
+<pre><code class="language-gdb">p irq
+p action-&gt;name
+p action-&gt;handler</code></pre>
+
+<p>到这一步你已经真正走到“设备 ISR 入口”了。接下来直接 <code>s</code> 进 <code>action->handler()</code>，就能进入具体驱动。</p>
+
+<h4>断点方案A：先抓最稳定的 PPI/timer 路径</h4>
+
+<p>如果你只是第一次练手，最适合抓的是 timer PPI，因为它最稳定、最容易触发。</p>
+
+<p>建议断点链：</p>
+
+<pre><code class="language-gdb">delete breakpoints
+tb el1h_64_irq_handler
+tb el1_interrupt
+tb gic_handle_irq
+tb __gic_handle_irq_from_irqson
+tb __gic_handle_irq
+tb generic_handle_domain_irq
+tb handle_percpu_devid_irq
+tb __handle_irq_event_percpu
+c</code></pre>
+
+<p>预期现象：</p>
+
+<ol>
+<li>会落到 <code>handle_percpu_devid_irq()</code>，而不是 <code>handle_fasteoi_irq()</code>。</li>
+<li><code>action->name</code> 往往能体现 timer/percpu 语义。</li>
+<li>这条链最适合理解“PPI 为什么天然跟 CPU 绑定”。</li>
+</ol>
+
+<h4>断点方案B：抓 SPI/shared 中断路径</h4>
+
+<p>如果你已经按前文实验给 QEMU 加了 <code>virtio-blk</code> 或 <code>virtio-net</code>，这组断点最适合抓共享 SPI：</p>
+
+<pre><code class="language-gdb">delete breakpoints
+tb gic_handle_irq
+tb __gic_handle_irq_from_irqson
+tb __gic_handle_irq
+tb generic_handle_domain_irq
+tb handle_fasteoi_irq
+tb __handle_irq_event_percpu
+c</code></pre>
+
+<p>然后在 guest 内制造 I/O 或网络流量。</p>
+
+<p>预期现象：</p>
+
+<ol>
+<li>这次大概率命中 <code>handle_fasteoi_irq()</code>。</li>
+<li><code>desc->action->name</code> 会变成具体 virtio 设备的 handler。</li>
+<li>你会看到 GICv3 常见的“透明控制器 + fasteoi”处理模型。</li>
+</ol>
+
+<h4>断点方案C：抓 pseudo-NMI 路径</h4>
+
+<p>这组断点只在你前面已经满足 pseudo-NMI 条件时才有意义，包括：</p>
+
+<ol>
+<li>内核打开 <code>CONFIG_ARM64_PSEUDO_NMI</code>。</li>
+<li>平台和命令行允许 GICv3 pseudo-NMI 工作。</li>
+</ol>
+
+<p>断点链：</p>
+
+<pre><code class="language-gdb">delete breakpoints
+tb el1_interrupt
+tb __gic_handle_irq_from_irqsoff
+tb __gic_handle_nmi
+tb handle_fasteoi_nmi
+c</code></pre>
+
+<p>如果命中这条链，说明你看到的已经不是普通 IRQ，而是 pseudo-NMI 处理路径。这里最重要的不是多看几条汇编，而是确认：</p>
+
+<ol>
+<li>入口来自 IRQ-off 上下文。</li>
+<li><code>__gic_handle_irq_from_irqsoff()</code> 会先收紧 PMR，再读 IAR。</li>
+<li>最终落到的是 NMI-safe 的 flow handler，而不是普通 <code>handle_fasteoi_irq()</code>。</li>
+</ol>
+
+<h4>断点方案D：抓真正 FIQ 路径</h4>
+
+<p>这组断点<strong>不是当前普通世界 GICv3/QEMU 默认就能抓到</strong>，只有在下面条件成立时才有意义：</p>
+
+<ol>
+<li>平台真的注册了 root FIQ handler。</li>
+<li>不是只存在 FIQ 异常入口，而是 <code>set_handle_fiq()</code> 已被实际调用。</li>
+</ol>
+
+<p>在当前这棵树里，Apple AIC 这类平台会是更现实的例子；对你现在这套 GICv3 普通世界主线和常规 QEMU <code>virt</code> 实验来说，通常抓不到真正 FIQ。</p>
+
+<p>如果平台满足条件，断点链可以这样下：</p>
+
+<pre><code class="language-gdb">delete breakpoints
+tb el1h_64_fiq_handler
+tb el1_interrupt
+tb handle_arch_fiq
+c</code></pre>
+
+<p>如果你已经知道平台具体 root FIQ handler 名字，再继续加：</p>
+
+<pre><code class="language-gdb">tb &lt;platform_root_fiq_handler&gt;
+c</code></pre>
+
+<p>这里要看清楚三件事：</p>
+
+<ol>
+<li>命中的是 <code>el1h_64_fiq_handler()</code>，而不是 <code>el1h_64_irq_handler()</code>。</li>
+<li><code>handler</code> 参数已经是 <code>handle_arch_fiq</code>，不是 <code>handle_arch_irq</code>。</li>
+<li>后续跳进去的是平台自己的 FIQ 根处理函数，而不是 <code>gic_handle_irq()</code>。</li>
+</ol>
+
+<p>如果你在当前普通世界 GICv3/QEMU 环境里下了这组断点却始终不命中，这通常不是你断错了，而是：</p>
+
+<ol>
+<li>当前系统根本没把日常中断走 FIQ 根路径。</li>
+<li>当前平台没有注册 root FIQ handler。</li>
+</ol>
+
+<h4>断点方案E：一眼区分你现在抓到的是 IRQ、FIQ，还是 pseudo-NMI</h4>
+
+<p>如果你现场只想快速判断“我现在到底在哪条线上”，最省时间的方法不是一次打很多断点，而是按下面顺序试：</p>
+
+<pre><code class="language-gdb">delete breakpoints
+tb el1h_64_irq_handler
+tb el1h_64_fiq_handler
+tb __gic_handle_irq_from_irqsoff
+tb __gic_handle_nmi
+c</code></pre>
+
+<p>判断规则非常简单：</p>
+
+<ol>
+<li>命中 <code>el1h_64_fiq_handler</code></li>
+</ol>
+<p>   说明你抓到的是 FIQ 入口。</p>
+<ol>
+<li>命中 <code>el1h_64_irq_handler</code>，后面走到普通 <code>gic_handle_irq</code></li>
+</ol>
+<p>   说明你抓到的是普通 IRQ 主线。</p>
+<ol>
+<li>命中 <code>el1h_64_irq_handler</code>，后面又命中 <code><strong>gic_handle_irq_from_irqsoff</code> 或 <code></strong>gic_handle_nmi</code></li>
+</ol>
+<p>   说明你抓到的是 pseudo-NMI 相关路径，而不是 FIQ。</p>
+
+<p>这组模板的价值在于：它能最快帮你把“FIQ、IRQ、pseudo-NMI 三组概念”在执行现场里真正分开。</p>
+
+<h4>一份最实用的观察清单</h4>
+
+<p>你每次单步时，都只问这五个问题：</p>
+
+<ol>
+<li>我现在看到的是 <code>pt_regs</code> 现场、GIC hwirq，还是 Linux virq。</li>
+<li>当前中断属于 PPI、SPI 还是 pseudo-NMI。</li>
+<li>它走的是 <code>handle_percpu_devid_irq()</code> 还是 <code>handle_fasteoi_irq()</code>。</li>
+<li><code>desc->action->handler</code> 究竟是谁。</li>
+<li>从这里再往下一层，控制权会交给哪个函数。</li>
+</ol>
+
+<p>如果这五个问题你都能在 GDB 里答出来，说明这条 IRQ 路径你已经真正“走通”了。</p>
+
+<h4>和前面实验怎么配合</h4>
+
+<p>最有效的组合不是“只开 GDB”，而是：</p>
+
+<ol>
+<li>先用 <code>/proc/interrupts</code> 确认当前哪条 IRQ 在增长。</li>
+<li>再用前面实验里的 tracepoint 确认是 PPI、SPI 还是 softirq 联动。</li>
+<li>最后回到 GDB，按对应断点方案抓一次完整路径。</li>
+</ol>
+
+<p>这样你看到的就不只是“代码会跳转”，而是“现场现象如何映射到源码执行链”。</p>
+
+<h4>预期收获</h4>
+
+<p>这组手册练熟之后，你会获得三种非常关键的能力：</p>
+
+<ol>
+<li>能把一次 IRQ 从异常入口一直跟到具体 ISR。</li>
+<li>能当场分辨当前抓到的是 PPI 还是 SPI，是否走了 pseudo-NMI。</li>
+<li>遇到“中断不按预期工作”时，知道该在架构层、GIC 层、IRQ core 层还是设备驱动层下断。</li>
+</ol>
+
+<hr>
+
+<h3>11.5 一个建议的实验顺序</h3>
+
+<p>如果你想把这些实验变成一条清晰的学习路径，我建议按下面顺序执行：</p>
+
+<ol>
+<li>先做实验组A，确认环境和 GICv3 初始化没有歧义。</li>
+<li>再做实验组B，吃透 PPI 和每 CPU 本地中断。</li>
+<li>接着做实验组D，理解 SGI/IPI。</li>
+<li>然后做实验组C，理解共享 SPI 和 affinity。</li>
+<li>最后做实验组E，进入 ITS/LPI/MSI。</li>
+<li>任意阶段卡住，都用实验组F 的 GDB 单步回到根路径。</li>
+</ol>
+
+<p>这个顺序的逻辑是：<strong>先本地中断，再核间中断，再共享中断，最后消息中断和虚拟化扩展</strong>。</p>
+
+<hr>
+
+<h2>第12课：学完这部分内容能解决哪些问题</h2>
+
+<p>如果你把这份文档涉及的内容真正吃透，收益不只是“知道 GICv3 怎么工作”，而是能解决一批非常典型、非常工程化的问题。</p>
+
+<h3>12.1 能判断问题到底在架构层、IRQ core 层，还是驱动层</h3>
+
+<p>很多中断问题的第一现场都长得很像：</p>
+
+<ol>
+<li>设备超时。</li>
+<li>某个 CPU 100%。</li>
+<li><code>/proc/interrupts</code> 计数异常。</li>
+<li>IRQ 明明注册了但 handler 不跑。</li>
+</ol>
+
+<p>学完这部分之后，你能先把问题分类：</p>
+
+<ol>
+<li>是异常入口都没进，属于架构/向量表问题。</li>
+<li>进了 GIC 根处理函数，但没有完成 hwirq 到 virq 映射，属于 <code>irq_domain</code> 问题。</li>
+<li>找到了 <code>irq_desc</code>，但 flow handler 或 trigger type 不对，属于 IRQ core / irq_chip 问题。</li>
+<li>flow handler 正常，设备 ISR 不响应或清中断失败，属于设备驱动问题。</li>
+</ol>
+
+<p>这一步非常重要，因为它决定你后面查的是 <code>entry.S</code>、<code>irq-gic-v3.c</code>、<code>kernel/irq/*</code>，还是具体设备驱动。</p>
+
+<h3>12.2 能解释“为什么中断只在某个 CPU 上跑”</h3>
+
+<p>这类问题在实际系统里非常常见。学完后你可以准确分辨：</p>
+
+<ol>
+<li>这是 PPI，本来就是 per-CPU 中断，不能像 SPI 那样任意绑核。</li>
+<li>这是 SPI/ESPI，可以通过 <code>GICD_IROUTER</code> 改路由。</li>
+<li>这是 LPI/MSI，实际是 ITS 在做 collection 路由。</li>
+<li>这是 managed IRQ，用户态不一定能自由改 affinity。</li>
+<li>这是 single-target 中断，<code>effective_affinity</code> 可能比你设置的 mask 更窄。</li>
+</ol>
+
+<p>这意味着你不会再把所有“中断绑核失败”都归因成同一种故障。</p>
+
+<h3>12.3 能解释“为什么改了 affinity 但流量/中断没有按预期迁移”</h3>
+
+<p>这类问题的根源通常不止一个：</p>
+
+<ol>
+<li>你改的是 <code>smp_affinity_list</code>，但控制器实际生效的是 <code>effective_affinity</code>。</li>
+<li>设备驱动、MSI-X 队列、NAPI poll、RPS/XPS 还停留在旧 CPU。</li>
+<li><code>irqbalance</code> 或驱动自身的 affinity 管理在回写。</li>
+<li>中断迁了，但软中断和应用线程没迁，最终 CPU 热点没变。</li>
+</ol>
+
+<p>理解 GICv3 + IRQ core + softirq 之后，你会知道：<strong>“改硬中断 CPU”只是第一步，真正要看的是中断、软中断、协议栈、应用线程四层是否一起迁移。</strong></p>
+
+<h3>12.4 能区分 hardirq 高、softirq 高、ksoftirqd 高、threaded irq 卡住这几类不同现场</h3>
+
+<p>这些现象表面上都可能表现为 “CPU 很高” 或 “网络/块 IO 很慢”，但本质完全不同：</p>
+
+<ol>
+<li>hardirq 高：顶半部就很重，或者中断风暴严重。</li>
+<li>softirq 高：下半部负担重，典型是 <code>NET_RX</code>、<code>TIMER</code>、<code>RCU</code>。</li>
+<li><code>ksoftirqd/N</code> 高：softirq 已经重到不能在 <code>irq_exit()</code> 窗口里就地消化，只能交给内核线程兜底。</li>
+<li><code>irq/<n>-<name></code> 线程高：threaded irq 的 <code>thread_fn</code> 太重，或者被 <code>IRQF_ONESHOT</code> 持续串行化。</li>
+</ol>
+
+<p>这四类问题的解决方法完全不同。学完后你会先分型，再下手，而不是一上来就改 affinity 或盲目调参数。</p>
+
+<h3>12.5 能解释“为什么某类中断根本不能像预期那样绑核”</h3>
+
+<p>这是经典误区。学完后你会很快排除以下情况：</p>
+
+<ol>
+<li>SGI/PPI 本来就是本地中断，不存在用户想象中的全局绑核。</li>
+<li>某些 IRQ 是 per-cpu 或 managed affinity，用户空间不允许随意改。</li>
+<li>某些控制器或中断类型只有单目标语义。</li>
+<li>某些平台因为安全态/固件/erratum，实际路由行为受限。</li>
+</ol>
+
+<h3>12.6 能处理 ITS/MSI/LPI 相关的“看起来像普通 SPI，其实不是”的问题</h3>
+
+<p>这类问题特别容易误判。学完 ITS 之后，你能区分：</p>
+
+<ol>
+<li>这是 SPI 直接进 GICD。</li>
+<li>这是 PCI MSI 先进 ITS，再变成 LPI。</li>
+<li>affinity 改的是 GICD 的 <code>IROUTER</code>，还是 ITS 的 collection 路由。</li>
+<li>中断号和 delivery path 为什么和传统 SPI 完全不同。</li>
+</ol>
+
+<h3>12.7 能把性能问题和同步问题联系起来看</h3>
+
+<p>很多经典性能 bug 的本质其实是同步模型不对，例如：</p>
+
+<ol>
+<li>不该在 hardirq 里做太重的工作。</li>
+<li>不该在 softirq/tasklet 上下文里做会阻塞的动作。</li>
+<li>不该拿着 handler 依赖的锁去 <code>synchronize_irq()</code>。</li>
+<li>threaded irq 里如果阻塞太久，oneshot 可能把线长期压住。</li>
+</ol>
+
+<p>理解中断与同步之后，你不只是会看计数，还会判断“为什么会卡住、为什么会抖、为什么会打爆某个 CPU”。</p>
+
+<hr>
+
+<h2>第13课：经典问题处理手册</h2>
+
+<p>这一节不讲抽象原理，专门讲一组线上和实验室里最常见、也最容易误判的 IRQ 问题，并给出一套真正能落地的 debug 方案。</p>
+
+<h3>13.0 一套真正能落地的 IRQ Debug 方案</h3>
+
+<p>很多人调 IRQ 问题时，一上来就：</p>
+
+<ol>
+<li>改 affinity。</li>
+<li>开一堆 tracepoint。</li>
+<li>在 GDB 里乱下断点。</li>
+</ol>
+
+<p>这样很容易把自己绕进去。更有效的做法是按层缩圈，而且每一层只回答一个问题。</p>
+
+<h4>13.0.1 先把现场分成四类</h4>
+
+<p>IRQ 相关问题，第一眼先分型，不要急着猜具体寄存器。</p>
+
+<ol>
+<li><strong>中断没来</strong></li>
+</ol>
+<p>   <code>/proc/interrupts</code> 不涨，handler 不进。</p>
+<ol>
+<li><strong>中断来了但行为不对</strong></li>
+</ol>
+<p>   计数在涨，但设备还是超时、丢事件或重复进中断。</p>
+<ol>
+<li><strong>中断太多</strong></li>
+</ol>
+<p>   某条 IRQ、hardirq、softirq 或 <code>ksoftirqd</code> 飙高。</p>
+<ol>
+<li><strong>中断迁不动或迁不干净</strong></li>
+</ol>
+<p>   改了 affinity，但热点 CPU 没变。</p>
+
+<p>只要先把问题分到这四类，后面的工具选择就会清晰很多。</p>
+
+<h4>13.0.2 最实用的缩圈顺序：先看“有没有”，再看“是哪条”，最后看“为什么”</h4>
+
+<p>建议固定按下面顺序排：</p>
+
+<pre><code class="language-text">第一层：这次中断到底有没有到 CPU
+  -&gt; 看 /proc/interrupts
+
+第二层：到了以后走的是哪条路径
+  -&gt; 看 hwirq / virq / flow handler / action
+
+第三层：为什么表现成当前症状
+  -&gt; 看 trigger type / affinity / softirq / 设备清源 / 线程化路径</code></pre>
+
+<p>也就是：</p>
+
+<ol>
+<li><strong>先确认事件是否真的发生。</strong></li>
+<li><strong>再确认内核把它认成了哪条 IRQ。</strong></li>
+<li><strong>最后才进入原因分析。</strong></li>
+</ol>
+
+<p>把顺序反过来，通常会在寄存器和代码里迷路。</p>
+
+<h4>13.0.3 一张最重要的工具分工表</h4>
+
+<table>
+<thead><tr>
+<th>你想回答的问题</th>
+<th>最先用的工具</th>
+<th>它解决什么</th>
+<th>不适合解决什么</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>这条中断有没有在涨</td>
+<td><code>/proc/interrupts</code></td>
+<td>看 IRQ 计数、CPU 分布</td>
+<td>看不到调用链</td>
+</tr>
+<tr>
+<td>下半部是不是被打爆了</td>
+<td><code>/proc/softirqs</code>、<code>ps</code></td>
+<td>看 softirq 类型、<code>ksoftirqd</code>、<code>irq/<n></code> 线程</td>
+<td>看不到是哪条硬中断 raise 的</td>
+</tr>
+<tr>
+<td>这次 IRQ 具体走了哪条链</td>
+<td>ftrace tracepoint</td>
+<td>看 <code>irq_handler_entry/exit</code>、<code>softirq_raise/entry/exit</code></td>
+<td>不适合看非常早的汇编入口细节</td>
+</tr>
+<tr>
+<td>当前 CPU 到底拿到了哪个 INTID</td>
+<td>GDB / 寄存器读值</td>
+<td>看 <code>gic_read_iar()</code>、<code>hwirq</code>、<code>regs</code></td>
+<td>不适合做大范围统计</td>
+</tr>
+<tr>
+<td>为什么系统卡但 IRQ 数不夸张</td>
+<td><code>irqsoff</code> tracer</td>
+<td>看 irq-off latency</td>
+<td>看不到普通 steady-state 统计</td>
+</tr>
+<tr>
+<td>为什么写了 affinity 还没迁走</td>
+<td><code>/proc/irq/*</code> + trace</td>
+<td>看 <code>effective_affinity</code> 和后续 softirq</td>
+<td>单看 <code>smp_affinity_list</code> 容易误判</td>
+</tr>
+</tbody></table>
+
+<p>最常见的错误就是：</p>
+
+<ol>
+<li>想看统计，却先上 GDB。</li>
+<li>想看单次路径，却只盯 <code>/proc/interrupts</code>。</li>
+<li>想看 irq-off latency，却只看某条 IRQ 的计数。</li>
+</ol>
+
+<h4>13.0.4 我最推荐的现场最小命令集</h4>
+
+<p>如果你在线上或实验室第一次接触一个 IRQ 问题，先跑这组，不要一开始就扩展：</p>
+
+<pre><code class="language-bash">cat /proc/interrupts
+cat /proc/softirqs
+ps -Leo pid,psr,comm,%cpu | egrep &#x27;ksoftirqd|irq/&#x27;
+cat /proc/irq/&lt;irq&gt;/smp_affinity_list
+cat /proc/irq/&lt;irq&gt;/effective_affinity_list</code></pre>
+
+<p>然后按需再加一组 tracepoint：</p>
+
+<pre><code class="language-bash">echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_raise/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_exit/enable
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>如果现场开始怀疑“不是某条 IRQ 有问题，而是 IRQ-off 区间太长”，立刻切换到：</p>
+
+<pre><code class="language-bash">echo irqsoff &gt; /sys/kernel/tracing/current_tracer
+echo 0 &gt; /sys/kernel/tracing/tracing_max_latency
+echo 1 &gt; /sys/kernel/tracing/tracing_on</code></pre>
+
+<h4>13.0.5 一个真正好用的调试顺序模板</h4>
+
+<p>你可以把 IRQ debug 固定成下面这个模板：</p>
+
+<ol>
+<li><strong>先统计</strong></li>
+</ol>
+<p>   <code>interrupts</code>、<code>softirqs</code>、<code>irq thread/ksoftirqd</code>。</p>
+<ol>
+<li><strong>再分类</strong></li>
+</ol>
+<p>   PPI / SPI / LPI，hardirq / softirq / threaded irq / irq-off。</p>
+<ol>
+<li><strong>再跟踪</strong></li>
+</ol>
+<p>   tracepoint 把“谁触发了谁”串起来。</p>
+<ol>
+<li><strong>最后单步</strong></li>
+</ol>
+<p>   真要看一次执行路径，再用 GDB 去抓 <code>el1h_64_irq_handler -> gic_handle_irq -> generic_handle_domain_irq</code>。</p>
+
+<p>一句话总结：<strong>先用 cheap 工具缩面，再用贵工具打点。</strong></p>
+
+<h4>13.0.6 线上 5 分钟 IRQ 排障清单</h4>
+
+<p>如果你在真实环境里只给自己 5 分钟，不要试图“一次看全”。更有效的做法是按下面这张清单扫一遍，先把问题缩到一个方向。</p>
+
+<p><strong>第 1 分钟：先看是不是 IRQ 本身在涨</strong></p>
+
+<pre><code class="language-bash">cat /proc/interrupts
+cat /proc/softirqs</code></pre>
+
+<p>你只回答两个问题：</p>
+
+<ol>
+<li>有没有某条 IRQ 明显暴涨。</li>
+<li>有没有某类 softirq 明显暴涨。</li>
+</ol>
+
+<p><strong>第 2 分钟：看压力到底在 hardirq、softirq，还是 irq thread</strong></p>
+
+<pre><code class="language-bash">ps -Leo pid,psr,comm,%cpu | egrep &#x27;ksoftirqd|irq/&#x27;</code></pre>
+
+<p>你只回答三个问题：</p>
+
+<ol>
+<li>是 <code>irq/<n>-xxx</code> 高。</li>
+<li>还是 <code>ksoftirqd/N</code> 高。</li>
+<li>还是两者都不高，但 IRQ 计数异常。</li>
+</ol>
+
+<p><strong>第 3 分钟：如果怀疑绑核或热点 CPU，立刻看 affinity 实际生效结果</strong></p>
+
+<pre><code class="language-bash">cat /proc/irq/&lt;irq&gt;/smp_affinity_list
+cat /proc/irq/&lt;irq&gt;/effective_affinity_list</code></pre>
+
+<p>这一步只回答：</p>
+
+<ol>
+<li>你写进去的 mask 和真正生效的 CPU 是不是一回事。</li>
+<li>这是 SPI/LPI 的可迁移问题，还是 PPI/per-cpu 本来就不该迁。</li>
+</ol>
+
+<p><strong>第 4 分钟：如果计数在涨但行为不对，开最小 tracepoint</strong></p>
+
+<pre><code class="language-bash">echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_raise/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_exit/enable
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>你只回答：</p>
+
+<ol>
+<li>哪个硬中断在高频进入。</li>
+<li>它有没有带出 softirq。</li>
+<li>softirq 是原地执行还是掉到 <code>ksoftirqd</code>。</li>
+</ol>
+
+<p><strong>第 5 分钟：如果系统卡但计数不离谱，切到 <code>irqsoff</code></strong></p>
+
+<pre><code class="language-bash">echo irqsoff &gt; /sys/kernel/tracing/current_tracer
+echo 0 &gt; /sys/kernel/tracing/tracing_max_latency
+echo 1 &gt; /sys/kernel/tracing/tracing_on</code></pre>
+
+<p>这一步只回答：</p>
+
+<ol>
+<li>到底是不是 irq-off latency。</li>
+<li>最长 irq-off 区间落在谁的调用栈上。</li>
+</ol>
+
+<p>这份 5 分钟清单最重要的价值不是“立刻修好”，而是让你在极短时间里先判断：</p>
+
+<ol>
+<li>这是没中断、乱中断、太多中断，还是关中断太久。</li>
+<li>你下一步该去看 <code>irq-gic-v3.c</code>、<code>kernel/irq/*</code>、<code>kernel/softirq.c</code>，还是设备驱动。</li>
+</ol>
+
+<h4>13.0.7 QEMU、ftrace、GDB 三套方案分别适合抓什么</h4>
+
+<p>这三套工具经常一起出现，但它们解决的问题完全不同。最容易犯的错误，就是拿错工具干错事。</p>
+
+<table>
+<thead><tr>
+<th>场景</th>
+<th>首选方案</th>
+<th>为什么</th>
+<th>什么时候再升级</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>想看系统总体趋势</td>
+<td>QEMU 复现实验 + <code>/proc/*</code></td>
+<td>容易反复做、低成本放大问题</td>
+<td>现象已稳定但还不知道链路时，再加 trace</td>
+</tr>
+<tr>
+<td>想看是谁触发了谁</td>
+<td>ftrace / tracepoint</td>
+<td>最适合串 IRQ、softirq、线程化路径</td>
+<td>已知道热点函数，想看单次精确执行时，再上 GDB</td>
+</tr>
+<tr>
+<td>想看某一次 IRQ 的精确执行路径</td>
+<td>GDB</td>
+<td>能看到 <code>regs</code>、<code>hwirq</code>、<code>desc</code>、flow handler</td>
+<td>只在问题范围已经很小时才值得用</td>
+</tr>
+<tr>
+<td>想看异常向量和早期入口汇编</td>
+<td>GDB + 反汇编</td>
+<td>这是 ftrace 根本看不到的层</td>
+<td>一旦确认入口没问题，就应尽快回到 trace/统计层</td>
+</tr>
+<tr>
+<td>想看 irq-off latency</td>
+<td>ftrace 的 <code>irqsoff</code> tracer</td>
+<td>这是 GDB 和 <code>/proc/interrupts</code> 都不擅长的方向</td>
+<td>找到热点栈后，再回源码和 GDB 验证</td>
+</tr>
+</tbody></table>
+
+<p>更实用的理解方式是：</p>
+
+<ol>
+<li><strong>QEMU</strong> 适合复现和放大。</li>
+<li><strong>ftrace</strong> 适合看运行时行为和链路。</li>
+<li><strong>GDB</strong> 适合看一次执行的精确状态。</li>
+</ol>
+
+<p>所以最合理的组合通常不是“三个一起开”，而是：</p>
+
+<ol>
+<li>先在 QEMU 或真实机器上把现象稳定复现。</li>
+<li>再用 ftrace 把链路收敛到几个关键函数。</li>
+<li>最后只在这几个关键点上用 GDB 打一次精确断点。</li>
+</ol>
+
+<p>一句更工程化的话是：</p>
+
+<ol>
+<li><strong>QEMU 负责造现场。</strong></li>
+<li><strong>ftrace 负责看现场。</strong></li>
+<li><strong>GDB 负责钉现场。</strong></li>
+</ol>
+
+<h3>13.1 经典问题一：中断绑定 CPU</h3>
+
+<h4>13.1.1 典型症状</h4>
+
+<ol>
+<li><code>/proc/interrupts</code> 显示某条中断几乎全部打在一个 CPU 上。</li>
+<li>某个 CPU 持续高负载，其他 CPU 很闲。</li>
+<li>明明改了 <code>/proc/irq/<irq>/smp_affinity_list</code>，效果却不明显。</li>
+<li>流量、块 IO、virtio 队列负载集中在一个核上。</li>
+</ol>
+
+<h4>13.1.2 第一件事：先分清这是什么中断</h4>
+
+<p>不要一上来就改 affinity，先判断：</p>
+
+<ol>
+<li>SGI/PPI/EPPI：本地中断，重点看 per-CPU 语义，不要按 SPI 的脑回路去改。</li>
+<li>SPI/ESPI：共享中断，重点看 <code>gic_set_affinity()</code> 和 <code>GICD_IROUTER</code>。</li>
+<li>LPI/MSI：重点看 ITS、队列数、collection、设备多队列布局。</li>
+</ol>
+
+<h4>13.1.3 最小排查命令</h4>
+
+<pre><code class="language-bash">cat /proc/interrupts
+cat /proc/irq/&lt;irq&gt;/smp_affinity_list
+cat /proc/irq/&lt;irq&gt;/effective_affinity_list
+ps -Leo pid,psr,comm,%cpu | egrep &#x27;ksoftirqd|irq/&#x27;
+cat /proc/softirqs</code></pre>
+
+<p>如果 <code>effective_affinity_list</code> 不存在，就至少观察 <code>/proc/interrupts</code> 的真实增量分布。</p>
+
+<h4>13.1.4 为什么“改了 affinity 却没效果”</h4>
+
+<p>最常见原因有这几类：</p>
+
+<ol>
+<li>这条 IRQ 根本不能由用户自由设 affinity。</li>
+<li>设备/驱动使用 managed IRQ，真正生效的 CPU 由内核和队列拓扑决定。</li>
+<li>控制器只能单目标投递，<code>effective_affinity</code> 比用户 mask 更窄。</li>
+<li><code>irqbalance</code> 把你的设置又改回去了。</li>
+<li>对多队列设备来说，你只改了 IRQ，没有改队列到 CPU 的整体映射。</li>
+</ol>
+
+<h4>13.1.5 真正有效的处理顺序</h4>
+
+<p>对共享 SPI 或 MSI/LPI，建议按这个顺序处理：</p>
+
+<ol>
+<li>先确认 IRQ 类型和是否支持 affinity。</li>
+<li>暂停或约束 <code>irqbalance</code>，避免它不断回写。</li>
+<li>调整 <code>/proc/irq/<irq>/smp_affinity_list</code>。</li>
+<li>观察 <code>/proc/interrupts</code> 是否真的迁移。</li>
+<li>再检查软中断、协议栈、应用线程是否跟着迁移。</li>
+</ol>
+
+<p>对多队列设备，还要继续做：</p>
+
+<ol>
+<li>调整 MSI-X queue 数量。</li>
+<li>保证 queue 和 IRQ 一一或合理对应。</li>
+<li>配合 RSS/RPS/XPS/RFS 或驱动自己的 queue affinity 机制。</li>
+<li>把应用线程绑到和 queue/IRQ 同 NUMA、同 CPU 域。</li>
+</ol>
+
+<p>也就是说，正确方法不是“只改 IRQ”，而是 <strong>中断投递、队列映射、软中断执行、用户线程调度一起看</strong>。</p>
+
+<h4>13.1.6 一个典型错误案例</h4>
+
+<p>错误做法：</p>
+
+<ol>
+<li>看到 CPU0 的网卡中断最高。</li>
+<li>直接把 <code>/proc/irq/N/smp_affinity_list</code> 改到 CPU2。</li>
+<li>发现吞吐和 CPU 热点没明显改善。</li>
+</ol>
+
+<p>常见原因：</p>
+
+<ol>
+<li>硬中断迁了，但 <code>NET_RX</code> softirq 仍在原热点 CPU 上跑。</li>
+<li>应用线程仍绑在原 CPU。</li>
+<li>设备多队列配置不均，只有一个队列真的在收包。</li>
+</ol>
+
+<p>这正是“只懂中断号，不懂中断全路径”的典型后果。</p>
+
+<h3>13.2 经典问题二：softirq 过高</h3>
+
+<h4>13.2.1 典型症状</h4>
+
+<ol>
+<li><code>top</code>/<code>htop</code> 看到 <code>ksoftirqd/N</code> 很高。</li>
+<li><code>/proc/softirqs</code> 里某一列增长特别快。</li>
+<li>硬中断不算太高，但 CPU 仍然被中断相关负载打满。</li>
+<li>网络吞吐下降、时延抖动、丢包或块 IO 抖动。</li>
+</ol>
+
+<h4>13.2.2 第一件事：先看是哪类 softirq</h4>
+
+<pre><code class="language-bash">cat /proc/softirqs</code></pre>
+
+<p>优先看：</p>
+
+<ol>
+<li><code>NET_RX</code></li>
+<li><code>NET_TX</code></li>
+<li><code>TIMER</code></li>
+<li><code>RCU</code></li>
+<li><code>TASKLET</code></li>
+<li><code>BLOCK</code></li>
+</ol>
+
+<p>不同类型意味着完全不同的问题根源：</p>
+
+<ol>
+<li><code>NET_RX</code> 高，多半是收包路径、NAPI、队列分布、RPS/RSS 问题。</li>
+<li><code>TIMER</code> 高，常见于定时器过密或 tick/nohz 场景异常。</li>
+<li><code>RCU</code> 高，常见于宽系统噪声、回调堆积、长关抢占区间。</li>
+<li><code>TASKLET</code> 高，往往说明驱动还在用旧式 bottom half，或者工作该迁移到 workqueue/threaded irq。</li>
+</ol>
+
+<h4>13.2.3 第二件事：分清是 hardirq 重，还是 softirq 重</h4>
+
+<p>一起看：</p>
+
+<pre><code class="language-bash">cat /proc/interrupts
+cat /proc/softirqs
+ps -Leo pid,psr,comm,%cpu | egrep &#x27;ksoftirqd|irq/&#x27;</code></pre>
+
+<p>如果现象是：</p>
+
+<ol>
+<li><code>irq/<n>-xxx</code> 高：更偏向 threaded irq 压力。</li>
+<li><code>ksoftirqd/N</code> 高：softirq 已经溢出到线程兜底。</li>
+<li><code>/proc/interrupts</code> 某条线暴涨：先查 IRQ 源和绑核。</li>
+<li><code>NET_RX</code> 高而硬中断不算极端：多半是 NAPI/协议栈下半部压力。</li>
+</ol>
+
+<h4>13.2.4 <code>ksoftirqd</code> 高意味着什么</h4>
+
+<p>这通常意味着：</p>
+
+<ol>
+<li>softirq 没能在 <code>irq_exit_rcu()</code> 那个有限窗口内处理完。</li>
+<li>内核为了避免占用过久、影响系统响应，把剩余工作丢给 <code>ksoftirqd/<cpu></code>。</li>
+</ol>
+
+<p>所以 <code>ksoftirqd</code> 高并不是“另一个无关线程很忙”，而是 <strong>中断下半部已经重到需要线程兜底</strong> 的信号。</p>
+
+<h4>13.2.5 <code>NET_RX</code> softirq 高的典型处理顺序</h4>
+
+<p>这是最经典的一类问题。建议按这个顺序处理：</p>
+
+<ol>
+<li>看 IRQ 是否过度集中在单 CPU。</li>
+<li>看设备是否启用了足够的队列和 MSI-X 中断。</li>
+<li>看 RSS/RPS/XPS/RFS 是否合理。</li>
+<li>看应用线程是否也压在同一 CPU。</li>
+<li>最后才考虑调 <code>netdev_budget</code>、<code>netdev_budget_usecs</code> 这类预算参数。</li>
+</ol>
+
+<p>原因很直接：</p>
+
+<ol>
+<li>如果根因是队列和 IRQ 分布错误，先改 budget 只是在推迟症状。</li>
+<li>如果根因是单队列瓶颈，先调内核参数也不会把吞吐凭空分散到别的 CPU。</li>
+</ol>
+
+<h4>13.2.6 <code>TASKLET</code> softirq 高怎么理解</h4>
+
+<p>如果 <code>TASKLET</code> 相关压力异常高，通常意味着：</p>
+
+<ol>
+<li>驱动把大量工作仍放在 tasklet。</li>
+<li>tasklet 虽然串行化了自己，但仍运行在 softirq 上下文，不能睡眠。</li>
+<li>对复杂、耗时或容易阻塞的逻辑，更合理的方向通常是 threaded irq 或 workqueue。</li>
+</ol>
+
+<p>这也是为什么当前内核源码已经明显在推动 tasklet 向 workqueue/softirq 直接接口迁移。</p>
+
+<h4>13.2.7 softirq 高时应该怎么 trace</h4>
+
+<p>最实用的 tracepoint 是：</p>
+
+<pre><code class="language-bash">echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_raise/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_exit/enable
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>配合：</p>
+
+<pre><code class="language-bash">echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable</code></pre>
+
+<p>你就能把：</p>
+
+<ol>
+<li>哪个硬中断 raise 了 softirq。</li>
+<li>哪类 softirq 被频繁执行。</li>
+<li>是在 hardirq return 路径里执行，还是落到了 <code>ksoftirqd</code>。</li>
+</ol>
+
+<p>串成一条完整链。</p>
+
+<h3>13.3 中断绑核和 softirq 过高，正确的整体处置思路</h3>
+
+<p>这两个问题经常一起出现，正确思路不是分开治，而是按层推进：</p>
+
+<ol>
+<li>先看硬中断落在哪些 CPU。</li>
+<li>再看对应 softirq 落在哪些 CPU。</li>
+<li>再看队列、NAPI、协议栈、块层或 virtio 队列分布。</li>
+<li>最后看应用线程、workqueue、irq thread 的 CPU 分布。</li>
+</ol>
+
+<p>换句话说，你要追的是：</p>
+
+<pre><code class="language-text">Device/Queue
+   -&gt; IRQ CPU
+   -&gt; Softirq CPU
+   -&gt; Kernel worker / irq thread CPU
+   -&gt; User thread CPU</code></pre>
+
+<p>这条链只要有一层没跟上，最终热点就还会留在原来的 CPU 上。</p>
+
+<h3>13.4 一条最实用的现场排查清单</h3>
+
+<p>遇到“中断绑定 CPU”或“softirq 过高”，可以直接按下面顺序做：</p>
+
+<pre><code class="language-bash">cat /proc/interrupts
+cat /proc/softirqs
+ps -Leo pid,psr,comm,%cpu | egrep &#x27;ksoftirqd|irq/&#x27;
+cat /proc/irq/&lt;irq&gt;/smp_affinity_list
+cat /proc/irq/&lt;irq&gt;/effective_affinity_list</code></pre>
+
+<p>然后判断：</p>
+
+<ol>
+<li>是 PPI/SPI/LPI 中的哪一种。</li>
+<li>是 hardirq 高还是 softirq 高。</li>
+<li>是 <code>irq/<n>-xxx</code> 线程高还是 <code>ksoftirqd/N</code> 高。</li>
+<li>这是单队列问题、队列分布问题，还是 GIC 路由问题。</li>
+</ol>
+
+<p>做完这四步，绝大多数经典问题都不会再是“毫无抓手”的状态。</p>
+
+<h3>13.5 用 QEMU 复现“中断绑定 CPU”问题</h3>
+
+<p>这一组实验的目的不是证明 affinity 接口存在，而是要把下面这条链真正观察出来：</p>
+
+<pre><code class="language-text">共享设备 IRQ
+  -&gt; GICD IROUTER / ITS collection
+  -&gt; /proc/interrupts CPU 分布变化
+  -&gt; softirq / 线程负载是否跟着变化</code></pre>
+
+<h4>13.5.1 启动建议</h4>
+
+<p>为了更容易观察共享中断，建议在 QEMU 里显式加入一个更容易产生 I/O 中断的设备。最实用的是 <code>virtio-blk-device</code> 或 <code>virtio-net-pci</code>。</p>
+
+<p>一个适合绑核实验的模板是：</p>
+
+<pre><code class="language-bash">qemu-system-aarch64 \
+  -M virt,gic-version=3 \
+  -cpu cortex-a57 \
+  -smp 4 \
+  -m 1024 \
+  -kernel arch/arm64/boot/Image \
+  --append &quot;nokaslr rdinit=/linuxrc console=ttyAMA0&quot; \
+  -nographic \
+  --fsdev local,id=kmod_dev,path=$PWD/kmodules,security_model=none \
+  -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount \
+  -drive if=none,file=disk.img,format=raw,id=vdisk \
+  -device virtio-blk-device,drive=vdisk</code></pre>
+
+<p>如果你暂时没有 <code>disk.img</code>，也可以先用现有 9p 设备配合大量目录遍历做弱化版本实验，但效果通常不如块设备或网卡直观。</p>
+
+<h4>13.5.2 实验步骤</h4>
+
+<ol>
+<li>启动系统后，先找出目标设备中断号。</li>
+<li>记录初始分布。</li>
+<li>持续产生 I/O。</li>
+<li>调整 affinity。</li>
+<li>观察中断和 softirq 是否一起迁移。</li>
+</ol>
+
+<p>最小命令序列：</p>
+
+<pre><code class="language-bash">cat /proc/interrupts
+cat /proc/irq/&lt;irq&gt;/smp_affinity_list
+cat /proc/irq/&lt;irq&gt;/effective_affinity_list
+watch -n 1 cat /proc/interrupts</code></pre>
+
+<p>调整 affinity：</p>
+
+<pre><code class="language-bash">echo 2 &gt; /proc/irq/&lt;irq&gt;/smp_affinity_list
+cat /proc/irq/&lt;irq&gt;/smp_affinity_list
+cat /proc/irq/&lt;irq&gt;/effective_affinity_list</code></pre>
+
+<p>如果是块设备，可以用循环 I/O 放大中断：</p>
+
+<pre><code class="language-bash">while true; do
+  dd if=/dev/&lt;blkdev&gt; of=/dev/null bs=1M count=64 2&gt;/dev/null
+done</code></pre>
+
+<p>如果是 9p 或文件系统路径，也可以用：</p>
+
+<pre><code class="language-bash">while true; do
+  find / -type f &gt;/dev/null 2&gt;&amp;1
+done</code></pre>
+
+<h4>13.5.3 要看什么才算真的迁移</h4>
+
+<p>不要只看 <code>smp_affinity_list</code> 已经写成功。真正要看的是：</p>
+
+<ol>
+<li><code>/proc/interrupts</code> 中目标 IRQ 的增量是否迁移到新 CPU。</li>
+<li><code>effective_affinity_list</code> 是否与目标 CPU 对齐。</li>
+<li>相关 <code>ksoftirqd/N</code> 或 <code>irq/<n>-xxx</code> 线程的热点 CPU 是否随之变化。</li>
+</ol>
+
+<p>如果只有第一步变化，而后两步没有变化，说明你只迁移了硬中断入口，后续路径没有迁移完。</p>
+
+<h4>13.5.4 用 trace 把它串起来</h4>
+
+<pre><code class="language-bash">echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_raise/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_exit/enable
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>观察重点：</p>
+
+<ol>
+<li>目标 IRQ handler 在哪个 CPU 上进入。</li>
+<li>它 raise 了什么 softirq。</li>
+<li>softirq 最终在哪个 CPU 上真正执行。</li>
+</ol>
+
+<p>这个实验的价值在于：<strong>你会看到“改中断 CPU”和“改完整数据路径 CPU”不是一回事。</strong></p>
+
+<h3>13.6 用 QEMU 复现“softirq 过高”问题</h3>
+
+<p>softirq 过高最适合做网络收包场景，因为 <code>NET_RX</code> 是最常见也最典型的高 softirq 来源。</p>
+
+<h4>13.6.1 启动建议</h4>
+
+<p>若 QEMU 支持网络设备，建议显式加一个 <code>virtio-net-pci</code>：</p>
+
+<pre><code class="language-bash">qemu-system-aarch64 \
+  -M virt,gic-version=3 \
+  -cpu cortex-a57 \
+  -smp 4 \
+  -m 1024 \
+  -kernel arch/arm64/boot/Image \
+  --append &quot;nokaslr rdinit=/linuxrc console=ttyAMA0&quot; \
+  -nographic \
+  -netdev user,id=n1,hostfwd=tcp::10022-:22 \
+  -device virtio-net-pci,netdev=n1</code></pre>
+
+<p>如果 guest 里网络工具有限，也可以把这组实验退化成：</p>
+
+<ol>
+<li>观察 <code>TIMER</code> 或 <code>TASKLET</code> softirq。</li>
+<li>或者用块设备压力配合 block 相关 softirq。</li>
+</ol>
+
+<p>但从“经典现场”角度，<code>NET_RX</code> 最有代表性。</p>
+
+<h4>13.6.2 实验步骤</h4>
+
+<p>先建立基线：</p>
+
+<pre><code class="language-bash">cat /proc/softirqs
+ps -Leo pid,psr,comm,%cpu | egrep &#x27;ksoftirqd|irq/&#x27;</code></pre>
+
+<p>打开 trace：</p>
+
+<pre><code class="language-bash">echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_raise/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_exit/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>然后在 guest 内持续制造流量或 I/O：</p>
+
+<ol>
+<li>网络场景：连续收发数据。</li>
+<li>块设备场景：持续读写。</li>
+<li>文件系统场景：大量元数据与目录遍历。</li>
+</ol>
+
+<h4>13.6.3 要看什么</h4>
+
+<p>重点不是单纯看 CPU 高，而是看：</p>
+
+<ol>
+<li><code>softirq_raise</code> 是由哪类 IRQ 触发的。</li>
+<li>主要高的是 <code>NET_RX</code>、<code>TIMER</code> 还是 <code>TASKLET</code>。</li>
+<li>softirq 是在 <code>irq_exit()</code> 路径里就地处理，还是掉到 <code>ksoftirqd/<cpu></code>。</li>
+<li><code>ksoftirqd/<cpu></code> 高时，对应的硬中断是否也集中在同一 CPU。</li>
+</ol>
+
+<h4>13.6.4 一个最经典的观察模式</h4>
+
+<p>你经常会看到下面这种现象：</p>
+
+<ol>
+<li>某个 virtio 网卡 IRQ 大量打在 CPU0。</li>
+<li><code>NET_RX</code> softirq 也主要在 CPU0。</li>
+<li>最终 <code>ksoftirqd/0</code> 很高。</li>
+</ol>
+
+<p>这时候结论往往不是“单纯 softirq 有问题”，而是：</p>
+
+<ol>
+<li>IRQ 分布不均。</li>
+<li>队列分布不均。</li>
+<li>NAPI / RSS / RPS 没把负载摊开。</li>
+</ol>
+
+<p>也就是说，softirq 高往往是上游硬中断和队列拓扑问题的结果，不是独立故障。</p>
+
+<h3>13.7 经典问题的源码定位清单</h3>
+
+<p>如果你在线上或实验室遇到这两类问题，最值得优先看的源码位置如下。</p>
+
+<h4>13.7.1 “中断绑定 CPU”要先看哪里</h4>
+
+<ol>
+<li><code>drivers/irqchip/irq-gic-v3.c</code></li>
+</ol>
+<p>   <code>gic_set_affinity()</code>：SPI/ESPI 路由改写点。</p>
+<ol>
+<li><code>drivers/irqchip/irq-gic-v3.c</code></li>
+</ol>
+<p>   <code>gic_cpu_to_affinity()</code>：逻辑 CPU 到 Aff3:Aff0 的编码。</p>
+<ol>
+<li><code>drivers/irqchip/irq-gic-v3-its.c</code></li>
+</ol>
+<p>   <code>its_set_affinity()</code>、<code>its_select_cpu()</code>：LPI/MSI 的 CPU 选择和 MOVI 路径。</p>
+<ol>
+<li><code>kernel/irq/manage.c</code></li>
+</ol>
+<p>   <code>irq_set_affinity()</code>、<code>irq_set_affinity_locked()</code>、<code>irq_validate_effective_affinity()</code>：IRQ core 通用层。</p>
+
+<h4>13.7.2 “softirq 过高”要先看哪里</h4>
+
+<ol>
+<li><code>kernel/softirq.c</code></li>
+</ol>
+<p>   <code>raise_softirq_irqoff()</code>：谁在 raise。</p>
+<ol>
+<li><code>kernel/softirq.c</code></li>
+</ol>
+<p>   <code>__do_softirq()</code>：谁在真正消费。</p>
+<ol>
+<li><code>kernel/softirq.c</code></li>
+</ol>
+<p>   <code>invoke_softirq()</code>、<code>wakeup_softirqd()</code>：为什么会落到 <code>ksoftirqd</code>。</p>
+<ol>
+<li><code>kernel/softirq.c</code></li>
+</ol>
+<p>   <code>tasklet_action_common()</code>：tasklet 是否成为热点。</p>
+<ol>
+<li><code>kernel/irq/manage.c</code></li>
+</ol>
+<p>   <code>request_threaded_irq()</code>、<code>irq_thread_fn()</code>：是不是 threaded irq 过重。</p>
+
+<h4>13.7.3 “中断高 + softirq 高”联动问题怎么看</h4>
+
+<p>要同时沿两条线看：</p>
+
+<pre><code class="language-text">IRQ 线：
+  gic_handle_irq
+    -&gt; generic_handle_domain_irq
+    -&gt; handle_fasteoi_irq / handle_percpu_devid_irq
+
+下半部线：
+  irq_exit_rcu
+    -&gt; invoke_softirq
+    -&gt; __do_softirq
+    -&gt; 具体 softirq action</code></pre>
+
+<p>只看其中一条线，通常都会误判。</p>
+
+<h3>13.8 处理这类问题的一条总原则</h3>
+
+<p>遇到“绑核”和“softirq 高”这类问题时，先不要急着改参数。更高效的方法是先回答三个问题：</p>
+
+<ol>
+<li>中断是怎么投递到当前 CPU 的。</li>
+<li>下半部是怎么继续留在当前 CPU 的。</li>
+<li>最终业务线程为什么也没有逃离这个 CPU。</li>
+</ol>
+
+<p>当这三个问题答清楚后，改 affinity、改队列、改 softirq 预算、改线程绑核，才会是有方向的动作，而不是碰运气。</p>
+
+<h3>13.9 经典问题三：关中断时间过长</h3>
+
+<p>这类问题在 ARM64/GICv3 系统里非常典型，因为它不一定直接表现成 “某条 IRQ 有问题”，却会带来明显的系统时延抖动、丢实时性、timer 漂移、网络吞吐下降甚至 watchdog 告警。</p>
+
+<h4>13.9.1 典型症状</h4>
+
+<ol>
+<li>某些请求时延偶发尖峰。</li>
+<li><code>ksoftirqd</code>、timer、RCU 或调度行为出现明显抖动。</li>
+<li><code>/proc/interrupts</code> 看起来不极端，但系统交互变钝。</li>
+<li>某个 CPU 在 trace 里出现很长时间的 irq-off 区间。</li>
+<li>如果启用了 watchdog 或时延跟踪，可能看到 latency/warn 输出。</li>
+</ol>
+
+<h4>13.9.2 本质是什么</h4>
+
+<p>“关中断时间过长”不是单纯指 <code>local_irq_disable()</code> 被调用了，而是：</p>
+
+<ol>
+<li>某段路径在 <strong>本地 IRQ 关闭</strong> 的状态下执行了太久。</li>
+<li>结果当前 CPU 在这段时间里不能及时响应新的硬中断。</li>
+<li>timer tick、设备 IRQ、IPI 等外部事件都被延后处理。</li>
+</ol>
+
+<p>所以它本质上是 <strong>IRQ-off latency</strong> 问题。</p>
+
+<h4>13.9.3 最常见根因</h4>
+
+<ol>
+<li>在 <code>spin_lock_irqsave()</code> / <code>raw_spin_lock_irqsave()</code> 保护区里做了过重工作。</li>
+<li>在本地关中断后做了循环扫描、复杂链表遍历或大块寄存器轮询。</li>
+<li>驱动在 hardirq 上下文里清状态、搬数据、轮询设备太久。</li>
+<li>错把本应放到 threaded irq / workqueue / softirq 的工作塞进 hardirq 或 irq-off 临界区。</li>
+<li>在 pseudo-NMI、IPI、stop machine、CPU hotplug 等敏感路径上引入了过长的关中断区间。</li>
+</ol>
+
+<h4>13.9.4 最有效的观测手段：<code>irqsoff</code> tracer</h4>
+
+<p>这类问题最直接的工具不是 <code>/proc/interrupts</code>，而是 ftrace 的 <code>irqsoff</code> tracer。</p>
+
+<p>文档 <code>Documentation/trace/ftrace.rst</code> 已经明确说明：<code>irqsoff</code> 用来跟踪“中断被关闭了多长时间”。</p>
+
+<p>最小使用方式：</p>
+
+<pre><code class="language-bash">echo 0 &gt; /sys/kernel/tracing/options/function-trace
+echo irqsoff &gt; /sys/kernel/tracing/current_tracer
+echo 0 &gt; /sys/kernel/tracing/tracing_max_latency
+echo 1 &gt; /sys/kernel/tracing/tracing_on
+
+# 在系统里触发可疑负载
+
+echo 0 &gt; /sys/kernel/tracing/tracing_on
+cat /sys/kernel/tracing/trace</code></pre>
+
+<p>如果内核支持图形函数跟踪，也可以配合 <code>function_graph</code> 或把可疑函数加入过滤器，这样更容易看出是哪个锁或哪个循环把 IRQ-off 区间拉长了。</p>
+
+<h4>13.9.5 你应该优先怀疑哪些函数</h4>
+
+<p>从这份指南覆盖的路径看，优先怀疑：</p>
+
+<ol>
+<li><code>raw_spin_lock_irqsave()</code> / <code>spin_lock_irqsave()</code> 周围的临界区。</li>
+<li><code>gic_handle_irq()</code> 之后进入的设备 primary handler。</li>
+<li>GIC/ITS 驱动里围绕寄存器轮询和命令完成等待的路径。</li>
+<li>任何本该在下半部或线程里做、却被留在 hardirq/top-half 的工作。</li>
+</ol>
+
+<h4>13.9.6 处理原则</h4>
+
+<p>遇到这类问题，常规正确做法是：</p>
+
+<ol>
+<li>缩短 irq-off 临界区，只保留真正必须原子化的操作。</li>
+<li>把耗时逻辑移到 threaded irq、softirq、tasklet 或 workqueue。</li>
+<li>避免在关中断区间里做“边判断边循环”的大工作量操作。</li>
+<li>若必须轮询，尽量把轮询移到可睡眠上下文，或严格限制循环次数和预算。</li>
+<li>重新检查是否误用了 <code>raw_spin_lock_irqsave()</code>，而实际上只需要普通锁或 <code>local_bh_disable()</code>。</li>
+</ol>
+
+<h4>13.9.7 源码锚点</h4>
+
+<ol>
+<li><code>Documentation/trace/ftrace.rst</code></li>
+</ol>
+<p>   <code>irqsoff</code> tracer 的使用说明。</p>
+<ol>
+<li><code>kernel/trace/trace_irqsoff.c</code></li>
+</ol>
+<p>   IRQ-off latency 跟踪实现。</p>
+<ol>
+<li><code>kernel/irq/manage.c</code></li>
+</ol>
+<p>   各类 IRQ 管理路径和锁保护语义。</p>
+<ol>
+<li><code>kernel/irq/chip.c</code></li>
+</ol>
+<p>   flow handler 的顶半部执行语义。</p>
+
+<h4>13.9.8 用 QEMU 逼近“关中断时间过长”现场</h4>
+
+<p>这一类问题在纯虚拟平台上不一定能百分之百复刻真实硬件的时延形态，但完全可以把“方法论”练熟。</p>
+
+<p>建议使用至少 4 vCPU，这样更容易观察某一个 CPU 被 irq-off 区间拖慢后的连锁反应：</p>
+
+<pre><code class="language-bash">qemu-system-aarch64 \
+   -M virt,gic-version=3 \
+   -cpu cortex-a57 \
+   -smp 4 \
+   -m 1024 \
+   -kernel arch/arm64/boot/Image \
+   --append &quot;nokaslr rdinit=/linuxrc console=ttyAMA0&quot; \
+   -nographic \
+   -device virtio-blk-device,drive=d0 \
+   -drive if=none,file=rootfs.ext4,format=raw,id=d0</code></pre>
+
+<p>进入 guest 后，先打开 <code>irqsoff</code> tracer：</p>
+
+<pre><code class="language-bash">echo 0 &gt; /sys/kernel/tracing/options/function-trace
+echo irqsoff &gt; /sys/kernel/tracing/current_tracer
+echo 0 &gt; /sys/kernel/tracing/tracing_max_latency
+echo 1 &gt; /sys/kernel/tracing/tracing_on</code></pre>
+
+<p>然后制造两类压力：</p>
+
+<ol>
+<li>持续块 I/O，逼近块层和 virtio 中断路径。</li>
+<li>持续目录遍历或 page cache 扰动，放大调度、timer、IPI 与软中断交错。</li>
+</ol>
+
+<p>例如：</p>
+
+<pre><code class="language-bash">while true; do
+   dd if=/dev/vda of=/dev/null bs=1M count=128 iflag=direct 2&gt;/dev/null
+done</code></pre>
+
+<p>再配合另一条 shell：</p>
+
+<pre><code class="language-bash">while true; do
+   find / -maxdepth 4 -type f &gt;/dev/null 2&gt;&amp;1
+done</code></pre>
+
+<p>最后关闭 tracing 并读取最大时延样本：</p>
+
+<pre><code class="language-bash">echo 0 &gt; /sys/kernel/tracing/tracing_on
+cat /sys/kernel/tracing/trace</code></pre>
+
+<p>你要重点看：</p>
+
+<ol>
+<li>最大 irq-off 区间落在哪个函数栈上。</li>
+<li>是锁临界区拖长，还是某个 handler/软中断路径过重。</li>
+<li>是否总发生在同一个 CPU 上。</li>
+</ol>
+
+<p>如果你愿意进一步做“人为注入”，最直接的方法是在你自己控制的测试模块里，用 <code>local_irq_disable()</code> 包住一个短暂 busy loop，再用 <code>irqsoff</code> tracer 验证它如何被记录。这个实验不代表正确写法，但非常适合理解工具输出格式。</p>
+
+<h3>13.10 经典问题四：中断上下文里出现 loop、风暴或反复 pending</h3>
+
+<p>用户口中的“中断里 loop”通常不是一个精确定义，但在线上现场里大多对应下面几类问题：</p>
+
+<ol>
+<li>handler 没有正确清中断源，导致中断反复进来。</li>
+<li>控制器/设备不断报告 pending，形成中断风暴。</li>
+<li>edge 类型中断在 flow handler 里反复重放，出现显式循环。</li>
+<li>驱动在 hardirq 里自己写了大 loop，试图“一次把活干完”。</li>
+</ol>
+
+<h4>13.10.1 先区分哪一种 loop</h4>
+
+<p>从源码角度看，至少有三种“loop 感”：</p>
+
+<ol>
+<li><strong>flow handler 显式循环</strong></li>
+</ol>
+<p>   典型是 <code>handle_edge_irq()</code>，它会在 <code>IRQS_PENDING</code> 置位时用 <code>do ... while</code> 继续处理。</p>
+<ol>
+<li><strong>resend / repeated pending</strong></li>
+</ol>
+<p>   典型是 <code>handle_fasteoi_irq()</code>，它自身不做大循环，但可能在 <code>IRQS_PENDING</code> 场景下触发 <code>check_irq_resend()</code>。</p>
+<ol>
+<li><strong>设备层中断风暴</strong></li>
+</ol>
+<p>   驱动没清设备状态、硬件线持续保持 asserted，导致 CPU 看起来像是在“中断里打转”。</p>
+
+<h4>13.10.2 为什么 GICv3 上也会看到这种问题</h4>
+
+<p>虽然 GICv3 常见路径是 <code>handle_fasteoi_irq()</code>，不像 <code>handle_edge_irq()</code> 那样自带显式 <code>do/while</code>，但问题依然会以这几种形式出现：</p>
+
+<ol>
+<li>设备 ISR 没有正确清设备侧状态位。</li>
+<li>level 中断在设备侧仍然保持 active/asserted。</li>
+<li>affinity 切换与处理中并发，触发 resend 或重复 pending。</li>
+<li>threaded irq / primary handler 返回值不对，导致 IRQ core 误判处理结果。</li>
+</ol>
+
+<h4>13.10.3 最经典的现场表现</h4>
+
+<ol>
+<li><code>/proc/interrupts</code> 某条 IRQ 计数爆炸式增长。</li>
+<li>某个 CPU 几乎完全被 hardirq 吃满。</li>
+<li>日志里出现 <code>irq X: nobody cared</code>。</li>
+<li>中断线被内核判定为 spurious 并禁用。</li>
+<li>系统吞吐下降，但 CPU 大量时间耗在同一个 handler 附近。</li>
+</ol>
+
+<h4>13.10.4 先看什么</h4>
+
+<p>遇到这种问题，第一轮不要急着猜驱动逻辑，先看：</p>
+
+<pre><code class="language-bash">cat /proc/interrupts
+cat /proc/irq/&lt;irq&gt;/spurious
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>并打开这些 tracepoint：</p>
+
+<pre><code class="language-bash">echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_raise/enable</code></pre>
+
+<p>这样你能先判断：</p>
+
+<ol>
+<li>是不是同一条 IRQ 在高频反复进入。</li>
+<li>它有没有真正返回 <code>IRQ_HANDLED</code>。</li>
+<li>是否不断在抬高 softirq 压力。</li>
+</ol>
+
+<h4>13.10.5 内核会怎么处理这类异常</h4>
+
+<p>Linux IRQ core 并不是完全放任这种情况。</p>
+
+<ol>
+<li><code>note_interrupt()</code> 会对“没人处理”或处理异常的 IRQ 做统计。</li>
+<li><code>kernel/irq/spurious.c</code> 会做 spurious 检测。</li>
+<li>达到阈值后，内核可能把这条线标记为 spurious disabled，并启动轮询恢复逻辑。</li>
+</ol>
+
+<p>所以如果你看到：</p>
+
+<ol>
+<li><code>irq X: nobody cared</code></li>
+<li><code>/proc/irq/<irq>/spurious</code></li>
+<li><code>IRQS_SPURIOUS_DISABLED</code></li>
+</ol>
+
+<p>那已经说明问题不只是“CPU 有点忙”，而是 IRQ core 认定这条中断线行为异常。</p>
+
+<h4>13.10.6 最常见根因</h4>
+
+<ol>
+<li>设备状态寄存器没有在正确时机清除。</li>
+<li>先 EOI 后清设备，或清设备/清 pending 的顺序不对。</li>
+<li>handler 误返回 <code>IRQ_NONE</code> / <code>IRQ_HANDLED</code>。</li>
+<li>level/edge trigger 配置与硬件实际行为不匹配。</li>
+<li>在 hardirq 里自己写了无预算的 polling loop。</li>
+<li>多队列/共享中断场景里没有先准确判断“是不是我的中断”。</li>
+</ol>
+
+<h4>13.10.7 正确处理思路</h4>
+
+<p>这类问题正确顺序通常是：</p>
+
+<ol>
+<li>先确认 trigger type 是否正确。</li>
+<li>再确认设备 handler 是否先判源、再清状态。</li>
+<li>再确认返回值是否符合 IRQ core 期望。</li>
+<li>对共享中断，要先严格判断是不是自己的中断。</li>
+<li>把重活挪出 hardirq，不要在中断上下文里写“大循环直到彻底干净”。</li>
+</ol>
+
+<p>一句话：<strong>中断 handler 应该快速确认、快速清源、快速退出，而不是试图在顶半部里把整个设备世界收拾干净。</strong></p>
+
+<h4>13.10.8 GICv3 语境下要特别注意什么</h4>
+
+<p>在 GICv3 上，还要特别注意 ACK/EOI/Deactivate 与设备清状态之间的配合：</p>
+
+<ol>
+<li>GIC 侧的 priority drop / deactivate 正常，不代表设备侧线已经撤销。</li>
+<li>如果设备状态没清，level 中断会马上再次被看到。</li>
+<li>这时表面看像“GIC 反复进中断”，本质上其实是设备线一直没松开。</li>
+</ol>
+
+<p>所以排查时一定要把：</p>
+
+<ol>
+<li>GIC 控制器侧状态。</li>
+<li>设备寄存器侧状态。</li>
+<li>handler 返回值。</li>
+</ol>
+
+<p>放在一起看。</p>
+
+<h4>13.10.9 源码锚点</h4>
+
+<ol>
+<li><code>kernel/irq/chip.c</code></li>
+</ol>
+<p>   <code>handle_fasteoi_irq()</code>：GICv3 常见 flow handler。</p>
+<ol>
+<li><code>kernel/irq/chip.c</code></li>
+</ol>
+<p>   <code>handle_edge_irq()</code>：显式 loop 处理模型，适合理解 <code>IRQS_PENDING</code>。</p>
+<ol>
+<li><code>kernel/irq/resend.c</code></li>
+</ol>
+<p>   <code>check_irq_resend()</code>：resend 逻辑。</p>
+<ol>
+<li><code>kernel/irq/spurious.c</code></li>
+</ol>
+<p>   <code>note_interrupt()</code>：spurious/异常处理统计与禁用逻辑。</p>
+
+<h4>13.10.10 用 QEMU 复现“中断风暴 / loop 感”问题</h4>
+
+<p>在通用 QEMU <code>virt</code> 机型上，最容易制造的是“高频中断 + handler/softirq 路径持续活跃”的现场，而不是完全等价的真实硬件故障。对学习来说，这已经足够。</p>
+
+<p>建议优先用网络设备，因为它最容易做出“IRQ 很高、softirq 也很高”的联动形态：</p>
+
+<pre><code class="language-bash">qemu-system-aarch64 \
+  -M virt,gic-version=3 \
+  -cpu cortex-a57 \
+  -smp 4 \
+  -m 1024 \
+  -kernel arch/arm64/boot/Image \
+  --append &quot;nokaslr rdinit=/linuxrc console=ttyAMA0&quot; \
+  -nographic \
+  -netdev user,id=n1,hostfwd=tcp::10022-:22 \
+  -device virtio-net-pci,netdev=n1</code></pre>
+
+<p>进入 guest 后先建立观察面：</p>
+
+<pre><code class="language-bash">cat /proc/interrupts
+cat /proc/softirqs
+
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_raise/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_entry/enable
+echo 1 &gt; /sys/kernel/tracing/events/irq/softirq_exit/enable
+cat /sys/kernel/tracing/trace_pipe</code></pre>
+
+<p>然后用持续网络流量把现象放大。若 guest 工具受限，也可以用块 I/O 压力替代，但网络更容易看到 <code>NET_RX</code> 的联动。</p>
+
+<p>你要重点观察：</p>
+
+<ol>
+<li>同一条 IRQ 是否高频进入。</li>
+<li>每次 IRQ 退出后是否紧跟着 raise 同类 softirq。</li>
+<li>热点 CPU 是否长期固定不变。</li>
+<li><code>/proc/interrupts</code> 的增量和 <code>/proc/softirqs</code> 的增量是否同向放大。</li>
+</ol>
+
+<p>如果你在自研驱动里想故意复现更接近“loop”的错误模式，最有教学意义的两种做法是：</p>
+
+<ol>
+<li>故意延后清设备状态位，观察 level 中断如何反复回来。</li>
+<li>故意在 handler 里写一个无预算的小循环，观察 hardirq 占比和 trace 行为如何恶化。</li>
+</ol>
+
+<p>这两种做法只应该用于实验，不应该进入正式代码。</p>
+
+<h4>13.10.11 按键抖动这类问题，内核到底怎么处理</h4>
+
+<p>先记一个非常重要的现实：<strong>Linux IRQ core 并不会自动理解“这个信号是按键抖动”，去帮你做通用去抖。</strong></p>
+
+<p>对这类问题，内核通常分三层处理：</p>
+
+<ol>
+<li><strong>硬件层去抖</strong></li>
+</ol>
+<p>   最理想。GPIO 控制器、PMIC、keypad 控制器自己提供 debounce 能力。</p>
+<ol>
+<li><strong>驱动层软件去抖</strong></li>
+</ol>
+<p>   硬件不支持时，驱动自己用 hrtimer、delayed work、状态重采样来消抖。</p>
+<ol>
+<li><strong>IRQ core 自保</strong></li>
+</ol>
+<p>   如果抖动已经表现成异常中断行为，IRQ core 只能从 spurious/storm 角度做统计、告警、必要时禁线，不会替你理解“按键语义”。</p>
+
+<p>也就是说：</p>
+
+<ol>
+<li>去抖的第一责任人通常是硬件/驱动。</li>
+<li>IRQ core 负责的是“别让系统被打死”，不是“替你做业务语义去抖”。</li>
+</ol>
+
+<h5>13.10.11.1 一个最典型的内核例子：<code>gpio_keys</code></h5>
+
+<p><code>drivers/input/keyboard/gpio_keys.c</code> 是最值得看的例子，因为它把“硬件去抖优先，软件去抖兜底”写得非常清楚。</p>
+
+<p>它的策略是：</p>
+
+<ol>
+<li>如果设备描述里给了 <code>debounce_interval</code>，先调用 <code>gpiod_set_debounce()</code>。</li>
+<li>如果底层 GPIO 控制器不支持，就退回软件去抖。</li>
+<li>软件去抖时，不在硬中断里忙等，而是用 <code>hrtimer</code> 或 <code>delayed_work</code> 延后再确认状态。</li>
+</ol>
+
+<p>也就是这条思路：</p>
+
+<pre><code class="language-text">gpio_keys_gpio_isr()
+  -&gt; 先收中断
+  -&gt; 不立刻认定按键状态稳定
+  -&gt; 启动 debounce_timer 或 delayed_work
+  -&gt; 延后一段时间再采样 GPIO
+  -&gt; 最终再上报 input event</code></pre>
+
+<p>这说明 Linux 对“按键抖动”的主流处理方法不是在 IRQ core 里兜，而是：</p>
+
+<ol>
+<li>中断只当作“状态可能变化了”的提示。</li>
+<li>真正的稳定判定放到稍后的定时器/工作队列里做。</li>
+</ol>
+
+<h5>13.10.11.2 为什么不能在 ISR 里直接忙等去抖</h5>
+
+<p>很多初学者第一反应是：</p>
+
+<ol>
+<li>进中断后 <code>udelay()</code> 一会儿。</li>
+<li>再多读几次 GPIO。</li>
+</ol>
+
+<p>这通常是坏主意，因为它会把问题从“抖动”变成：</p>
+
+<ol>
+<li>hardirq 太重。</li>
+<li>关中断区间过长。</li>
+<li>甚至把抖动放大成中断风暴期间的系统时延问题。</li>
+</ol>
+
+<p>所以内核主流做法更偏向：</p>
+
+<ol>
+<li>ISR 快速返回。</li>
+<li>定时器或线程里做稳定判定。</li>
+</ol>
+
+<h5>13.10.11.3 如果 GPIO 质量很差，内核甚至会放弃 IRQ，改成轮询</h5>
+
+<p><code>gpio_keys_polled.c</code> 就是另一种思路：</p>
+
+<ol>
+<li>不再依赖边沿中断即时触发。</li>
+<li>改成固定周期采样。</li>
+<li>通过阈值或连续采样次数实现去抖。</li>
+</ol>
+
+<p>这很有工程意义，因为它说明：</p>
+
+<ol>
+<li>不是所有输入源都适合坚持用中断。</li>
+<li>当信号质量太差时，轮询反而更稳定、更容易控噪。</li>
+</ol>
+
+<h4>13.10.12 电平不稳、状态没清导致的中断风暴，内核靠什么扛住</h4>
+
+<p>这一类问题比“按键抖动”更危险，因为它不只是业务误触发，而是真的可能把 CPU 打爆。</p>
+
+<p>最常见场景是：</p>
+
+<ol>
+<li>level 中断线一直被设备拉着不放。</li>
+<li>设备状态位没有及时清掉。</li>
+<li>触发类型配错，edge/level 语义和硬件行为不匹配。</li>
+</ol>
+
+<p>这时 Linux 的处理分成三层：</p>
+
+<ol>
+<li><strong>驱动层先止血</strong></li>
+</ol>
+<p>   快速判源、快速清设备状态、必要时先 mask。</p>
+<ol>
+<li><strong>flow handler 限制重入/重发</strong></li>
+</ol>
+<p>   <code>handle_edge_irq()</code> 处理 pending loop，<code>handle_fasteoi_irq()</code> 处理 resend/EOI 语义。</p>
+<ol>
+<li><strong>IRQ core 统计并熔断</strong></li>
+</ol>
+<p>   <code>note_interrupt()</code> 发现长期没人处理或异常返回值时，最终可能报 <code>nobody cared</code> 并把线标成 spurious disabled。</p>
+
+<h5>13.10.12.1 对 level 不稳，最关键的不是“多打一层锁”，而是先把源清掉</h5>
+
+<p>GICv3 语境下，最常见误区是：</p>
+
+<ol>
+<li>先做 EOI。</li>
+<li>设备侧状态却还没清。</li>
+</ol>
+
+<p>结果就是：</p>
+
+<ol>
+<li>GIC 这边看起来像“又来了一次中断”。</li>
+<li>其实本质上是设备线一直处于 asserted 状态。</li>
+</ol>
+
+<p>所以对 level 风暴，永远优先检查：</p>
+
+<ol>
+<li>设备寄存器状态位有没有及时清。</li>
+<li>清状态和 EOI 的顺序是否正确。</li>
+<li>驱动是否误把 <code>IRQ_NONE</code> / <code>IRQ_HANDLED</code> 返回值写错了。</li>
+</ol>
+
+<h5>13.10.12.2 <code>IRQF_ONESHOT</code> 和线程化中断为什么常用来治这类问题</h5>
+
+<p>如果设备状态清理比较重，主流办法不是把大工作留在 hardirq，而是：</p>
+
+<ol>
+<li>primary handler 里只做最小确认。</li>
+<li>唤醒 irq thread。</li>
+<li>配 <code>IRQF_ONESHOT</code>，在线程处理完之前不要把中断线完全放开。</li>
+</ol>
+
+<p>这样做的价值是：</p>
+
+<ol>
+<li>减少 hardirq 重入窗口。</li>
+<li>避免“中断来了又来，线程还没来得及把设备状态收拾干净”。</li>
+</ol>
+
+<h5>13.10.12.3 IRQ core 最后的自保机制是什么</h5>
+
+<p>如果驱动还是没处理好，IRQ core 最后会做两类自保：</p>
+
+<ol>
+<li><code>handle_edge_irq()</code> 会围绕 <code>IRQS_PENDING</code> 继续处理 pending edge。</li>
+<li><code>note_interrupt()</code> 会累计“没人真正处理”的情况。</li>
+</ol>
+
+<p>当情况足够糟时，内核会：</p>
+
+<ol>
+<li>打印 <code>irq X: nobody cared</code>。</li>
+<li>把这条线标成 spurious disabled。</li>
+<li>通过轮询计时器尝试恢复。</li>
+</ol>
+
+<p>这说明 Linux 的策略不是“无穷无尽地硬扛”，而是：</p>
+
+<ol>
+<li>先尽量继续服务。</li>
+<li>实在异常就熔断，防止整机被拖垮。</li>
+</ol>
+
+<h5>13.10.12.4 这一类问题最实用的处理顺序</h5>
+
+<p>如果现场像“按键乱跳”或“电平不稳导致 IRQ 爆炸”，正确顺序通常是：</p>
+
+<ol>
+<li>先判断这是业务抖动，还是已经升级成 IRQ 风暴。</li>
+<li>对输入类设备，优先找硬件 debounce 或驱动软件 debounce。</li>
+<li>对 level 风暴，优先看设备状态清除和 trigger type。</li>
+<li>对重处理路径，考虑 threaded irq + <code>IRQF_ONESHOT</code>。</li>
+<li>最后才去看 IRQ core 的 spurious 统计是不是已经开始熔断。</li>
+</ol>
+
+<p>一句话：<strong>去抖靠硬件/驱动，止风暴靠正确清源和正确 flow，IRQ core 负责最后兜底。</strong></p>
+
+<h3>13.11 这几类问题的实战判断口诀</h3>
+
+<p>如果现场是“系统变卡但中断计数不夸张”，优先怀疑：</p>
+
+<ol>
+<li>irq-off 区间过长。</li>
+<li>顶半部临界区太重。</li>
+</ol>
+
+<p>如果现场是“某条 IRQ 计数疯涨、CPU 被某条中断打爆”，优先怀疑：</p>
+
+<ol>
+<li>中断源没清。</li>
+<li>trigger type 不匹配。</li>
+<li>handler 返回值或共享中断判源逻辑错误。</li>
+</ol>
+
+<p>这两个方向分清楚，排查效率会高很多。</p>
+
+<h3>13.12 把源码读成闭环的一份函数级阅读地图</h3>
+
+<p>如果你希望把这一整章真正读透，不建议在源码里漫无目的跳转。更高效的方法，是按下面四条函数链一口气读通。</p>
+
+<h4>13.12.1 先读“异常入口到顶半部”这条链</h4>
+
+<p>按顺序读：</p>
+
+<ol>
+<li><code>arch/arm64/kernel/entry.S</code></li>
+</ol>
+<p>   <code>vectors</code>、<code>kernel_ventry</code>、<code>entry_handler</code>、<code>el1h_64_irq_handler</code></p>
+<ol>
+<li><code>arch/arm64/kernel/entry-common.c</code></li>
+</ol>
+<p>   <code>el1_interrupt()</code></p>
+<ol>
+<li><code>drivers/irqchip/irq-gic-v3.c</code></li>
+</ol>
+<p>   <code>gic_handle_irq()</code></p>
+<ol>
+<li><code>kernel/irq/irqdesc.c</code></li>
+</ol>
+<p>   <code>generic_handle_domain_irq()</code> / <code>generic_handle_irq_desc()</code></p>
+<ol>
+<li><code>kernel/irq/chip.c</code></li>
+</ol>
+<p>   <code>handle_fasteoi_irq()</code> 或对应 flow handler</p>
+
+<p>这条链读完，你会真正明白“CPU 为什么会进 ISR”。</p>
+
+<h4>13.12.2 再读“flow handler 到设备 handler”这条链</h4>
+
+<p>按顺序读：</p>
+
+<ol>
+<li><code>kernel/irq/chip.c</code></li>
+</ol>
+<p>   <code>handle_fasteoi_irq()</code></p>
+<ol>
+<li><code>kernel/irq/manage.c</code></li>
+</ol>
+<p>   <code>handle_irq_event()</code>、<code>handle_irq_event_percpu()</code></p>
+<ol>
+<li><code>kernel/irq/manage.c</code></li>
+</ol>
+<p>   <code>__handle_irq_event_percpu()</code></p>
+<ol>
+<li>具体设备驱动里的 <code>request_irq()</code> / <code>request_threaded_irq()</code> 注册点和 ISR</li>
+</ol>
+
+<p>这条链读完，你会明白“IRQ core 怎么把控制权交给具体驱动”。</p>
+
+<h4>13.12.3 然后读“硬中断退出到软中断”这条链</h4>
+
+<p>按顺序读：</p>
+
+<ol>
+<li><code>kernel/irq/handle.c</code></li>
+</ol>
+<p>   <code>irq_exit_rcu()</code></p>
+<ol>
+<li><code>kernel/softirq.c</code></li>
+</ol>
+<p>   <code>invoke_softirq()</code></p>
+<ol>
+<li><code>kernel/softirq.c</code></li>
+</ol>
+<p>   <code>__do_softirq()</code></p>
+<ol>
+<li><code>kernel/softirq.c</code></li>
+</ol>
+<p>   具体 softirq action，如网络、timer、tasklet 路径</p>
+
+<p>这条链读完，你会明白“为什么问题经常不是停在 hardirq，而是继续传染到 softirq”。</p>
+
+<h4>13.12.4 最后读“绑核 / 风暴 / spurious / resend”这条问题链</h4>
+
+<p>按顺序读：</p>
+
+<ol>
+<li><code>drivers/irqchip/irq-gic-v3.c</code></li>
+</ol>
+<p>   <code>gic_set_affinity()</code></p>
+<ol>
+<li><code>drivers/irqchip/irq-gic-v3-its.c</code></li>
+</ol>
+<p>   <code>its_set_affinity()</code></p>
+<ol>
+<li><code>kernel/irq/chip.c</code></li>
+</ol>
+<p>   <code>handle_edge_irq()</code>、<code>handle_fasteoi_irq()</code></p>
+<ol>
+<li><code>kernel/irq/resend.c</code></li>
+</ol>
+<p>   <code>check_irq_resend()</code></p>
+<ol>
+<li><code>kernel/irq/spurious.c</code></li>
+</ol>
+<p>   <code>note_interrupt()</code></p>
+
+<p>这条链读完，你会开始具备“看到现场现象就能联想到具体 flow handler 和统计逻辑”的能力。</p>
+
+<h4>13.12.5 一个最实用的阅读策略</h4>
+
+<p>每读完一条链，只回答三个问题：</p>
+
+<ol>
+<li>当前这一层的输入是什么。</li>
+<li>它把什么状态传给下一层。</li>
+<li>这一层最常见的失效模式是什么。</li>
+</ol>
+
+<p>如果你始终这样读，GICv3 中断子系统就不会再是“很多文件很多寄存器”，而会变成一套有明确边界和失效模式的分层系统。</p>
+
+<h3>13.13 常用 IRQ 经典问题总表</h3>
+
+<p>如果你不想每次都从整章重读，下面这张表就是一份实战速查卡。</p>
+
+<table>
+<thead><tr>
+<th>现场现象</th>
+<th>第一反应先看什么</th>
+<th>最常见根因</th>
+<th>最先用的工具</th>
+<th>最先看的源码</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>/proc/interrupts</code> 不涨，设备超时</td>
+<td>异常入口有没有进、GIC 有没有 ack 到 INTID</td>
+<td>设备没发中断、路由没通、domain 映射没建起来</td>
+<td><code>/proc/interrupts</code>、GDB</td>
+<td><code>entry-common.c</code>、<code>irq-gic-v3.c</code>、<code>irqdesc.c</code></td>
+</tr>
+<tr>
+<td>IRQ 在涨，但设备仍超时</td>
+<td><code>action->handler</code> 有没有跑、驱动有没有清源</td>
+<td>共享中断判源错误、设备状态没清、返回值错误</td>
+<td>tracepoint、GDB</td>
+<td><code>chip.c</code>、<code>manage.c</code>、设备驱动 ISR</td>
+</tr>
+<tr>
+<td>某个 CPU 被某条 IRQ 打爆</td>
+<td>这是 PPI、SPI 还是 LPI</td>
+<td>设备风暴、level 线未清、绑核不均</td>
+<td><code>/proc/interrupts</code>、trace</td>
+<td><code>irq-gic-v3.c</code>、<code>spurious.c</code></td>
+</tr>
+<tr>
+<td>改了 affinity 但热点没变</td>
+<td><code>effective_affinity</code>、softirq 和应用线程有没有跟着迁</td>
+<td>managed IRQ、单队列瓶颈、软中断未迁移</td>
+<td><code>/proc/irq/*</code>、<code>/proc/softirqs</code></td>
+<td><code>manage.c</code>、<code>irq-gic-v3.c</code>、<code>irq-gic-v3-its.c</code></td>
+</tr>
+<tr>
+<td><code>ksoftirqd/N</code> 很高</td>
+<td>是哪类 softirq 在涨</td>
+<td><code>NET_RX</code>/<code>TIMER</code>/<code>TASKLET</code> 压力大，下半部被迫线程化</td>
+<td><code>/proc/softirqs</code>、trace</td>
+<td><code>softirq.c</code></td>
+</tr>
+<tr>
+<td><code>irq/<n>-xxx</code> 很高</td>
+<td>这是 threaded irq 还是 hardirq 带出来的慢路径</td>
+<td><code>thread_fn</code> 太重、<code>IRQF_ONESHOT</code> 长时间串行化</td>
+<td><code>ps</code>、trace</td>
+<td><code>manage.c</code>、设备驱动 <code>request_threaded_irq()</code></td>
+</tr>
+<tr>
+<td>系统卡，但 IRQ 数不极端</td>
+<td>有没有长 irq-off 区间</td>
+<td><code>spin_lock_irqsave()</code> 临界区太重、hardirq 干了慢活</td>
+<td><code>irqsoff</code> tracer</td>
+<td><code>trace_irqsoff.c</code>、<code>chip.c</code>、驱动 top half</td>
+</tr>
+<tr>
+<td>日志里出现 <code>nobody cared</code></td>
+<td>trigger type、设备清源、共享判源是否正确</td>
+<td>edge/level 配错、设备没清状态、ISR 返回值不对</td>
+<td><code>/proc/irq/<irq>/spurious</code>、trace</td>
+<td><code>spurious.c</code>、<code>chip.c</code>、设备驱动</td>
+</tr>
+<tr>
+<td>同一条 IRQ 反复 pending / loop 感</td>
+<td>flow handler 是 <code>edge</code> 还是 <code>fasteoi</code>，设备线是否仍 asserted</td>
+<td>电平未释放、resend、共享中断误判</td>
+<td>trace、GDB</td>
+<td><code>chip.c</code>、<code>resend.c</code>、<code>spurious.c</code></td>
+</tr>
+<tr>
+<td>MSI/LPI 看起来像 SPI 一样不好迁</td>
+<td>这是 ITS collection 问题，不是 <code>IROUTER</code> 问题</td>
+<td><code>its_set_affinity()</code> / MOVI 路径没对上</td>
+<td><code>/proc/interrupts</code>、GDB、日志</td>
+<td><code>irq-gic-v3-its.c</code></td>
+</tr>
+</tbody></table>
+
+<p>这张表真正想帮你建立的是一种固定思维：</p>
+
+<ol>
+<li>先按现象分型。</li>
+<li>再按中断类型分层。</li>
+<li>最后才落到具体函数和寄存器。</li>
+</ol>
+
+<p>只要顺序不乱，绝大多数 IRQ 问题都能很快从“看起来一团糟”收敛成一个明确的小范围。</p>
+
+<hr>
+
+<h2>第14课：最值得你亲手画的三张图</h2>
+
+<h3>图1：从异常向量到设备 ISR 的调用链</h3>
+
+<pre><code class="language-text">el1h_64_irq_handler
+  -&gt; el1_interrupt
+  -&gt; handle_arch_irq
+  -&gt; gic_handle_irq
+  -&gt; generic_handle_domain_irq
+  -&gt; handle_irq_desc
+  -&gt; handle_fasteoi_irq / handle_percpu_devid_irq
+  -&gt; 驱动 handler</code></pre>
+
+<h3>图2：GICv3 初始化对象图</h3>
+
+<pre><code class="language-text">DT/ACPI
+  -&gt; gic_of_init / gic_acpi_init
+  -&gt; gic_init_bases
+  -&gt; domain 创建
+  -&gt; GICD 初始化
+  -&gt; 每CPU GICR 匹配
+  -&gt; ICC sysreg 初始化
+  -&gt; SMP/IPI 初始化
+  -&gt; ITS 初始化</code></pre>
+
+<h3>图3：ITS 翻译图</h3>
+
+<pre><code class="language-text">MSI write
+  -&gt; ITS_TRANSLATER
+  -&gt; DeviceID/EventID
+  -&gt; ITT
+  -&gt; LPI
+  -&gt; Collection
+  -&gt; Redistributor
+  -&gt; CPU</code></pre>
+
+<p>如果这三张图你能独立画出来并给别人讲明白，说明你已经进入“会分析内核中断子系统”的层次。</p>
+
+<hr>
+
+<h2>总总结：顶级内核工程师视角下的 GICv3 研究结论</h2>
+
+<h3>结论1：GICv3 的本质不是寄存器集合，而是“分层中断路由系统”</h3>
+
+<p>它由 GICD、GICR、ICC sysregs、ITS 共同组成。Linux 再在其上叠加 <code>irq_domain</code> 和 <code>irq_chip</code>，把硬件对象转成统一的软件抽象。</p>
+
+<h3>结论2：研究 GICv3 最容易走偏的地方，是只盯寄存器，不盯 IRQ core</h3>
+
+<p>真正决定 Linux 中断行为的，不止是 <code>ICC_IAR1_EL1</code> 和 <code>ICC_EOIR1_EL1</code>，而是：</p>
+
+<ol>
+<li><code>irq_domain</code> 如何映射。</li>
+<li><code>irq_desc</code> 选了什么 flow handler。</li>
+<li><code>irq_chip</code> 在什么时机 mask/unmask/eoi/deactivate。</li>
+</ol>
+
+<h3>结论3：GICv3 真正复杂的部分，不是普通 SPI/PPI，而是 ITS/LPI/GICv4</h3>
+
+<p>普通中断路径相对直接，真正难点在：</p>
+
+<ol>
+<li>ITS 表项与命令队列。</li>
+<li>LPI 内存表的一致性。</li>
+<li>vLPI/vPE 的状态迁移。</li>
+<li>direct LPI、doorbell、VMOVP 这些虚拟化扩展。</li>
+</ol>
+
+<h3>结论4：算法层面最值得反复咀嚼的是四个点</h3>
+
+<ol>
+<li>INTID 分类与寄存器窗口换算。</li>
+<li>SGI cluster 压缩发送算法。</li>
+<li>LPI 区间 first-fit 分配与合并。</li>
+<li>ITS 命令 ring buffer 的生产者/消费者同步。</li>
+</ol>
+
+<h3>结论5：最有效的学习方式不是“看完所有源码”，而是“按路径验证源码”</h3>
+
+<p>推荐固定方法：</p>
+
+<ol>
+<li>先画图。</li>
+<li>再读路径。</li>
+<li>再打断点。</li>
+<li>再跑 trace。</li>
+<li>最后回到架构文档校准理解。</li>
+</ol>
+
+<p>这比纯静态阅读效率高一个量级。</p>
+
+<hr>
+
+<h2>最后给你的研究建议</h2>
+
+<p>如果你的目标是把这个主题研究到可以做内核开发、性能分析或面试答辩的程度，我建议你按下面顺序推进：</p>
+
+<ol>
+<li><strong>先完全吃透 <code>irq-gic-v3.c</code> 的初始化和运行时路径</strong>。</li>
+<li><strong>再把 <code>irq_domain</code> 和 <code>handle_fasteoi_irq</code> 真正吃透</strong>。</li>
+<li><strong>随后集中攻克 <code>irq-gic-v3-its.c</code>，不要一开始就试图把 5000 多行代码一次看完</strong>。</li>
+<li><strong>最后再进入 GICv4，理解虚拟中断为什么要把 host IRQ API“借壳”给 hypervisor 使用</strong>。</li>
+</ol>
+
+<p>当你做到这一步，你对 Linux ARM64 GICv3 中断子系统的理解，就已经超过绝大多数只会背概念的人。</p>
+</body>
+</html>
