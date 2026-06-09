@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,171 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
 </style>
 
 </head>
@@ -208,248 +373,234 @@ hr {
 
 <blockquote>基于 <code>kernel/sched/</code> 目录及 <code>include/linux/sched/</code> 头文件，按功能模块组织，方便系统性学习。</blockquote>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><b>1. 编译结构与 Unity Build</b></summary></p>
-
-<ul>
-<li>1.1 <a href="#11-makefile-编译规则">Makefile 编译规则</a></li>
-<li>1.2 <a href="#12-build_policyc-聚合编译">build_policy.c 聚合编译</a></li>
-<li>1.3 <a href="#13-build_utilityc-聚合编译">build_utility.c 聚合编译</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>2. 核心框架</b></summary></p>
-
-<ul>
-<li>2.1 <a href="#21-schedh--内部总头文件">sched.h — 内部总头文件</a></li>
-<li>2.2 <a href="#22-corec--调度核心">core.c — 调度核心</a></li>
-<li>2.3 <a href="#23-featuresh--特性开关">features.h — 特性开关</a></li>
-<li>2.4 <a href="#24-smph--smp-内部声明">smp.h — SMP 内部声明</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>3. 五大调度类实现</b></summary></p>
-
-<ul>
-<li>3.1 <a href="#31-stop_taskc--stop-调度类最高优先级">stop_task.c — stop 调度类（最高优先级）</a></li>
-<li>3.2 <a href="#32-deadlinec--sched_deadline-调度类">deadline.c — SCHED_DEADLINE 调度类</a></li>
-<li>3.3 <a href="#33-rtc--实时调度类">rt.c — 实时调度类</a></li>
-<li>3.4 <a href="#34-fairc--cfseevdf-公平调度类">fair.c — CFS/EEVDF 公平调度类</a></li>
-<li>3.5 <a href="#35-idlec--idle-调度类最低优先级">idle.c — idle 调度类（最低优先级）</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>4. sched_ext — BPF 可扩展调度器</b></summary></p>
-
-<ul>
-<li>4.1 <a href="#41-extc--主实现">ext.c — 主实现</a></li>
-<li>4.2 <a href="#42-exth--公共接口">ext.h — 公共接口</a></li>
-<li>4.3 <a href="#43-ext_idlec--空闲-cpu-选择策略">ext_idle.c — 空闲 CPU 选择策略</a></li>
-<li>4.4 <a href="#44-ext_idleh--空闲选择辅助声明">ext_idle.h — 空闲选择辅助声明</a></li>
-<li>4.5 <a href="#45-ext_internalh--内部常量与枚举">ext_internal.h — 内部常量与枚举</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>5. 负载追踪与 CPU 时间统计</b></summary></p>
-
-<ul>
-<li>5.1 <a href="#51-peltc--per-entity-load-tracking">pelt.c — Per-Entity Load Tracking</a></li>
-<li>5.2 <a href="#52-pelth--sched-pelth--pelt-接口与衰减表">pelt.h / sched-pelt.h — PELT 接口与衰减表</a></li>
-<li>5.3 <a href="#53-loadavgc--全局负载平均值">loadavg.c — 全局负载平均值</a></li>
-<li>5.4 <a href="#54-cputimec--cpu-时间统计">cputime.c — CPU 时间统计</a></li>
-<li>5.5 <a href="#55-cpuacctc--cpuacct-cgroup-控制器">cpuacct.c — cpuacct cgroup 控制器</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>6. CPU 频率与能效调节</b></summary></p>
-
-<ul>
-<li>6.1 <a href="#61-cpufreqc--调度器-cpufreq-集成层">cpufreq.c — 调度器-cpufreq 集成层</a></li>
-<li>6.2 <a href="#62-cpufreq_schedutilc--schedutil-调频策略">cpufreq_schedutil.c — schedutil 调频策略</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>7. 拓扑与负载均衡域</b></summary></p>
-
-<ul>
-<li>7.1 <a href="#71-topologyc--调度域层级构建">topology.c — 调度域层级构建</a></li>
-<li>7.2 <a href="#72-cpupric--rt-任务-cpu-优先级位图">cpupri.c — RT 任务 CPU 优先级位图</a></li>
-<li>7.3 <a href="#73-cpudeadlinec--dl-任务-cpu-deadline-堆">cpudeadline.c — DL 任务 CPU deadline 堆</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>8. 调度器时钟</b></summary></p>
-
-<ul>
-<li><a href="#8-调度器时钟">调度器时钟</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>9. 统计与调试</b></summary></p>
-
-<ul>
-<li>9.1 <a href="#91-statsc--statsh--schedstat-统计">stats.c / stats.h — schedstat 统计</a></li>
-<li>9.2 <a href="#92-debugc--debugfs-调试接口">debug.c — debugfs 调试接口</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>10. 同步原语</b></summary></p>
-
-<ul>
-<li>10.1 <a href="#101-completionc--完成量机制">completion.c — 完成量机制</a></li>
-<li>10.2 <a href="#102-waitc--通用等待队列">wait.c — 通用等待队列</a></li>
-<li>10.3 <a href="#103-wait_bitc--位等待队列">wait_bit.c — 位等待队列</a></li>
-<li>10.4 <a href="#104-swaitc--简单等待队列">swait.c — 简单等待队列</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>11. Cgroup、隔离与杂项</b></summary></p>
-
-<ul>
-<li>11.1 <a href="#111-autogroupc--自动任务分组">autogroup.c — 自动任务分组</a></li>
-<li>11.2 <a href="#112-core_schedc--核心调度smt-安全">core_sched.c — 核心调度（SMT 安全）</a></li>
-<li>11.3 <a href="#113-isolationc--cpu-隔离">isolation.c — CPU 隔离</a></li>
-<li>11.4 <a href="#114-psic--压力失速信息">psi.c — 压力失速信息</a></li>
-<li>11.5 <a href="#115-membarrierc--membarrier-系统调用">membarrier.c — membarrier 系统调用</a></li>
-<li>11.6 <a href="#116-syscallsc--调度相关系统调用">syscalls.c — 调度相关系统调用</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>12. 公共头文件 (include/linux/sched/)</b></summary></p>
-
-<ul>
-<li>12.1 <a href="#121-核心定义头文件">核心定义头文件</a></li>
-<li>12.2 <a href="#122-调度策略头文件">调度策略头文件</a></li>
-<li>12.3 <a href="#123-负载与统计头文件">负载与统计头文件</a></li>
-<li>12.4 <a href="#124-任务管理头文件">任务管理头文件</a></li>
-<li>12.5 <a href="#125-拓扑与隔离头文件">拓扑与隔离头文件</a></li>
-<li>12.6 <a href="#126-调试与杂项头文件">调试与杂项头文件</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>13. 建议阅读顺序</b></summary></p>
-
-<ul>
-<li><a href="#13-建议阅读顺序">建议阅读顺序</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>14. 调度器发展历史</b></summary></p>
-
-<ul>
-<li>14.1 <a href="#141-on-调度器linux-24-及之前">O(n) 调度器（Linux 2.4 及之前）</a></li>
-<li>14.2 <a href="#142-o1-调度器linux-26-早期">O(1) 调度器（Linux 2.6 早期）</a></li>
-<li>14.3 <a href="#143-cfs-完全公平调度器linux-2623">CFS 完全公平调度器（Linux 2.6.23+）</a></li>
-<li>14.4 <a href="#144-eevdf-调度器linux-66">EEVDF 调度器（Linux 6.6+）</a></li>
-<li>14.5 <a href="#145-sched_ext-bpf-可扩展调度linux-612">sched_ext BPF 可扩展调度（Linux 6.12+）</a></li>
-<li>14.6 <a href="#146-实时调度与-preempt_rt-演进">实时调度与 PREEMPT_RT 演进</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>15. 软件架构</b></summary></p>
-
-<ul>
-<li>15.1 <a href="#151-调度子系统整体架构图">调度子系统整体架构图</a></li>
-<li>15.2 <a href="#152-调度类层次与优先级链">调度类层次与优先级链</a></li>
-<li>15.3 <a href="#153-per-cpu-运行队列架构">Per-CPU 运行队列架构</a></li>
-<li>15.4 <a href="#154-调度域与负载均衡层级">调度域与负载均衡层级</a></li>
-<li>15.5 <a href="#155-时钟与-tick-驱动模型">时钟与 Tick 驱动模型</a></li>
-<li>15.6 <a href="#156-调度器与内核其他子系统的交互">调度器与内核其他子系统的交互</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>16. 关键数据结构联系</b></summary></p>
-
-<ul>
-<li>16.1 <a href="#161-task_struct-调度相关字段全景">task_struct 调度相关字段全景</a></li>
-<li>16.2 <a href="#162-struct-rq--per-cpu-运行队列">struct rq — Per-CPU 运行队列</a></li>
-<li>16.3 <a href="#163-struct-cfs_rq--rt_rq--dl_rq-子队列">struct cfs_rq / rt_rq / dl_rq 子队列</a></li>
-<li>16.4 <a href="#164-struct-sched_entity--sched_rt_entity--sched_dl_entity">struct sched_entity / sched_rt_entity / sched_dl_entity</a></li>
-<li>16.5 <a href="#165-struct-sched_class--调度类操作表">struct sched_class — 调度类操作表</a></li>
-<li>16.6 <a href="#166-struct-sched_domain--sched_group--拓扑描述">struct sched_domain / sched_group — 拓扑描述</a></li>
-<li>16.7 <a href="#167-数据结构关系总图svg">数据结构关系总图（SVG）</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>17. 调度器原理机制分析</b></summary></p>
-
-<ul>
-<li>17.1 <a href="#171-主调度路径-schedule-深度分析">主调度路径 schedule() 深度分析</a></li>
-<li>17.2 <a href="#172-唤醒路径-try_to_wake_up-分析">唤醒路径 try_to_wake_up() 分析</a></li>
-<li>17.3 <a href="#173-上下文切换-context_switch-机制">上下文切换 context_switch() 机制</a></li>
-<li>17.4 <a href="#174-cfseevdf-vruntime-与公平性算法">CFS/EEVDF vruntime 与公平性算法</a></li>
-<li>17.5 <a href="#175-负载均衡与任务迁移机制">负载均衡与任务迁移机制</a></li>
-<li>17.6 <a href="#176-pelt-负载追踪算法原理">PELT 负载追踪算法原理</a></li>
-<li>17.7 <a href="#177-rt-调度与带宽限流">RT 调度与带宽限流</a></li>
-<li>17.8 <a href="#178-deadline-调度-edfcbs-算法">Deadline 调度 EDF+CBS 算法</a></li>
-<li>17.9 <a href="#179-抢占模型与时机分析">抢占模型与时机分析</a></li>
-<li>17.10 <a href="#1710-cpu-亲和性与-cpuset-机制">CPU 亲和性与 cpuset 机制</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>18. 调度器 Debug 和观测</b></summary></p>
-
-<ul>
-<li>18.1 <a href="#181-procsched_debug-与-procschedstat">/proc/sched_debug 与 /proc/schedstat</a></li>
-<li>18.2 <a href="#182-ftrace-sched-相关-tracepoint">ftrace sched 相关 tracepoint</a></li>
-<li>18.3 <a href="#183-perf-sched-工具使用">perf sched 工具使用</a></li>
-<li>18.4 <a href="#184-bpftrace-调度器观测脚本">bpftrace 调度器观测脚本</a></li>
-<li>18.5 <a href="#185-schedstat-统计项解读">schedstat 统计项解读</a></li>
-<li>18.6 <a href="#186-psi-压力失速监控实战">PSI 压力失速监控实战</a></li>
-<li>18.7 <a href="#187-常见调度异常诊断方法">常见调度异常诊断方法</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>19. 调度器涉及的算法</b></summary></p>
-
-<ul>
-<li>19.1 <a href="#191-红黑树--cfseevdf-任务排序">红黑树 — CFS/EEVDF 任务排序</a></li>
-<li>19.2 <a href="#192-加权公平排队wfq与虚拟运行时间">加权公平排队（WFQ）与虚拟运行时间</a></li>
-<li>19.3 <a href="#193-eevdf-最早合格虚拟截止时间优先算法">EEVDF 最早合格虚拟截止时间优先算法</a></li>
-<li>19.4 <a href="#194-edf-最早截止时间优先算法">EDF 最早截止时间优先算法</a></li>
-<li>19.5 <a href="#195-cbs-恒定带宽服务器算法">CBS 恒定带宽服务器算法</a></li>
-<li>19.6 <a href="#196-pelt-指数加权移动平均ewma">PELT 指数加权移动平均（EWMA）</a></li>
-<li>19.7 <a href="#197-位图优先级数组--rto1-调度">位图优先级数组 — RT/O(1) 调度</a></li>
-<li>19.8 <a href="#198-最小堆--deadline-cpu-选择">最小堆 — Deadline CPU 选择</a></li>
-<li>19.9 <a href="#199-负载均衡迭代与-busiestidlest-启发式">负载均衡迭代与 busiest/idlest 启发式</a></li>
-<li>19.10 <a href="#1910-指数衰减与半衰期计算">指数衰减与半衰期计算</a></li>
-<li>19.11 <a href="#1911-rcu-无锁读取在调度路径中的应用">RCU 无锁读取在调度路径中的应用</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>20. QEMU 实验设计</b></summary></p>
-
-<ul>
-<li>20.1 <a href="#201-qemu-多核-arm64-环境搭建">QEMU 多核 ARM64 环境搭建</a></li>
-<li>20.2 <a href="#202-实验一观察-cfs-公平性与-vruntime-变化">实验一：观察 CFS 公平性与 vruntime 变化</a></li>
-<li>20.3 <a href="#203-实验二rt-任务抢占与优先级反转">实验二：RT 任务抢占与优先级反转</a></li>
-<li>20.4 <a href="#204-实验三负载均衡与任务迁移跟踪">实验三：负载均衡与任务迁移跟踪</a></li>
-<li>20.5 <a href="#205-实验四deadline-调度带宽控制验证">实验四：Deadline 调度带宽控制验证</a></li>
-<li>20.6 <a href="#206-实验五sched_ext-bpf-自定义调度策略">实验五：sched_ext BPF 自定义调度策略</a></li>
-<li>20.7 <a href="#207-实验六cpu-隔离与-cpuset-配置">实验六：CPU 隔离与 cpuset 配置</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>21. 面试经典问答</b></summary></p>
-
-<ul>
-<li>21.1 <a href="#211-进程线程调度基础问题">进程/线程调度基础问题</a></li>
-<li>21.2 <a href="#212-cfseevdf-算法原理问题">CFS/EEVDF 算法原理问题</a></li>
-<li>21.3 <a href="#213-实时调度与优先级反转问题">实时调度与优先级反转问题</a></li>
-<li>21.4 <a href="#214-多核负载均衡问题">多核负载均衡问题</a></li>
-<li>21.5 <a href="#215-调度延迟与性能优化问题">调度延迟与性能优化问题</a></li>
-<li>21.6 <a href="#216-调度器数据结构与实现细节问题">调度器数据结构与实现细节问题</a></li>
-<li>21.7 <a href="#217-场景设计与故障排查问题">场景设计与故障排查问题</a></li>
-</ul>
-<p></details></p>
-
-<hr>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 编译结构与 Unity Build</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-makefile-编译规则">1.1 Makefile 编译规则</a></li>
+          <li><a href="#12-build_policyc-聚合编译">1.2 build_policy.c 聚合编译</a></li>
+          <li><a href="#13-build_utilityc-聚合编译">1.3 build_utility.c 聚合编译</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. 核心框架</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-schedh--内部总头文件">2.1 sched.h — 内部总头文件</a></li>
+          <li><a href="#22-corec--调度核心">2.2 core.c — 调度核心</a></li>
+          <li><a href="#23-featuresh--特性开关">2.3 features.h — 特性开关</a></li>
+          <li><a href="#24-smph--smp-内部声明">2.4 smp.h — SMP 内部声明</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. 五大调度类实现</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-stop_taskc--stop-调度类最高优先级">3.1 stop_task.c — stop 调度类</a></li>
+          <li><a href="#32-deadlinec--sched_deadline-调度类">3.2 deadline.c — SCHED_DEADLINE</a></li>
+          <li><a href="#33-rtc--实时调度类">3.3 rt.c — 实时调度类</a></li>
+          <li><a href="#34-fairc--cfseevdf-公平调度类">3.4 fair.c — CFS/EEVDF</a></li>
+          <li><a href="#35-idlec--idle-调度类最低优先级">3.5 idle.c — idle 调度类</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. sched_ext — BPF 可扩展调度器</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-extc--主实现">4.1 ext.c — 主实现</a></li>
+          <li><a href="#42-exth--公共接口">4.2 ext.h — 公共接口</a></li>
+          <li><a href="#43-ext_idlec--空闲-cpu-选择策略">4.3 ext_idle.c — 空闲CPU选择</a></li>
+          <li><a href="#44-ext_idleh--空闲选择辅助声明">4.4 ext_idle.h — 辅助声明</a></li>
+          <li><a href="#45-ext_internalh--内部常量与枚举">4.5 ext_internal.h — 内部常量</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. 负载追踪与 CPU 时间统计</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-peltc--per-entity-load-tracking">5.1 pelt.c — PELT</a></li>
+          <li><a href="#52-pelth--sched-pelth--pelt-接口与衰减表">5.2 pelt.h / sched-pelt.h</a></li>
+          <li><a href="#53-loadavgc--全局负载平均值">5.3 loadavg.c — 全局负载</a></li>
+          <li><a href="#54-cputimec--cpu-时间统计">5.4 cputime.c — CPU 时间统计</a></li>
+          <li><a href="#55-cpuacctc--cpuacct-cgroup-控制器">5.5 cpuacct.c — cgroup 控制器</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. CPU 频率与能效调节</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-cpufreqc--调度器-cpufreq-集成层">6.1 cpufreq.c — 集成层</a></li>
+          <li><a href="#62-cpufreq_schedutilc--schedutil-调频策略">6.2 cpufreq_schedutil.c — schedutil</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. 拓扑与负载均衡域</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-topologyc--调度域层级构建">7.1 topology.c — 调度域构建</a></li>
+          <li><a href="#72-cpupric--rt-任务-cpu-优先级位图">7.2 cpupri.c — RT CPU 位图</a></li>
+          <li><a href="#73-cpudeadlinec--dl-任务-cpu-deadline-堆">7.3 cpudeadline.c — DL CPU 堆</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. 调度器时钟</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#8-调度器时钟">调度器时钟</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. 统计与调试</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#91-statsc--statsh--schedstat-统计">9.1 stats.c / stats.h</a></li>
+          <li><a href="#92-debugc--debugfs-调试接口">9.2 debug.c — debugfs</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. 同步原语</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#101-completionc--完成量机制">10.1 completion.c</a></li>
+          <li><a href="#102-waitc--通用等待队列">10.2 wait.c — 等待队列</a></li>
+          <li><a href="#103-wait_bitc--位等待队列">10.3 wait_bit.c — 位等待</a></li>
+          <li><a href="#104-swaitc--简单等待队列">10.4 swait.c — 简单等待</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. Cgroup、隔离与杂项</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#111-autogroupc--自动任务分组">11.1 autogroup.c</a></li>
+          <li><a href="#112-core_schedc--核心调度smt-安全">11.2 core_sched.c</a></li>
+          <li><a href="#113-isolationc--cpu-隔离">11.3 isolation.c</a></li>
+          <li><a href="#114-psic--压力失速信息">11.4 psi.c</a></li>
+          <li><a href="#115-membarrierc--membarrier-系统调用">11.5 membarrier.c</a></li>
+          <li><a href="#116-syscallsc--调度相关系统调用">11.6 syscalls.c</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 12. 公共头文件</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#121-核心定义头文件">12.1 核心定义头文件</a></li>
+          <li><a href="#122-调度策略头文件">12.2 调度策略头文件</a></li>
+          <li><a href="#123-负载与统计头文件">12.3 负载与统计头文件</a></li>
+          <li><a href="#124-任务管理头文件">12.4 任务管理头文件</a></li>
+          <li><a href="#125-拓扑与隔离头文件">12.5 拓扑与隔离头文件</a></li>
+          <li><a href="#126-调试与杂项头文件">12.6 调试与杂项头文件</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 13. 建议阅读顺序</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#13-建议阅读顺序">建议阅读顺序</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 14. 调度器发展历史</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#141-on-调度器linux-24-及之前">14.1 O(n) 调度器</a></li>
+          <li><a href="#142-o1-调度器linux-26-早期">14.2 O(1) 调度器</a></li>
+          <li><a href="#143-cfs-完全公平调度器linux-2623">14.3 CFS 完全公平调度器</a></li>
+          <li><a href="#144-eevdf-调度器linux-66">14.4 EEVDF 调度器</a></li>
+          <li><a href="#145-sched_ext-bpf-可扩展调度linux-612">14.5 sched_ext BPF</a></li>
+          <li><a href="#146-实时调度与-preempt_rt-演进">14.6 实时调度 & PREEMPT_RT</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 15. 软件架构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#151-调度子系统整体架构图">15.1 整体架构图</a></li>
+          <li><a href="#152-调度类层次与优先级链">15.2 调度类层次与优先级链</a></li>
+          <li><a href="#153-per-cpu-运行队列架构">15.3 Per-CPU 运行队列</a></li>
+          <li><a href="#154-调度域与负载均衡层级">15.4 调度域与负载均衡</a></li>
+          <li><a href="#155-时钟与-tick-驱动模型">15.5 时钟与 Tick 驱动</a></li>
+          <li><a href="#156-调度器与内核其他子系统的交互">15.6 子系统交互</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 16. 关键数据结构联系</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#161-task_struct-调度相关字段全景">16.1 task_struct 字段全景</a></li>
+          <li><a href="#162-struct-rq--per-cpu-运行队列">16.2 struct rq</a></li>
+          <li><a href="#163-struct-cfs_rq--rt_rq--dl_rq-子队列">16.3 cfs_rq / rt_rq / dl_rq</a></li>
+          <li><a href="#164-struct-sched_entity--sched_rt_entity--sched_dl_entity">16.4 sched_entity 等</a></li>
+          <li><a href="#165-struct-sched_class--调度类操作表">16.5 sched_class 操作表</a></li>
+          <li><a href="#166-struct-sched_domain--sched_group--拓扑描述">16.6 sched_domain / sched_group</a></li>
+          <li><a href="#167-数据结构关系总图svg">16.7 关系总图 (SVG)</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 17. 调度器原理机制分析</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#171-主调度路径-schedule-深度分析">17.1 schedule() 深度分析</a></li>
+          <li><a href="#172-唤醒路径-try_to_wake_up-分析">17.2 try_to_wake_up() 分析</a></li>
+          <li><a href="#173-上下文切换-context_switch-机制">17.3 context_switch() 机制</a></li>
+          <li><a href="#174-cfseevdf-vruntime-与公平性算法">17.4 vruntime 与公平性算法</a></li>
+          <li><a href="#175-负载均衡与任务迁移机制">17.5 负载均衡与任务迁移</a></li>
+          <li><a href="#176-pelt-负载追踪算法原理">17.6 PELT 负载追踪算法</a></li>
+          <li><a href="#177-rt-调度与带宽限流">17.7 RT 调度与带宽限流</a></li>
+          <li><a href="#178-deadline-调度-edfcbs-算法">17.8 Deadline EDF+CBS</a></li>
+          <li><a href="#179-抢占模型与时机分析">17.9 抢占模型与时机</a></li>
+          <li><a href="#1710-cpu-亲和性与-cpuset-机制">17.10 CPU 亲和性与 cpuset</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 18. 调度器 Debug 和观测</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#181-procsched_debug-与-procschedstat">18.1 /proc/sched_debug</a></li>
+          <li><a href="#182-ftrace-sched-相关-tracepoint">18.2 ftrace tracepoint</a></li>
+          <li><a href="#183-perf-sched-工具使用">18.3 perf sched</a></li>
+          <li><a href="#184-bpftrace-调度器观测脚本">18.4 bpftrace 脚本</a></li>
+          <li><a href="#185-schedstat-统计项解读">18.5 schedstat 解读</a></li>
+          <li><a href="#186-psi-压力失速监控实战">18.6 PSI 监控实战</a></li>
+          <li><a href="#187-常见调度异常诊断方法">18.7 异常诊断方法</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19. 调度器涉及的算法</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#191-红黑树--cfseevdf-任务排序">19.1 红黑树</a></li>
+          <li><a href="#192-加权公平排队wfq与虚拟运行时间">19.2 WFQ 与 vruntime</a></li>
+          <li><a href="#193-eevdf-最早合格虚拟截止时间优先算法">19.3 EEVDF 算法</a></li>
+          <li><a href="#194-edf-最早截止时间优先算法">19.4 EDF 算法</a></li>
+          <li><a href="#195-cbs-恒定带宽服务器算法">19.5 CBS 算法</a></li>
+          <li><a href="#196-pelt-指数加权移动平均ewma">19.6 PELT EWMA</a></li>
+          <li><a href="#197-位图优先级数组--rto1-调度">19.7 位图优先级数组</a></li>
+          <li><a href="#198-最小堆--deadline-cpu-选择">19.8 最小堆</a></li>
+          <li><a href="#199-负载均衡迭代与-busiestidlest-启发式">19.9 负载均衡启发式</a></li>
+          <li><a href="#1910-指数衰减与半衰期计算">19.10 指数衰减</a></li>
+          <li><a href="#1911-rcu-无锁读取在调度路径中的应用">19.11 RCU 无锁读取</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20. QEMU 实验设计</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#201-qemu-多核-arm64-环境搭建">20.1 环境搭建</a></li>
+          <li><a href="#202-实验一观察-cfs-公平性与-vruntime-变化">20.2 实验一：CFS 公平性</a></li>
+          <li><a href="#203-实验二rt-任务抢占与优先级反转">20.3 实验二：RT 抢占</a></li>
+          <li><a href="#204-实验三负载均衡与任务迁移跟踪">20.4 实验三：负载均衡</a></li>
+          <li><a href="#205-实验四deadline-调度带宽控制验证">20.5 实验四：DL 带宽控制</a></li>
+          <li><a href="#206-实验五sched_ext-bpf-自定义调度策略">20.6 实验五：sched_ext BPF</a></li>
+          <li><a href="#207-实验六cpu-隔离与-cpuset-配置">20.7 实验六：CPU 隔离</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 21. 面试经典问答</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#211-进程线程调度基础问题">21.1 进程/线程调度基础</a></li>
+          <li><a href="#212-cfseevdf-算法原理问题">21.2 CFS/EEVDF 算法</a></li>
+          <li><a href="#213-实时调度与优先级反转问题">21.3 实时调度 & 优先级反转</a></li>
+          <li><a href="#214-多核负载均衡问题">21.4 多核负载均衡</a></li>
+          <li><a href="#215-调度延迟与性能优化问题">21.5 调度延迟 & 性能优化</a></li>
+          <li><a href="#216-调度器数据结构与实现细节问题">21.6 数据结构与实现细节</a></li>
+          <li><a href="#217-场景设计与故障排查问题">21.7 场景设计与故障排查</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <h2>1. 编译结构与 Unity Build</h2>
 
-<h3>1.1 Makefile 编译规则</h3>
+<h3 id="11-makefile-编译规则">1.1 Makefile 编译规则</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/Makefile</code>（约 40 行）</p>
 
@@ -517,7 +668,7 @@ obj-y += build_utility.o # ~聚合 15+ 个工具文件</code></pre>
 
 <p><code>/proc/<pid>/wchan</code> 显示进程阻塞在哪个内核函数。调度器是所有进程进入睡眠的必经之路（<code>schedule()</code> → <code>__schedule()</code>），如果省略帧指针，栈回溯将无法正确展开，导致 <code>ps</code> 的 WCHAN 列显示错误。</p>
 
-<h3>1.2 build_policy.c 聚合编译</h3>
+<h3 id="12-build_policyc-聚合编译">1.2 build_policy.c 聚合编译</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/build_policy.c</code></p>
 
@@ -574,7 +725,7 @@ idle.c ──→ 独立 (最简单的调度类)</code></pre>
 <li><strong>节省约 60% 的编译时间</strong></li>
 </ul>
 
-<h3>1.3 build_utility.c 聚合编译</h3>
+<h3 id="13-build_utilityc-聚合编译">1.3 build_utility.c 聚合编译</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/build_utility.c</code></p>
 
@@ -751,7 +902,7 @@ idle.c ──→ 独立 (最简单的调度类)</code></pre>
 
 <h2>2. 核心框架</h2>
 
-<h3>2.1 sched.h — 内部总头文件</h3>
+<h3 id="21-schedh--内部总头文件">2.1 sched.h — 内部总头文件</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/sched.h</code>（3907 行）</p>
 
@@ -820,7 +971,7 @@ const struct sched_class name##_sched_class \
 <li><code>raw_spinlock_t</code> 用于 rq 锁（RT 内核下不转为 mutex，保证调度路径无递归）</li>
 </ul>
 
-<h3>2.2 core.c — 调度核心</h3>
+<h3 id="22-corec--调度核心">2.2 core.c — 调度核心</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/core.c</code>（10930 行，最核心文件）</p>
 
@@ -997,7 +1148,7 @@ const struct sched_class name##_sched_class \
 <li>与 <code><strong>schedule()</code> 中的 <code>smp_mb</strong>after_spinlock()</code> 配对</li>
 </ul>
 
-<h3>2.3 features.h — 特性开关</h3>
+<h3 id="23-featuresh--特性开关">2.3 features.h — 特性开关</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/features.h</code></p>
 
@@ -1094,7 +1245,7 @@ echo NEXT_BUDDY &gt; /sys/kernel/debug/sched/features</code></pre>
 /* 编译时生成 NOP 指令，运行时通过修改代码段来开关 */
 /* 关闭时 = 跳转（分支预测友好），开启时 = 直通 */</code></pre>
 
-<h3>2.4 smp.h — SMP 内部声明</h3>
+<h3 id="24-smph--smp-内部声明">2.4 smp.h — SMP 内部声明</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/smp.h</code></p>
 
@@ -1815,7 +1966,7 @@ select_task_rq_idle()    → return task_cpu(p)（不迁移）</code></pre>
 </tr>
 </tbody></table>
 
-<h3>3.1 stop_task.c — stop 调度类（最高优先级）</h3>
+<h3 id="31-stop_taskc--stop-调度类最高优先级">3.1 stop_task.c — stop 调度类（最高优先级）</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/stop_task.c</code>（145 行，最简单的调度类）</p>
 
@@ -1889,7 +2040,7 @@ static struct task_struct *pick_task_stop(struct rq *rq)
 
 <p><strong>对应内核线程</strong>: 每个 CPU 有一个 <code>migration/N</code> 线程即为 stop 任务（<code>rq->stop</code>）。</p>
 
-<h3>3.2 deadline.c — SCHED_DEADLINE 调度类</h3>
+<h3 id="32-deadlinec--sched_deadline-调度类">3.2 deadline.c — SCHED_DEADLINE 调度类</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/deadline.c</code>（3531 行）</p>
 
@@ -1952,7 +2103,7 @@ static bool __dl_overflow(struct dl_bw *dl_b, unsigned long cap,
 <li>CPU 选择通过 <code>cpudeadline.c</code> 的最大堆实现</li>
 </ul>
 
-<h3>3.3 rt.c — 实时调度类</h3>
+<h3 id="33-rtc--实时调度类">3.3 rt.c — 实时调度类</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/rt.c</code>（2938 行）</p>
 
@@ -2057,7 +2208,7 @@ struct rt_rq {
     activate_task(target_rq, next_task, 0);
 }</code></pre>
 
-<h3>3.4 fair.c — CFS/EEVDF 公平调度类</h3>
+<h3 id="34-fairc--cfseevdf-公平调度类">3.4 fair.c — CFS/EEVDF 公平调度类</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/fair.c</code>（13727 行，内核最大的单文件之一）</p>
 
@@ -2205,7 +2356,7 @@ found:
     update_curr_se(rq, cfs_rq, curr);
 }</code></pre>
 
-<h3>3.5 idle.c — idle 调度类（最低优先级）</h3>
+<h3 id="35-idlec--idle-调度类最低优先级">3.5 idle.c — idle 调度类（最低优先级）</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/idle.c</code>（519 行）</p>
 
@@ -2271,7 +2422,7 @@ static int select_task_rq_idle(struct task_struct *p, int cpu, int flags)
 
 <blockquote>Linux 6.12+ 引入，允许用户态 BPF 程序实现完整的调度策略，无需重编译内核。</blockquote>
 
-<h3>4.1 ext.c — 主实现</h3>
+<h3 id="41-extc--主实现">4.1 ext.c — 主实现</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/ext.c</code>（6841 行）</p>
 
@@ -2385,7 +2536,7 @@ stop    → ops.stopping(p)        [任务停止执行通知]</code></pre>
 <li>退出类型: <code>SCX_EXIT_UNREG</code>(正常) / <code>SCX_EXIT_ERROR</code>(BPF错误) / <code>SCX_EXIT_SYSRQ</code>(用户触发)</li>
 </ul>
 
-<h3>4.2 ext.h — 公共接口</h3>
+<h3 id="42-exth--公共接口">4.2 ext.h — 公共接口</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/ext.h</code></p>
 
@@ -2400,7 +2551,7 @@ void scx_rq_activate(struct rq *rq);         /* rq 上线 */
 void scx_rq_deactivate(struct rq *rq);       /* rq 下线 */
 bool task_should_scx(int policy);            /* 策略判定 */</code></pre>
 
-<h3>4.3 ext_idle.c — 空闲 CPU 选择策略</h3>
+<h3 id="43-ext_idlec--空闲-cpu-选择策略">4.3 ext_idle.c — 空闲 CPU 选择策略</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/ext_idle.c</code></p>
 
@@ -2408,7 +2559,7 @@ bool task_should_scx(int policy);            /* 策略判定 */</code></pre>
 
 <p><strong>选择策略层次</strong>:</p>
 <pre><code>1. 优先选择同 LLC (Last-Level-Cache) 的空闲 CPU
-2. 其次同 NUMA 节点的空闲 CPU  
+2. 其次同 NUMA 节点的空闲 CPU
 3. 最后任意空闲 CPU
 4. 如果都没有 → 返回 -1（任务等待或放当前 CPU）</code></pre>
 
@@ -2419,13 +2570,13 @@ bool task_should_scx(int policy);            /* 策略判定 */</code></pre>
 <li>BPF 程序可完全忽略 ext_idle，实现自己的 CPU 选择</li>
 </ul>
 
-<h3>4.4 ext_idle.h — 空闲选择辅助声明</h3>
+<h3 id="44-ext_idleh--空闲选择辅助声明">4.4 ext_idle.h — 空闲选择辅助声明</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/ext_idle.h</code></p>
 
 <p>导出 <code>scx_select_cpu_dfl()</code> 等内部接口给 <code>ext.c</code> 使用。</p>
 
-<h3>4.5 ext_internal.h — 内部常量与枚举</h3>
+<h3 id="45-ext_internalh--内部常量与枚举">4.5 ext_internal.h — 内部常量与枚举</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/ext_internal.h</code></p>
 
@@ -2505,7 +2656,7 @@ enum scx_exit_kind {
 
 <p><img src="image/sched_pelt_signal_flow.svg" alt="PELT 三维信号衰减机制与消费者管线"></p>
 
-<h3>5.1 pelt.c — Per-Entity Load Tracking</h3>
+<h3 id="51-peltc--per-entity-load-tracking">5.1 pelt.c — Per-Entity Load Tracking</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/pelt.c</code>（约 450 行，算法密度极高）</p>
 
@@ -2624,7 +2775,7 @@ $$PELT\_MAX = \frac{1024}{1-y} = \frac{1024}{1-2^{-1/32}} \approx 47742$$</p>
 sa-&gt;util_avg = sa-&gt;util_sum / divider;
 /* 归一化到 [0, SCHED_CAPACITY_SCALE=1024] 范围 */</code></pre>
 
-<h3>5.2 pelt.h / sched-pelt.h — PELT 接口与衰减表</h3>
+<h3 id="52-pelth--sched-pelth--pelt-接口与衰减表">5.2 pelt.h / sched-pelt.h — PELT 接口与衰减表</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/pelt.h</code>, <code>kernel/sched/sched-pelt.h</code></p>
 
@@ -2648,7 +2799,7 @@ void update_dl_rq_load_avg(u64 now, struct rq *rq, int running);
 void update_irq_load_avg(struct rq *rq, u64 running);
 void update_thermal_load_avg(u64 now, struct rq *rq, u64 capacity);</code></pre>
 
-<h3>5.3 loadavg.c — 全局负载平均值</h3>
+<h3 id="53-loadavgc--全局负载平均值">5.3 loadavg.c — 全局负载平均值</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/loadavg.c</code></p>
 
@@ -2699,7 +2850,7 @@ void calc_global_load_tick(struct rq *this_rq)
         /* calc_load_tasks 是全局原子变量，各 CPU 异步贡献 */
 }</code></pre>
 
-<h3>5.4 cputime.c — CPU 时间统计</h3>
+<h3 id="54-cputimec--cpu-时间统计">5.4 cputime.c — CPU 时间统计</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/cputime.c</code></p>
 
@@ -2754,7 +2905,7 @@ vtime_account_user(current); /* 累加从进入到返回的 system 时间 */</co
 steal = paravirt_steal_clock(smp_processor_id());
 /* 被偷的时间不算进 user/system，单独记账 */</code></pre>
 
-<h3>5.5 cpuacct.c — cpuacct cgroup 控制器</h3>
+<h3 id="55-cpuacctc--cpuacct-cgroup-控制器">5.5 cpuacct.c — cpuacct cgroup 控制器</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/cpuacct.c</code></p>
 
@@ -2789,7 +2940,7 @@ cat /sys/fs/cgroup/mygroup/cpu.stat
 <li>user / system / idle / iowait 时间拆分</li>
 </ul>
 
-<h3>5.5 cpuacct.c — cpuacct cgroup 控制器</h3>
+<h3 id="55-cpuacctc--cpuacct-cgroup-控制器">5.5 cpuacct.c — cpuacct cgroup 控制器</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/cpuacct.c</code></p>
 
@@ -2803,7 +2954,7 @@ cat /sys/fs/cgroup/mygroup/cpu.stat
 
 <h2>6. CPU 频率与能效调节</h2>
 
-<h3>6.1 cpufreq.c — 调度器-cpufreq 集成层</h3>
+<h3 id="61-cpufreqc--调度器-cpufreq-集成层">6.1 cpufreq.c — 调度器-cpufreq 集成层</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/cpufreq.c</code></p>
 
@@ -2877,7 +3028,7 @@ void cpufreq_remove_update_util_data(int cpu)
     synchronize_rcu();  /* 等待所有 reader 退出 */
 }</code></pre>
 
-<h3>6.2 cpufreq_schedutil.c — schedutil 调频策略</h3>
+<h3 id="62-cpufreq_schedutilc--schedutil-调频策略">6.2 cpufreq_schedutil.c — schedutil 调频策略</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/cpufreq_schedutil.c</code>（937 行）</p>
 
@@ -3015,7 +3166,7 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, ...)
 
 <p><img src="image/sched_domain_hierarchy.svg" alt="调度域 4 层层级与负载均衡流程图"></p>
 
-<h3>7.1 topology.c — 调度域层级构建</h3>
+<h3 id="71-topologyc--调度域层级构建">7.1 topology.c — 调度域层级构建</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/topology.c</code>（2872 行）</p>
 
@@ -3120,7 +3271,7 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, ...)
 /* 条件: 系统中存在非对称 CPU 容量 + EM 注册 */
 /* 效果: select_task_rq_fair() 中调用 find_energy_efficient_cpu() */</code></pre>
 
-<h3>7.2 cpupri.c — RT 任务 CPU 优先级位图</h3>
+<h3 id="72-cpupric--rt-任务-cpu-优先级位图">7.2 cpupri.c — RT 任务 CPU 优先级位图</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/cpupri.c</code>（317 行）</p>
 
@@ -3163,7 +3314,7 @@ struct cpupri {
 
 <p><strong>更新时机</strong>: 每次 RT 任务入队/出队时更新对应 CPU 的优先级等级。</p>
 
-<h3>7.3 cpudeadline.c — DL 任务 CPU deadline 堆</h3>
+<h3 id="73-cpudeadlinec--dl-任务-cpu-deadline-堆">7.3 cpudeadline.c — DL 任务 CPU deadline 堆</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/cpudeadline.c</code>（296 行）</p>
 
@@ -3206,7 +3357,7 @@ struct cpudl {
 
 <hr>
 
-<h2>8. 调度器时钟</h2>
+<h2 id="8-调度器时钟">8. 调度器时钟</h2>
 
 <p><strong>文件</strong>: <code>kernel/sched/clock.c</code>（508 行）</p>
 
@@ -3348,7 +3499,7 @@ static DEFINE_PER_CPU_SHARED_ALIGNED(struct sched_clock_data, sched_clock_data);
 
 <h2>9. 统计与调试</h2>
 
-<h3>9.1 stats.c / stats.h — schedstat 统计</h3>
+<h3 id="91-statsc--statsh--schedstat-统计">9.1 stats.c / stats.h — schedstat 统计</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/stats.c</code>（220 行）, <code>kernel/sched/stats.h</code></p>
 
@@ -3400,7 +3551,7 @@ static int __init proc_schedstat_init(void)
 }
 /* show_schedstat() 遍历所有 CPU 和域输出统计 */</code></pre>
 
-<h3>9.2 debug.c — debugfs 调试接口</h3>
+<h3 id="92-debugc--debugfs-调试接口">9.2 debug.c — debugfs 调试接口</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/debug.c</code>（1284 行）</p>
 
@@ -3455,7 +3606,7 @@ echo &quot;none&quot; &gt; /sys/kernel/debug/sched/preempt</code></pre>
 
 <blockquote>以下同步原语虽放在 <code>kernel/sched/</code> 下，但被整个内核广泛使用。它们的实现与调度器紧密耦合（需要 <code>schedule()</code> 来睡眠/唤醒）。</blockquote>
 
-<h3>10.1 completion.c — 完成量机制</h3>
+<h3 id="101-completionc--完成量机制">10.1 completion.c — 完成量机制</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/completion.c</code>（358 行）</p>
 
@@ -3647,7 +3798,7 @@ void complete_all(struct completion *x)
 
 <p><strong>典型使用场景</strong>: 驱动初始化等待、DMA 完成通知、线程同步。</p>
 
-<h3>10.2 wait.c — 通用等待队列</h3>
+<h3 id="102-waitc--通用等待队列">10.2 wait.c — 通用等待队列</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/wait.c</code>（465 行）</p>
 
@@ -4128,7 +4279,7 @@ dmesg -T | tail -200</code></pre>
 <li><strong>怎么查看当前等待队列？</strong> 通常先看"当前哪些任务在等待"，再按对象定点查看它的 <code>wait_queue_head</code>；内核没有现成接口一次性列出全系统所有等待队列。</li>
 </ul>
 
-<h3>10.3 wait_bit.c — 位等待队列</h3>
+<h3 id="103-wait_bitc--位等待队列">10.3 wait_bit.c — 位等待队列</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/wait_bit.c</code></p>
 
@@ -4159,7 +4310,7 @@ void unlock_page(struct page *page)
     wake_up_bit(&amp;page-&gt;flags, PG_locked);
 }</code></pre>
 
-<h3>10.4 swait.c — 简单等待队列</h3>
+<h3 id="104-swaitc--简单等待队列">10.4 swait.c — 简单等待队列</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/swait.c</code></p>
 
@@ -4211,7 +4362,7 @@ void unlock_page(struct page *page)
 
 <h2>11. Cgroup、隔离与杂项</h2>
 
-<h3>11.1 autogroup.c — 自动任务分组</h3>
+<h3 id="111-autogroupc--自动任务分组">11.1 autogroup.c — 自动任务分组</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/autogroup.c</code>（293 行）, <code>kernel/sched/autogroup.h</code></p>
 
@@ -4244,7 +4395,7 @@ cat /proc/&lt;pid&gt;/autogroup
 # 调整 autogroup 的 nice 值（整组调整）
 echo -5 &gt; /proc/&lt;pid&gt;/autogroup</code></pre>
 
-<h3>11.2 core_sched.c — 核心调度（SMT 安全）</h3>
+<h3 id="112-core_schedc--核心调度smt-安全">11.2 core_sched.c — 核心调度（SMT 安全）</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/core_sched.c</code>（302 行）</p>
 
@@ -4278,7 +4429,7 @@ prctl(PR_SCHED_CORE, PR_SCHED_CORE_SHARE_FROM, pid, ...); /* 从另一进程获�
 <li>典型开销: 5-30% 吞吐下降（取决于工作负载的 SMT 利用率）</li>
 </ul>
 
-<h3>11.3 isolation.c — CPU 隔离</h3>
+<h3 id="113-isolationc--cpu-隔离">11.3 isolation.c — CPU 隔离</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/isolation.c</code>（253 行）</p>
 
@@ -4328,7 +4479,7 @@ void housekeeping_affine(struct task_struct *t, enum hk_type type);</code></pre>
 <li>需要远程 CPU 通过 IPI 唤醒均衡 (<code>nohz_balancer_kick()</code>)</li>
 </ul>
 
-<h3>11.4 psi.c — 压力失速信息</h3>
+<h3 id="114-psic--压力失速信息">11.4 psi.c — 压力失速信息</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/psi.c</code>（1682 行）</p>
 
@@ -4372,7 +4523,7 @@ write(fd, &quot;some 150000 1000000&quot;, 19);  /* 150ms/1s = 15% 压力 */
 /* 内核侧: PSI 触发器驱动内存回收决策 */
 /* Android 的 lmkd (Low Memory Killer Daemon) 基于 PSI 触发器工作 */</code></pre>
 
-<h3>11.5 membarrier.c — membarrier 系统调用</h3>
+<h3 id="115-membarrierc--membarrier-系统调用">11.5 membarrier.c — membarrier 系统调用</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/membarrier.c</code></p>
 
@@ -4400,7 +4551,7 @@ sys_membarrier(MEMBARRIER_CMD_GLOBAL, 0)
 /* 为 membarrier 提供精确的&quot;哪些 CPU 运行了该 mm&quot;信息 */
 /* 避免向不相关的 CPU 发送 IPI */</code></pre>
 
-<h3>11.6 syscalls.c — 调度相关系统调用</h3>
+<h3 id="116-syscallsc--调度相关系统调用">11.6 syscalls.c — 调度相关系统调用</h3>
 
 <p><strong>文件</strong>: <code>kernel/sched/syscalls.c</code></p>
 
@@ -4482,7 +4633,7 @@ if (dl_policy(policy)) {
 
 <p>调度子系统的公共接口分布在 <code>include/linux/sched/</code> 目录下约 30 个头文件中。本章按功能分类，提取每个头文件的<strong>关键定义</strong>和<strong>使用模式</strong>。</p>
 
-<h3>12.1 核心定义头文件</h3>
+<h3 id="121-核心定义头文件">12.1 核心定义头文件</h3>
 
 <h4><code>include/linux/sched.h</code> — 2431 行，内核最大头文件之一</h4>
 
@@ -4551,7 +4702,7 @@ if (dl_policy(policy)) {
 <li><code>oom_score_adj</code> — OOM 评分调整（影响调度器memory pressure感知）</li>
 </ul>
 
-<h3>12.2 调度策略头文件</h3>
+<h3 id="122-调度策略头文件">12.2 调度策略头文件</h3>
 
 <h4><code>include/linux/sched/rt.h</code> — RT 策略判定</h4>
 
@@ -4585,7 +4736,7 @@ static inline bool rt_or_dl_task(struct task_struct *p) {
 
 <p>这三个状态决定负载均衡的触发时机和策略激进程度。</p>
 
-<h3>12.3 负载与统计头文件</h3>
+<h3 id="123-负载与统计头文件">12.3 负载与统计头文件</h3>
 
 <h4><code>include/linux/sched/loadavg.h</code> — 指数衰减负载平均</h4>
 
@@ -4641,7 +4792,7 @@ extern void sched_clock_init(void);
 // ARM64: 读取 CNTVCT_EL0 寄存器
 // x86: 优先 TSC, 回退到 jiffies</code></pre>
 
-<h3>12.4 任务管理头文件</h3>
+<h3 id="124-任务管理头文件">12.4 任务管理头文件</h3>
 
 <h4><code>include/linux/sched/task.h</code> — 任务生命周期</h4>
 
@@ -4695,7 +4846,7 @@ void mmgrab(struct mm_struct *mm);          // 临时引用(不阻止exit)
 void kthread_use_mm(struct mm_struct *mm);
 void kthread_unuse_mm(struct mm_struct *mm);</code></pre>
 
-<h3>12.5 拓扑与隔离头文件</h3>
+<h3 id="125-拓扑与隔离头文件">12.5 拓扑与隔离头文件</h3>
 
 <h4><code>include/linux/sched/topology.h</code> — 调度域核心定义</h4>
 
@@ -4763,7 +4914,7 @@ SD_FLAG(SD_NUMA,              0)</code></pre>
 // isolcpus=domain,managed_irq,3-7 → HK_TYPE_DOMAIN + HK_TYPE_MANAGED_IRQ
 // nohz_full=3-7 → HK_TYPE_TICK + HK_TYPE_RCU + ...</code></pre>
 
-<h3>12.6 调试与杂项头文件</h3>
+<h3 id="126-调试与杂项头文件">12.6 调试与杂项头文件</h3>
 
 <h4><code>include/linux/sched/debug.h</code> — 调试接口</h4>
 
@@ -4820,7 +4971,7 @@ extern void sched_autogroup_exit(struct signal_struct *sig);
 
 <hr>
 
-<h2>13. 建议阅读顺序</h2>
+<h2 id="13-建议阅读顺序">13. 建议阅读顺序</h2>
 
 <h3>13.1 阶段一：理解框架（建立全局观）</h3>
 
@@ -5038,7 +5189,7 @@ cat /proc/&lt;pid&gt;/sched</code></pre>
 
 <h2>14. 调度器发展历史</h2>
 
-<h3>14.1 O(n) 调度器（Linux 2.4 及之前）</h3>
+<h3 id="141-on-调度器linux-24-及之前">14.1 O(n) 调度器（Linux 2.4 及之前）</h3>
 
 <p><strong>时间线</strong>: Linux 1.0 ~ 2.4（1994–2003）</p>
 
@@ -5086,7 +5237,7 @@ cat /proc/&lt;pid&gt;/sched</code></pre>
 <li>recalculate 循环在大量任务时产生明显延迟尖峰</li>
 </ul>
 
-<h3>14.2 O(1) 调度器（Linux 2.6 早期）</h3>
+<h3 id="142-o1-调度器linux-26-早期">14.2 O(1) 调度器（Linux 2.6 早期）</h3>
 
 <p><strong>时间线</strong>: Linux 2.6.0 ~ 2.6.22（2003–2007），作者 Ingo Molnar</p>
 
@@ -5134,7 +5285,7 @@ cat /proc/&lt;pid&gt;/sched</code></pre>
 <li>启发式 bug 导致桌面卡顿被广泛报告</li>
 </ul>
 
-<h3>14.3 CFS 完全公平调度器（Linux 2.6.23+）</h3>
+<h3 id="143-cfs-完全公平调度器linux-2623">14.3 CFS 完全公平调度器（Linux 2.6.23+）</h3>
 
 <p><strong>时间线</strong>: Linux 2.6.23（2007.10），作者 Ingo Molnar，受 Con Kolivas 的 SD 调度器启发</p>
 
@@ -5164,7 +5315,7 @@ cat /proc/&lt;pid&gt;/sched</code></pre>
 
 <p><strong>优势</strong>: 数学上可证明的公平性，消除启发式调参困难</p>
 
-<h3>14.4 EEVDF 调度器（Linux 6.6+）</h3>
+<h3 id="144-eevdf-调度器linux-66">14.4 EEVDF 调度器（Linux 6.6+）</h3>
 
 <p><strong>时间线</strong>: Linux 6.6（2023.10），由 Peter Zijlstra 实现，基于 1995 年 Stoica & Abdel-Wahab 论文</p>
 
@@ -5204,7 +5355,7 @@ cat /proc/&lt;pid&gt;/sched</code></pre>
 <li>内核默认 <code>sysctl_sched_base_slice = 700000ns</code>（0.7ms）</li>
 </ul>
 
-<h3>14.5 sched_ext BPF 可扩展调度（Linux 6.12+）</h3>
+<h3 id="145-sched_ext-bpf-可扩展调度linux-612">14.5 sched_ext BPF 可扩展调度（Linux 6.12+）</h3>
 
 <p><strong>时间线</strong>: Linux 6.12（2024.11），主要贡献者 Tejun Heo (Meta), David Vernet</p>
 
@@ -5232,7 +5383,7 @@ cat /proc/&lt;pid&gt;/sched</code></pre>
 <li>大规模集群：定制化负载感知策略</li>
 </ul>
 
-<h3>14.6 实时调度与 PREEMPT_RT 演进</h3>
+<h3 id="146-实时调度与-preempt_rt-演进">14.6 实时调度与 PREEMPT_RT 演进</h3>
 
 <p><strong>时间线</strong>: PREEMPT_RT 补丁 2004 年起由 Ingo Molnar/Thomas Gleixner 维护，逐步合入主线</p>
 
@@ -5279,7 +5430,7 @@ cat /proc/&lt;pid&gt;/sched</code></pre>
 
 <h2>15. 软件架构</h2>
 
-<h3>15.1 调度子系统整体架构图</h3>
+<h3 id="151-调度子系统整体架构图">15.1 调度子系统整体架构图</h3>
 
 <blockquote>调度子系统整体架构图</blockquote>
 
@@ -5331,7 +5482,7 @@ cat /proc/&lt;pid&gt;/sched</code></pre>
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>15.2 调度类层次与优先级链</h3>
+<h3 id="152-调度类层次与优先级链">15.2 调度类层次与优先级链</h3>
 
 <p>Linux 6.18 定义了 6 个调度类，通过链接器排列的优先级顺序（<code>DEFINE_SCHED_CLASS</code> 宏）：</p>
 
@@ -5361,7 +5512,7 @@ for_each_class(class) {
     if (p) return p;
 }</code></pre>
 
-<h3>15.3 Per-CPU 运行队列架构</h3>
+<h3 id="153-per-cpu-运行队列架构">15.3 Per-CPU 运行队列架构</h3>
 
 <p>每个 CPU 拥有独立的 <code>struct rq</code>，消除了全局锁竞争：</p>
 
@@ -5426,7 +5577,7 @@ for_each_class(class) {
 </tr>
 </tbody></table>
 
-<h3>15.4 调度域与负载均衡层级</h3>
+<h3 id="154-调度域与负载均衡层级">15.4 调度域与负载均衡层级</h3>
 
 <p>调度域是多核负载均衡的拓扑抽象，层级结构映射硬件：</p>
 
@@ -5457,7 +5608,7 @@ for_each_class(class) {
 <li><code>SD_ASYM_PACKING</code> — 非对称封装（big.LITTLE）</li>
 </ul>
 
-<h3>15.5 时钟与 Tick 驱动模型</h3>
+<h3 id="155-时钟与-tick-驱动模型">15.5 时钟与 Tick 驱动模型</h3>
 
 <p>调度器的时间驱动来源：</p>
 
@@ -5494,7 +5645,7 @@ for_each_class(class) {
 <li>被 <code>nohz_balancer_kick()</code> 唤醒执行负载均衡</li>
 </ul>
 
-<h3>15.6 调度器与内核其他子系统的交互</h3>
+<h3 id="156-调度器与内核其他子系统的交互">15.6 调度器与内核其他子系统的交互</h3>
 
 <pre><code>┌────────────┐     ┌────────────┐     ┌─────────────┐
 │  Memory    │     │  cpufreq   │     │  cgroup     │
@@ -5569,7 +5720,7 @@ for_each_class(class) {
 
 <h2>16. 关键数据结构联系</h2>
 
-<h3>16.1 task_struct 调度相关字段全景</h3>
+<h3 id="161-task_struct-调度相关字段全景">16.1 task_struct 调度相关字段全景</h3>
 
 <p><code>include/linux/sched.h</code> 中 <code>task_struct</code> 与调度直接相关的字段：</p>
 
@@ -5610,7 +5761,7 @@ for_each_class(class) {
    0  - 99        SCHED_FIFO/RR/DL    实时优先级 (MAX_RT_PRIO=100)
   100 - 139       SCHED_NORMAL/BATCH  普通优先级 (nice -20 → +19)</code></pre>
 
-<h3>16.2 struct rq — Per-CPU 运行队列</h3>
+<h3 id="162-struct-rq--per-cpu-运行队列">16.2 struct rq — Per-CPU 运行队列</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/sched.h:1119</code></p>
 
@@ -5649,7 +5800,7 @@ for_each_class(class) {
     int                 cpu;            /* 本 CPU 编号 */
 };</code></pre>
 
-<h3>16.3 struct cfs_rq / rt_rq / dl_rq 子队列</h3>
+<h3 id="163-struct-cfs_rq--rt_rq--dl_rq-子队列">16.3 struct cfs_rq / rt_rq / dl_rq 子队列</h3>
 
 <h4>cfs_rq — EEVDF 公平队列</h4>
 
@@ -5716,7 +5867,7 @@ for_each_class(class) {
     u64                     this_bw;            /* 分配利用率 */
 };</code></pre>
 
-<h3>16.4 struct sched_entity / sched_rt_entity / sched_dl_entity</h3>
+<h3 id="164-struct-sched_entity--sched_rt_entity--sched_dl_entity">16.4 struct sched_entity / sched_rt_entity / sched_dl_entity</h3>
 
 <h4>sched_entity — CFS/EEVDF 调度实体</h4>
 
@@ -5787,7 +5938,7 @@ for_each_class(class) {
     struct hrtimer      inactive_timer;     /* 0-lag 利用率衰减 */
 };</code></pre>
 
-<h3>16.5 struct sched_class — 调度类操作表</h3>
+<h3 id="165-struct-sched_class--调度类操作表">16.5 struct sched_class — 调度类操作表</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/sched.h:2398</code></p>
 
@@ -5876,7 +6027,7 @@ for_each_class(class) {
 </tr>
 </tbody></table>
 
-<h3>16.6 struct sched_domain / sched_group — 拓扑描述</h3>
+<h3 id="166-struct-sched_domain--sched_group--拓扑描述">16.6 struct sched_domain / sched_group — 拓扑描述</h3>
 
 <h4>sched_domain — 调度域</h4>
 
@@ -5919,7 +6070,7 @@ for_each_class(class) {
 <li>负载均衡在同一域内的各 <code>sched_group</code> 之间进行任务迁移</li>
 </ul>
 
-<h3>16.7 数据结构关系总图（SVG）</h3>
+<h3 id="167-数据结构关系总图svg">16.7 数据结构关系总图（SVG）</h3>
 
 <blockquote>数据结构关系总图</blockquote>
 
@@ -5929,7 +6080,7 @@ for_each_class(class) {
 
 <h2>17. 调度器原理机制分析</h2>
 
-<h3>17.1 主调度路径 schedule() 深度分析</h3>
+<h3 id="171-主调度路径-schedule-深度分析">17.1 主调度路径 schedule() 深度分析</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/core.c:6784</code> — <code>__schedule()</code></p>
 
@@ -5977,7 +6128,7 @@ schedule_idle()
 <li><strong>慢速路径</strong>: 按优先级遍历所有调度类：stop → dl → rt → ext → fair → idle</li>
 </ul>
 
-<h3>17.2 唤醒路径 try_to_wake_up() 分析</h3>
+<h3 id="172-唤醒路径-try_to_wake_up-分析">17.2 唤醒路径 try_to_wake_up() 分析</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/core.c:4143</code></p>
 
@@ -6014,7 +6165,7 @@ schedule_idle()
 <li>考虑 EAS（能效感知）：在满足性能的前提下选低能耗 CPU</li>
 </ol>
 
-<h3>17.3 上下文切换 context_switch() 机制</h3>
+<h3 id="173-上下文切换-context_switch-机制">17.3 上下文切换 context_switch() 机制</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/core.c:5269</code></p>
 
@@ -6049,7 +6200,7 @@ schedule_idle()
 <li>如果启用 FPSIMD/SVE → 延迟保存/恢复</li>
 </ul>
 
-<h3>17.4 CFS/EEVDF vruntime 与公平性算法</h3>
+<h3 id="174-cfseevdf-vruntime-与公平性算法">17.4 CFS/EEVDF vruntime 与公平性算法</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/fair.c:1207</code> — <code>update_curr()</code></p>
 
@@ -6094,7 +6245,7 @@ V = avg_vruntime(cfs_rq) = min_vruntime + Σ((v_i - v0) * w_i) / Σ(w_i)</code><
        - 否则 → 递归右
     复杂度: O(log n)</code></pre>
 
-<h3>17.5 负载均衡与任务迁移机制</h3>
+<h3 id="175-负载均衡与任务迁移机制">17.5 负载均衡与任务迁移机制</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/fair.c</code> — <code>sched_balance_rq()</code>, <code>sched_balance_newidle()</code></p>
 
@@ -6176,7 +6327,7 @@ V = avg_vruntime(cfs_rq) = min_vruntime + Σ((v_i - v0) * w_i) / Σ(w_i)</code><
 </tr>
 </tbody></table>
 
-<h3>17.6 PELT 负载追踪算法原理</h3>
+<h3 id="176-pelt-负载追踪算法原理">17.6 PELT 负载追踪算法原理</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/pelt.c:103</code> — <code>accumulate_sum()</code></p>
 
@@ -6241,7 +6392,7 @@ sa-&gt;load_avg = div_u64(sa-&gt;load_sum, divider);
 sa-&gt;util_avg = sa-&gt;util_sum / divider;
 /* divider ≈ PELT maximum value (~47742) */</code></pre>
 
-<h3>17.7 RT 调度与带宽限流</h3>
+<h3 id="177-rt-调度与带宽限流">17.7 RT 调度与带宽限流</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/rt.c</code></p>
 
@@ -6277,7 +6428,7 @@ static struct sched_rt_entity *pick_next_rt_entity(struct rt_rq *rt_rq)
 <li>通过 <code>pushable_tasks</code> 链表和 <code>cpupri</code> 位图快速定位</li>
 </ul>
 
-<h3>17.8 Deadline 调度 EDF+CBS 算法</h3>
+<h3 id="178-deadline-调度-edfcbs-算法">17.8 Deadline 调度 EDF+CBS 算法</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/deadline.c</code></p>
 
@@ -6311,7 +6462,7 @@ static struct sched_rt_entity *pick_next_rt_entity(struct rt_rq *rt_rq)
 <li>如果超出带宽上限 → 返回 <code>-EBUSY</code></li>
 </ul>
 
-<h3>17.9 抢占模型与时机分析</h3>
+<h3 id="179-抢占模型与时机分析">17.9 抢占模型与时机分析</h3>
 
 <p>Linux 6.18 支持多种抢占模型（编译时或运行时选择）:</p>
 
@@ -6363,7 +6514,7 @@ cat /sys/kernel/debug/sched/preempt
 # 运行时切换
 echo &quot;full&quot; &gt; /sys/kernel/debug/sched/preempt</code></pre>
 
-<h3>17.10 CPU 亲和性与 cpuset 机制</h3>
+<h3 id="1710-cpu-亲和性与-cpuset-机制">17.10 CPU 亲和性与 cpuset 机制</h3>
 
 <h4>CPU 亲和性</h4>
 
@@ -6400,7 +6551,7 @@ rcu_nocbs=4-7         # RCU 回调不在隔离 CPU 执行</code></pre>
 
 <h2>18. 调度器 Debug 和观测</h2>
 
-<h3>18.1 /proc/sched_debug 与 /proc/schedstat</h3>
+<h3 id="181-procsched_debug-与-procschedstat">18.1 /proc/sched_debug 与 /proc/schedstat</h3>
 
 <h4>/proc/sched_debug</h4>
 
@@ -6469,7 +6620,7 @@ runnable tasks:
 <pre><code>cpu0 &lt;yld_count&gt; &lt;legacy&gt; &lt;sched_count&gt; &lt;sched_goidle&gt; &lt;ttwu_count&gt; &lt;ttwu_local&gt; &lt;rq_cpu_time&gt; &lt;run_delay&gt; &lt;pcount&gt;
 domain0 &lt;...load balance stats...&gt;</code></pre>
 
-<h3>18.2 ftrace sched 相关 tracepoint</h3>
+<h3 id="182-ftrace-sched-相关-tracepoint">18.2 ftrace sched 相关 tracepoint</h3>
 
 <p><strong>源码</strong>: <code>include/trace/events/sched.h</code></p>
 
@@ -6548,7 +6699,7 @@ echo 1 &gt; events/sched/sched_wakeup/enable
 echo function_graph &gt; current_tracer
 echo __schedule &gt; set_graph_function</code></pre>
 
-<h3>18.3 perf sched 工具使用</h3>
+<h3 id="183-perf-sched-工具使用">18.3 perf sched 工具使用</h3>
 
 <h4>perf sched record + latency</h4>
 
@@ -6605,7 +6756,7 @@ perf sched map
 </tr>
 </tbody></table>
 
-<h3>18.4 bpftrace 调度器观测脚本</h3>
+<h3 id="184-bpftrace-调度器观测脚本">18.4 bpftrace 调度器观测脚本</h3>
 
 <h4>调度延迟分布</h4>
 
@@ -6670,7 +6821,7 @@ tracepoint:sched:sched_migrate_task
     @migrations = count();
 }</code></pre>
 
-<h3>18.5 schedstat 统计项解读</h3>
+<h3 id="185-schedstat-统计项解读">18.5 schedstat 统计项解读</h3>
 
 <p>每个 <code>sched_entity</code> 的 schedstat（<code>CONFIG_SCHEDSTATS</code>）:</p>
 
@@ -6720,7 +6871,7 @@ cat /proc/1234/schedstat
 # 查看所有进程的调度延迟
 awk &#x27;{print $1, $2}&#x27; /proc/*/schedstat 2&gt;/dev/null | sort -k2 -rn | head</code></pre>
 
-<h3>18.6 PSI 压力失速监控实战</h3>
+<h3 id="186-psi-压力失速监控实战">18.6 PSI 压力失速监控实战</h3>
 
 <p><strong>PSI (Pressure Stall Information)</strong> — 量化资源竞争压力:</p>
 
@@ -6750,7 +6901,7 @@ write(fd, &quot;some 100000 1000000&quot;, 19);  /* 10% for 1s */
 struct pollfd fds = { .fd = fd, .events = POLLPRI };
 poll(&amp;fds, 1, -1);  /* 阻塞等待触发 */</code></pre>
 
-<h3>18.7 常见调度异常诊断方法</h3>
+<h3 id="187-常见调度异常诊断方法">18.7 常见调度异常诊断方法</h3>
 
 <h4>问题一：调度延迟抖动</h4>
 
@@ -6807,7 +6958,7 @@ echo 800000 &gt; /proc/sys/kernel/sched_rt_runtime_us  # RT 只用 80%</code></p
 
 <h2>19. 调度器涉及的算法</h2>
 
-<h3>19.1 红黑树 — CFS/EEVDF 任务排序</h3>
+<h3 id="191-红黑树--cfseevdf-任务排序">19.1 红黑树 — CFS/EEVDF 任务排序</h3>
 
 <p><strong>应用场景</strong>: <code>cfs_rq->tasks_timeline</code>, <code>dl_rq->root</code></p>
 
@@ -6830,7 +6981,7 @@ struct rb_root_cached {
 
 <p><strong>EEVDF 增广</strong>: 每个节点额外维护 <code>min_vruntime</code>（子树最小 vruntime），用于 eligible 搜索剪枝。</p>
 
-<h3>19.2 加权公平排队（WFQ）与虚拟运行时间</h3>
+<h3 id="192-加权公平排队wfq与虚拟运行时间">19.2 加权公平排队（WFQ）与虚拟运行时间</h3>
 
 <p><strong>算法思想</strong>: 将物理时间按权重比例分配给各任务</p>
 
@@ -6880,7 +7031,7 @@ $$vruntime += \frac{delta\_exec \times W_0}{weight_i}$$</p>
 
 <p>每 nice 差 1 ≈ 权重 × 1.25（精确值使得相邻 nice 差 10% CPU）。</p>
 
-<h3>19.3 EEVDF 最早合格虚拟截止时间优先算法</h3>
+<h3 id="193-eevdf-最早合格虚拟截止时间优先算法">19.3 EEVDF 最早合格虚拟截止时间优先算法</h3>
 
 <blockquote>EEVDF 算法示意图</blockquote>
 
@@ -6919,7 +7070,7 @@ while (node) {
         node = node-&gt;rb_right;
 }</code></pre>
 
-<h3>19.4 EDF 最早截止时间优先算法</h3>
+<h3 id="194-edf-最早截止时间优先算法">19.4 EDF 最早截止时间优先算法</h3>
 
 <p><strong>定理</strong>: EDF 是单处理器上最优的动态优先级调度算法 —— 如果任何算法能满足所有 deadline，则 EDF 也能。</p>
 
@@ -6942,7 +7093,7 @@ $$U = \sum_{i=1}^{n} \frac{C_i}{T_i} \leq 1$$</p>
 <li>通过 push/pull 在 CPU 间迁移过载任务</li>
 </ul>
 
-<h3>19.5 CBS 恒定带宽服务器算法</h3>
+<h3 id="195-cbs-恒定带宽服务器算法">19.5 CBS 恒定带宽服务器算法</h3>
 
 <p><strong>目的</strong>: 隔离任务间的干扰 —— 即使任务超出预算，也不影响其他任务</p>
 
@@ -6970,7 +7121,7 @@ if (dl_time_before(dl_se-&gt;deadline, rq_clock(rq))) {
     dl_se-&gt;runtime = dl_se-&gt;dl_runtime;
 }</code></pre>
 
-<h3>19.6 PELT 指数加权移动平均（EWMA）</h3>
+<h3 id="196-pelt-指数加权移动平均ewma">19.6 PELT 指数加权移动平均（EWMA）</h3>
 
 <p><strong>算法</strong>: 以 1024μs (≈1ms) 为采样周期，对历史信号做指数衰减</p>
 
@@ -6997,7 +7148,7 @@ $$S_{max} = \frac{1024}{1-y} \approx 47742$$</p>
 
 <p><code>load_avg = load_sum / PELT_MAX</code> 归一化到 [0, 1024] 范围。</p>
 
-<h3>19.7 位图优先级数组 — RT/O(1) 调度</h3>
+<h3 id="197-位图优先级数组--rto1-调度">19.7 位图优先级数组 — RT/O(1) 调度</h3>
 
 <p><strong>数据结构</strong> (<code>kernel/sched/sched.h</code>):</p>
 <pre><code class="language-c">struct rt_prio_array {
@@ -7015,7 +7166,7 @@ $$S_{max} = \frac{1024}{1-y} \approx 47742$$</p>
 
 <p><strong>复杂度</strong>: 入队 O(1)、出队 O(1)、选择 O(1) — 真正的常数时间</p>
 
-<h3>19.8 最小堆 — Deadline CPU 选择</h3>
+<h3 id="198-最小堆--deadline-cpu-选择">19.8 最小堆 — Deadline CPU 选择</h3>
 
 <p><strong>应用</strong>: <code>cpudeadline.c</code> — 在多核间为 DL 任务选择最合适的 CPU</p>
 
@@ -7036,7 +7187,7 @@ struct cpudl_item {
 <li>复杂度: O(log n_cpus)</li>
 </ul>
 
-<h3>19.9 负载均衡迭代与 busiest/idlest 启发式</h3>
+<h3 id="199-负载均衡迭代与-busiestidlest-启发式">19.9 负载均衡迭代与 busiest/idlest 启发式</h3>
 
 <p><strong>算法框架</strong>:</p>
 
@@ -7063,7 +7214,7 @@ struct cpudl_item {
 <li><strong>NUMA 感知</strong>: 跨节点迁移有额外代价，阈值更高</li>
 </ul>
 
-<h3>19.10 指数衰减与半衰期计算</h3>
+<h3 id="1910-指数衰减与半衰期计算">19.10 指数衰减与半衰期计算</h3>
 
 <p><strong>PELT 的指数衰减</strong>:</p>
 
@@ -7104,7 +7255,7 @@ static u64 decay_load(u64 val, u64 n) {
 <li>15 分钟: $e^{-5s/900s}$</li>
 </ul>
 
-<h3>19.11 RCU 无锁读取在调度路径中的应用</h3>
+<h3 id="1911-rcu-无锁读取在调度路径中的应用">19.11 RCU 无锁读取在调度路径中的应用</h3>
 
 <p><strong>问题</strong>: 调度器热路径需要读取频繁更新的数据（如 sched_domain, task_group），锁会成为瓶颈</p>
 
@@ -7156,7 +7307,7 @@ rcu_note_context_switch(preempt);
 
 <h2>20. QEMU 实验设计</h2>
 
-<h3>20.1 QEMU 多核 ARM64 环境搭建</h3>
+<h3 id="201-qemu-多核-arm64-环境搭建">20.1 QEMU 多核 ARM64 环境搭建</h3>
 
 <h4>启动脚本</h4>
 
@@ -7209,7 +7360,7 @@ CONFIG_DEBUG_PREEMPT=y</code></pre>
 <pre><code class="language-bash"># 在 rootfs 中安装必要工具
 apt install -y stress-ng rt-tests trace-cmd perf bpftrace</code></pre>
 
-<h3>20.2 实验一：观察 CFS 公平性与 vruntime 变化</h3>
+<h3 id="202-实验一观察-cfs-公平性与-vruntime-变化">20.2 实验一：观察 CFS 公平性与 vruntime 变化</h3>
 
 <p><strong>目标</strong>: 验证不同 nice 值任务的 CPU 时间分配比例和 vruntime 增长速率</p>
 
@@ -7253,7 +7404,7 @@ ps -o pid,ni,time,comm -p $(pgrep stress-ng)
 # nice 5: vruntime += delta * 1024/335  ≈ delta * 3.06
 # 但 nice 5 实际运行时间少 3.06 倍，所以 vruntime 增量≈相等</code></pre>
 
-<h3>20.3 实验二：RT 任务抢占与优先级反转</h3>
+<h3 id="203-实验二rt-任务抢占与优先级反转">20.3 实验二：RT 任务抢占与优先级反转</h3>
 
 <p><strong>目标</strong>: 观察 RT 任务对 CFS 任务的抢占行为，以及优先级反转问题</p>
 
@@ -7285,7 +7436,7 @@ taskset -c 0 pi_stress --duration=10 --groups=1
 cyclictest -t1 -p 80 -n -i 1000 -l 10000 -a 0
 # 输出: Min/Avg/Max latency (us)</code></pre>
 
-<h3>20.4 实验三：负载均衡与任务迁移跟踪</h3>
+<h3 id="204-实验三负载均衡与任务迁移跟踪">20.4 实验三：负载均衡与任务迁移跟踪</h3>
 
 <p><strong>目标</strong>: 观察多核间的负载均衡行为和任务迁移</p>
 
@@ -7330,7 +7481,7 @@ interval:s:5 { print(@); clear(@); }
 <li><code>nr_running</code> 最终每个 CPU ≈ 1</li>
 </ul>
 
-<h3>20.5 实验四：Deadline 调度带宽控制验证</h3>
+<h3 id="205-实验四deadline-调度带宽控制验证">20.5 实验四：Deadline 调度带宽控制验证</h3>
 
 <p><strong>目标</strong>: 验证 SCHED_DEADLINE 的带宽保证和准入控制</p>
 
@@ -7365,7 +7516,7 @@ chrt -d --sched-runtime 5000000 \
 echo 1 &gt; /sys/kernel/debug/tracing/events/timer/hrtimer_expire_entry/enable
 cat /sys/kernel/debug/tracing/trace | grep dl_task_timer</code></pre>
 
-<h3>20.6 实验五：sched_ext BPF 自定义调度策略</h3>
+<h3 id="206-实验五sched_ext-bpf-自定义调度策略">20.6 实验五：sched_ext BPF 自定义调度策略</h3>
 
 <p><strong>目标</strong>: 加载 BPF 调度器替换默认 CFS 策略</p>
 
@@ -7420,7 +7571,7 @@ struct sched_ext_ops my_fifo_ops = {
     .name      = &quot;my_fifo&quot;,
 };</code></pre>
 
-<h3>20.7 实验六：CPU 隔离与 cpuset 配置</h3>
+<h3 id="207-实验六cpu-隔离与-cpuset-配置">20.7 实验六：CPU 隔离与 cpuset 配置</h3>
 
 <p><strong>目标</strong>: 验证 cpuset 隔离效果和对调度均衡的影响</p>
 
@@ -7466,7 +7617,7 @@ taskset -c 0 cyclictest -t1 -p 80 -n -i 100 -l 100000
 
 <h2>21. 面试经典问答</h2>
 
-<h3>21.1 进程/线程调度基础问题</h3>
+<h3 id="211-进程线程调度基础问题">21.1 进程/线程调度基础问题</h3>
 
 <p><strong>Q1: Linux 进程有哪些状态？状态转换如何触发？</strong></p>
 
@@ -7499,7 +7650,7 @@ TASK_UNINTERRUPTIBLE (D) → TASK_DEAD (X/Z)</code></pre>
 <li>条件: preempt_count == 0 且 <code>TIF_NEED_RESCHED</code> 置位</li>
 </ul>
 
-<h3>21.2 CFS/EEVDF 算法原理问题</h3>
+<h3 id="212-cfseevdf-算法原理问题">21.2 CFS/EEVDF 算法原理问题</h3>
 
 <p><strong>Q4: 什么是 vruntime？为什么能保证公平？</strong></p>
 
@@ -7552,7 +7703,7 @@ TASK_UNINTERRUPTIBLE (D) → TASK_DEAD (X/Z)</code></pre>
 <li>保证: 不会有任务"超前"获得服务</li>
 </ul>
 
-<h3>21.3 实时调度与优先级反转问题</h3>
+<h3 id="213-实时调度与优先级反转问题">21.3 实时调度与优先级反转问题</h3>
 
 <p><strong>Q7: SCHED_FIFO 和 SCHED_RR 的区别？</strong></p>
 
@@ -7609,7 +7760,7 @@ PI 修复:  Low 继承 High 的优先级 → Low 不被 Medium 抢占 → 快速
 <li>准入控制: 系统总带宽 ≤ CPU 容量时，所有 deadline 都能满足</li>
 </ul>
 
-<h3>21.4 多核负载均衡问题</h3>
+<h3 id="214-多核负载均衡问题">21.4 多核负载均衡问题</h3>
 
 <p><strong>Q10: Linux 负载均衡的触发时机和层级？</strong></p>
 
@@ -7647,7 +7798,7 @@ PI 修复:  Low 继承 High 的优先级 → Low 不被 Medium 抢占 → 快速
 <li>判断条件: wake affine 的额外负载不超过 capacity 的一定比例</li>
 </ul>
 
-<h3>21.5 调度延迟与性能优化问题</h3>
+<h3 id="215-调度延迟与性能优化问题">21.5 调度延迟与性能优化问题</h3>
 
 <p><strong>Q13: 如何测量和优化调度延迟？</strong></p>
 
@@ -7681,7 +7832,7 @@ cat /proc/pressure/cpu</code></pre>
 <li>调整: <code>echo 300000 > /sys/kernel/debug/sched/base_slice_ns</code></li>
 </ul>
 
-<h3>21.6 调度器数据结构与实现细节问题</h3>
+<h3 id="216-调度器数据结构与实现细节问题">21.6 调度器数据结构与实现细节问题</h3>
 
 <p><strong>Q15: 为什么调度器使用红黑树而不是堆/跳表？</strong></p>
 
@@ -7750,7 +7901,7 @@ cat /proc/pressure/cpu</code></pre>
 <li><code>for_each_class()</code> 按内存地址顺序遍历</li>
 </ul>
 
-<h3>21.7 场景设计与故障排查问题</h3>
+<h3 id="217-场景设计与故障排查问题">21.7 场景设计与故障排查问题</h3>
 
 <p><strong>Q18: 设计题 — 如何实现一个保证延迟的 Web 服务器调度策略？</strong></p>
 
@@ -7810,5 +7961,133 @@ cyclictest -a 6 -t1 -p 90 -n -i 100 -l 100000
 # 预期 Max latency &lt; 50μs</code></pre>
 
 
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        // Find the last heading that's above the current scroll position
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        // Update active link
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                // Auto-expand parent chapter
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                // Scroll sidebar to keep active item visible
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    // Initial update
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 </body>
 </html>
