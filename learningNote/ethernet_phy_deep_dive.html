@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -211,134 +377,117 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-ethernet-phy-接口类型总结">1. Ethernet PHY 接口类型总结</a></summary></p>
-
-<ul>
-<li><a href="#11-内核定义的-phy-接口类型枚举">1.1 内核定义的 PHY 接口类型枚举</a></li>
-<li><a href="#12-接口类型分类对比表">1.2 接口类型分类对比表</a></li>
-<li><a href="#13-rgmii-延迟变体说明">1.3 RGMII 延迟变体说明</a></li>
-<li><a href="#14-mac-phy-接口速率适应模式分析">1.4 MAC-PHY 接口速率适应模式分析</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-ethernet-软件框架分析">2. Ethernet 软件框架分析</a></summary></p>
-
-<ul>
-<li><a href="#21-linux-ethernet-整体分层架构">2.1 Linux Ethernet 整体分层架构</a></li>
-<li><a href="#22-关键数据结构">2.2 关键数据结构</a></li>
-<li><a href="#23-phy-状态机">2.3 PHY 状态机</a></li>
-<li><a href="#24-数据收发流程简化">2.4 数据收发流程（简化）</a></li>
-<li><a href="#25-mdio-总线通信">2.5 MDIO 总线通信</a></li>
-<li><a href="#26-eeeenergy-efficient-ethernet详解">2.6 EEE（Energy Efficient Ethernet）详解</a></li>
-<li><a href="#27-phy-速率协商结果解析">2.7 PHY 速率协商结果解析</a></li>
-<li><a href="#28-phy-address-与-phy-id-详解">2.8 PHY Address 与 PHY ID 详解</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-1g25g5g10g-phy-协议规范">3. 1G/2.5G/5G/10G PHY 协议规范</a></summary></p>
-
-<ul>
-<li><a href="#31-ieee-8023-标准总览">3.1 IEEE 802.3 标准总览</a></li>
-<li><a href="#32-关键规范说明">3.2 关键规范说明</a></li>
-<li><a href="#33-clause-22-vs-clause-45-mdio">3.3 Clause 22 vs Clause 45 MDIO</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-phy-驱动案例分析">4. PHY 驱动案例分析</a></summary></p>
-
-<ul>
-<li><a href="#41-realtek-rtl8211f--1g-phy-驱动分析">4.1 Realtek RTL8211F — 1G PHY 驱动分析</a></li>
-<li><a href="#42-aquantia-aqr107--10g-phy-驱动分析">4.2 Aquantia AQR107 — 10G PHY 驱动分析</a></li>
-<li><a href="#43-realtek-rtl822x-系列--25g-phy">4.3 Realtek RTL822x 系列 — 2.5G PHY</a></li>
-<li><a href="#44-marvell-88x3310--10g-多速率-phy">4.4 Marvell 88X3310 — 10G 多速率 PHY</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-1g-ethernet-通用寄存器详解">5. 1G Ethernet 通用寄存器详解</a></summary></p>
-
-<ul>
-<li><a href="#51-ieee-8023-clause-22-标准寄存器适用于所有兼容-phy">5.1 IEEE 802.3 Clause 22 标准寄存器（适用于所有兼容 PHY）</a></li>
-<li><a href="#52-bmcr--基本模式控制寄存器-reg-0x00">5.2 BMCR — 基本模式控制寄存器 (Reg 0x00)</a></li>
-<li><a href="#53-bmsr--基本模式状态寄存器-reg-0x01">5.3 BMSR — 基本模式状态寄存器 (Reg 0x01)</a></li>
-<li><a href="#54-physid1physid2--phy-标识寄存器-reg-0x020x03">5.4 PHYSID1/PHYSID2 — PHY 标识寄存器 (Reg 0x02/0x03)</a></li>
-<li><a href="#55-advertise--自协商通告寄存器-reg-0x04">5.5 ADVERTISE — 自协商通告寄存器 (Reg 0x04)</a></li>
-<li><a href="#56-lpa--链路伙伴能力寄存器-reg-0x05">5.6 LPA — 链路伙伴能力寄存器 (Reg 0x05)</a></li>
-<li><a href="#57-ctrl1000--1000base-t-控制寄存器-reg-0x09">5.7 CTRL1000 — 1000BASE-T 控制寄存器 (Reg 0x09)</a></li>
-<li><a href="#58-stat1000--1000base-t-状态寄存器-reg-0x0a">5.8 STAT1000 — 1000BASE-T 状态寄存器 (Reg 0x0a)</a></li>
-<li><a href="#59-mmd-间接访问寄存器-reg-0x0d0x0e">5.9 MMD 间接访问寄存器 (Reg 0x0d/0x0e)</a></li>
-<li><a href="#510-sgmii-带内自协商寄存器">5.10 SGMII 带内自协商寄存器</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-phy-硬件内部物理设计">6. PHY 硬件内部物理设计</a></summary></p>
-
-<ul>
-<li><a href="#61-1g-phy-内部架构以-rtl8211f-为例">6.1 1G PHY 内部架构（以 RTL8211F 为例）</a></li>
-<li><a href="#62-各功能模块说明">6.2 各功能模块说明</a></li>
-<li><a href="#63-10g-phy-内部架构差异">6.3 10G PHY 内部架构差异</a></li>
-<li><a href="#64-phy-供电设计">6.4 PHY 供电设计</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-面试常见问题与答案">7. 面试常见问题与答案</a></summary></p>
-
-<ul>
-<li><a href="#q1-miirmiigmiirgmiisgmii-各有什么区别">Q1: MII、RMII、GMII、RGMII、SGMII 各有什么区别？</a></li>
-<li><a href="#q2-rgmii-为什么需要延迟如何配置">Q2: RGMII 为什么需要延迟？如何配置？</a></li>
-<li><a href="#q3-phy-的自协商过程是怎样的协商结果如何确定">Q3: PHY 的自协商过程是怎样的？协商结果如何确定？</a></li>
-<li><a href="#q4-如何判断链路已经-up">Q4: 如何判断链路已经 UP？</a></li>
-<li><a href="#q5-clause-22-和-clause-45-mdio-有什么区别">Q5: Clause 22 和 Clause 45 MDIO 有什么区别？</a></li>
-<li><a href="#q6-什么是-mdio-总线一条总线能挂多少个-phy">Q6: 什么是 MDIO 总线？一条总线能挂多少个 PHY？</a></li>
-<li><a href="#q7-phy-驱动的-probe-流程是怎样的">Q7: PHY 驱动的 probe 流程是怎样的？</a></li>
-<li><a href="#q8-什么是-eeeenergy-efficient-ethernet">Q8: 什么是 EEE（Energy Efficient Ethernet）？</a></li>
-<li><a href="#q9-phy-中断模式和轮询模式的区别">Q9: PHY 中断模式和轮询模式的区别？</a></li>
-<li><a href="#q10-mac-和-phy-之间如何实现速率协商同步">Q10: MAC 和 PHY 之间如何实现速率协商同步？</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-qemu-实践实验">8. QEMU 实践实验</a></summary></p>
-
-<ul>
-<li><a href="#实验环境准备">实验环境准备</a></li>
-<li><a href="#实验-1探索虚拟网卡的-miiphy-寄存器">实验 1：探索虚拟网卡的 MII/PHY 寄存器</a></li>
-<li><a href="#实验-2使用-ethtool-观察自协商过程">实验 2：使用 ethtool 观察自协商过程</a></li>
-<li><a href="#实验-3mdio-总线和-phy-设备树探索">实验 3：MDIO 总线和 PHY 设备树探索</a></li>
-<li><a href="#实验-4编写简单的-phy-寄存器读取内核模块">实验 4：编写简单的 PHY 寄存器读取内核模块</a></li>
-<li><a href="#实验-5使用-qemu-tap-网络实现双机通信">实验 5：使用 QEMU TAP 网络实现双机通信</a></li>
-<li><a href="#实验-6phy-状态机观察">实验 6：PHY 状态机观察</a></li>
-<li><a href="#实验-7使用-devmem-直接访问-macphy-寄存器qemu-virt-平台">实验 7：使用 devmem 直接访问 MAC/PHY 寄存器（QEMU virt 平台）</a></li>
-<li><a href="#实验-8编写简单的-mdio-用户空间访问程序">实验 8：编写简单的 MDIO 用户空间访问程序</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#附录">附录</a></summary></p>
-
-<ul>
-<li><a href="#a-常用内核源码路径">A. 常用内核源码路径</a></li>
-<li><a href="#b-设备树-phy-配置示例">B. 设备树 PHY 配置示例</a></li>
-<li><a href="#c-参考文档">C. 参考文档</a></li>
-</ul>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. Ethernet PHY 接口类型总结</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-内核定义的-phy-接口类型枚举">1.1 内核定义的 PHY 接口类型枚举</a></li>
+          <li><a href="#12-接口类型分类对比表">1.2 接口类型分类对比表</a></li>
+          <li><a href="#13-rgmii-延迟变体说明">1.3 RGMII 延迟变体说明</a></li>
+          <li><a href="#14-mac-phy-接口速率适应模式分析">1.4 MAC-PHY 接口速率适应模式分析</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. Ethernet 软件框架分析</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-linux-ethernet-整体分层架构">2.1 Linux Ethernet 整体分层架构</a></li>
+          <li><a href="#22-关键数据结构">2.2 关键数据结构</a></li>
+          <li><a href="#23-phy-状态机">2.3 PHY 状态机</a></li>
+          <li><a href="#24-数据收发流程简化">2.4 数据收发流程（简化）</a></li>
+          <li><a href="#25-mdio-总线通信">2.5 MDIO 总线通信</a></li>
+          <li><a href="#26-eeeenergy-efficient-ethernet详解">2.6 EEE（Energy Efficient Ethernet）详解</a></li>
+          <li><a href="#27-phy-速率协商结果解析">2.7 PHY 速率协商结果解析</a></li>
+          <li><a href="#28-phy-address-与-phy-id-详解">2.8 PHY Address 与 PHY ID 详解</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. 1G/2.5G/5G/10G PHY 协议规范</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-ieee-8023-标准总览">3.1 IEEE 802.3 标准总览</a></li>
+          <li><a href="#32-关键规范说明">3.2 关键规范说明</a></li>
+          <li><a href="#33-clause-22-vs-clause-45-mdio">3.3 Clause 22 vs Clause 45 MDIO</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. PHY 驱动案例分析</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-realtek-rtl8211f--1g-phy-驱动分析">4.1 Realtek RTL8211F — 1G PHY 驱动分析</a></li>
+          <li><a href="#42-aquantia-aqr107--10g-phy-驱动分析">4.2 Aquantia AQR107 — 10G PHY 驱动分析</a></li>
+          <li><a href="#43-realtek-rtl822x-系列--25g-phy">4.3 Realtek RTL822x 系列 — 2.5G PHY</a></li>
+          <li><a href="#44-marvell-88x3310--10g-多速率-phy">4.4 Marvell 88X3310 — 10G 多速率 PHY</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. 1G Ethernet 通用寄存器详解</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-ieee-8023-clause-22-标准寄存器适用于所有兼容-phy">5.1 IEEE 802.3 Clause 22 标准寄存器（适用于所有兼容 PHY）</a></li>
+          <li><a href="#52-bmcr--基本模式控制寄存器-reg-0x00">5.2 BMCR — 基本模式控制寄存器 (Reg 0x00)</a></li>
+          <li><a href="#53-bmsr--基本模式状态寄存器-reg-0x01">5.3 BMSR — 基本模式状态寄存器 (Reg 0x01)</a></li>
+          <li><a href="#54-physid1physid2--phy-标识寄存器-reg-0x020x03">5.4 PHYSID1/PHYSID2 — PHY 标识寄存器 (Reg 0x02/0x03)</a></li>
+          <li><a href="#55-advertise--自协商通告寄存器-reg-0x04">5.5 ADVERTISE — 自协商通告寄存器 (Reg 0x04)</a></li>
+          <li><a href="#56-lpa--链路伙伴能力寄存器-reg-0x05">5.6 LPA — 链路伙伴能力寄存器 (Reg 0x05)</a></li>
+          <li><a href="#57-ctrl1000--1000base-t-控制寄存器-reg-0x09">5.7 CTRL1000 — 1000BASE-T 控制寄存器 (Reg 0x09)</a></li>
+          <li><a href="#58-stat1000--1000base-t-状态寄存器-reg-0x0a">5.8 STAT1000 — 1000BASE-T 状态寄存器 (Reg 0x0a)</a></li>
+          <li><a href="#59-mmd-间接访问寄存器-reg-0x0d0x0e">5.9 MMD 间接访问寄存器 (Reg 0x0d/0x0e)</a></li>
+          <li><a href="#510-sgmii-带内自协商寄存器">5.10 SGMII 带内自协商寄存器</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. PHY 硬件内部物理设计</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-1g-phy-内部架构以-rtl8211f-为例">6.1 1G PHY 内部架构（以 RTL8211F 为例）</a></li>
+          <li><a href="#62-各功能模块说明">6.2 各功能模块说明</a></li>
+          <li><a href="#63-10g-phy-内部架构差异">6.3 10G PHY 内部架构差异</a></li>
+          <li><a href="#64-phy-供电设计">6.4 PHY 供电设计</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. 面试常见问题与答案</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#q1-miirmiigmiirgmiisgmii-各有什么区别">Q1: MII、RMII、GMII、RGMII、SGMII 各有什么区别？</a></li>
+          <li><a href="#q2-rgmii-为什么需要延迟如何配置">Q2: RGMII 为什么需要延迟？如何配置？</a></li>
+          <li><a href="#q3-phy-的自协商过程是怎样的协商结果如何确定">Q3: PHY 的自协商过程是怎样的？协商结果如何确定？</a></li>
+          <li><a href="#q4-如何判断链路已经-up">Q4: 如何判断链路已经 UP？</a></li>
+          <li><a href="#q5-clause-22-和-clause-45-mdio-有什么区别">Q5: Clause 22 和 Clause 45 MDIO 有什么区别？</a></li>
+          <li><a href="#q6-什么是-mdio-总线一条总线能挂多少个-phy">Q6: 什么是 MDIO 总线？一条总线能挂多少个 PHY？</a></li>
+          <li><a href="#q7-phy-驱动的-probe-流程是怎样的">Q7: PHY 驱动的 probe 流程是怎样的？</a></li>
+          <li><a href="#q8-什么是-eeeenergy-efficient-ethernet">Q8: 什么是 EEE（Energy Efficient Ethernet）？</a></li>
+          <li><a href="#q9-phy-中断模式和轮询模式的区别">Q9: PHY 中断模式和轮询模式的区别？</a></li>
+          <li><a href="#q10-mac-和-phy-之间如何实现速率协商同步">Q10: MAC 和 PHY 之间如何实现速率协商同步？</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. QEMU 实践实验</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#实验环境准备">实验环境准备</a></li>
+          <li><a href="#实验-1探索虚拟网卡的-miiphy-寄存器">实验 1：探索虚拟网卡的 MII/PHY 寄存器</a></li>
+          <li><a href="#实验-2使用-ethtool-观察自协商过程">实验 2：使用 ethtool 观察自协商过程</a></li>
+          <li><a href="#实验-3mdio-总线和-phy-设备树探索">实验 3：MDIO 总线和 PHY 设备树探索</a></li>
+          <li><a href="#实验-4编写简单的-phy-寄存器读取内核模块">实验 4：编写简单的 PHY 寄存器读取内核模块</a></li>
+          <li><a href="#实验-5使用-qemu-tap-网络实现双机通信">实验 5：使用 QEMU TAP 网络实现双机通信</a></li>
+          <li><a href="#实验-6phy-状态机观察">实验 6：PHY 状态机观察</a></li>
+          <li><a href="#实验-7使用-devmem-直接访问-macphy-寄存器qemu-virt-平台">实验 7：使用 devmem 直接访问 MAC/PHY 寄存器（QEMU virt 平台）</a></li>
+          <li><a href="#实验-8编写简单的-mdio-用户空间访问程序">实验 8：编写简单的 MDIO 用户空间访问程序</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 附录</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#a-常用内核源码路径">A. 常用内核源码路径</a></li>
+          <li><a href="#b-设备树-phy-配置示例">B. 设备树 PHY 配置示例</a></li>
+          <li><a href="#c-参考文档">C. 参考文档</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -5006,6 +5155,131 @@ done
 <li>Linux 内核文档: <code>Documentation/networking/phy.rst</code></li>
 <li>Linux 内核文档: <code>Documentation/networking/phylink.rst</code></li>
 </ul>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

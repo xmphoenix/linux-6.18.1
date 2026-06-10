@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -212,312 +378,249 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#一句话先说清">一句话先说清</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#学习范围与边界">学习范围与边界</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#学习总图">学习总图</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#核心心智模型">核心心智模型</a></summary></p>
-
-<ul>
-<li><a href="#1-硬件翻译层">1. 硬件翻译层</a></li>
-<li><a href="#2-地址空间描述层">2. 地址空间描述层</a></li>
-<li><a href="#3-页表维护层">3. 页表维护层</a></li>
-<li><a href="#4-缺页与生命周期层">4. 缺页与生命周期层</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#arm64-虚拟内存必须先懂的硬件知识">ARM64 虚拟内存必须先懂的硬件知识</a></summary></p>
-
-<ul>
-<li><a href="#1-ttbr0_el1-和-ttbr1_el1">1. TTBR0_EL1 和 TTBR1_EL1</a></li>
-<li><a href="#2-tcr_el1">2. TCR_EL1</a></li>
-<li><a href="#3-mair_el1">3. MAIR_EL1</a></li>
-<li><a href="#4-页表级数">4. 页表级数</a></li>
-<li><a href="#5-data-abort--instruction-abort">5. Data Abort / Instruction Abort</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#linux-里的地址空间对象模型">Linux 里的地址空间对象模型</a></summary></p>
-
-<ul>
-<li><a href="#1-mm_struct一个进程的地址空间总控对象">1. mm_struct：一个进程的地址空间总控对象</a></li>
-<li><a href="#2-vm_area_struct一段属性一致的虚拟地址区间">2. vm_area_struct：一段属性一致的虚拟地址区间</a></li>
-<li><a href="#3-maple-tree当前-vma-主索引">3. Maple Tree：当前 VMA 主索引</a></li>
-<li><a href="#4-sharedrb-不是-vma-主树">4. <code>shared.rb</code> 不是 VMA 主树</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#arm64-用户虚拟地址空间怎么看">ARM64 用户虚拟地址空间怎么看</a></summary></p>
-
-<ul>
-<li><a href="#1-用户地址空间">1. 用户地址空间</a></li>
-<li><a href="#2-内核地址空间">2. 内核地址空间</a></li>
-<li><a href="#3-vmalloc虚拟连续但物理不一定连续">3. vmalloc：虚拟连续，但物理不一定连续</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#页表vm-的硬件落点">页表：VM 的硬件落点</a></summary></p>
-
-<ul>
-<li><a href="#1-页表不是策略本身">1. 页表不是策略本身</a></li>
-<li><a href="#2-用户页表最重要的几个对象">2. 用户页表最重要的几个对象</a></li>
-<li><a href="#3-页表项里你最该关心什么">3. 页表项里你最该关心什么</a></li>
-<li><a href="#4-arm64-常见-pte-关键位速查">4. ARM64 常见 PTE 关键位速查</a></li>
-<li><a href="#5-把这些位翻译成直观语义">5. 把这些位翻译成直观语义</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#malloc--kmalloc--mmap先分清谁在做决策"><code>malloc</code> / <code>kmalloc</code> / <code>mmap</code>：先分清谁在做决策</a></summary></p>
-
-<ul>
-<li><a href="#1-kmalloc内核小对象分配器">1. <code>kmalloc()</code>：内核小对象分配器</a></li>
-<li><a href="#2-用户态-malloc真正的策略层在-libc">2. 用户态 <code>malloc()</code>：真正的策略层在 libc</a></li>
-<li><a href="#3-brk扩展-heap-vma而不是新建一个独立-mmap-区">3. <code>brk()</code>：扩展 heap VMA，而不是新建一个独立 mmap 区</a></li>
-<li><a href="#4-mmap真正的建立用户映射主路径">4. <code>mmap()</code>：真正的“建立用户映射”主路径</a></li>
-<li><a href="#5-一张总图mallocbrkmmapkmallocvmalloc">5. 一张总图：<code>malloc</code>、<code>brk</code>、<code>mmap</code>、<code>kmalloc</code>、<code>vmalloc</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#虚拟内存抽象出来的重要数据结构">虚拟内存抽象出来的重要数据结构</a></summary></p>
-
-<ul>
-<li><a href="#1-一张总图这些结构到底怎么连">1. 一张总图：这些结构到底怎么连</a></li>
-<li><a href="#2-重要数据结构总表">2. 重要数据结构总表</a></li>
-<li><a href="#3-mm_struct进程用户地址空间的总控对象">3. <code>mm_struct</code>：进程用户地址空间的总控对象</a></li>
-<li><a href="#4-maple_tree-mm_mt当前-vma-的主索引">4. <code>maple_tree mm_mt</code>：当前 VMA 的主索引</a></li>
-<li><a href="#5-vm_area_struct一段属性一致的虚拟地址区间">5. <code>vm_area_struct</code>：一段属性一致的虚拟地址区间</a></li>
-<li><a href="#6-anon_vma-和-anon_vma_chain匿名页世界里的关系网络">6. <code>anon_vma</code> 和 <code>anon_vma_chain</code>：匿名页世界里的“关系网络”</a></li>
-<li><a href="#7-address_space文件页缓存和-file-backed-映射的总后端">7. <code>address_space</code>：文件页缓存和 file-backed 映射的总后端</a></li>
-<li><a href="#8-vm_operations_structvma-的行为多态接口">8. <code>vm_operations_struct</code>：VMA 的行为多态接口</a></li>
-<li><a href="#9-vm_fault一次缺页处理的现场包">9. <code>vm_fault</code>：一次缺页处理的现场包</a></li>
-<li><a href="#10-folio--struct-page最终承载内容的物理页抽象">10. <code>folio / struct page</code>：最终承载内容的物理页抽象</a></li>
-<li><a href="#11-arm64-视角还要多记一个mm_context_t">11. ARM64 视角还要多记一个：<code>mm_context_t</code></a></li>
-<li><a href="#12-内核-vmalloc-世界的对应结构vm_struct-和-vmap_area">12. 内核 vmalloc 世界的对应结构：<code>vm_struct</code> 和 <code>vmap_area</code></a></li>
-<li><a href="#13-一张关系总表谁描述策略谁描述后端谁描述现场">13. 一张关系总表：谁描述策略，谁描述后端，谁描述现场</a></li>
-<li><a href="#14-最后的总记忆法">14. 最后的总记忆法</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#这些关键结构在真实运行路径里如何协作">这些关键结构在真实运行路径里如何协作</a></summary></p>
-
-<ul>
-<li><a href="#1-匿名缺页mm_struct---vma---anon_vma---foliopage---pte">1. 匿名缺页：<code>mm_struct -> VMA -> anon_vma -> folio/page -> PTE</code></a></li>
-<li><a href="#2-文件缺页vma---vm_file---address_space---i_pages---foliopage">2. 文件缺页：<code>VMA -> vm_file -> address_space -> i_pages -> folio/page</code></a></li>
-<li><a href="#3-munmap先改地址空间形状再拆-pte-和页表再销毁-vma">3. <code>munmap()</code>：先改地址空间形状，再拆 PTE 和页表，再销毁 VMA</a></li>
-<li><a href="#4-fork-与-cow先共享页并写保护真正写入时再分裂">4. <code>fork()</code> 与 COW：先共享页并写保护，真正写入时再分裂</a></li>
-<li><a href="#5-把四条路径并排对比">5. 把四条路径并排对比</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#vma-管理mmap-这一层到底在干什么">VMA 管理：<code>mmap()</code> 这一层到底在干什么</a></summary></p>
-
-<ul>
-<li><a href="#1-mmap-不是直接分配物理页">1. <code>mmap()</code> 不是直接分配物理页</a></li>
-<li><a href="#2-你读-vma-管理代码要看什么">2. 你读 VMA 管理代码要看什么</a></li>
-<li><a href="#3-vma-相关系统调用的学习顺序">3. VMA 相关系统调用的学习顺序</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#arm64-缺页处理整条主线必须亲手走一遍">ARM64 缺页处理：整条主线必须亲手走一遍</a></summary></p>
-
-<ul>
-<li><a href="#1-先给结论">1. 先给结论</a></li>
-<li><a href="#2-arm64-入口">2. ARM64 入口</a></li>
-<li><a href="#3-查找-vma">3. 查找 VMA</a></li>
-<li><a href="#4-handle_mm_fault-的意义">4. <code>handle_mm_fault()</code> 的意义</a></li>
-<li><a href="#5-一次用户态匿名页缺页的真实调用链">5. 一次用户态匿名页缺页的真实调用链</a></li>
-<li><a href="#6-第一步arm64-捕获异常并进入-fault-路径">6. 第一步：ARM64 捕获异常并进入 fault 路径</a></li>
-<li><a href="#7-do_mem_abort-不是最终处理者而是总分发器">7. <code>do_mem_abort()</code> 不是最终处理者，而是总分发器</a></li>
-<li><a href="#8-do_page_fault-做的第一件大事不是分配页">8. <code>do_page_fault()</code> 做的第一件大事不是分配页</a></li>
-<li><a href="#9-第二步先找-vma再谈修-fault">9. 第二步：先找 VMA，再谈修 fault</a></li>
-<li><a href="#10-第三步进入通用-mm-层">10. 第三步：进入通用 MM 层</a></li>
-<li><a href="#11-第四步逐级走页表直到-pte-层">11. 第四步：逐级走页表，直到 PTE 层</a></li>
-<li><a href="#12-第五步为什么会走到-do_anonymous_page">12. 第五步：为什么会走到 <code>do_anonymous_page()</code></a></li>
-<li><a href="#13-第六步do_anonymous_page-到底干了什么">13. 第六步：<code>do_anonymous_page()</code> 到底干了什么</a></li>
-<li><a href="#12-第七步真正落地到页表的动作是什么">12. 第七步：真正落地到页表的动作是什么</a></li>
-<li><a href="#13-第八步为什么这条路径能帮助你理解整个-vm">13. 第八步：为什么这条路径能帮助你理解整个 VM</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#匿名页和文件页为什么一定要分开学">匿名页和文件页：为什么一定要分开学</a></summary></p>
-
-<ul>
-<li><a href="#1-匿名页">1. 匿名页</a></li>
-<li><a href="#2-文件页">2. 文件页</a></li>
-<li><a href="#3-你该看哪条文件缺页路径">3. 你该看哪条文件缺页路径</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#fork-和-cow虚拟内存为什么比复制页表复杂得多">fork 和 COW：虚拟内存为什么比“复制页表”复杂得多</a></summary></p>
-
-<ul>
-<li><a href="#1-fork-的关键不是立刻复制所有页">1. fork 的关键不是立刻复制所有页</a></li>
-<li><a href="#2-你学习-cow-必须同时看三层">2. 你学习 COW 必须同时看三层</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#mprotect--munmap--mremap映射关系怎么被改掉"><code>mprotect()</code> / <code>munmap()</code> / <code>mremap()</code>：映射关系怎么被改掉</a></summary></p>
-
-<ul>
-<li><a href="#1-mprotect">1. <code>mprotect()</code></a></li>
-<li><a href="#2-munmap">2. <code>munmap()</code></a></li>
-<li><a href="#3-mremap">3. <code>mremap()</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#asidtlbtlb-shootdown不懂这个就不算真的懂-arm64-vm">ASID、TLB、TLB shootdown：不懂这个就不算真的懂 ARM64 VM</a></summary></p>
-
-<ul>
-<li><a href="#1-为什么页表改了还不够">1. 为什么页表改了还不够</a></li>
-<li><a href="#2-asid-到底是什么为什么它能减少-flush">2. ASID 到底是什么，为什么它能减少 flush</a></li>
-<li><a href="#3-tlb-invalidation-在-arm64-上到底怎么分层">3. TLB invalidation 在 ARM64 上到底怎么分层</a></li>
-<li><a href="#4-tlb-shootdown-为什么麻烦">4. TLB shootdown 为什么麻烦</a></li>
-<li><a href="#5-把-asid-和-tlb-放在一起理解">5. 把 ASID 和 TLB 放在一起理解</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#与-arm64-vm-强相关的内核地址空间主题">与 ARM64 VM 强相关的内核地址空间主题</a></summary></p>
-
-<ul>
-<li><a href="#1-linear-map">1. linear map</a></li>
-<li><a href="#2-kernel-image-mapping">2. kernel image mapping</a></li>
-<li><a href="#3-vmalloc">3. vmalloc</a></li>
-<li><a href="#4-fixmap">4. fixmap</a></li>
-<li><a href="#5-vmemmap">5. vmemmap</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#学-linux-arm64-vm-时必须会读的源码文件">学 Linux ARM64 VM 时必须会读的源码文件</a></summary></p>
-
-<ul>
-<li><a href="#第一批对象定义">第一批：对象定义</a></li>
-<li><a href="#第二批arm64-fault-入口">第二批：ARM64 fault 入口</a></li>
-<li><a href="#第三批vma-管理">第三批：VMA 管理</a></li>
-<li><a href="#第四批通用缺页与页表修改">第四批：通用缺页与页表修改</a></li>
-<li><a href="#第五批文件映射与反向映射">第五批：文件映射与反向映射</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#推荐学习顺序">推荐学习顺序</a></summary></p>
-
-<ul>
-<li><a href="#第-1-阶段建立骨架">第 1 阶段：建立骨架</a></li>
-<li><a href="#第-2-阶段跑通一次真实-fault">第 2 阶段：跑通一次真实 fault</a></li>
-<li><a href="#第-3-阶段学地址空间修改">第 3 阶段：学地址空间修改</a></li>
-<li><a href="#第-4-阶段补匿名页文件页cow">第 4 阶段：补匿名页、文件页、COW</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#最容易踩的坑">最容易踩的坑</a></summary></p>
-
-<ul>
-<li><a href="#1-把-vma页表物理页混成一层">1. 把 VMA、页表、物理页混成一层</a></li>
-<li><a href="#2-只读-x86-资料不补-arm64-fault-入口">2. 只读 x86 资料，不补 ARM64 fault 入口</a></li>
-<li><a href="#3-只学-handle_mm_fault不学-mmapmunmap">3. 只学 <code>handle_mm_fault()</code>，不学 <code>mmap()</code>/<code>munmap()</code></a></li>
-<li><a href="#4-看到-rb_node-就以为-vma-还没换-maple-tree">4. 看到 <code>rb_node</code> 就以为 VMA 还没换 Maple Tree</a></li>
-<li><a href="#5-只背宏不结合具体-fault-路径">5. 只背宏，不结合具体 fault 路径</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#面向当前工作区的练习建议">面向当前工作区的练习建议</a></summary></p>
-
-<ul>
-<li><a href="#练习-1画一次匿名页读-fault-调用链">练习 1：画一次匿名页读 fault 调用链</a></li>
-<li><a href="#练习-2对比匿名写-fault-和-cow-fault">练习 2：对比匿名写 fault 和 COW fault</a></li>
-<li><a href="#练习-3对比-mmap-后未访问-与-已访问-的区别">练习 3：对比 <code>mmap</code> 后未访问 与 已访问 的区别</a></li>
-<li><a href="#练习-4追踪-munmap-的页表拆除与-tlb-flush">练习 4：追踪 <code>munmap</code> 的页表拆除与 TLB flush</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#你学会-arm64-vm-之后应该能回答的问题">你学会 ARM64 VM 之后，应该能回答的问题</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#最后的学习建议">最后的学习建议</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#进阶专题缺页之外的-vm-子系统全景">进阶专题：缺页之外的 VM 子系统全景</a></summary></p>
-
-<ul>
-<li><a href="#1-匿名页面">1. 匿名页面</a></li>
-<li><a href="#2-page-cache-和文件页">2. Page Cache 和文件页</a></li>
-<li><a href="#3-页面回收">3. 页面回收</a></li>
-<li><a href="#4-slab--slub-与-vm-的关系">4. SLAB / SLUB 与 VM 的关系</a></li>
-<li><a href="#5-反向映射-rmap">5. 反向映射 rmap</a></li>
-<li><a href="#6-ksm">6. KSM</a></li>
-<li><a href="#7-huge-page--thp--hugetlb">7. Huge Page / THP / HugeTLB</a></li>
-<li><a href="#8-页迁移">8. 页迁移</a></li>
-<li><a href="#9-内存规整-compaction">9. 内存规整 compaction</a></li>
-<li><a href="#10-oom">10. OOM</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#vmbuddy-页面分配器页表管理之间的联系">VM、buddy 页面分配器、页表管理之间的联系</a></summary></p>
-
-<ul>
-<li><a href="#1-vm-和-buddy-页面分配器的联系">1. VM 和 buddy 页面分配器的联系</a></li>
-<li><a href="#2-vm-和内核页表管理的联系">2. VM 和内核页表管理的联系</a></li>
-<li><a href="#3-把三者连成一条完整主线">3. 把三者连成一条完整主线</a></li>
-</ul>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 一句话先说清</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 学习范围与边界</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 学习总图</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 核心心智模型</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-硬件翻译层">1. 硬件翻译层</a></li>
+          <li><a href="#2-地址空间描述层">2. 地址空间描述层</a></li>
+          <li><a href="#3-页表维护层">3. 页表维护层</a></li>
+          <li><a href="#4-缺页与生命周期层">4. 缺页与生命周期层</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> ARM64 虚拟内存必须先懂的硬件知识</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-ttbr0_el1-和-ttbr1_el1">1. TTBR0_EL1 和 TTBR1_EL1</a></li>
+          <li><a href="#2-tcr_el1">2. TCR_EL1</a></li>
+          <li><a href="#3-mair_el1">3. MAIR_EL1</a></li>
+          <li><a href="#4-页表级数">4. 页表级数</a></li>
+          <li><a href="#5-data-abort--instruction-abort">5. Data Abort / Instruction Abort</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> Linux 里的地址空间对象模型</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-mm_struct一个进程的地址空间总控对象">1. mm_struct：一个进程的地址空间总控对象</a></li>
+          <li><a href="#2-vm_area_struct一段属性一致的虚拟地址区间">2. vm_area_struct：一段属性一致的虚拟地址区间</a></li>
+          <li><a href="#3-maple-tree当前-vma-主索引">3. Maple Tree：当前 VMA 主索引</a></li>
+          <li><a href="#4-sharedrb-不是-vma-主树">4. shared.rb 不是 VMA 主树</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> ARM64 用户虚拟地址空间怎么看</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-用户地址空间">1. 用户地址空间</a></li>
+          <li><a href="#2-内核地址空间">2. 内核地址空间</a></li>
+          <li><a href="#3-vmalloc虚拟连续但物理不一定连续">3. vmalloc：虚拟连续，但物理不一定连续</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 页表：VM 的硬件落点</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-页表不是策略本身">1. 页表不是策略本身</a></li>
+          <li><a href="#2-用户页表最重要的几个对象">2. 用户页表最重要的几个对象</a></li>
+          <li><a href="#3-页表项里你最该关心什么">3. 页表项里你最该关心什么</a></li>
+          <li><a href="#4-arm64-常见-pte-关键位速查">4. ARM64 常见 PTE 关键位速查</a></li>
+          <li><a href="#5-把这些位翻译成直观语义">5. 把这些位翻译成直观语义</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> malloc / kmalloc / mmap：先分清谁在做决策</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-kmalloc内核小对象分配器">1. kmalloc()：内核小对象分配器</a></li>
+          <li><a href="#2-用户态-malloc真正的策略层在-libc">2. 用户态 malloc()：真正的策略层在 libc</a></li>
+          <li><a href="#3-brk扩展-heap-vma而不是新建一个独立-mmap-区">3. brk()：扩展 heap VMA，而不是新建一个独立 mmap 区</a></li>
+          <li><a href="#4-mmap真正的建立用户映射主路径">4. mmap()：真正的“建立用户映射”主路径</a></li>
+          <li><a href="#5-一张总图mallocbrkmmapkmallocvmalloc">5. 一张总图：malloc、brk、mmap、kmalloc、vmalloc</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 虚拟内存抽象出来的重要数据结构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-一张总图这些结构到底怎么连">1. 一张总图：这些结构到底怎么连</a></li>
+          <li><a href="#2-重要数据结构总表">2. 重要数据结构总表</a></li>
+          <li><a href="#3-mm_struct进程用户地址空间的总控对象">3. mm_struct：进程用户地址空间的总控对象</a></li>
+          <li><a href="#4-maple_tree-mm_mt当前-vma-的主索引">4. maple_tree mm_mt：当前 VMA 的主索引</a></li>
+          <li><a href="#5-vm_area_struct一段属性一致的虚拟地址区间">5. vm_area_struct：一段属性一致的虚拟地址区间</a></li>
+          <li><a href="#6-anon_vma-和-anon_vma_chain匿名页世界里的关系网络">6. anon_vma 和 anon_vma_chain：匿名页世界里的“关系网络”</a></li>
+          <li><a href="#7-address_space文件页缓存和-file-backed-映射的总后端">7. address_space：文件页缓存和 file-backed 映射的总后端</a></li>
+          <li><a href="#8-vm_operations_structvma-的行为多态接口">8. vm_operations_struct：VMA 的行为多态接口</a></li>
+          <li><a href="#9-vm_fault一次缺页处理的现场包">9. vm_fault：一次缺页处理的现场包</a></li>
+          <li><a href="#10-folio--struct-page最终承载内容的物理页抽象">10. folio / struct page：最终承载内容的物理页抽象</a></li>
+          <li><a href="#11-arm64-视角还要多记一个mm_context_t">11. ARM64 视角还要多记一个：mm_context_t</a></li>
+          <li><a href="#12-内核-vmalloc-世界的对应结构vm_struct-和-vmap_area">12. 内核 vmalloc 世界的对应结构：vm_struct 和 vmap_area</a></li>
+          <li><a href="#13-一张关系总表谁描述策略谁描述后端谁描述现场">13. 一张关系总表：谁描述策略，谁描述后端，谁描述现场</a></li>
+          <li><a href="#14-最后的总记忆法">14. 最后的总记忆法</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 这些关键结构在真实运行路径里如何协作</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-匿名缺页mm_struct---vma---anon_vma---foliopage---pte">1. 匿名缺页：mm_struct -> VMA -> anon_vma -> folio/page -> PTE</a></li>
+          <li><a href="#2-文件缺页vma---vm_file---address_space---i_pages---foliopage">2. 文件缺页：VMA -> vm_file -> address_space -> i_pages -> folio/page</a></li>
+          <li><a href="#3-munmap先改地址空间形状再拆-pte-和页表再销毁-vma">3. munmap()：先改地址空间形状，再拆 PTE 和页表，再销毁 VMA</a></li>
+          <li><a href="#4-fork-与-cow先共享页并写保护真正写入时再分裂">4. fork() 与 COW：先共享页并写保护，真正写入时再分裂</a></li>
+          <li><a href="#5-把四条路径并排对比">5. 把四条路径并排对比</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> VMA 管理：mmap() 这一层到底在干什么</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-mmap-不是直接分配物理页">1. mmap() 不是直接分配物理页</a></li>
+          <li><a href="#2-你读-vma-管理代码要看什么">2. 你读 VMA 管理代码要看什么</a></li>
+          <li><a href="#3-vma-相关系统调用的学习顺序">3. VMA 相关系统调用的学习顺序</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> ARM64 缺页处理：整条主线必须亲手走一遍</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-先给结论">1. 先给结论</a></li>
+          <li><a href="#2-arm64-入口">2. ARM64 入口</a></li>
+          <li><a href="#3-查找-vma">3. 查找 VMA</a></li>
+          <li><a href="#4-handle_mm_fault-的意义">4. handle_mm_fault() 的意义</a></li>
+          <li><a href="#5-一次用户态匿名页缺页的真实调用链">5. 一次用户态匿名页缺页的真实调用链</a></li>
+          <li><a href="#6-第一步arm64-捕获异常并进入-fault-路径">6. 第一步：ARM64 捕获异常并进入 fault 路径</a></li>
+          <li><a href="#7-do_mem_abort-不是最终处理者而是总分发器">7. do_mem_abort() 不是最终处理者，而是总分发器</a></li>
+          <li><a href="#8-do_page_fault-做的第一件大事不是分配页">8. do_page_fault() 做的第一件大事不是分配页</a></li>
+          <li><a href="#9-第二步先找-vma再谈修-fault">9. 第二步：先找 VMA，再谈修 fault</a></li>
+          <li><a href="#10-第三步进入通用-mm-层">10. 第三步：进入通用 MM 层</a></li>
+          <li><a href="#11-第四步逐级走页表直到-pte-层">11. 第四步：逐级走页表，直到 PTE 层</a></li>
+          <li><a href="#12-第五步为什么会走到-do_anonymous_page">12. 第五步：为什么会走到 do_anonymous_page()</a></li>
+          <li><a href="#13-第六步do_anonymous_page-到底干了什么">13. 第六步：do_anonymous_page() 到底干了什么</a></li>
+          <li><a href="#12-第七步真正落地到页表的动作是什么">12. 第七步：真正落地到页表的动作是什么</a></li>
+          <li><a href="#13-第八步为什么这条路径能帮助你理解整个-vm">13. 第八步：为什么这条路径能帮助你理解整个 VM</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 匿名页和文件页：为什么一定要分开学</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-匿名页">1. 匿名页</a></li>
+          <li><a href="#2-文件页">2. 文件页</a></li>
+          <li><a href="#3-你该看哪条文件缺页路径">3. 你该看哪条文件缺页路径</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> fork 和 COW：虚拟内存为什么比“复制页表”复杂得多</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-fork-的关键不是立刻复制所有页">1. fork 的关键不是立刻复制所有页</a></li>
+          <li><a href="#2-你学习-cow-必须同时看三层">2. 你学习 COW 必须同时看三层</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> mprotect() / munmap() / mremap()：映射关系怎么被改掉</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-mprotect">1. mprotect()</a></li>
+          <li><a href="#2-munmap">2. munmap()</a></li>
+          <li><a href="#3-mremap">3. mremap()</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> ASID、TLB、TLB shootdown：不懂这个就不算真的懂 ARM64 VM</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-为什么页表改了还不够">1. 为什么页表改了还不够</a></li>
+          <li><a href="#2-asid-到底是什么为什么它能减少-flush">2. ASID 到底是什么，为什么它能减少 flush</a></li>
+          <li><a href="#3-tlb-invalidation-在-arm64-上到底怎么分层">3. TLB invalidation 在 ARM64 上到底怎么分层</a></li>
+          <li><a href="#4-tlb-shootdown-为什么麻烦">4. TLB shootdown 为什么麻烦</a></li>
+          <li><a href="#5-把-asid-和-tlb-放在一起理解">5. 把 ASID 和 TLB 放在一起理解</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 与 ARM64 VM 强相关的内核地址空间主题</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-linear-map">1. linear map</a></li>
+          <li><a href="#2-kernel-image-mapping">2. kernel image mapping</a></li>
+          <li><a href="#3-vmalloc">3. vmalloc</a></li>
+          <li><a href="#4-fixmap">4. fixmap</a></li>
+          <li><a href="#5-vmemmap">5. vmemmap</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 学 Linux ARM64 VM 时必须会读的源码文件</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#第一批对象定义">第一批：对象定义</a></li>
+          <li><a href="#第二批arm64-fault-入口">第二批：ARM64 fault 入口</a></li>
+          <li><a href="#第三批vma-管理">第三批：VMA 管理</a></li>
+          <li><a href="#第四批通用缺页与页表修改">第四批：通用缺页与页表修改</a></li>
+          <li><a href="#第五批文件映射与反向映射">第五批：文件映射与反向映射</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 推荐学习顺序</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#第-1-阶段建立骨架">第 1 阶段：建立骨架</a></li>
+          <li><a href="#第-2-阶段跑通一次真实-fault">第 2 阶段：跑通一次真实 fault</a></li>
+          <li><a href="#第-3-阶段学地址空间修改">第 3 阶段：学地址空间修改</a></li>
+          <li><a href="#第-4-阶段补匿名页文件页cow">第 4 阶段：补匿名页、文件页、COW</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 最容易踩的坑</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-把-vma页表物理页混成一层">1. 把 VMA、页表、物理页混成一层</a></li>
+          <li><a href="#2-只读-x86-资料不补-arm64-fault-入口">2. 只读 x86 资料，不补 ARM64 fault 入口</a></li>
+          <li><a href="#3-只学-handle_mm_fault不学-mmapmunmap">3. 只学 handle_mm_fault()，不学 mmap()/munmap()</a></li>
+          <li><a href="#4-看到-rb_node-就以为-vma-还没换-maple-tree">4. 看到 rb_node 就以为 VMA 还没换 Maple Tree</a></li>
+          <li><a href="#5-只背宏不结合具体-fault-路径">5. 只背宏，不结合具体 fault 路径</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 面向当前工作区的练习建议</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#练习-1画一次匿名页读-fault-调用链">练习 1：画一次匿名页读 fault 调用链</a></li>
+          <li><a href="#练习-2对比匿名写-fault-和-cow-fault">练习 2：对比匿名写 fault 和 COW fault</a></li>
+          <li><a href="#练习-3对比-mmap-后未访问-与-已访问-的区别">练习 3：对比 mmap 后未访问 与 已访问 的区别</a></li>
+          <li><a href="#练习-4追踪-munmap-的页表拆除与-tlb-flush">练习 4：追踪 munmap 的页表拆除与 TLB flush</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 你学会 ARM64 VM 之后，应该能回答的问题</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 最后的学习建议</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 进阶专题：缺页之外的 VM 子系统全景</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-匿名页面">1. 匿名页面</a></li>
+          <li><a href="#2-page-cache-和文件页">2. Page Cache 和文件页</a></li>
+          <li><a href="#3-页面回收">3. 页面回收</a></li>
+          <li><a href="#4-slab--slub-与-vm-的关系">4. SLAB / SLUB 与 VM 的关系</a></li>
+          <li><a href="#5-反向映射-rmap">5. 反向映射 rmap</a></li>
+          <li><a href="#6-ksm">6. KSM</a></li>
+          <li><a href="#7-huge-page--thp--hugetlb">7. Huge Page / THP / HugeTLB</a></li>
+          <li><a href="#8-页迁移">8. 页迁移</a></li>
+          <li><a href="#9-内存规整-compaction">9. 内存规整 compaction</a></li>
+          <li><a href="#10-oom">10. OOM</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> VM、buddy 页面分配器、页表管理之间的联系</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-vm-和-buddy-页面分配器的联系">1. VM 和 buddy 页面分配器的联系</a></li>
+          <li><a href="#2-vm-和内核页表管理的联系">2. VM 和内核页表管理的联系</a></li>
+          <li><a href="#3-把三者连成一条完整主线">3. 把三者连成一条完整主线</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -6949,6 +7052,131 @@ __tlbi(vale1is, addr);</code></pre>
 -&gt; reclaim / rmap / migration / compaction / OOM 在压力下反向调整这套状态</code></pre>
 
 <p>只要这条线不乱，你再去看匿名页、page cache、reclaim、KSM、Huge Page、migration、compaction、OOM，就不会把它们看成彼此孤立的模块。</p>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

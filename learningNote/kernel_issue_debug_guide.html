@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -209,813 +375,74 @@ hr {
 <blockquote>基于 Linux 6.18.1 内核源码分析，聚焦 ARM64 平台的 RCU、Watchdog、DeadLock、MemoryLeak、MemoryOverwritten 和 KASAN 子系统原理与问题定位技术。<br>
 源码路径：<code>kernel/rcu/</code>、<code>kernel/watchdog.c</code>、<code>kernel/hung_task.c</code>、<code>kernel/locking/lockdep.c</code>、<code>mm/kmemleak.c</code>、<code>mm/kasan/</code>、<code>arch/arm64/mm/kasan_init.c</code></blockquote>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><b>1. RCU 原理和问题定位</b></summary></p>
-
-<ul>
-<li><a href="#rcu-实现原理">RCU 实现原理</a></li>
-<li><a href="#quiescent-state静默状态深入解析">Quiescent State（静默状态）深入解析</a></li>
-<li>1.1 <a href="#11-rcu-软件架构">RCU 软件架构</a></li>
-<li>1.1.1 <a href="#111-层级树结构">层级树结构</a></li>
-<li>1.1.2 <a href="#112-grace-period-状态机">Grace Period 状态机</a></li>
-<li>1.1.3 <a href="#113-quiescent-state-上报机制">Quiescent State 上报机制</a></li>
-<li>1.1.4 <a href="#114-callback-分段处理流水线">Callback 分段处理流水线</a></li>
-<li>1.1.5 <a href="#115-force-quiescent-state-扫描">Force-Quiescent-State 扫描</a></li>
-<li>1.1.6 <a href="#116-nocb-回调卸载架构">NOCB 回调卸载架构</a></li>
-<li>1.2 <a href="#12-rcu-关键数据结构">RCU 关键数据结构</a></li>
-<li>1.2.1 <a href="#121-struct-rcu_state--全局-rcu-状态">struct rcu_state — 全局 RCU 状态</a></li>
-<li>1.2.2 <a href="#122-struct-rcu_node--层级树节点">struct rcu_node — 层级树节点</a></li>
-<li>1.2.3 <a href="#123-struct-rcu_data--per-cpu-rcu-数据">struct rcu_data — Per-CPU RCU 数据</a></li>
-<li>1.2.4 <a href="#124-struct-rcu_segcblist--分段回调链表">struct rcu_segcblist — 分段回调链表</a></li>
-<li>1.2.5 <a href="#125-struct-rcu_snap_record--stall-诊断快照">struct rcu_snap_record — Stall 诊断快照</a></li>
-<li>1.3 <a href="#13-rcu-告警-debug-需要-enable-的内核开关">RCU 告警 Debug 需要 Enable 的内核开关</a></li>
-<li>1.3.1 <a href="#131-基础-rcu-配置开关">基础 RCU 配置开关</a></li>
-<li>1.3.2 <a href="#132-stall-检测配置开关">Stall 检测配置开关</a></li>
-<li>1.3.3 <a href="#133-debug-与-tracing-配置开关">Debug 与 Tracing 配置开关</a></li>
-<li>1.3.4 <a href="#134-运行时-sysctl-调优参数">运行时 sysctl 调优参数</a></li>
-<li>1.3.5 <a href="#135-boot-参数">Boot 参数</a></li>
-<li>1.3.6 <a href="#136-推荐-debug-配置组合">推荐 Debug 配置组合</a></li>
-<li>1.4 <a href="#14-rcu-告警案例分析和-log-解读">RCU 告警案例分析和 Log 解读</a></li>
-<li>1.4.1 <a href="#141-rcu-cpu-stall-告警格式全解析">RCU CPU Stall 告警格式全解析</a></li>
-<li>1.4.2 <a href="#142-案例一单核长时间关中断导致-rcu-stall">案例一：单核长时间关中断导致 RCU Stall</a></li>
-<li>1.4.3 <a href="#143-案例二preempt_rcu-下读侧临界区阻塞-gp">案例二：PREEMPT_RCU 下读侧临界区阻塞 GP</a></li>
-<li>1.4.4 <a href="#144-案例三gp-kthread-饥饿">案例三：GP kthread 饥饿</a></li>
-<li>1.4.5 <a href="#145-案例四fqs-timer-丢失唤醒">案例四：FQS Timer 丢失唤醒</a></li>
-<li>1.4.6 <a href="#146-stall-检测时序与误报排除">Stall 检测时序与误报排除</a></li>
-<li>1.5 <a href="#15-rcu-核心算法总结">RCU 核心算法总结</a></li>
-<li>1.5.1 <a href="#151-gp-序列号编码算法">GP 序列号编码算法</a></li>
-<li>1.5.2 <a href="#152-漏斗锁算法funnel-locking">漏斗锁算法（Funnel Locking）</a></li>
-<li>1.5.3 <a href="#153-qs-位图逐层上报算法">QS 位图逐层上报算法</a></li>
-<li>1.5.4 <a href="#154-callback-分段流水线算法">Callback 分段流水线算法</a></li>
-<li>1.5.5 <a href="#155-force-quiescent-state-两阶段扫描算法">Force-Quiescent-State 两阶段扫描算法</a></li>
-<li>1.5.6 <a href="#156-stall-检测-5-重屏障验证算法">Stall 检测 5 重屏障验证算法</a></li>
-<li>1.5.7 <a href="#157-gp-kthread-主循环状态机算法">GP kthread 主循环状态机算法</a></li>
-<li>1.5.8 <a href="#158-广度优先树遍历算法">广度优先树遍历算法</a></li>
-<li>1.5.9 <a href="#159-expedited-gp-算法">Expedited GP 算法</a></li>
-<li>1.5.10 <a href="#1510-<strong>note_gp_changes-本地-gp-同步算法"></strong>note_gp_changes 本地 GP 同步算法</a></li>
-<li>1.6 <a href="#16-rcu-面试经典问题问答">RCU 面试经典问题问答</a></li>
-<li>1.7 <a href="#17-rcu-各种读写场景处理流程">RCU 各种读写场景处理流程</a></li>
-<li>1.7.1 <a href="#171-场景一单指针替换最基本模式">场景一：单指针替换（最基本模式）</a></li>
-<li>1.7.2 <a href="#172-场景二rcu-链表--增删改查全流程">场景二：RCU 链表 — 增删改查全流程</a></li>
-<li>1.7.3 <a href="#173-场景三rcu-哈希表--hlist-操作">场景三：RCU 哈希表 — hlist 操作</a></li>
-<li>1.7.4 <a href="#174-场景四rcu--引用计数最安全模式">场景四：RCU + 引用计数（最安全模式）</a></li>
-<li>1.7.5 <a href="#175-场景五三种回收方式对比与选择">场景五：三种回收方式对比与选择</a></li>
-<li>1.7.6 <a href="#176-场景六srcu--可睡眠的-rcu-读侧">场景六：SRCU — 可睡眠的 RCU 读侧</a></li>
-<li>1.7.7 <a href="#177-场景七rcu-保护的数组指针数组">场景七：RCU 保护的数组/指针数组</a></li>
-<li>1.7.8 <a href="#178-场景八延迟执行--get_state_synchronize_rcu--cond_synchronize_rcu">场景八：延迟执行 — get_state + cond_synchronize</a></li>
-<li>1.7.9 <a href="#179-场景九批量操作--rcu_barrier">场景九：批量操作 — rcu_barrier</a></li>
-<li>1.7.10 <a href="#1710-各场景-api-速查表">各场景 API 速查表</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>2. Watchdog 原理和问题定位</b></summary></p>
-
-<ul>
-<li>2.1 <a href="#21-watchdog-软件架构">Watchdog 软件架构</a></li>
-<li>2.1.1 <a href="#211-三层锁检测框架总览">三层锁检测框架总览</a></li>
-<li>2.1.2 <a href="#212-各检测器原理">各检测器原理</a></li>
-<li>2.1.2.1 <a href="#2121-soft-lockup-检测器">Soft Lockup 检测器</a></li>
-<li>2.1.2.2 <a href="#2122-hard-lockup-检测器perf-方案">Hard Lockup 检测器（Perf 方案）</a></li>
-<li>2.1.2.3 <a href="#2123-hard-lockup-检测器buddy-方案">Hard Lockup 检测器（Buddy 方案）</a></li>
-<li>2.1.2.4 <a href="#2124-hung-task-检测器">Hung Task 检测器</a></li>
-<li>2.2 <a href="#22-arm64-平台特性">ARM64 平台特性</a></li>
-<li>2.3 <a href="#23-关键数据结构">关键数据结构</a></li>
-<li>2.4 <a href="#24-内核配置与调优参数">内核配置与调优参数</a></li>
-<li>2.5 <a href="#25-watchdog-告警-log-解读">Watchdog 告警 Log 解读</a></li>
-<li>2.6 <a href="#26-watchdog-核心算法总结">Watchdog 核心算法总结</a></li>
-<li>2.6.1 <a href="#261-采样周期推导算法">采样周期推导算法</a></li>
-<li>2.6.2 <a href="#262-soft-lockup-三阶段渐进检测算法">Soft Lockup 三阶段渐进检测算法</a></li>
-<li>2.6.3 <a href="#263-cpu-利用率环形缓冲区算法">CPU 利用率环形缓冲区算法</a></li>
-<li>2.6.4 <a href="#264-中断风暴-top-n-插入排序算法">中断风暴 Top-N 插入排序算法</a></li>
-<li>2.6.5 <a href="#265-hard-lockup-计数器比较算法">Hard Lockup 计数器比较算法</a></li>
-<li>2.6.6 <a href="#266-buddy-环形互检算法">Buddy 环形互检算法</a></li>
-<li>2.6.7 <a href="#267-perf-nmi-去抖算法">Perf NMI 去抖算法</a></li>
-<li>2.6.8 <a href="#268-hung-task-rcu-分批扫描算法">Hung Task RCU 分批扫描算法</a></li>
-<li>2.6.9 <a href="#269-hung-task-四阶段状态判定算法">Hung Task 四阶段状态判定算法</a></li>
-<li>2.6.10 <a href="#2610-blocker-检测算法">Blocker 检测算法</a></li>
-<li>2.6.11 <a href="#2611-completion-同步喂狗算法">Completion 同步喂狗算法</a></li>
-<li>2.7 <a href="#27-watchdog-面试经典问题问答">Watchdog 面试经典问题问答</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>3. DeadLock 原理和问题定位</b></summary></p>
-
-<ul>
-<li>3.1 <a href="#31-deadlock-检测机制与使用原理">DeadLock 检测机制与使用原理</a></li>
-<li>3.1.1 <a href="#311-死锁的基本概念与四个必要条件">死锁的基本概念与四个必要条件</a></li>
-<li>3.1.2 <a href="#312-lockdep-验证器总体设计思想">Lockdep 验证器总体设计思想</a></li>
-<li>3.1.3 <a href="#313-lock-class-与-lock-instance-的关系">Lock Class 与 Lock Instance 的关系</a></li>
-<li>3.1.4 <a href="#314-lockdep-检测的三类死锁场景">Lockdep 检测的三类死锁场景</a></li>
-<li>3.1.5 <a href="#315-依赖图的强路径规则">依赖图的强路径规则</a></li>
-<li>3.1.6 <a href="#316-bfs-环路检测算法">BFS 环路检测算法</a></li>
-<li>3.1.7 <a href="#317-irq-安全性检查">IRQ 安全性检查</a></li>
-<li>3.1.8 <a href="#318-内核配置与使用方法">内核配置与使用方法</a></li>
-<li>3.2 <a href="#32-deadlock-软件架构">DeadLock 软件架构</a></li>
-<li>3.2.1 <a href="#321-lockdep-架构总览">Lockdep 架构总览</a></li>
-<li>3.2.2 <a href="#322-锁获取核心路径">锁获取核心路径</a></li>
-<li>3.2.3 <a href="#323-依赖图构建与验证">依赖图构建与验证</a></li>
-<li>3.2.4 <a href="#324-缓存加速机制">缓存加速机制</a></li>
-<li>3.2.5 <a href="#325-proc-接口">/proc 接口</a></li>
-<li>3.3 <a href="#33-deadlock-关键数据结构">DeadLock 关键数据结构</a></li>
-<li>3.3.1 <a href="#331-struct-lock_class--锁类">struct lock_class — 锁类</a></li>
-<li>3.3.2 <a href="#332-struct-lockdep_map--锁实例映射">struct lockdep_map — 锁实例映射</a></li>
-<li>3.3.3 <a href="#333-struct-held_lock--持有锁记录">struct held_lock — 持有锁记录</a></li>
-<li>3.3.4 <a href="#334-struct-lock_list--依赖图边">struct lock_list — 依赖图边</a></li>
-<li>3.3.5 <a href="#335-struct-lock_chain--锁链缓存">struct lock_chain — 锁链缓存</a></li>
-<li>3.3.6 <a href="#336-struct-lock_class_key--锁类键">struct lock_class_key — 锁类键</a></li>
-<li>3.3.7 <a href="#337-数据结构关系总览">数据结构关系总览</a></li>
-<li>3.4 <a href="#34-deadlock-核心算法总结">DeadLock 核心算法总结</a></li>
-<li>3.4.1 <a href="#341-lock-class-注册与哈希查找算法">Lock Class 注册与哈希查找算法</a></li>
-<li>3.4.2 <a href="#342-chain-key-jenkins-滚动哈希算法">Chain Key Jenkins 滚动哈希算法</a></li>
-<li>3.4.3 <a href="#343-bfs-环路检测算法">BFS 环路检测算法</a></li>
-<li>3.4.4 <a href="#344-强路径依赖过滤算法">强路径依赖过滤算法</a></li>
-<li>3.4.5 <a href="#345-irq-安全性四步验证算法">IRQ 安全性四步验证算法</a></li>
-<li>3.4.6 <a href="#346-chain-cache-查找与缓存算法">Chain Cache 查找与缓存算法</a></li>
-<li>3.4.7 <a href="#347-冗余依赖消除算法">冗余依赖消除算法</a></li>
-<li>3.4.8 <a href="#348-usage-mask-标记与-irq-状态追踪算法">Usage Mask 标记与 IRQ 状态追踪算法</a></li>
-<li>3.4.9 <a href="#349-dep_gen_id-去重标记算法">dep_gen_id 去重标记算法</a></li>
-<li>3.4.10 <a href="#3410-全局-graph-lock-与递归防护算法">全局 Graph Lock 与递归防护算法</a></li>
-<li>3.5 <a href="#35-deadlock-经典案例与-log-解读">DeadLock 经典案例与 Log 解读</a></li>
-<li>3.5.1 <a href="#351-case-1aa-递归死锁--同一锁重复获取">Case 1：AA 递归死锁</a></li>
-<li>3.5.2 <a href="#352-case-2abba-锁序反转死锁">Case 2：ABBA 锁序反转死锁</a></li>
-<li>3.5.3 <a href="#353-case-3abcda-多锁环路死锁">Case 3：ABCDA 多锁环路死锁</a></li>
-<li>3.5.4 <a href="#354-case-4irq-安全性违规死锁">Case 4：IRQ 安全性违规死锁</a></li>
-<li>3.5.5 <a href="#355-case-5读写锁不安全升级死锁">Case 5：读写锁不安全升级死锁</a></li>
-<li>3.5.6 <a href="#356-case-6锁状态不一致--usage-冲突">Case 6：锁状态不一致</a></li>
-<li>3.5.7 <a href="#357-通用定位方法论">通用定位方法论</a></li>
-<li>3.6 <a href="#36-deadlock-面试经典问题问答">DeadLock 面试经典问题问答</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>4. MemoryLeak 原理和问题定位</b></summary></p>
-
-<ul>
-<li>4.1 <a href="#41-内核内存泄漏检测机制总结">内核内存泄漏检测机制总结</a></li>
-<li>4.1.1 <a href="#411-检测机制全景对比">检测机制全景对比</a></li>
-<li>4.1.2 <a href="#412-kmemleak--核心泄漏检测器">kmemleak — 核心泄漏检测器</a></li>
-<li>4.1.3 <a href="#413-kasan--地址消毒剂">KASAN — 地址消毒剂</a></li>
-<li>4.1.4 <a href="#414-kfence--低开销采样检测">KFENCE — 低开销采样检测</a></li>
-<li>4.1.5 <a href="#415-page_owner--页级泄漏追踪">page_owner — 页级泄漏追踪</a></li>
-<li>4.1.6 <a href="#416-slub-debug--slab-分配器内建检测">SLUB Debug — Slab 分配器内建检测</a></li>
-<li>4.1.7 <a href="#417-检测机制选择决策树">检测机制选择决策树</a></li>
-<li>4.2 <a href="#42-kmemleak-检测原理深度分析">kmemleak 检测原理深度分析</a></li>
-<li>4.2.1 <a href="#421-保守垃圾收集器算法">保守垃圾收集器算法</a></li>
-<li>4.2.2 <a href="#422-三色标记法">三色标记法</a></li>
-<li>4.2.3 <a href="#423-对象生命周期">对象生命周期</a></li>
-<li>4.2.4 <a href="#424-hook-机制--与内存分配器的集成">Hook 机制 — 与内存分配器的集成</a></li>
-<li>4.2.5 <a href="#425-扫描区域详解">扫描区域详解</a></li>
-<li>4.2.6 <a href="#426-rb-tree-快速查找">RB Tree 快速查找</a></li>
-<li>4.2.7 <a href="#427-checksum-变化检测">Checksum 变化检测</a></li>
-<li>4.2.8 <a href="#428-误报控制-api">误报控制 API</a></li>
-<li>4.2.9 <a href="#429-并发控制与锁层次">并发控制与锁层次</a></li>
-<li>4.2.10 <a href="#4210-扫描线程工作机制">扫描线程工作机制</a></li>
-<li>4.3 <a href="#43-kmemleak-软件架构">kmemleak 软件架构</a></li>
-<li>4.3.1 <a href="#431-架构总览">架构总览</a></li>
-<li>4.3.2 <a href="#432-关键数据结构">关键数据结构</a></li>
-<li>4.3.3 <a href="#433-内存池双轨分配策略">内存池双轨分配策略</a></li>
-<li>4.3.4 <a href="#434-debugfs-接口命令详解">debugfs 接口命令详解</a></li>
-<li>4.3.5 <a href="#435-内核配置选项">内核配置选项</a></li>
-<li>4.3.6 <a href="#436-初始化流程">初始化流程</a></li>
-<li>4.3.7 <a href="#437-实战使用流程">实战使用流程</a></li>
-<li>4.4 <a href="#44-kmemleak-涉及算法总结">kmemleak 涉及算法总结</a></li>
-<li>4.4.1 <a href="#441-算法全景概览">算法全景概览</a></li>
-<li>4.4.2 <a href="#442-保守-gc-三色标记算法">保守 GC 三色标记算法</a></li>
-<li>4.4.3 <a href="#443-bfs-灰色传播算法">BFS 灰色传播算法</a></li>
-<li>4.4.4 <a href="#444-红黑树地址范围查找算法">红黑树地址范围查找算法</a></li>
-<li>4.4.5 <a href="#445-保守指针扫描算法">保守指针扫描算法</a></li>
-<li>4.4.6 <a href="#446-crc32-变化检测算法">CRC32 变化检测算法</a></li>
-<li>4.4.7 <a href="#447-jenkins-hash-jhash2-调用栈去重">Jenkins Hash (jhash2) 调用栈去重</a></li>
-<li>4.4.8 <a href="#448-rcu--引用计数生命周期管理">RCU + 引用计数生命周期管理</a></li>
-<li>4.4.9 <a href="#449-地址范围快速拒绝算法">地址范围快速拒绝算法</a></li>
-<li>4.4.10 <a href="#4410-双轨内存池分配算法">双轨内存池分配算法</a></li>
-<li>4.4.11 <a href="#4411-对象重叠与别名检测">对象重叠与别名检测</a></li>
-<li>4.4.12 <a href="#4412-算法协同工作流">算法协同工作流</a></li>
-<li>4.5 <a href="#45-slub-对象泄漏专项定位kmalloc-512--kmalloc-4k">SLUB 对象泄漏专项定位（kmalloc-512 / kmalloc-4k）</a></li>
-<li>4.5.1 <a href="#451-问题特征与判定标准">问题特征与判定标准</a></li>
-<li>4.5.2 <a href="#452-内核选项与启动参数">内核选项与启动参数</a></li>
-<li>4.5.3 <a href="#453-针对-kmalloc-512--kmalloc-4k-的最小化抓取方案">针对 kmalloc-512 / kmalloc-4k 的最小化抓取方案</a></li>
-<li>4.5.4 <a href="#454-定位步骤从增长到调用栈">定位步骤（从增长到调用栈）</a></li>
-<li>4.5.5 <a href="#455-4k-对象泄漏与-page_owner-联动">4K 对象泄漏与 page_owner 联动</a></li>
-<li>4.5.6 <a href="#456-修复后回归与验收标准">修复后回归与验收标准</a></li>
-<li>4.5.7 <a href="#457-ebpf-在线定位-root-cause">eBPF 在线定位 root cause</a></li>
-<li>4.6 <a href="#46-buddy-系统泄漏定位办法">Buddy 系统泄漏定位办法</a></li>
-<li>4.6.1 <a href="#461-先区分碎片化还是泄漏">先区分：碎片化还是泄漏</a></li>
-<li>4.6.2 <a href="#462-buddy-观测面必须看的接口">Buddy 观测面：必须看的接口</a></li>
-<li>4.6.3 <a href="#463-page_owner页级-root-cause-的主工具">page_owner：页级 root cause 的主工具</a></li>
-<li>4.6.4 <a href="#464-libbpf-在线法mm_page_allocmm_page_free-净增分析">libbpf 在线法：mm_page_alloc/mm_page_free 净增分析</a></li>
-<li>4.6.5 <a href="#465-标准排查流程实战版">标准排查流程（实战版）</a></li>
-<li>4.6.6 <a href="#466-常见误判与规避">常见误判与规避</a></li>
-<li>4.7 <a href="#47-buddy-系统泄漏示例分析">Buddy 系统泄漏示例分析</a></li>
-<li>4.7.1 <a href="#471-case-1驱动-dma-缓冲区未释放导致-order-0-持续泄漏">Case 1：驱动 DMA 缓冲区未释放导致 order-0 持续泄漏</a></li>
-<li>4.7.2 <a href="#472-case-2网络驱动-compound-page-引用计数不平衡导致-order-3-泄漏">Case 2：网络驱动 compound page 引用计数不平衡导致 order-3 泄漏</a></li>
-<li>4.7.3 <a href="#473-case-3cma-预留页被长期-pin-导致-zone-movable-枯竭">Case 3：CMA 预留页被长期 pin 导致 zone Movable 枯竭</a></li>
-<li>4.7.4 <a href="#474-case-4内核模块-vmalloc-泄漏导致-page-table-页持续增长">Case 4：内核模块 vmalloc 泄漏导致 page table 页持续增长</a></li>
-<li>4.7.5 <a href="#475-case-5碎片化伪泄漏--高阶分配失败但总量未减">Case 5：碎片化伪泄漏 — 高阶分配失败但总量未减</a></li>
-<li>4.7.6 <a href="#476-ebpf-在线定位-buddy-泄漏-root-cause">eBPF 在线定位 Buddy 泄漏 root cause</a></li>
-<li>4.8 <a href="#48-应用程序用户态内存泄漏定义与检测方案">应用程序（用户态）内存泄漏定义与检测方案</a></li>
-<li>4.8.1 <a href="#481-什么是应用程序内存泄漏">什么是应用程序内存泄漏</a></li>
-<li>4.8.2 <a href="#482-泄漏判定标准与量化指标">泄漏判定标准与量化指标</a></li>
-<li>4.8.3 <a href="#483-方案一valgrind-memcheck开发测试阶段首选">方案一：Valgrind Memcheck</a></li>
-<li>4.8.4 <a href="#484-方案二addresssanitizer-asan--编译时插桩">方案二：AddressSanitizer (ASan)</a></li>
-<li>4.8.5 <a href="#485-方案三gperftools--tcmalloc-heap-profiler--生产友好">方案三：gperftools / tcmalloc Heap Profiler</a></li>
-<li>4.8.6 <a href="#486-方案四jemalloc-heap-profiling--高性能替代">方案四：jemalloc Heap Profiling</a></li>
-<li>4.8.7 <a href="#487-方案五ebpf-在线无侵入检测--生产环境首选">方案五：eBPF 在线无侵入检测</a></li>
-<li>4.8.8 <a href="#488-方案六proc-与-smaps-分析--零工具快速判定">方案六：/proc 与 smaps 分析</a></li>
-<li>4.8.9 <a href="#489-方案七gc-语言的内存泄漏检测">方案七：GC 语言的内存泄漏检测</a></li>
-<li>4.8.10 <a href="#4810-全方案对比决策矩阵">全方案对比决策矩阵</a></li>
-<li>4.8.11 <a href="#4811-推荐排查流程">推荐排查流程</a></li>
-<li>4.9 <a href="#49-memoryleak-面试经典问题问答">MemoryLeak 面试经典问题问答</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>5. MemoryOverwritten 原理和问题定位</b></summary></p>
-
-<ul>
-<li>5.1 <a href="#51-内核-memoryoverwritten-检测机制总结">内核 MemoryOverwritten 检测机制总结</a></li>
-<li>5.1.1 <a href="#511-检测机制全景对比">检测机制全景对比</a></li>
-<li>5.1.2 <a href="#512-kasan--内核地址消毒剂">KASAN — 内核地址消毒剂</a></li>
-<li>5.1.3 <a href="#513-kfence--低开销采样电子围栏">KFENCE — 低开销采样电子围栏</a></li>
-<li>5.1.4 <a href="#514-slub-debug--slab-分配器内建检测">SLUB Debug — Slab 分配器内建检测</a></li>
-<li>5.1.5 <a href="#515-stack-protector--栈溢出保护">Stack Protector — 栈溢出保护</a></li>
-<li>5.1.6 <a href="#516-debug_pagealloc--页级释放后访问检测">DEBUG_PAGEALLOC — 页级释放后访问检测</a></li>
-<li>5.1.7 <a href="#517-fortify_source--编译期字符串函数越界检测">FORTIFY_SOURCE — 编译期字符串函数越界检测</a></li>
-<li>5.1.8 <a href="#518-config_debug_list--链表完整性校验">CONFIG_DEBUG_LIST — 链表完整性校验</a></li>
-<li>5.1.9 <a href="#519-hardened-usercopy--用户态拷贝边界校验">Hardened Usercopy — 用户态拷贝边界校验</a></li>
-<li>5.1.10 <a href="#5110-page_table_check--页表映射合法性校验">PAGE_TABLE_CHECK — 页表映射合法性校验</a></li>
-<li>5.1.11 <a href="#5111-检测机制选择决策树">检测机制选择决策树</a></li>
-<li>5.2 <a href="#52-kasan-检测原理深度分析">KASAN 检测原理深度分析</a></li>
-<li>5.2.1 <a href="#521-kasan-generic--shadow-memory-架构全景">KASAN Generic — Shadow Memory 架构全景</a></li>
-<li>5.2.2 <a href="#522-编译器插桩机制">编译器插桩机制</a></li>
-<li>5.2.3 <a href="#523-slab-对象内存布局与-shadow-染色">Slab 对象内存布局与 Shadow 染色</a></li>
-<li>5.2.4 <a href="#524-quarantine隔离区延迟回收机制">Quarantine（隔离区）延迟回收机制</a></li>
-<li>5.2.5 <a href="#525-sw_tags-模式--软件标签检测">SW_TAGS 模式 — 软件标签检测</a></li>
-<li>5.2.6 <a href="#526-hw_tags-模式--arm64-mte-硬件加速">HW_TAGS 模式 — ARM64 MTE 硬件加速</a></li>
-<li>5.2.7 <a href="#527-kasan-错误报告解读">KASAN 错误报告解读</a></li>
-<li>5.2.8 <a href="#528-kasan-与内核子系统集成点">KASAN 与内核子系统集成点</a></li>
-<li>5.2.9 <a href="#529-实战调试技巧">实战调试技巧</a></li>
-<li>5.3 <a href="#53-kfence-检测原理深度分析">KFENCE 检测原理深度分析</a></li>
-<li>5.3.1 <a href="#531-kfence-池布局与-guard-page-架构">KFENCE 池布局与 Guard Page 架构</a></li>
-<li>5.3.2 <a href="#532-对象放置策略与-canary-字节模式">对象放置策略与 Canary 字节模式</a></li>
-<li>5.3.3 <a href="#533-采样机制与-counting-bloom-filter">采样机制与 Counting Bloom Filter</a></li>
-<li>5.3.4 <a href="#534-page-fault-检测与错误报告">Page Fault 检测与错误报告</a></li>
-<li>5.3.5 <a href="#535-kfence-与-slub-分配器集成">KFENCE 与 SLUB 分配器集成</a></li>
-<li>5.3.6 <a href="#536-池初始化与页表设置">池初始化与页表设置</a></li>
-<li>5.3.7 <a href="#537-实战调试技巧">实战调试技巧</a></li>
-<li>5.4 <a href="#54-slub-debug-检测原理深度分析">SLUB Debug 检测原理深度分析</a></li>
-<li>5.4.1 <a href="#541-对象布局与-red-zone-机制">对象布局与 Red Zone 机制</a></li>
-<li>5.4.2 <a href="#542-poison-模式--释放后写检测">Poison 模式 — 释放后写检测</a></li>
-<li>5.4.3 <a href="#543-check_object-校验流程">check_object 校验流程</a></li>
-<li>5.4.4 <a href="#544-freelist-指针加固与-double-free-检测">Freelist 指针加固与 Double-Free 检测</a></li>
-<li>5.4.5 <a href="#545-slab_store_user--调用栈追踪">SLAB_STORE_USER — 调用栈追踪</a></li>
-<li>5.4.6 <a href="#546-错误报告解读">错误报告解读</a></li>
-<li>5.4.7 <a href="#547-实战调试技巧">实战调试技巧</a></li>
-<li>5.5 <a href="#55-mprotect-页保护检测原理深度分析">mprotect 页保护检测原理深度分析</a></li>
-<li>5.5.1 <a href="#551-页保护机制核心原理--从硬件到系统调用">页保护机制核心原理 — 从硬件到系统调用</a></li>
-<li>5.5.2 <a href="#552-mprotect-系统调用实现路径">mprotect 系统调用实现路径</a></li>
-<li>5.5.3 <a href="#553-arm64-pte-权限位与页表修改">ARM64 PTE 权限位与页表修改</a></li>
-<li>5.5.4 <a href="#554-permission-fault-检测流程">Permission Fault 检测流程</a></li>
-<li>5.5.5 <a href="#555-内核态页保护--set_memory_rorw-与-<strong>ro_after_init">内核态页保护 — set_memory_ro/rw 与 </strong>ro_after_init</a></li>
-<li>5.5.6 <a href="#556-内核中的页保护实践--debug_pagealloc--kfence--strict_kernel_rwx">内核中的页保护实践 — DEBUG_PAGEALLOC / KFENCE / STRICT_KERNEL_RWX</a></li>
-<li>5.5.7 <a href="#557-用户态-mprotect-检测-memoryoverwritten-实战">用户态 mprotect 检测 MemoryOverwritten 实战</a></li>
-<li>5.5.8 <a href="#558-实战调试技巧">实战调试技巧</a></li>
-<li>5.6 <a href="#56-memoryoverwritten-软件架构">MemoryOverwritten 软件架构</a></li>
-<li>5.6.1 <a href="#561-架构总览--多层防御体系">架构总览 — 多层防御体系</a></li>
-<li>5.6.2 <a href="#562-编译期防御层">编译期防御层</a></li>
-<li>5.6.3 <a href="#563-运行时分配器防御层">运行时分配器防御层</a></li>
-<li>5.6.4 <a href="#564-运行时访问检查层">运行时访问检查层</a></li>
-<li>5.6.5 <a href="#565-硬件辅助层">硬件辅助层</a></li>
-<li>5.6.6 <a href="#566-各层协同与组合策略">各层协同与组合策略</a></li>
-<li>5.7 <a href="#57-关键数据结构">关键数据结构</a></li>
-<li>5.7.1 <a href="#571-kasan-数据结构">KASAN 数据结构</a></li>
-<li>5.7.2 <a href="#572-kfence-数据结构">KFENCE 数据结构</a></li>
-<li>5.7.3 <a href="#573-slub-debug-数据结构">SLUB Debug 数据结构</a></li>
-<li>5.8 <a href="#58-内核配置与调优参数">内核配置与调优参数</a></li>
-<li>5.8.1 <a href="#581-kasan-配置">KASAN 配置</a></li>
-<li>5.8.2 <a href="#582-kfence-配置">KFENCE 配置</a></li>
-<li>5.8.3 <a href="#583-slub-debug-配置">SLUB Debug 配置</a></li>
-<li>5.8.4 <a href="#584-其他防御配置">其他防御配置</a></li>
-<li>5.8.5 <a href="#585-推荐配置组合">推荐配置组合</a></li>
-<li>5.9 <a href="#59-memoryoverwritten-经典案例与-log-解读">MemoryOverwritten 经典案例与 Log 解读</a></li>
-<li>5.9.1 <a href="#591-case-1kasan-检测-slab-oob-写">Case 1：KASAN 检测 Slab OOB 写</a></li>
-<li>5.9.2 <a href="#592-case-2kasan-检测-use-after-free">Case 2：KASAN 检测 Use-After-Free</a></li>
-<li>5.9.3 <a href="#593-case-3kfence-检测-oob-写guard-page-触发">Case 3：KFENCE 检测 OOB 写（Guard Page 触发）</a></li>
-<li>5.9.4 <a href="#594-case-4slub-debug-检测-red-zone-被覆写">Case 4：SLUB Debug 检测 Red Zone 被覆写</a></li>
-<li>5.9.5 <a href="#595-case-5stack-canary-被破坏">Case 5：Stack Canary 被破坏</a></li>
-<li>5.9.6 <a href="#596-case-6list-corruption-检测">Case 6：List Corruption 检测</a></li>
-<li>5.9.7 <a href="#597-通用定位方法论">通用定位方法论</a></li>
-<li>5.10 <a href="#510-核心算法总结">核心算法总结</a></li>
-<li>5.10.1 <a href="#5101-shadow-memory-地址映射算法">Shadow Memory 地址映射算法</a></li>
-<li>5.10.2 <a href="#5102-shadow-byte-毒化与检查算法">Shadow Byte 毒化与检查算法</a></li>
-<li>5.10.3 <a href="#5103-quarantine-fifo-批量回收算法">Quarantine FIFO 批量回收算法</a></li>
-<li>5.10.4 <a href="#5104-kfence-counting-bloom-filter-算法">KFENCE Counting Bloom Filter 算法</a></li>
-<li>5.10.5 <a href="#5105-kfence-canary-模式填充与校验算法">KFENCE Canary 模式填充与校验算法</a></li>
-<li>5.10.6 <a href="#5106-slub-red-zone-哨兵检测算法">SLUB Red Zone 哨兵检测算法</a></li>
-<li>5.10.7 <a href="#5107-slub-poison-模式检测算法">SLUB Poison 模式检测算法</a></li>
-<li>5.10.8 <a href="#5108-stack-canary-随机值校验算法">Stack Canary 随机值校验算法</a></li>
-<li>5.10.9 <a href="#5109-hardened-usercopy-多区域边界校验算法">Hardened Usercopy 多区域边界校验算法</a></li>
-<li>5.10.10 <a href="#51010-list-双向链表完整性校验算法">List 双向链表完整性校验算法</a></li>
-<li>5.11 <a href="#511-memoryoverwritten-面试经典问题问答">MemoryOverwritten 面试经典问题问答</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>6. KASAN 检测原理和问题定位</b></summary></p>
-
-<ul>
-<li>6.1 <a href="#61-kasan-概述与三种检测模式">KASAN 概述与三种检测模式</a></li>
-<li>6.1.1 <a href="#611-什么是-kasan--内核地址消毒剂的定位与价值">什么是 KASAN — 内核地址消毒剂的定位与价值</a></li>
-<li>6.1.2 <a href="#612-三种模式全景对比generic--sw_tags--hw_tags">三种模式全景对比（Generic / SW_TAGS / HW_TAGS）</a></li>
-<li>6.1.3 <a href="#613-各模式适用场景与选择决策树">各模式适用场景与选择决策树</a></li>
-<li>6.1.4 <a href="#614-kasan-能检测的-bug-类型全景">KASAN 能检测的 Bug 类型全景</a></li>
-<li>6.2 <a href="#62-generic-kasan--shadow-memory-检测原理">Generic KASAN — Shadow Memory 检测原理</a></li>
-<li>6.2.1 <a href="#621-shadow-memory-地址映射原理--81-压缩编码">Shadow Memory 地址映射原理 — 8:1 压缩编码</a></li>
-<li>6.2.2 <a href="#622-shadow-byte-编码规则与毒化值表">Shadow Byte 编码规则与毒化值表</a></li>
-<li>6.2.3 <a href="#623-编译器插桩机制--inline-vs-outline-检查插入">编译器插桩机制 — Inline vs Outline 检查插入</a></li>
-<li>6.2.4 <a href="#624-内存访问检查完整流程--从-loadstore-到-bug-report">内存访问检查完整流程 — 从 load/store 到 bug report</a></li>
-<li>6.2.5 <a href="#625-arm64-shadow-memory-虚拟地址空间布局">ARM64 Shadow Memory 虚拟地址空间布局</a></li>
-<li>6.2.6 <a href="#626-slab-对象-shadow-染色全过程--allocfreeredzone">Slab 对象 Shadow 染色全过程 — alloc/free/redzone</a></li>
-<li>6.2.7 <a href="#627-栈变量保护--编译器栈帧-shadow-插桩">栈变量保护 — 编译器栈帧 Shadow 插桩</a></li>
-<li>6.2.8 <a href="#628-全局变量保护--编译器构造函数与-redzone-注册">全局变量保护 — 编译器构造函数与 redzone 注册</a></li>
-<li>6.3 <a href="#63-sw_tags-kasan--软件标签检测原理">SW_TAGS KASAN — 软件标签检测原理</a></li>
-<li>6.3.1 <a href="#631-arm64-top-byte-ignore-tbi-硬件特性">ARM64 Top Byte Ignore (TBI) 硬件特性</a></li>
-<li>6.3.2 <a href="#632-tag-生成算法--per-cpu-prng线性同余">Tag 生成算法 — Per-CPU PRNG（线性同余）</a></li>
-<li>6.3.3 <a href="#633-指针-tag-vs-内存-tag-比较检测流程">指针 Tag vs 内存 Tag 比较检测流程</a></li>
-<li>6.3.4 <a href="#634-hwasan-loadstore-检查宏">HWASAN Load/Store 检查宏</a></li>
-<li>6.3.5 <a href="#635-stack-ring-环形缓冲区追踪机制">Stack Ring 环形缓冲区追踪机制</a></li>
-<li>6.3.6 <a href="#636-与-generic-模式的-shadow-memory-差异">与 Generic 模式的 Shadow Memory 差异</a></li>
-<li>6.4 <a href="#64-hw_tags-kasan--arm64-mte-硬件加速检测">HW_TAGS KASAN — ARM64 MTE 硬件加速检测</a></li>
-<li>6.4.1 <a href="#641-armv85-mte-硬件原理--allocation-tag-与-logical-tag">ARMv8.5 MTE 硬件原理 — Allocation Tag 与 Logical Tag</a></li>
-<li>6.4.2 <a href="#642-三种硬件检测模式--sync--async--asymm">三种硬件检测模式 — SYNC / ASYNC / ASYMM</a></li>
-<li>6.4.3 <a href="#643-mte-granule-16-字节-与-4-bit-tag-存储">MTE Granule (16 字节) 与 4-bit Tag 存储</a></li>
-<li>6.4.4 <a href="#644-mte-指令集--irg--addg--stg--ldg--subp">MTE 指令集 — IRG / ADDG / STG / LDG / SUBP</a></li>
-<li>6.4.5 <a href="#645-page-allocator-采样策略--采样间隔与-order-阈值">Page Allocator 采样策略 — 采样间隔与 order 阈值</a></li>
-<li>6.4.6 <a href="#646-cpu-热插拔与-per-cpu-模式切换">CPU 热插拔与 Per-CPU 模式切换</a></li>
-<li>6.4.7 <a href="#647-hw_tags-异步-fault-处理流程">HW_TAGS 异步 Fault 处理流程</a></li>
-<li>6.5 <a href="#65-kasan-软件架构">KASAN 软件架构</a></li>
-<li>6.5.1 <a href="#651-架构总览--源码文件组织与分层设计">架构总览 — 源码文件组织与分层设计</a></li>
-<li>6.5.2 <a href="#652-公共核心层--commonc-slub-集成与对象生命周期">公共核心层 — common.c（SLUB 集成与对象生命周期）</a></li>
-<li>6.5.3 <a href="#653-generic-检查层--genericc-shadow-检查与插桩回调">Generic 检查层 — generic.c（Shadow 检查与插桩回调）</a></li>
-<li>6.5.4 <a href="#654-sw_tags-检查层--sw_tagsc-tag-检查与-prng">SW_TAGS 检查层 — sw_tags.c（Tag 检查与 PRNG）</a></li>
-<li>6.5.5 <a href="#655-hw_tags-检查层--hw_tagsc-mte-控制与-cpu-管理">HW_TAGS 检查层 — hw_tags.c（MTE 控制与 CPU 管理）</a></li>
-<li>6.5.6 <a href="#656-shadow-memory-管理层--shadowc--initc">Shadow Memory 管理层 — shadow.c / init.c</a></li>
-<li>6.5.7 <a href="#657-报告层--reportc--report_genericc--report_tagsc">报告层 — report.c / report_generic.c / report_*_tags.c</a></li>
-<li>6.5.8 <a href="#658-隔离区层--quarantinec-generic-专属">隔离区层 — quarantine.c（Generic 专属）</a></li>
-<li>6.5.9 <a href="#659-标签追踪层--tagsc-stack-ring-管理">标签追踪层 — tags.c（Stack Ring 管理）</a></li>
-<li>6.5.10 <a href="#6510-arm64-平台层--archarm64mmkasan_initc">ARM64 平台层 — arch/arm64/mm/kasan_init.c</a></li>
-<li>6.6 <a href="#66-关键数据结构">关键数据结构</a></li>
-<li>6.6.1 <a href="#661-struct-kasan_alloc_meta--对象分配元数据generic-专属">struct kasan_alloc_meta — 对象分配元数据（Generic 专属）</a></li>
-<li>6.6.2 <a href="#662-struct-kasan_track--分配释放调用栈记录">struct kasan_track — 分配/释放调用栈记录</a></li>
-<li>6.6.3 <a href="#663-struct-kasan_report_info--错误报告完整信息">struct kasan_report_info — 错误报告完整信息</a></li>
-<li>6.6.4 <a href="#664-struct-kasan_stack_ring--kasan_stack_ring_entry--tag-模式栈环">struct kasan_stack_ring / kasan_stack_ring_entry — Tag 模式栈环</a></li>
-<li>6.6.5 <a href="#665-struct-qlist_head--qlist_node--隔离区队列">struct qlist_head / qlist_node — 隔离区队列</a></li>
-<li>6.6.6 <a href="#666-shadow-byte-编码值全表generic--sw_tags--hw_tags">Shadow Byte 编码值全表（Generic / SW_TAGS / HW_TAGS）</a></li>
-<li>6.6.7 <a href="#667-kasan_flags--static_key-运行时控制变量">kasan_flags / static_key 运行时控制变量</a></li>
-<li>6.7 <a href="#67-kasan-与内核子系统集成">KASAN 与内核子系统集成</a></li>
-<li>6.7.1 <a href="#671-slub-分配器集成--对象-allocfreeinit-全-hook-路径">SLUB 分配器集成 — 对象 alloc/free/init 全 Hook 路径</a></li>
-<li>6.7.2 <a href="#672-page-allocator-集成--<strong>kasan_poison_pages--</strong>kasan_unpoison_pages">Page Allocator 集成 — <strong>kasan_poison_pages / </strong>kasan_unpoison_pages</a></li>
-<li>6.7.3 <a href="#673-vmalloc-区域保护--动态-shadow-页表填充">vmalloc 区域保护 — 动态 Shadow 页表填充</a></li>
-<li>6.7.4 <a href="#674-栈变量保护--config_kasan_stack-编译器联动">栈变量保护 — CONFIG_KASAN_STACK 编译器联动</a></li>
-<li>6.7.5 <a href="#675-全局变量保护--编译器-<strong>asan_register_globals">全局变量保护 — 编译器 </strong>asan_register_globals</a></li>
-<li>6.7.6 <a href="#676-per-task-kasan_depth--递归与嵌套检查抑制">per-task kasan_depth — 递归与嵌套检查抑制</a></li>
-<li>6.8 <a href="#68-quarantine-隔离区机制深度分析">Quarantine 隔离区机制深度分析</a></li>
-<li>6.8.1 <a href="#681-per-cpu-隔离区--cpu_quarantine-快速缓存">Per-CPU 隔离区 — cpu_quarantine 快速缓存</a></li>
-<li>6.8.2 <a href="#682-global-批量隔离区--quarantine_batches-环形数组">Global 批量隔离区 — QUARANTINE_BATCHES 环形数组</a></li>
-<li>6.8.3 <a href="#683-隔离区大小管理--物理内存-132-上限">隔离区大小管理 — 物理内存 1/32 上限</a></li>
-<li>6.8.4 <a href="#684-对象回收流程--批量-drain-与-kmem_cache-回调">对象回收流程 — 批量 drain 与 kmem_cache 回调</a></li>
-<li>6.8.5 <a href="#685-quarantine-与-uaf-检测窗口">Quarantine 与 UAF 检测窗口</a></li>
-<li>6.9 <a href="#69-kasan-初始化完整流程">KASAN 初始化完整流程</a></li>
-<li>6.9.1 <a href="#691-arm64-phase-1--kasan_early_init-早期-shadow-映射">ARM64 Phase 1 — kasan_early_init() 早期 Shadow 映射</a></li>
-<li>6.9.2 <a href="#692-arm64-phase-2--kasan_init_shadow-memblock-分配真实-shadow-页">ARM64 Phase 2 — kasan_init_shadow() memblock 分配真实 Shadow 页</a></li>
-<li>6.9.3 <a href="#693-phase-3--模式初始化generic--sw_tags--hw_tags-各自路径">Phase 3 — 模式初始化（Generic / SW_TAGS / HW_TAGS 各自路径）</a></li>
-<li>6.9.4 <a href="#694-static-key-与运行时-enabledisable-控制">Static Key 与运行时 Enable/Disable 控制</a></li>
-<li>6.9.5 <a href="#695-early-shadow-page-到真实-shadow-的切换时序">Early Shadow Page 到真实 Shadow 的切换时序</a></li>
-<li>6.10 <a href="#610-错误报告机制深度分析">错误报告机制深度分析</a></li>
-<li>6.10.1 <a href="#6101-报告触发路径--从-check_region-到-kasan_report">报告触发路径 — 从 check_region 到 kasan_report()</a></li>
-<li>6.10.2 <a href="#6102-bug-类型自动分类--shadow-byte-到错误类型映射">Bug 类型自动分类 — Shadow Byte 到错误类型映射</a></li>
-<li>6.10.3 <a href="#6103-generic-模式报告完整内容解读">Generic 模式报告完整内容解读</a></li>
-<li>6.10.4 <a href="#6104-tags-模式报告内容解读">Tags 模式报告内容解读</a></li>
-<li>6.10.5 <a href="#6105-报告抑制--multi_shot--kasan_depth--hw-suppress">报告抑制 — multi_shot / kasan_depth / HW suppress</a></li>
-<li>6.10.6 <a href="#6106-fault-处理策略--report--panic--panic_on_write">Fault 处理策略 — report / panic / panic_on_write</a></li>
-<li>6.11 <a href="#611-内核配置与调优参数">内核配置与调优参数</a></li>
-<li>6.11.1 <a href="#6111-kconfig-选项完整详解">Kconfig 选项完整详解</a></li>
-<li>6.11.2 <a href="#6112-boot-启动参数">Boot 启动参数</a></li>
-<li>6.11.3 <a href="#6113-运行时-sysfs--debugfs-控制">运行时 sysfs / debugfs 控制</a></li>
-<li>6.11.4 <a href="#6114-推荐配置组合--开发--ci--生产--mte-四种场景">推荐配置组合 — 开发 / CI / 生产 / MTE 四种场景</a></li>
-<li>6.12 <a href="#612-kasan-经典案例与-log-解读">KASAN 经典案例与 Log 解读</a></li>
-<li>6.12.1 <a href="#6121-case-1generic-kasan-检测-slab-out-of-bounds">Case 1：Generic KASAN 检测 Slab Out-of-Bounds</a></li>
-<li>6.12.2 <a href="#6122-case-2generic-kasan-检测-use-after-free">Case 2：Generic KASAN 检测 Use-After-Free</a></li>
-<li>6.12.3 <a href="#6123-case-3generic-kasan-检测-global-out-of-bounds">Case 3：Generic KASAN 检测 Global Out-of-Bounds</a></li>
-<li>6.12.4 <a href="#6124-case-4generic-kasan-检测-stack-out-of-bounds">Case 4：Generic KASAN 检测 Stack Out-of-Bounds</a></li>
-<li>6.12.5 <a href="#6125-case-5sw_tags-检测-tag-mismatch--heap-oob">Case 5：SW_TAGS 检测 Tag Mismatch — Heap OOB</a></li>
-<li>6.12.6 <a href="#6126-case-6hw_tags-mte-sync-模式检测-uaf">Case 6：HW_TAGS (MTE) SYNC 模式检测 UAF</a></li>
-<li>6.12.7 <a href="#6127-case-7hw_tags-mte-async-模式异步报告">Case 7：HW_TAGS (MTE) ASYNC 模式异步报告</a></li>
-<li>6.12.8 <a href="#6128-case-8double-free-检测">Case 8：Double-Free 检测</a></li>
-<li>6.12.9 <a href="#6129-case-9invalid-free非法释放检测">Case 9：Invalid-Free（非法释放）检测</a></li>
-<li>6.12.10 <a href="#61210-通用-kasan-log-五步定位法">通用 KASAN Log 五步定位法</a></li>
-<li>6.13 <a href="#613-核心算法总结">核心算法总结</a></li>
-<li>6.13.1 <a href="#6131-shadow-memory-地址映射算法addr--3--offset">Shadow Memory 地址映射算法（addr >> 3 + offset）</a></li>
-<li>6.13.2 <a href="#6132-generic-多粒度内存访问检查算法124816n-字节">Generic 多粒度内存访问检查算法（1/2/4/8/16/N 字节）</a></li>
-<li>6.13.3 <a href="#6133-shadow-byte-毒化--解毒算法poison--unpoison">Shadow Byte 毒化 / 解毒算法（poison / unpoison）</a></li>
-<li>6.13.4 <a href="#6134-quarantine-per-cpu--global-fifo-批量回收算法">Quarantine Per-CPU + Global FIFO 批量回收算法</a></li>
-<li>6.13.5 <a href="#6135-sw_tags-per-cpu-lcg-prng-tag-生成算法">SW_TAGS Per-CPU LCG PRNG Tag 生成算法</a></li>
-<li>6.13.6 <a href="#6136-sw_tags-stack-ring-无锁环形缓冲追踪算法">SW_TAGS Stack Ring 无锁环形缓冲追踪算法</a></li>
-<li>6.13.7 <a href="#6137-hw_tags-采样计数器与-order-阈值算法">HW_TAGS 采样计数器与 order 阈值算法</a></li>
-<li>6.13.8 <a href="#6138-bug-类型自动分类--shadow-byte-值域判定算法">Bug 类型自动分类 — Shadow Byte 值域判定算法</a></li>
-<li>6.13.9 <a href="#6139-arm64-多级页表-shadow-映射初始化算法">ARM64 多级页表 Shadow 映射初始化算法</a></li>
-<li>6.13.10 <a href="#61310-vmalloc-shadow-动态填充算法">vmalloc Shadow 动态填充算法</a></li>
-<li>6.14 <a href="#614-kasan-面试经典问题问答">KASAN 面试经典问题问答</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>7. 内核 Panic / Oops 问题定位方法</b></summary></p>
-
-<ul>
-<li>7.1 <a href="#71-panic-与-oops-概述">Panic 与 Oops 概述</a></li>
-<li>7.1.1 <a href="#711-panic-vs-oops-vs-bug-vs-warn-的区别与联系">Panic vs Oops vs BUG vs WARN 的区别与联系</a></li>
-<li>7.1.2 <a href="#712-arm64-异常等级与-panic-触发路径">ARM64 异常等级与 Panic 触发路径</a></li>
-<li>7.1.3 <a href="#713-panic-函数完整执行流程">panic() 函数完整执行流程</a></li>
-<li>7.1.4 <a href="#714-die--oops_enter--oops_exit-流程">die() / oops_enter() / oops_exit() 流程</a></li>
-<li>7.1.5 <a href="#715-panic_on_oops--panic_timeout--panic_print-参数">panic_on_oops / panic_timeout / panic_print 参数</a></li>
-<li>7.2 <a href="#72-oops-日志完整解读">Oops 日志完整解读</a></li>
-<li>7.2.1 <a href="#721-oops-日志结构逐行解析">Oops 日志结构逐行解析</a></li>
-<li>7.2.2 <a href="#722-arm64-寄存器状态解读pclrsppstatex0-x30">ARM64 寄存器状态解读（pc/lr/sp/pstate/x0-x30）</a></li>
-<li>7.2.3 <a href="#723-call-trace-调用栈解读与符号化">Call Trace 调用栈解读与符号化</a></li>
-<li>7.2.4 <a href="#724-esr_el1-异常综合寄存器解码">ESR_EL1 异常综合寄存器解码</a></li>
-<li>7.2.5 <a href="#725-far_el1-故障地址寄存器与地址空间判定">FAR_EL1 故障地址寄存器与地址空间判定</a></li>
-<li>7.3 <a href="#73-常见-panic--oops-触发原因分类">常见 Panic / Oops 触发原因分类</a></li>
-<li>7.3.1 <a href="#731-null-指针解引用最常见">NULL 指针解引用（最常见）</a></li>
-<li>7.3.2 <a href="#732-非法内核地址访问野指针--uaf">非法内核地址访问（野指针 / UAF）</a></li>
-<li>7.3.3 <a href="#733-用户空间地址在内核态访问">用户空间地址在内核态访问</a></li>
-<li>7.3.4 <a href="#734-对齐异常alignment-fault">对齐异常（Alignment Fault）</a></li>
-<li>7.3.5 <a href="#735-未定义指令异常undefined-instruction">未定义指令异常（Undefined Instruction）</a></li>
-<li>7.3.6 <a href="#736-栈溢出stack-overflow">栈溢出（Stack Overflow）</a></li>
-<li>7.3.7 <a href="#737-bug--bug_on-显式触发">BUG() / BUG_ON() 显式触发</a></li>
-<li>7.3.8 <a href="#738-kernel-panic--not-syncing-常见子类型">Kernel Panic — not syncing 常见子类型</a></li>
-<li>7.4 <a href="#74-addr2line--objdump--gdb-离线分析方法">addr2line / objdump / gdb 离线分析方法</a></li>
-<li>7.4.1 <a href="#741-addr2line-从地址定位源码行">addr2line 从地址定位源码行</a></li>
-<li>7.4.2 <a href="#742-objdump-反汇编出错函数分析">objdump 反汇编出错函数分析</a></li>
-<li>7.4.3 <a href="#743-gdb-vmlinux-离线调试定位">gdb vmlinux 离线调试定位</a></li>
-<li>7.4.4 <a href="#744-decode_stacktracesh-自动化栈解析脚本">decode_stacktrace.sh 自动化栈解析脚本</a></li>
-<li>7.4.5 <a href="#745-faddr2line-从-functionoffset-定位源码">faddr2line 从 function+offset 定位源码</a></li>
-<li>7.5 <a href="#75-kdump--crash-离线内存转储分析">kdump / crash 离线内存转储分析</a></li>
-<li>7.5.1 <a href="#751-kdump-原理--kexec-加载捕获内核">kdump 原理 — kexec 加载捕获内核</a></li>
-<li>7.5.2 <a href="#752-arm64-kdump-配置与-crashkernel-参数">ARM64 kdump 配置与 crashkernel 参数</a></li>
-<li>7.5.3 <a href="#753-crash-工具基本使用--bt--dis--struct--log">crash 工具基本使用 — bt / dis / struct / log</a></li>
-<li>7.5.4 <a href="#754-crash-高级分析--进程状态--锁状态--内存状态">crash 高级分析 — 进程状态 / 锁状态 / 内存状态</a></li>
-<li>7.5.5 <a href="#755-从-vmcore-还原-panic-现场完整步骤">从 vmcore 还原 Panic 现场完整步骤</a></li>
-<li>7.6 <a href="#76-pstore--ramoops-持久化存储">pstore / ramoops 持久化存储</a></li>
-<li>7.6.1 <a href="#761-pstore-子系统架构与后端ramoops--blk--zone">pstore 子系统架构与后端（ramoops / blk / zone）</a></li>
-<li>7.6.2 <a href="#762-ramoops-配置--设备树--启动参数">ramoops 配置 — 设备树 / 启动参数</a></li>
-<li>7.6.3 <a href="#763-读取-sysfspstore-下的日志文件">读取 /sys/fs/pstore/ 下的日志文件</a></li>
-<li>7.6.4 <a href="#764-pmsg--console--ftrace-前端区域配置">pmsg / console / ftrace 前端区域配置</a></li>
-<li>7.7 <a href="#77-动态调试与在线分析工具">动态调试与在线分析工具</a></li>
-<li>7.7.1 <a href="#771-ftrace-追踪-panic-前的函数调用路径">ftrace 追踪 Panic 前的函数调用路径</a></li>
-<li>7.7.2 <a href="#772-kprobe--kretprobe-动态插桩">kprobe / kretprobe 动态插桩</a></li>
-<li>7.7.3 <a href="#773-ebpf-追踪异常路径">eBPF 追踪异常路径</a></li>
-<li>7.7.4 <a href="#774-procvmcore-与-prockcore-在线分析">/proc/vmcore 与 /proc/kcore 在线分析</a></li>
-<li>7.7.5 <a href="#775-kgdb--kdb-内核调试器">KGDB / KDB 内核调试器</a></li>
-<li>7.8 <a href="#78-内核配置与编译选项">内核配置与编译选项</a></li>
-<li>7.8.1 <a href="#781-debug_info--debug_info_dwarf5-调试信息">DEBUG_INFO / DEBUG_INFO_DWARF5 调试信息</a></li>
-<li>7.8.2 <a href="#782-kallsyms--kallsyms_all-符号表">KALLSYMS / KALLSYMS_ALL 符号表</a></li>
-<li>7.8.3 <a href="#783-frame_pointer-vs-shadow_call_stack-栈回溯">FRAME_POINTER vs SHADOW_CALL_STACK 栈回溯</a></li>
-<li>7.8.4 <a href="#784-config_panic_on_oops--panic_timeout-控制">CONFIG_PANIC_ON_OOPS / PANIC_TIMEOUT 控制</a></li>
-<li>7.8.5 <a href="#785-config_debug_bugverbose-完整-bug-信息">CONFIG_DEBUG_BUGVERBOSE 完整 BUG 信息</a></li>
-<li>7.9 <a href="#79-arm64-异常处理与-oops-产生机制源码分析">ARM64 异常处理与 Oops 产生机制源码分析</a></li>
-<li>7.9.1 <a href="#791-异常向量表-entrys--vectors--el1_sync--el1_irq">异常向量表 entry.S — vectors / el1_sync / el1_irq</a></li>
-<li>7.9.2 <a href="#792-do_mem_abort--页表异常分发">do_mem_abort() → 页表异常分发</a></li>
-<li>7.9.3 <a href="#793-die--<strong>die--show_regs-完整调用链">die() → </strong>die() → show_regs() 完整调用链</a></li>
-<li>7.9.4 <a href="#794-arm64-栈回溯算法--unwind_frame">ARM64 栈回溯算法 — unwind_frame()</a></li>
-<li>7.9.5 <a href="#795-内核态-vs-用户态异常处理差异">内核态 vs 用户态异常处理差异</a></li>
-<li>7.10 <a href="#710-经典案例与实战-log-分析">经典案例与实战 Log 分析</a></li>
-<li>7.10.1 <a href="#7101-case-1null-pointer-dereference-定位全流程">Case 1：NULL Pointer Dereference 定位全流程</a></li>
-<li>7.10.2 <a href="#7102-case-2野指针-uaf-导致的随机-oops">Case 2：野指针 UAF 导致的随机 Oops</a></li>
-<li>7.10.3 <a href="#7103-case-3栈溢出--recursive-call--大局部变量">Case 3：栈溢出 — recursive call / 大局部变量</a></li>
-<li>7.10.4 <a href="#7104-case-4bug_on-触发的主动-panic">Case 4：BUG_ON 触发的主动 Panic</a></li>
-<li>7.10.5 <a href="#7105-case-5panic-not-syncing-vfs--根文件系统挂载失败">Case 5：Panic not syncing: VFS — 根文件系统挂载失败</a></li>
-<li>7.10.6 <a href="#7106-case-6smp-cpu-初始化失败-panic">Case 6：SMP CPU 初始化失败 Panic</a></li>
-<li>7.10.7 <a href="#7107-case-7中断上下文-oops--中断处理函数崩溃">Case 7：中断上下文 Oops — 中断处理函数崩溃</a></li>
-<li>7.10.8 <a href="#7108-case-8模块加载崩溃--符号不匹配--版本不兼容">Case 8：模块加载崩溃 — 符号不匹配 / 版本不兼容</a></li>
-<li>7.11 <a href="#711-panic--oops-问题定位流程图与方法论">Panic / Oops 问题定位流程图与方法论</a></li>
-<li>7.11.1 <a href="#7111-六步定位法--从日志到根因">六步定位法 — 从日志到根因</a></li>
-<li>7.11.2 <a href="#7112-无日志情况的排查策略">无日志情况的排查策略</a></li>
-<li>7.11.3 <a href="#7113-偶发-panic-的复现与捕获策略">偶发 Panic 的复现与捕获策略</a></li>
-<li>7.11.4 <a href="#7114-内核二分法--git-bisect-定位引入-commit">内核二分法 — git bisect 定位引入 commit</a></li>
-<li>7.12 <a href="#712-面试经典问题问答">面试经典问题问答</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>8. 内核 Ramdump 机制原理与实践</b></summary></p>
-
-<ul>
-<li>8.1 <a href="#81-ramdump-概述与对比">Ramdump 概述与对比</a></li>
-<li>8.1.1 <a href="#811-什么是-ramdump--内存转储的本质">什么是 Ramdump — 内存转储的本质</a></li>
-<li>8.1.2 <a href="#812-三种-ramdump-机制对比kdump--bootloader--pstore">三种 Ramdump 机制对比（kdump / Bootloader / pstore）</a></li>
-<li>8.1.3 <a href="#813-ramdump-在嵌入式-vs-服务器场景的差异">Ramdump 在嵌入式 vs 服务器场景的差异</a></li>
-<li>8.1.4 <a href="#814-内存保持memory-preservation的硬件前提">内存保持（Memory Preservation）的硬件前提</a></li>
-<li>8.2 <a href="#82-kdump-原理与实践">kdump 原理与实践</a></li>
-<li>8.2.1 <a href="#821-kdump-整体架构--第一内核与捕获内核">kdump 整体架构 — 第一内核与捕获内核</a></li>
-<li>8.2.2 <a href="#822-kexec-系统调用--加载捕获内核流程">kexec 系统调用 — 加载捕获内核流程</a></li>
-<li>8.2.3 <a href="#823-crashkernel-内存预留机制与参数配置">crashkernel 内存预留机制与参数配置</a></li>
-<li>8.2.4 <a href="#824-arm64-kdump-特殊处理--el2el1-切换与-psci">ARM64 kdump 特殊处理 — EL2/EL1 切换与 PSCI</a></li>
-<li>8.2.5 <a href="#825-panic-路径触发-kdump-的完整流程">Panic 路径触发 kdump 的完整流程</a></li>
-<li>8.2.6 <a href="#826-procvmcore-与-elf-core-格式解析">/proc/vmcore 与 ELF core 格式解析</a></li>
-<li>8.2.7 <a href="#827-makedumpfile--vmcore-压缩与过滤">makedumpfile — vmcore 压缩与过滤</a></li>
-<li>8.2.8 <a href="#828-crash-工具加载-vmcore-离线分析">crash 工具加载 vmcore 离线分析</a></li>
-<li>8.2.9 <a href="#829-kdump-关键数据结构kimage--kexec_segment">kdump 关键数据结构（kimage / kexec_segment）</a></li>
-<li>8.2.10 <a href="#8210-kdump-内核配置开关与调优参数">kdump 内核配置开关与调优参数</a></li>
-<li>8.2.11 <a href="#8211-kdump-常见问题与排错">kdump 常见问题与排错</a></li>
-<li>8.3 <a href="#83-bootloader-ramdump-原理与实践">Bootloader Ramdump 原理与实践</a></li>
-<li>8.3.1 <a href="#831-bootloader-ramdump-整体架构">Bootloader Ramdump 整体架构</a></li>
-<li>8.3.2 <a href="#832-硬件看门狗复位与-warm-reset-保留内存">硬件看门狗复位与 Warm Reset 保留内存</a></li>
-<li>8.3.3 <a href="#833-qualcomm-方案--scm-调用与-download-mode">Qualcomm 方案 — SCM 调用与 Download Mode</a></li>
-<li>8.3.4 <a href="#834-mediatek-方案--aee-与-mrdump">MediaTek 方案 — AEE 与 MRDUMP</a></li>
-<li>8.3.5 <a href="#835-通用-arm64-方案--psci-system_reset2-与-reset-reason">通用 ARM64 方案 — PSCI SYSTEM_RESET2 与 Reset Reason</a></li>
-<li>8.3.6 <a href="#836-bootloader-端内存转储流程u-boot--abl">Bootloader 端内存转储流程（U-Boot / ABL）</a></li>
-<li>8.3.7 <a href="#837-转储传输--usb--sd-卡--tftp--emmc-分区">转储传输 — USB / SD 卡 / TFTP / eMMC 分区</a></li>
-<li>8.3.8 <a href="#838-内核侧-ramdump-模式触发与标记设置">内核侧 Ramdump 模式触发与标记设置</a></li>
-<li>8.3.9 <a href="#839-bootloader-ramdump-与-kdump-的协作与互斥">Bootloader Ramdump 与 kdump 的协作与互斥</a></li>
-<li>8.3.10 <a href="#8310-bootloader-ramdump-常见问题与排错">Bootloader Ramdump 常见问题与排错</a></li>
-<li>8.4 <a href="#84-pstore-子系统原理与实践">pstore 子系统原理与实践</a></li>
-<li>8.4.1 <a href="#841-pstore-子系统整体架构">pstore 子系统整体架构</a></li>
-<li>8.4.2 <a href="#842-pstore-前端类型dmesg--console--pmsg--ftrace">pstore 前端类型（dmesg / console / pmsg / ftrace）</a></li>
-<li>8.4.3 <a href="#843-ramoops-后端--保留内存区域实现">ramoops 后端 — 保留内存区域实现</a></li>
-<li>8.4.4 <a href="#844-ramoops-设备树配置与-boot-参数">ramoops 设备树配置与 Boot 参数</a></li>
-<li>8.4.5 <a href="#845-blk-后端--块设备持久化存储">blk 后端 — 块设备持久化存储</a></li>
-<li>8.4.6 <a href="#846-efi-变量后端uefi-系统">EFI 变量后端（UEFI 系统）</a></li>
-<li>8.4.7 <a href="#847-sysfspstore-文件系统接口与日志读取">/sys/fs/pstore/ 文件系统接口与日志读取</a></li>
-<li>8.4.8 <a href="#848-pstore-内部缓冲区管理--persistent_ram_zone">pstore 内部缓冲区管理 — persistent_ram_zone</a></li>
-<li>8.4.9 <a href="#849-pstore-关键数据结构pstore_info--ramoops_platform_data">pstore 关键数据结构（pstore_info / ramoops_platform_data）</a></li>
-<li>8.4.10 <a href="#8410-pstore-与-panic-路径的集成--kmsg_dump">pstore 与 Panic 路径的集成 — kmsg_dump</a></li>
-<li>8.4.11 <a href="#8411-pstore-内核配置开关与调优">pstore 内核配置开关与调优</a></li>
-<li>8.4.12 <a href="#8412-pstore-常见问题与排错">pstore 常见问题与排错</a></li>
-<li>8.5 <a href="#85-ramdump-分析工具与实战">Ramdump 分析工具与实战</a></li>
-<li>8.5.1 <a href="#851-crash-工具完整使用指南">crash 工具完整使用指南</a></li>
-<li>8.5.2 <a href="#852-gdb--vmlinux-加载-core-dump">GDB + vmlinux 加载 core dump</a></li>
-<li>8.5.3 <a href="#853-trace32--ds-5-加载-ramdump">Trace32 / DS-5 加载 ramdump</a></li>
-<li>8.5.4 <a href="#854-ramparse-工具qualcomm-平台">ramparse 工具（Qualcomm 平台）</a></li>
-<li>8.5.5 <a href="#855-从-ramdump-还原-panic-现场的完整步骤">从 ramdump 还原 Panic 现场的完整步骤</a></li>
-<li>8.6 <a href="#86-arm64-平台-ramdump-相关硬件机制">ARM64 平台 Ramdump 相关硬件机制</a></li>
-<li>8.6.1 <a href="#861-warm-reset-vs-cold-reset-与-ddr-内容保持">Warm Reset vs Cold Reset 与 DDR 内容保持</a></li>
-<li>8.6.2 <a href="#862-trustzone-与-secure-world-对-ramdump-的影响">TrustZone 与 Secure World 对 Ramdump 的影响</a></li>
-<li>8.6.3 <a href="#863-dram-自刷新模式与断电保护">DRAM 自刷新模式与断电保护</a></li>
-<li>8.6.4 <a href="#864-cache-刷写--panic-路径的-flush_cache_all">Cache 刷写 — Panic 路径的 flush_cache_all()</a></li>
-<li>8.7 <a href="#87-三种机制的选型与组合策略">三种机制的选型与组合策略</a></li>
-<li>8.7.1 <a href="#871-服务器场景推荐方案">服务器场景推荐方案</a></li>
-<li>8.7.2 <a href="#872-嵌入式--手机场景推荐方案">嵌入式 / 手机场景推荐方案</a></li>
-<li>8.7.3 <a href="#873-多机制组合部署最佳实践">多机制组合部署最佳实践</a></li>
-<li>8.7.4 <a href="#874-各机制资源开销对比">各机制资源开销对比</a></li>
-<li>8.8 <a href="#88-经典案例与实战分析">经典案例与实战分析</a></li>
-<li>8.8.1 <a href="#881-case-1kdump-捕获内核-oom-panic-的-vmcore-分析">Case 1：kdump 捕获内核 OOM Panic 的 vmcore 分析</a></li>
-<li>8.8.2 <a href="#882-case-2bootloader-ramdump-定位看门狗复位根因">Case 2：Bootloader Ramdump 定位看门狗复位根因</a></li>
-<li>8.8.3 <a href="#883-case-3pstore-恢复断电前的-panic-日志">Case 3：pstore 恢复断电前的 Panic 日志</a></li>
-<li>8.8.4 <a href="#884-case-4kdump-捕获内核失败的排查过程">Case 4：kdump 捕获内核失败的排查过程</a></li>
-<li>8.8.5 <a href="#885-case-5ramoops-区域被-bootloader-覆盖的排查">Case 5：ramoops 区域被 Bootloader 覆盖的排查</a></li>
-<li>8.9 <a href="#89-面试经典问题问答">面试经典问题问答</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>9. 内核内存压缩机制原理与实践</b></summary></p>
-
-<ul>
-<li>9.1 <a href="#91-内存压缩概述与动机">内存压缩概述与动机</a></li>
-<li>9.1.1 <a href="#911-为什么需要内存压缩--内存回收代价与-io-瓶颈">为什么需要内存压缩 — 内存回收代价与 I/O 瓶颈</a></li>
-<li>9.1.2 <a href="#912-内存压缩-vs-swap-vs-内存回收的关系">内存压缩 vs Swap vs 内存回收的关系</a></li>
-<li>9.1.3 <a href="#913-三大压缩机制对比zram--zswap--zpool">三大压缩机制对比（zram / zswap / zpool）</a></li>
-<li>9.1.4 <a href="#914-压缩算法选择--lzo--lz4--zstd--lzo-rle-对比">压缩算法选择 — lzo / lz4 / zstd / lzo-rle 对比</a></li>
-<li>9.1.5 <a href="#915-arm64-平台内存压缩的性能考量">ARM64 平台内存压缩的性能考量</a></li>
-<li>9.2 <a href="#92-zram-原理与实践">zram 原理与实践</a></li>
-<li>9.2.1 <a href="#921-zram-整体架构--基于块设备的压缩内存盘">zram 整体架构 — 基于块设备的压缩内存盘</a></li>
-<li>9.2.2 <a href="#922-zram-创建与初始化流程">zram 创建与初始化流程</a></li>
-<li>9.2.3 <a href="#923-zram-读写-io-路径详解">zram 读写 I/O 路径详解</a></li>
-<li>9.2.4 <a href="#924-zram-压缩--解压缩流程">zram 压缩 / 解压缩流程</a></li>
-<li>9.2.5 <a href="#925-zram-内存管理--zs_pool--zspage--handle">zram 内存管理 — zs_pool / zspage / handle</a></li>
-<li>9.2.6 <a href="#926-zram-作为-swap-后端的配置与使用">zram 作为 Swap 后端的配置与使用</a></li>
-<li>9.2.7 <a href="#927-zram-writeback--冷页回写到磁盘">zram writeback — 冷页回写到磁盘</a></li>
-<li>9.2.8 <a href="#928-zram-recompression--多级压缩算法">zram recompression — 多级压缩算法</a></li>
-<li>9.2.9 <a href="#929-zram-关键数据结构zram--zram_table_entry">zram 关键数据结构（zram / zram_table_entry）</a></li>
-<li>9.2.10 <a href="#9210-zram-sysfs-接口与统计信息">zram sysfs 接口与统计信息</a></li>
-<li>9.2.11 <a href="#9211-zram-内核配置开关与调优参数">zram 内核配置开关与调优参数</a></li>
-<li>9.3 <a href="#93-zswap-原理与实践">zswap 原理与实践</a></li>
-<li>9.3.1 <a href="#931-zswap-整体架构--swap-路径上的压缩缓存层">zswap 整体架构 — Swap 路径上的压缩缓存层</a></li>
-<li>9.3.2 <a href="#932-zswap-与-swap-子系统的集成点frontswap">zswap 与 Swap 子系统的集成点（frontswap）</a></li>
-<li>9.3.3 <a href="#933-zswap-store-路径--页面压缩入池">zswap store 路径 — 页面压缩入池</a></li>
-<li>9.3.4 <a href="#934-zswap-load-路径--页面解压缩">zswap load 路径 — 页面解压缩</a></li>
-<li>9.3.5 <a href="#935-zswap-淘汰策略--lru-writeback-到真实-swap">zswap 淘汰策略 — LRU writeback 到真实 Swap</a></li>
-<li>9.3.6 <a href="#936-zswap-内存池管理--zpool-抽象层">zswap 内存池管理 — zpool 抽象层</a></li>
-<li>9.3.7 <a href="#937-zswap-关键数据结构zswap_pool--zswap_entry--zswap_tree">zswap 关键数据结构（zswap_pool / zswap_entry / zswap_tree）</a></li>
-<li>9.3.8 <a href="#938-zswap-与-cgroup-内存控制的交互">zswap 与 cgroup 内存控制的交互</a></li>
-<li>9.3.9 <a href="#939-zswap-debugfs-接口与统计信息">zswap debugfs 接口与统计信息</a></li>
-<li>9.3.10 <a href="#9310-zswap-内核配置开关与调优参数">zswap 内核配置开关与调优参数</a></li>
-<li>9.4 <a href="#94-zsmalloc-内存分配器">zsmalloc 内存分配器</a></li>
-<li>9.4.1 <a href="#941-zsmalloc-设计目标--解决压缩页的碎片问题">zsmalloc 设计目标 — 解决压缩页的碎片问题</a></li>
-<li>9.4.2 <a href="#942-zspage-结构--跨物理页的连续存储">zspage 结构 — 跨物理页的连续存储</a></li>
-<li>9.4.3 <a href="#943-size_class-分类与分配策略">size_class 分类与分配策略</a></li>
-<li>9.4.4 <a href="#944-zs_map_object--zs_unmap_object--跨页访问机制">zs_map_object / zs_unmap_object — 跨页访问机制</a></li>
-<li>9.4.5 <a href="#945-zsmalloc-compaction--碎片整理">zsmalloc compaction — 碎片整理</a></li>
-<li>9.4.6 <a href="#946-zsmalloc-关键数据结构zs_pool--size_class--zspage">zsmalloc 关键数据结构（zs_pool / size_class / zspage）</a></li>
-<li>9.4.7 <a href="#947-zsmalloc-vs-zbud-vs-z3fold-对比">zsmalloc vs zbud vs z3fold 对比</a></li>
-<li>9.5 <a href="#95-内存压缩与回收路径的交互">内存压缩与回收路径的交互</a></li>
-<li>9.5.1 <a href="#951-swap-子系统回顾--swap_info--swap_entry_t--swap-cache">Swap 子系统回顾 — swap_info / swap_entry_t / swap cache</a></li>
-<li>9.5.2 <a href="#952-匿名页回收触发压缩的完整路径">匿名页回收触发压缩的完整路径</a></li>
-<li>9.5.3 <a href="#953-内存压力传导--watermark--kswapd--direct-reclaim">内存压力传导 — watermark / kswapd / direct reclaim</a></li>
-<li>9.5.4 <a href="#954-zswap-accept_threshold--压缩池满时的降级策略">zswap accept_threshold — 压缩池满时的降级策略</a></li>
-<li>9.5.5 <a href="#955-内存压缩对-oom-killer-的影响">内存压缩对 OOM Killer 的影响</a></li>
-<li>9.6 <a href="#96-压缩算法内核实现">压缩算法内核实现</a></li>
-<li>9.6.1 <a href="#961-crypto_comp-压缩框架接口">crypto_comp 压缩框架接口</a></li>
-<li>9.6.2 <a href="#962-lzo--lzo-rle-实现要点">lzo / lzo-rle 实现要点</a></li>
-<li>9.6.3 <a href="#963-lz4-实现与-arm64-优化">lz4 实现与 ARM64 优化</a></li>
-<li>9.6.4 <a href="#964-zstd-实现与内存开销">zstd 实现与内存开销</a></li>
-<li>9.6.5 <a href="#965-per-cpu-压缩缓冲区管理">Per-CPU 压缩缓冲区管理</a></li>
-<li>9.7 <a href="#97-arm64-平台压缩性能优化">ARM64 平台压缩性能优化</a></li>
-<li>9.7.1 <a href="#971-neon--sve-指令加速压缩算法">NEON / SVE 指令加速压缩算法</a></li>
-<li>9.7.2 <a href="#972-cache-友好性与压缩页布局">Cache 友好性与压缩页布局</a></li>
-<li>9.7.3 <a href="#973-大小核调度对压缩性能的影响">大小核调度对压缩性能的影响</a></li>
-<li>9.7.4 <a href="#974-android-平台-zram-调优最佳实践">Android 平台 zram 调优最佳实践</a></li>
-<li>9.8 <a href="#98-监控调试与问题定位">监控、调试与问题定位</a></li>
-<li>9.8.1 <a href="#981-procmeminfo-中压缩相关字段解读">/proc/meminfo 中压缩相关字段解读</a></li>
-<li>9.8.2 <a href="#982-zram-sysblockzram0-完整指标解读">zram /sys/block/zram0/ 完整指标解读</a></li>
-<li>9.8.3 <a href="#983-zswap-syskerneldebugzswap-指标解读">zswap /sys/kernel/debug/zswap/ 指标解读</a></li>
-<li>9.8.4 <a href="#984-vmstat-中-pswpin--pswpout-与压缩的关系">vmstat 中 pswpin / pswpout 与压缩的关系</a></li>
-<li>9.8.5 <a href="#985-ftrace-追踪压缩路径性能瓶颈">ftrace 追踪压缩路径性能瓶颈</a></li>
-<li>9.8.6 <a href="#986-常见问题--压缩率低--压缩延迟高--内存反增">常见问题 — 压缩率低 / 压缩延迟高 / 内存反增</a></li>
-<li>9.9 <a href="#99-经典案例与实战分析">经典案例与实战分析</a></li>
-<li>9.9.1 <a href="#991-case-1android-设备-zram-调优--从-oom-到流畅">Case 1：Android 设备 zram 调优 — 从 OOM 到流畅</a></li>
-<li>9.9.2 <a href="#992-case-2服务器-zswap-配置--减少-swap-io-90">Case 2：服务器 zswap 配置 — 减少 Swap I/O 90%</a></li>
-<li>9.9.3 <a href="#993-case-3zram-writeback-导致-emmc-写寿命问题">Case 3：zram writeback 导致 eMMC 写寿命问题</a></li>
-<li>9.9.4 <a href="#994-case-4zsmalloc-碎片导致分配失败定位">Case 4：zsmalloc 碎片导致分配失败定位</a></li>
-<li>9.9.5 <a href="#995-case-5zswap-压缩池满-writeback-风暴排查">Case 5：zswap 压缩池满 writeback 风暴排查</a></li>
-<li>9.10 <a href="#910-面试经典问题问答">面试经典问题问答</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>10. 内核 SLUB Debug 机制原理与实践</b></summary></p>
-
-<ul>
-<li>10.1 <a href="#101-slub-分配器基础回顾">SLUB 分配器基础回顾</a></li>
-<li>10.1.1 <a href="#1011-slub-在内核内存分配体系中的位置">SLUB 在内核内存分配体系中的位置</a></li>
-<li>10.1.2 <a href="#1012-slub-核心概念--slab--object--freelist--kmem_cache">SLUB 核心概念 — slab / object / freelist / kmem_cache</a></li>
-<li>10.1.3 <a href="#1013-slub-快速路径与慢速路径分配流程">SLUB 快速路径与慢速路径分配流程</a></li>
-<li>10.1.4 <a href="#1014-per-cpu-partial--node-partial-缓存层级">Per-CPU partial / Node partial 缓存层级</a></li>
-<li>10.1.5 <a href="#1015-slub-vs-slab-vs-slob-对比">SLUB vs SLAB vs SLOB 对比</a></li>
-<li>10.2 <a href="#102-slub-debug-总览与开启方式">SLUB Debug 总览与开启方式</a></li>
-<li>10.2.1 <a href="#1021-slub-debug-能检测的问题类型">SLUB Debug 能检测的问题类型</a></li>
-<li>10.2.2 <a href="#1022-config_slub_debug-编译选项">CONFIG_SLUB_DEBUG 编译选项</a></li>
-<li>10.2.3 <a href="#1023-slub_debug-boot-参数完整语法与标志位">slub_debug Boot 参数完整语法与标志位</a></li>
-<li>10.2.4 <a href="#1024-针对特定-cache-开启-debug--slub_debugcache_name">针对特定 cache 开启 Debug — slub_debug=,<cache_name></a></li>
-<li>10.2.5 <a href="#1025-运行时通过-sysfs-动态开关-debug">运行时通过 sysfs 动态开关 Debug</a></li>
-<li>10.2.6 <a href="#1026-slub-debug-对性能的影响与评估">SLUB Debug 对性能的影响与评估</a></li>
-<li>10.3 <a href="#103-red-zone红区检测">Red Zone（红区检测）</a></li>
-<li>10.3.1 <a href="#1031-red-zone-原理--对象前后的哨兵区域">Red Zone 原理 — 对象前后的哨兵区域</a></li>
-<li>10.3.2 <a href="#1032-red-zone-布局与魔数值slub_red_inactive--slub_red_active">Red Zone 布局与魔数值（SLUB_RED_INACTIVE / SLUB_RED_ACTIVE）</a></li>
-<li>10.3.3 <a href="#1033-red-zone-检查时机--alloc--free--validate">Red Zone 检查时机 — alloc / free / validate</a></li>
-<li>10.3.4 <a href="#1034-red-zone-越界写检测原理与-log-解读">Red Zone 越界写检测原理与 Log 解读</a></li>
-<li>10.3.5 <a href="#1035-check_bytes_and_report-源码分析">check_bytes_and_report() 源码分析</a></li>
-<li>10.4 <a href="#104-poisoning毒化检测">Poisoning（毒化检测）</a></li>
-<li>10.4.1 <a href="#1041-poison-原理--空闲对象填充魔数模式">Poison 原理 — 空闲对象填充魔数模式</a></li>
-<li>10.4.2 <a href="#1042-poison_free-0x6b-与-poison_inuse-0x5a-模式">POISON_FREE (0x6b) 与 POISON_INUSE (0x5a) 模式</a></li>
-<li>10.4.3 <a href="#1043-use-after-free-检测原理--释放后内容被篡改">Use-After-Free 检测原理 — 释放后内容被篡改</a></li>
-<li>10.4.4 <a href="#1044-uninitialized-use-检测原理">Uninitialized Use 检测原理</a></li>
-<li>10.4.5 <a href="#1045-check_object--check_pad_bytes-源码分析">check_object() / check_pad_bytes() 源码分析</a></li>
-<li>10.4.6 <a href="#1046-poison-与-kasan-的对比与互补">Poison 与 KASAN 的对比与互补</a></li>
-<li>10.5 <a href="#105-object-tracking对象追踪">Object Tracking（对象追踪）</a></li>
-<li>10.5.1 <a href="#1051-track_alloc--track_free-追踪信息结构">TRACK_ALLOC / TRACK_FREE 追踪信息结构</a></li>
-<li>10.5.2 <a href="#1052-alloc_traces--free_traces-调用栈记录">alloc_traces / free_traces 调用栈记录</a></li>
-<li>10.5.3 <a href="#1053-struct-track-数据结构与存储位置">struct track 数据结构与存储位置</a></li>
-<li>10.5.4 <a href="#1054-通过-sysfs-读取对象追踪信息">通过 sysfs 读取对象追踪信息</a></li>
-<li>10.5.5 <a href="#1055-利用-object-tracking-定位内存泄漏">利用 Object Tracking 定位内存泄漏</a></li>
-<li>10.6 <a href="#106-freelist-pointer-保护">Freelist Pointer 保护</a></li>
-<li>10.6.1 <a href="#1061-slab_freelist_hardened--freelist-指针混淆">SLAB_FREELIST_HARDENED — freelist 指针混淆</a></li>
-<li>10.6.2 <a href="#1062-freelist_ptr_encode--freelist_ptr_decode-算法">freelist_ptr_encode / freelist_ptr_decode 算法</a></li>
-<li>10.6.3 <a href="#1063-double-free-检测--freelist-一致性校验">Double-Free 检测 — freelist 一致性校验</a></li>
-<li>10.6.4 <a href="#1064-config_slab_freelist_random--freelist-随机化">CONFIG_SLAB_FREELIST_RANDOM — freelist 随机化</a></li>
-<li>10.6.5 <a href="#1065-freelist-破坏的安全影响与利用防护">Freelist 破坏的安全影响与利用防护</a></li>
-<li>10.7 <a href="#107-slub-对象内存布局详解">SLUB 对象内存布局详解</a></li>
-<li>10.7.1 <a href="#1071-debug-关闭时的对象布局--object--fp">Debug 关闭时的对象布局 — object + FP</a></li>
-<li>10.7.2 <a href="#1072-debug-开启时的完整布局--red-zone--object--red-zone--padding--track">Debug 开启时的完整布局 — Red Zone + Object + Red Zone + Padding + Track</a></li>
-<li>10.7.3 <a href="#1073-对象大小计算--inuse--size--offset-字段的含义">对象大小计算 — inuse / size / offset 字段的含义</a></li>
-<li>10.7.4 <a href="#1074-calculate_sizes-源码分析">calculate_sizes() 源码分析</a></li>
-<li>10.7.5 <a href="#1075-debug-元数据对-slab-利用率的影响">Debug 元数据对 slab 利用率的影响</a></li>
-<li>10.8 <a href="#108-slub-debug-关键数据结构">SLUB Debug 关键数据结构</a></li>
-<li>10.8.1 <a href="#1081-struct-kmem_cache--debug-相关字段详解">struct kmem_cache — Debug 相关字段详解</a></li>
-<li>10.8.2 <a href="#1082-struct-slab--slab-页面元数据">struct slab — slab 页面元数据</a></li>
-<li>10.8.3 <a href="#1083-struct-track--分配释放追踪信息">struct track — 分配/释放追踪信息</a></li>
-<li>10.8.4 <a href="#1084-kmem_cache_flags--debug-标志位定义与组合">kmem_cache_flags — Debug 标志位定义与组合</a></li>
-<li>10.8.5 <a href="#1085-关键魔数常量定义汇总">关键魔数常量定义汇总</a></li>
-<li>10.9 <a href="#109-slub-sysfs--debugfs-接口">SLUB sysfs / debugfs 接口</a></li>
-<li>10.9.1 <a href="#1091-syskernelslabcache-目录结构">/sys/kernel/slab/<cache>/ 目录结构</a></li>
-<li>10.9.2 <a href="#1092-red_zone--poison--store_user--sanity_checks-属性">red_zone / poison / store_user / sanity_checks 属性</a></li>
-<li>10.9.3 <a href="#1093-validate-接口--手动触发全量校验">validate 接口 — 手动触发全量校验</a></li>
-<li>10.9.4 <a href="#1094-shrink-接口--释放空闲-slab-页面">shrink 接口 — 释放空闲 slab 页面</a></li>
-<li>10.9.5 <a href="#1095-alloc_traces--free_traces--调用栈统计">alloc_traces / free_traces — 调用栈统计</a></li>
-<li>10.9.6 <a href="#1096-slabinfo-工具使用指南">slabinfo 工具使用指南</a></li>
-<li>10.10 <a href="#1010-slub-debug-源码核心流程分析">SLUB Debug 源码核心流程分析</a></li>
-<li>10.10.1 <a href="#10101-alloc_debug_processing--分配时检查流程">alloc_debug_processing() — 分配时检查流程</a></li>
-<li>10.10.2 <a href="#10102-free_debug_processing--释放时检查流程">free_debug_processing() — 释放时检查流程</a></li>
-<li>10.10.3 <a href="#10103-check_slab--check_object-完整校验逻辑">check_slab() / check_object() 完整校验逻辑</a></li>
-<li>10.10.4 <a href="#10104-on_freelist--freelist-完整性遍历检查">on_freelist() — freelist 完整性遍历检查</a></li>
-<li>10.10.5 <a href="#10105-slab_bug--slab_fix--错误报告与修复机制">slab_bug() / slab_fix() — 错误报告与修复机制</a></li>
-<li>10.10.6 <a href="#10106-init_object--restore_bytes--初始化与恢复">init_object() / restore_bytes() — 初始化与恢复</a></li>
-<li>10.11 <a href="#1011-slub-debug-内核配置开关汇总">SLUB Debug 内核配置开关汇总</a></li>
-<li>10.11.1 <a href="#10111-config_slub_debug--config_slub_debug_on">CONFIG_SLUB_DEBUG / CONFIG_SLUB_DEBUG_ON</a></li>
-<li>10.11.2 <a href="#10112-config_slab_freelist_hardened--random">CONFIG_SLAB_FREELIST_HARDENED / RANDOM</a></li>
-<li>10.11.3 <a href="#10113-config_slub_stats--分配统计信息">CONFIG_SLUB_STATS — 分配统计信息</a></li>
-<li>10.11.4 <a href="#10114-config_memcg_kmem--cgroup-slab-隔离">CONFIG_MEMCG_KMEM — cgroup slab 隔离</a></li>
-<li>10.11.5 <a href="#10115-推荐-debug-配置组合--开发--测试--生产">推荐 Debug 配置组合 — 开发 / 测试 / 生产</a></li>
-<li>10.12 <a href="#1012-经典案例与实战-log-分析">经典案例与实战 Log 分析</a></li>
-<li>10.12.1 <a href="#10121-case-1red-zone-检测到-slab-out-of-bounds-越界写">Case 1：Red Zone 检测到 slab-out-of-bounds 越界写</a></li>
-<li>10.12.2 <a href="#10122-case-2poison-检测到-use-after-free">Case 2：Poison 检测到 Use-After-Free</a></li>
-<li>10.12.3 <a href="#10123-case-3double-free-导致-freelist-损坏">Case 3：Double-Free 导致 freelist 损坏</a></li>
-<li>10.12.4 <a href="#10124-case-4object-tracking-定位-kmalloc-泄漏">Case 4：Object Tracking 定位 kmalloc 泄漏</a></li>
-<li>10.12.5 <a href="#10125-case-5slub_debugfzpu-全量检测定位间歇性踩内存">Case 5：slub_debug=FZPU 全量检测定位间歇性踩内存</a></li>
-<li>10.12.6 <a href="#10126-case-6生产环境最小化开启-slub-debug-排查方案">Case 6：生产环境最小化开启 SLUB Debug 排查方案</a></li>
-<li>10.13 <a href="#1013-slub-debug-与其他检测工具的对比与配合">SLUB Debug 与其他检测工具的对比与配合</a></li>
-<li>10.13.1 <a href="#10131-slub-debug-vs-kasan--检测能力对比">SLUB Debug vs KASAN — 检测能力对比</a></li>
-<li>10.13.2 <a href="#10132-slub-debug-vs-kfence--采样-vs-全量">SLUB Debug vs KFENCE — 采样 vs 全量</a></li>
-<li>10.13.3 <a href="#10133-slub-debug--ftrace-联合分析">SLUB Debug + ftrace 联合分析</a></li>
-<li>10.13.4 <a href="#10134-多工具组合检测策略">多工具组合检测策略</a></li>
-<li>10.14 <a href="#1014-面试经典问题问答">面试经典问题问答</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>11. 内核 Coredump 机制原理与实践</b></summary></p>
-
-<ul>
-<li>11.1 <a href="#111-coredump-概述">Coredump 概述</a></li>
-<li>11.1.1 <a href="#1111-什么是-coredump--进程崩溃时的内存快照">什么是 Coredump — 进程崩溃时的内存快照</a></li>
-<li>11.1.2 <a href="#1112-coredump-vs-ramdump-vs-kdump-的区别与联系">Coredump vs Ramdump vs Kdump 的区别与联系</a></li>
-<li>11.1.3 <a href="#1113-触发-coredump-的信号类型sigsegv--sigabrt--sigfpe--sigbus">触发 Coredump 的信号类型（SIGSEGV / SIGABRT / SIGFPE / SIGBUS）</a></li>
-<li>11.1.4 <a href="#1114-coredump-在内核态与用户态调试中的角色">Coredump 在内核态与用户态调试中的角色</a></li>
-<li>11.2 <a href="#112-coredump-内核实现架构">Coredump 内核实现架构</a></li>
-<li>11.2.1 <a href="#1121-do_coredump-完整执行流程">do_coredump() 完整执行流程</a></li>
-<li>11.2.2 <a href="#1122-信号处理路径--get_signal-到-do_coredump-的调用链">信号处理路径 — get_signal() 到 do_coredump() 的调用链</a></li>
-<li>11.2.3 <a href="#1123-coredump_wait--多线程同步与冻结">coredump_wait() — 多线程同步与冻结</a></li>
-<li>11.2.4 <a href="#1124-format_corename--core-文件名模板解析">format_corename() — core 文件名模板解析</a></li>
-<li>11.2.5 <a href="#1125-dump_emit--dump_align--内存数据写出机制">dump_emit() / dump_align() — 内存数据写出机制</a></li>
-<li>11.2.6 <a href="#1126-coredump-过滤机制--procpidcoredump_filter">Coredump 过滤机制 — /proc/PID/coredump_filter</a></li>
-<li>11.3 <a href="#113-elf-core-文件格式详解">ELF Core 文件格式详解</a></li>
-<li>11.3.1 <a href="#1131-elf-header-与-program-header-table-结构">ELF Header 与 Program Header Table 结构</a></li>
-<li>11.3.2 <a href="#1132-pt_note-段--寄存器--信号信息--进程状态">PT_NOTE 段 — 寄存器 / 信号信息 / 进程状态</a></li>
-<li>11.3.3 <a href="#1133-pt_load-段--内存映射区域转储">PT_LOAD 段 — 内存映射区域转储</a></li>
-<li>11.3.4 <a href="#1134-nt_prstatus--nt_prpsinfo--nt_siginfo--nt_auxv-详解">NT_PRSTATUS / NT_PRPSINFO / NT_SIGINFO / NT_AUXV 详解</a></li>
-<li>11.3.5 <a href="#1135-arm64-特有-note--nt_arm_tls--nt_arm_hw_break--nt_arm_sve">ARM64 特有 NOTE — NT_ARM_TLS / NT_ARM_HW_BREAK / NT_ARM_SVE</a></li>
-<li>11.3.6 <a href="#1136-fill_elf_header--fill_note-内核生成源码分析">fill_elf_header() / fill_note() 内核生成源码分析</a></li>
-<li>11.4 <a href="#114-coredump-配置与控制">Coredump 配置与控制</a></li>
-<li>11.4.1 <a href="#1141-ulimit--c-与-rlimit_core-资源限制">ulimit -c 与 RLIMIT_CORE 资源限制</a></li>
-<li>11.4.2 <a href="#1142-procsyskernelcore_pattern-输出路径与管道模式">/proc/sys/kernel/core_pattern 输出路径与管道模式</a></li>
-<li>11.4.3 <a href="#1143-core_pattern-模板变量p--e--t--s--h">core_pattern 模板变量（%p / %e / %t / %s / %h）</a></li>
-<li>11.4.4 <a href="#1144-管道模式program与-systemd-coredump-集成">管道模式（|program）与 systemd-coredump 集成</a></li>
-<li>11.4.5 <a href="#1145-procsyskernelcore_pipe_limit-并发控制">/proc/sys/kernel/core_pipe_limit 并发控制</a></li>
-<li>11.4.6 <a href="#1146-procpidcoredump_filter-按位控制转储内容">/proc/PID/coredump_filter 按位控制转储内容</a></li>
-<li>11.4.7 <a href="#1147-suidsgid-程序的-coredump-安全限制fssuid_dumpable">SUID/SGID 程序的 Coredump 安全限制（fs.suid_dumpable）</a></li>
-<li>11.5 <a href="#115-多线程与多进程-coredump-处理">多线程与多进程 Coredump 处理</a></li>
-<li>11.5.1 <a href="#1151-多线程-coredump--zap_threads-冻结所有线程">多线程 Coredump — zap_threads() 冻结所有线程</a></li>
-<li>11.5.2 <a href="#1152-每个线程的寄存器状态捕获">每个线程的寄存器状态捕获</a></li>
-<li>11.5.3 <a href="#1153-线程组共享内存与独立内存的转储策略">线程组共享内存与独立内存的转储策略</a></li>
-<li>11.5.4 <a href="#1154-coredump_task_exit--进程退出时的清理">coredump_task_exit() — 进程退出时的清理</a></li>
-<li>11.6 <a href="#116-arm64-平台-coredump-特性">ARM64 平台 Coredump 特性</a></li>
-<li>11.6.1 <a href="#1161-arm64-寄存器集保存x0-x30--sp--pc--pstate">ARM64 寄存器集保存（x0-x30 / sp / pc / pstate）</a></li>
-<li>11.6.2 <a href="#1162-fpsimd--sve--sme-寄存器保存">FPSIMD / SVE / SME 寄存器保存</a></li>
-<li>11.6.3 <a href="#1163-mte-标签信息在-coredump-中的保存">MTE 标签信息在 Coredump 中的保存</a></li>
-<li>11.6.4 <a href="#1164-pac-指针认证对-coredump-分析的影响">PAC 指针认证对 Coredump 分析的影响</a></li>
-<li>11.6.5 <a href="#1165-elf_core_copy_task_regs-arm64-实现分析">elf_core_copy_task_regs() ARM64 实现分析</a></li>
-<li>11.7 <a href="#117-coredump-关键数据结构">Coredump 关键数据结构</a></li>
-<li>11.7.1 <a href="#1171-struct-coredump_params--转储参数集">struct coredump_params — 转储参数集</a></li>
-<li>11.7.2 <a href="#1172-struct-core_thread--线程链表">struct core_thread — 线程链表</a></li>
-<li>11.7.3 <a href="#1173-struct-elf_prstatus--elf_prpsinfo--进程状态信息">struct elf_prstatus / elf_prpsinfo — 进程状态信息</a></li>
-<li>11.7.4 <a href="#1174-struct-linux_binfmt--二进制格式注册与-core_dump-回调">struct linux_binfmt — 二进制格式注册与 core_dump 回调</a></li>
-<li>11.7.5 <a href="#1175-struct-vm_area_struct--vma-遍历与转储决策">struct vm_area_struct — VMA 遍历与转储决策</a></li>
-<li>11.8 <a href="#118-gdb--lldb-加载-core-文件分析">GDB / LLDB 加载 Core 文件分析</a></li>
-<li>11.8.1 <a href="#1181-gdb-加载-core-文件基本操作">GDB 加载 core 文件基本操作</a></li>
-<li>11.8.2 <a href="#1182-调用栈分析--bt--bt-full--thread-apply-all-bt">调用栈分析 — bt / bt full / thread apply all bt</a></li>
-<li>11.8.3 <a href="#1183-内存与变量检查--print--x--info-registers">内存与变量检查 — print / x / info registers</a></li>
-<li>11.8.4 <a href="#1184-共享库符号加载与-solib-search-path">共享库符号加载与 solib-search-path</a></li>
-<li>11.8.5 <a href="#1185-arm64-交叉调试--aarch64-linux-gnu-gdb-实战">ARM64 交叉调试 — aarch64-linux-gnu-gdb 实战</a></li>
-<li>11.9 <a href="#119-systemd-coredump-与-coredumpctl">systemd-coredump 与 coredumpctl</a></li>
-<li>11.9.1 <a href="#1191-systemd-coredump-架构与工作流程">systemd-coredump 架构与工作流程</a></li>
-<li>11.9.2 <a href="#1192-etcsystemdcoredumpconf-配置详解">/etc/systemd/coredump.conf 配置详解</a></li>
-<li>11.9.3 <a href="#1193-coredumpctl-list--info--debug-命令使用">coredumpctl list / info / debug 命令使用</a></li>
-<li>11.9.4 <a href="#1194-journal-存储与磁盘空间管理">Journal 存储与磁盘空间管理</a></li>
-<li>11.10 <a href="#1110-内核态进程-coredump-与内核崩溃转储的关联">内核态进程 Coredump 与内核崩溃转储的关联</a></li>
-<li>11.10.1 <a href="#11101-内核线程崩溃不会产生-coredump-的原因">内核线程崩溃不会产生 Coredump 的原因</a></li>
-<li>11.10.2 <a href="#11102-用户态辅助进程崩溃的-coredump-场景">用户态辅助进程崩溃的 Coredump 场景</a></li>
-<li>11.10.3 <a href="#11103-coredump-与-kdump--pstore-的互补关系">Coredump 与 kdump / pstore 的互补关系</a></li>
-<li>11.11 <a href="#1111-内核配置开关与安全考量">内核配置开关与安全考量</a></li>
-<li>11.11.1 <a href="#11111-config_coredump--coredump-功能开关">CONFIG_COREDUMP — Coredump 功能开关</a></li>
-<li>11.11.2 <a href="#11112-config_elf_core--elf-格式-core-支持">CONFIG_ELF_CORE — ELF 格式 core 支持</a></li>
-<li>11.11.3 <a href="#11113-config_core_dump_default_elf_headers--默认转储-elf-header">CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS — 默认转储 ELF header</a></li>
-<li>11.11.4 <a href="#11114-coredump-安全风险--敏感数据泄露防护">Coredump 安全风险 — 敏感数据泄露防护</a></li>
-<li>11.11.5 <a href="#11115-生产环境-coredump-策略最佳实践">生产环境 Coredump 策略最佳实践</a></li>
-<li>11.12 <a href="#1112-经典案例与实战分析">经典案例与实战分析</a></li>
-<li>11.12.1 <a href="#11121-case-1sigsegv-空指针--从-core-文件定位崩溃行">Case 1：SIGSEGV 空指针 — 从 core 文件定位崩溃行</a></li>
-<li>11.12.2 <a href="#11122-case-2sigabrt--glibc-堆破坏检测触发-abort">Case 2：SIGABRT — glibc 堆破坏检测触发 abort</a></li>
-<li>11.12.3 <a href="#11123-case-3多线程竞态导致的间歇性-coredump">Case 3：多线程竞态导致的间歇性 Coredump</a></li>
-<li>11.12.4 <a href="#11124-case-4栈溢出导致-sigsegv-的分析方法">Case 4：栈溢出导致 SIGSEGV 的分析方法</a></li>
-<li>11.12.5 <a href="#11125-case-5coredump-生成失败的排查流程">Case 5：Coredump 生成失败的排查流程</a></li>
-<li>11.12.6 <a href="#11126-case-6大内存进程-coredump-慢--磁盘满的处理策略">Case 6：大内存进程 Coredump 慢 / 磁盘满的处理策略</a></li>
-<li>11.13 <a href="#1113-面试经典问题问答">面试经典问题问答</a></li>
-</ul>
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. RCU 原理和问题定位</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#rcu-实现原理">RCU 实现原理</a></li>
+          <li><a href="#quiescent-state静默状态深入解析">Quiescent State（静默状态）深入解析</a></li>
+          <li><a href="#11-rcu-软件架构">RCU 软件架构</a></li>
+          <li><a href="#111-层级树结构">层级树结构</a></li>
+          <li><a href="#112-grace-period-状态机">Grace Period 状态机</a></li>
+          <li><a href="#113-quiescent-state-上报机制">Quiescent State 上报机制</a></li>
+          <li><a href="#114-callback-分段处理流水线">Callback 分段处理流水线</a></li>
+          <li><a href="#115-force-quiescent-state-扫描">Force-Quiescent-State 扫描</a></li>
+          <li><a href="#116-nocb-回调卸载架构">NOCB 回调卸载架构</a></li>
+          <li><a href="#12-rcu-关键数据结构">RCU 关键数据结构</a></li>
+          <li><a href="#121-struct-rcu_state--全局-rcu-状态">struct rcu_state — 全局 RCU 状态</a></li>
+          <li><a href="#122-struct-rcu_node--层级树节点">struct rcu_node — 层级树节点</a></li>
+          <li><a href="#123-struct-rcu_data--per-cpu-rcu-数据">struct rcu_data — Per-CPU RCU 数据</a></li>
+          <li><a href="#124-struct-rcu_segcblist--分段回调链表">struct rcu_segcblist — 分段回调链表</a></li>
+          <li><a href="#125-struct-rcu_snap_record--stall-诊断快照">struct rcu_snap_record — Stall 诊断快照</a></li>
+          <li><a href="#13-rcu-告警-debug-需要-enable-的内核开关">RCU 告警 Debug 需要 Enable 的内核开关</a></li>
+          <li><a href="#131-基础-rcu-配置开关">基础 RCU 配置开关</a></li>
+          <li><a href="#132-stall-检测配置开关">Stall 检测配置开关</a></li>
+          <li><a href="#133-debug-与-tracing-配置开关">Debug 与 Tracing 配置开关</a></li>
+          <li><a href="#134-运行时-sysctl-调优参数">运行时 sysctl 调优参数</a></li>
+          <li><a href="#135-boot-参数">Boot 参数</a></li>
+          <li><a href="#136-推荐-debug-配置组合">推荐 Debug 配置组合</a></li>
+          <li><a href="#14-rcu-告警案例分析和-log-解读">RCU 告警案例分析和 Log 解读</a></li>
+          <li><a href="#141-rcu-cpu-stall-告警格式全解析">RCU CPU Stall 告警格式全解析</a></li>
+          <li><a href="#142-案例一单核长时间关中断导致-rcu-stall">案例一：单核长时间关中断导致 RCU Stall</a></li>
+          <li><a href="#143-案例二preempt_rcu-下读侧临界区阻塞-gp">案例二：PREEMPT_RCU 下读侧临界区阻塞 GP</a></li>
+          <li><a href="#144-案例三gp-kthread-饥饿">案例三：GP kthread 饥饿</a></li>
+          <li><a href="#145-案例四fqs-timer-丢失唤醒">案例四：FQS Timer 丢失唤醒</a></li>
+          <li><a href="#146-stall-检测时序与误报排除">Stall 检测时序与误报排除</a></li>
+          <li><a href="#15-rcu-核心算法总结">RCU 核心算法总结</a></li>
+          <li><a href="#151-gp-序列号编码算法">GP 序列号编码算法</a></li>
+          <li><a href="#152-漏斗锁算法funnel-locking">漏斗锁算法（Funnel Locking）</a></li>
+          <li><a href="#153-qs-位图逐层上报算法">QS 位图逐层上报算法</a></li>
+          <li><a href="#154-callback-分段流水线算法">Callback 分段流水线算法</a></li>
+          <li><a href="#155-force-quiescent-state-两阶段扫描算法">Force-Quiescent-State 两阶段扫描算法</a></li>
+          <li><a href="#156-stall-检测-5-重屏障验证算法">Stall 检测 5 重屏障验证算法</a></li>
+          <li><a href="#157-gp-kthread-主循环状态机算法">GP kthread 主循环状态机算法</a></li>
+          <li><a href="#158-广度优先树遍历算法">广度优先树遍历算法</a></li>
+          <li><a href="#159-expedited-gp-算法">Expedited GP 算法</a></li>
+          <li><a href="#1510-<strong>note_gp_changes-本地-gp-同步算法">note_gp_changes 本地 GP 同步算法</a></li>
+          <li><a href="#16-rcu-面试经典问题问答">RCU 面试经典问题问答</a></li>
+          <li><a href="#17-rcu-各种读写场景处理流程">RCU 各种读写场景处理流程</a></li>
+          <li><a href="#171-场景一单指针替换最基本模式">场景一：单指针替换（最基本模式）</a></li>
+          <li><a href="#172-场景二rcu-链表--增删改查全流程">场景二：RCU 链表 — 增删改查全流程</a></li>
+          <li><a href="#173-场景三rcu-哈希表--hlist-操作">场景三：RCU 哈希表 — hlist 操作</a></li>
+          <li><a href="#174-场景四rcu--引用计数最安全模式">场景四：RCU + 引用计数（最安全模式）</a></li>
+          <li><a href="#175-场景五三种回收方式对比与选择">场景五：三种回收方式对比与选择</a></li>
+          <li><a href="#176-场景六srcu--可睡眠的-rcu-读侧">场景六：SRCU — 可睡眠的 RCU 读侧</a></li>
+          <li><a href="#177-场景七rcu-保护的数组指针数组">场景七：RCU 保护的数组/指针数组</a></li>
+          <li><a href="#178-场景八延迟执行--get_state_synchronize_rcu--cond_synchronize_rcu">场景八：延迟执行 — get_state + cond_synchronize</a></li>
+          <li><a href="#179-场景九批量操作--rcu_barrier">场景九：批量操作 — rcu_barrier</a></li>
+          <li><a href="#1710-各场景-api-速查表">各场景 API 速查表</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -34073,6 +33500,131 @@ echo 1 &gt; /proc/sys/kernel/core_sort_vma
 <blockquote><strong>文档版本</strong>：v9.0<br>
 <strong>内核版本</strong>：Linux 6.18.1<br>
 <strong>源码路径</strong>：<code>kernel/rcu/</code> (RCU), <code>kernel/watchdog.c</code> (Watchdog), <code>kernel/hung_task.c</code> (Hung Task), <code>kernel/locking/lockdep.c</code> (DeadLock), <code>mm/kmemleak.c</code> (MemoryLeak), <code>mm/kasan/</code> / <code>mm/kfence/</code> / <code>mm/slub.c</code> / <code>mm/mprotect.c</code> / <code>arch/arm64/mm/pageattr.c</code> (MemoryOverwritten), <code>mm/kasan/</code> / <code>arch/arm64/mm/kasan_init.c</code> (KASAN), <code>kernel/panic.c</code> / <code>arch/arm64/kernel/traps.c</code> / <code>arch/arm64/mm/fault.c</code> (Panic/Oops), <code>kernel/kexec*.c</code> / <code>fs/pstore/</code> / <code>drivers/firmware/</code> (Ramdump), <code>drivers/block/zram/</code> / <code>mm/zswap.c</code> / <code>mm/zsmalloc.c</code> / <code>mm/zpool.c</code> (内存压缩), <code>mm/slub.c</code> / <code>include/linux/slub_def.h</code> / <code>include/linux/poison.h</code> (SLUB Debug), <code>fs/coredump.c</code> / <code>fs/binfmt_elf.c</code> / <code>include/linux/coredump.h</code> / <code>include/linux/elfcore.h</code> (Coredump)</blockquote>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

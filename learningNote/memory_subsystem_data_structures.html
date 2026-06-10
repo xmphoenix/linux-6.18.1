@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -210,145 +376,116 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-总览五大子系统关系图">1. 总览：五大子系统关系图</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-memblock--早期启动内存管理">2. Memblock — 早期启动内存管理</a></summary></p>
-
-<ul>
-<li><a href="#21-数据结构">2.1 数据结构</a></li>
-<li><a href="#22-结构关系图">2.2 结构关系图</a></li>
-<li><a href="#23-设计目的">2.3 设计目的</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-numa--节点拓扑描述">3. NUMA — 节点拓扑描述</a></summary></p>
-
-<ul>
-<li><a href="#31-数据结构">3.1 数据结构</a></li>
-<li><a href="#32-结构关系图qemu-1gb-单-node">3.2 结构关系图（QEMU 1GB 单 node）</a></li>
-<li><a href="#33-设计目的">3.3 设计目的</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-sparse-memory--物理内存到-struct-page-的映射">4. Sparse Memory — 物理内存到 struct page 的映射</a></summary></p>
-
-<ul>
-<li><a href="#41-数据结构">4.1 数据结构</a></li>
-<li><a href="#42-结构关系图">4.2 结构关系图</a></li>
-<li><a href="#43-pfn-↔-struct-page-转换vmemmap-模式">4.3 PFN ↔ struct page 转换（VMEMMAP 模式）</a></li>
-<li><a href="#44-设计目的">4.4 设计目的</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-buddy--页帧分配器">5. Buddy — 页帧分配器</a></summary></p>
-
-<ul>
-<li><a href="#51-数据结构">5.1 数据结构</a></li>
-<li><a href="#52-buddy-核心结构图">5.2 Buddy 核心结构图</a></li>
-<li><a href="#53-分配与释放流程">5.3 分配与释放流程</a></li>
-<li><a href="#54-设计目的">5.4 设计目的</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-slub--小对象分配器">6. SLUB — 小对象分配器</a></summary></p>
-
-<ul>
-<li><a href="#61-数据结构">6.1 数据结构</a></li>
-<li><a href="#62-slub-三级缓存结构">6.2 SLUB 三级缓存结构</a></li>
-<li><a href="#63-分配流程">6.3 分配流程</a></li>
-<li><a href="#64-设计目的">6.4 设计目的</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-struct-page--万能元数据载体">7. struct page — 万能元数据载体</a></summary></p>
-
-<ul>
-<li><a href="#71-struct-page-在不同子系统中的身份">7.1 struct page 在不同子系统中的身份</a></li>
-<li><a href="#72-设计目的">7.2 设计目的</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-数据结构关联全图">8. 数据结构关联全图</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-生命周期流程图">9. 生命周期流程图</a></summary></p>
-
-<ul>
-<li><a href="#91-启动阶段从硬件到-kmalloc-可用">9.1 启动阶段（从硬件到 kmalloc 可用）</a></li>
-<li><a href="#92-运行时分配路径">9.2 运行时分配路径</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-各子系统对比总结">10. 各子系统对比总结</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#11-为什么要这么设计设计哲学">11. 为什么要这么设计？设计哲学</a></summary></p>
-
-<ul>
-<li><a href="#111-分层的必要性">11.1 分层的必要性</a></li>
-<li><a href="#112-核心设计原则">11.2 核心设计原则</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#12-五大子系统的角色分类">12. 五大子系统的角色分类</a></summary></p>
-
-<ul>
-<li><a href="#121-三个分配器有对外分配-api">12.1 三个分配器（有对外分配 API）</a></li>
-<li><a href="#122-两个基础设施无独立分配-api">12.2 两个基础设施（无独立分配 API）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#13-为什么-buddy-不能独立工作">13. 为什么 Buddy 不能独立工作？</a></summary></p>
-
-<ul>
-<li><a href="#131-没有-sparse-会怎样">13.1 没有 Sparse 会怎样？</a></li>
-<li><a href="#132-没有-zone-会怎样">13.2 没有 Zone 会怎样？</a></li>
-<li><a href="#133-没有-numa-会怎样">13.3 没有 NUMA 会怎样？</a></li>
-<li><a href="#134-总结">13.4 总结</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#14-pfn-与-struct-page-深入详解">14. PFN 与 struct page 深入详解</a></summary></p>
-
-<ul>
-<li><a href="#141-pfnpage-frame-number-物理页的编号">14.1 PFN（Page Frame Number）— 物理页的编号</a></li>
-<li><a href="#142-struct-page--物理页的元数据">14.2 struct page — 物理页的元数据</a></li>
-<li><a href="#143-pfn-↔-struct-page-转换">14.3 PFN ↔ struct page 转换</a></li>
-<li><a href="#144-具体场景举例">14.4 具体场景举例</a></li>
-<li><a href="#145-一句话总结">14.5 一句话总结</a></li>
-</ul>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 总览：五大子系统关系图</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. Memblock — 早期启动内存管理</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-数据结构">2.1 数据结构</a></li>
+          <li><a href="#22-结构关系图">2.2 结构关系图</a></li>
+          <li><a href="#23-设计目的">2.3 设计目的</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. NUMA — 节点拓扑描述</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-数据结构">3.1 数据结构</a></li>
+          <li><a href="#32-结构关系图qemu-1gb-单-node">3.2 结构关系图（QEMU 1GB 单 node）</a></li>
+          <li><a href="#33-设计目的">3.3 设计目的</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. Sparse Memory — 物理内存到 struct page 的映射</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-数据结构">4.1 数据结构</a></li>
+          <li><a href="#42-结构关系图">4.2 结构关系图</a></li>
+          <li><a href="#43-pfn-↔-struct-page-转换vmemmap-模式">4.3 PFN ↔ struct page 转换（VMEMMAP 模式）</a></li>
+          <li><a href="#44-设计目的">4.4 设计目的</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. Buddy — 页帧分配器</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-数据结构">5.1 数据结构</a></li>
+          <li><a href="#52-buddy-核心结构图">5.2 Buddy 核心结构图</a></li>
+          <li><a href="#53-分配与释放流程">5.3 分配与释放流程</a></li>
+          <li><a href="#54-设计目的">5.4 设计目的</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. SLUB — 小对象分配器</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-数据结构">6.1 数据结构</a></li>
+          <li><a href="#62-slub-三级缓存结构">6.2 SLUB 三级缓存结构</a></li>
+          <li><a href="#63-分配流程">6.3 分配流程</a></li>
+          <li><a href="#64-设计目的">6.4 设计目的</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. struct page — 万能元数据载体</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-struct-page-在不同子系统中的身份">7.1 struct page 在不同子系统中的身份</a></li>
+          <li><a href="#72-设计目的">7.2 设计目的</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. 数据结构关联全图</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. 生命周期流程图</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#91-启动阶段从硬件到-kmalloc-可用">9.1 启动阶段（从硬件到 kmalloc 可用）</a></li>
+          <li><a href="#92-运行时分配路径">9.2 运行时分配路径</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. 各子系统对比总结</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. 为什么要这么设计？设计哲学</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#111-分层的必要性">11.1 分层的必要性</a></li>
+          <li><a href="#112-核心设计原则">11.2 核心设计原则</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 12. 五大子系统的角色分类</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#121-三个分配器有对外分配-api">12.1 三个分配器（有对外分配 API）</a></li>
+          <li><a href="#122-两个基础设施无独立分配-api">12.2 两个基础设施（无独立分配 API）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 13. 为什么 Buddy 不能独立工作？</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#131-没有-sparse-会怎样">13.1 没有 Sparse 会怎样？</a></li>
+          <li><a href="#132-没有-zone-会怎样">13.2 没有 Zone 会怎样？</a></li>
+          <li><a href="#133-没有-numa-会怎样">13.3 没有 NUMA 会怎样？</a></li>
+          <li><a href="#134-总结">13.4 总结</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 14. PFN 与 struct page 深入详解</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#141-pfnpage-frame-number-物理页的编号">14.1 PFN（Page Frame Number）— 物理页的编号</a></li>
+          <li><a href="#142-struct-page--物理页的元数据">14.2 struct page — 物理页的元数据</a></li>
+          <li><a href="#143-pfn-↔-struct-page-转换">14.3 PFN ↔ struct page 转换</a></li>
+          <li><a href="#144-具体场景举例">14.4 具体场景举例</a></li>
+          <li><a href="#145-一句话总结">14.5 一句话总结</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -1512,6 +1649,131 @@ vmemmap 是一个虚拟地址常量（ARM64: 0xFFFF_FE00_0000_0000 附近）
 <li><strong>struct page</strong> = 物理页的元数据，是所有子系统的<strong>共享状态载体</strong>（buddy 在里面存 order，slub 在里面存 freelist，LRU 在里面存回收链表）</li>
 <li><strong>pfn_to_page / page_to_pfn</strong> = 连接两者的桥梁，由 Sparse + VMEMMAP 提供 O(1) 转换</li>
 </ul>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

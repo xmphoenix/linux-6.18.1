@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -211,138 +377,111 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#总览内存管理知识能解决什么问题">总览：内存管理知识能解决什么问题？</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第一部分问题诊断--你遇到的是什么问题">第一部分：问题诊断 — 你遇到的是什么问题？</a></summary></p>
-
-<ul>
-<li><a href="#11-问题分类决策树">1.1 问题分类决策树</a></li>
-<li><a href="#12-第一步永远是采集数据">1.2 第一步永远是：采集数据</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第二部分oom-预防与治理">第二部分：OOM 预防与治理</a></summary></p>
-
-<ul>
-<li><a href="#21-原理回顾你已学过">2.1 原理回顾（你已学过）</a></li>
-<li><a href="#22-可调优的点">2.2 可调优的点</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第三部分内存泄漏检测">第三部分：内存泄漏检测</a></summary></p>
-
-<ul>
-<li><a href="#31-内核态泄漏">3.1 内核态泄漏</a></li>
-<li><a href="#32-用户态泄漏">3.2 用户态泄漏</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第四部分延迟优化">第四部分：延迟优化</a></summary></p>
-
-<ul>
-<li><a href="#41-延迟来源分析">4.1 延迟来源分析</a></li>
-<li><a href="#42-优化方案">4.2 优化方案</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第五部分碎片治理">第五部分：碎片治理</a></summary></p>
-
-<ul>
-<li><a href="#51-碎片检测">5.1 碎片检测</a></li>
-<li><a href="#52-优化方案">5.2 优化方案</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第六部分内存节省">第六部分：内存节省</a></summary></p>
-
-<ul>
-<li><a href="#61-内核态内存节省">6.1 内核态内存节省</a></li>
-<li><a href="#62-用户态内存节省">6.2 用户态内存节省</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第七部分特定场景性能调优">第七部分：特定场景性能调优</a></summary></p>
-
-<ul>
-<li><a href="#71-数据库mysqlpostgresql">7.1 数据库（MySQL/PostgreSQL）</a></li>
-<li><a href="#72-jvm-应用">7.2 JVM 应用</a></li>
-<li><a href="#73-容器--kubernetes">7.3 容器 / Kubernetes</a></li>
-<li><a href="#74-嵌入式设备512mb---2gb">7.4 嵌入式设备（512MB - 2GB）</a></li>
-<li><a href="#75-实时系统低延迟要求">7.5 实时系统（低延迟要求）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第八部分内存抖动thrashing诊断与治理">第八部分：内存抖动（Thrashing）诊断与治理</a></summary></p>
-
-<ul>
-<li><a href="#81-什么是内存抖动">8.1 什么是内存抖动</a></li>
-<li><a href="#82-抖动的三种类型">8.2 抖动的三种类型</a></li>
-<li><a href="#83-内核如何检测抖动workingset-refault-算法">8.3 内核如何检测抖动：workingset refault 算法</a></li>
-<li><a href="#84-procvmstat-抖动相关计数器详解">8.4 /proc/vmstat 抖动相关计数器详解</a></li>
-<li><a href="#85-内核的自动抖动缓解机制">8.5 内核的自动抖动缓解机制</a></li>
-<li><a href="#86-抖动优化方案">8.6 抖动优化方案</a></li>
-<li><a href="#87-qemu-实验制造并观察内存抖动">8.7 QEMU 实验：制造并观察内存抖动</a></li>
-<li><a href="#88-抖动诊断流程图">8.8 抖动诊断流程图</a></li>
-<li><a href="#89-检查清单">8.9 检查清单</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第九部分监控体系">第九部分：监控体系</a></summary></p>
-
-<ul>
-<li><a href="#91-完整监控指标">9.1 完整监控指标</a></li>
-<li><a href="#92-一键监控脚本">9.2 一键监控脚本</a></li>
-<li><a href="#93-ftrace-实时追踪模板">9.3 ftrace 实时追踪模板</a></li>
-<li><a href="#94-damon--数据访问模式分析高级">9.4 DAMON — 数据访问模式分析（高级）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第十部分调试工具速查表">第十部分：调试工具速查表</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第十一部分深入研究路线图">第十一部分：深入研究路线图</a></summary></p>
-
-<ul>
-<li><a href="#111-研究方向">11.1 研究方向</a></li>
-<li><a href="#112-推荐阅读顺序">11.2 推荐阅读顺序</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#附录参数速查">附录：参数速查</a></summary></p>
-
-<ul>
-<li><a href="#关键-procsysvm-参数">关键 /proc/sys/vm/ 参数</a></li>
-</ul>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 总览：内存管理知识能解决什么问题？</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第一部分：问题诊断 — 你遇到的是什么问题？</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-问题分类决策树">1.1 问题分类决策树</a></li>
+          <li><a href="#12-第一步永远是采集数据">1.2 第一步永远是：采集数据</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第二部分：OOM 预防与治理</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-原理回顾你已学过">2.1 原理回顾（你已学过）</a></li>
+          <li><a href="#22-可调优的点">2.2 可调优的点</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第三部分：内存泄漏检测</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-内核态泄漏">3.1 内核态泄漏</a></li>
+          <li><a href="#32-用户态泄漏">3.2 用户态泄漏</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第四部分：延迟优化</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-延迟来源分析">4.1 延迟来源分析</a></li>
+          <li><a href="#42-优化方案">4.2 优化方案</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第五部分：碎片治理</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-碎片检测">5.1 碎片检测</a></li>
+          <li><a href="#52-优化方案">5.2 优化方案</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第六部分：内存节省</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-内核态内存节省">6.1 内核态内存节省</a></li>
+          <li><a href="#62-用户态内存节省">6.2 用户态内存节省</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第七部分：特定场景性能调优</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-数据库mysqlpostgresql">7.1 数据库（MySQL/PostgreSQL）</a></li>
+          <li><a href="#72-jvm-应用">7.2 JVM 应用</a></li>
+          <li><a href="#73-容器--kubernetes">7.3 容器 / Kubernetes</a></li>
+          <li><a href="#74-嵌入式设备512mb---2gb">7.4 嵌入式设备（512MB - 2GB）</a></li>
+          <li><a href="#75-实时系统低延迟要求">7.5 实时系统（低延迟要求）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第八部分：内存抖动（Thrashing）诊断与治理</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-什么是内存抖动">8.1 什么是内存抖动</a></li>
+          <li><a href="#82-抖动的三种类型">8.2 抖动的三种类型</a></li>
+          <li><a href="#83-内核如何检测抖动workingset-refault-算法">8.3 内核如何检测抖动：workingset refault 算法</a></li>
+          <li><a href="#84-procvmstat-抖动相关计数器详解">8.4 /proc/vmstat 抖动相关计数器详解</a></li>
+          <li><a href="#85-内核的自动抖动缓解机制">8.5 内核的自动抖动缓解机制</a></li>
+          <li><a href="#86-抖动优化方案">8.6 抖动优化方案</a></li>
+          <li><a href="#87-qemu-实验制造并观察内存抖动">8.7 QEMU 实验：制造并观察内存抖动</a></li>
+          <li><a href="#88-抖动诊断流程图">8.8 抖动诊断流程图</a></li>
+          <li><a href="#89-检查清单">8.9 检查清单</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第九部分：监控体系</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#91-完整监控指标">9.1 完整监控指标</a></li>
+          <li><a href="#92-一键监控脚本">9.2 一键监控脚本</a></li>
+          <li><a href="#93-ftrace-实时追踪模板">9.3 ftrace 实时追踪模板</a></li>
+          <li><a href="#94-damon--数据访问模式分析高级">9.4 DAMON — 数据访问模式分析（高级）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第十部分：调试工具速查表</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第十一部分：深入研究路线图</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#111-研究方向">11.1 研究方向</a></li>
+          <li><a href="#112-推荐阅读顺序">11.2 推荐阅读顺序</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 附录：参数速查</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#关键-procsysvm-参数">关键 /proc/sys/vm/ 参数</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -1651,6 +1790,131 @@ echo 120000000 &gt; /sys/module/damon_reclaim/parameters/min_age
 <td>嵌入式重启</td>
 </tr>
 </tbody></table>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

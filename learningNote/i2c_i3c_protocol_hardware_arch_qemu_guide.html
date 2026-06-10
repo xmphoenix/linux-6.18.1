@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -208,360 +374,251 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-文档目标与结论先行">1. 文档目标与结论先行</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-i2c-与-i3c-协议规范总结">2. I2C 与 I3C 协议规范总结</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#21-i2c-的协议模型">2.1 I2C 的协议模型</a></summary></p>
-
-<ul>
-<li><a href="#i2c-协议规范波形图">I2C 协议规范波形图</a></li>
-<li><a href="#i2c-进阶波形图">I2C 进阶波形图</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#22-smbus-与-i2c-的关系">2.2 SMBus 与 I2C 的关系</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#23-i3c-的协议模型">2.3 I3C 的协议模型</a></summary></p>
-
-<ul>
-<li><a href="#i3c-协议规范波形图">I3C 协议规范波形图</a></li>
-<li><a href="#i3c-进阶波形图">I3C 进阶波形图</a></li>
-<li><a href="#波形到驱动实现的关注点">波形到驱动实现的关注点</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#24-i2c-与-i3c-的核心差异">2.4 I2C 与 I3C 的核心差异</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#25-对软件设计的直接影响">2.5 对软件设计的直接影响</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-i2c-与-i3c-的硬件规范和知识点">3. I2C 与 I3C 的硬件规范和知识点</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#31-i2c-硬件知识点">3.1 I2C 硬件知识点</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#32-i3c-硬件知识点">3.2 I3C 硬件知识点</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#33-i2ci3c-混合总线知识点">3.3 I2C/I3C 混合总线知识点</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-当前内核树中的-i2c-软件架构分析">4. 当前内核树中的 I2C 软件架构分析</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#41-i2c-总体软件分层">4.1 I2C 总体软件分层</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#42-i2c-关键数据结构">4.2 I2C 关键数据结构</a></summary></p>
-
-<ul>
-<li><a href="#struct-i2c_adapter"><code>struct i2c_adapter</code></a></li>
-<li><a href="#struct-i2c_client"><code>struct i2c_client</code></a></li>
-<li><a href="#struct-i2c_driver"><code>struct i2c_driver</code></a></li>
-<li><a href="#struct-i2c_algorithm"><code>struct i2c_algorithm</code></a></li>
-<li><a href="#struct-i2c_msg"><code>struct i2c_msg</code></a></li>
-<li><a href="#struct-i2c_bus_recovery_info"><code>struct i2c_bus_recovery_info</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#43-i2c-core-basec-的软件架构">4.3 <code>i2c-core-base.c</code> 的软件架构</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#44-i2c-core-slavec-的架构意义">4.4 <code>i2c-core-slave.c</code> 的架构意义</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#45-i2c-cadencec-的架构分析">4.5 <code>i2c-cadence.c</code> 的架构分析</a></summary></p>
-
-<ul>
-<li><a href="#核心私有结构-struct-cdns_i2c">核心私有结构 <code>struct cdns_i2c</code></a></li>
-<li><a href="#功能入口">功能入口</a></li>
-<li><a href="#master-传输主路径">master 传输主路径</a></li>
-<li><a href="#slave-模式路径">slave 模式路径</a></li>
-<li><a href="#该驱动体现出的工程要点">该驱动体现出的工程要点</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#46-i2c-gpioc-与-i2c-algo-bitc-的意义">4.6 <code>i2c-gpio.c</code> 与 <code>i2c-algo-bit.c</code> 的意义</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#47-i2c-软件模拟设施总结">4.7 I2C 软件模拟设施总结</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-当前内核树中的-i3c-软件架构分析">5. 当前内核树中的 I3C 软件架构分析</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#51-i3c-总体软件分层">5.1 I3C 总体软件分层</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#52-i3c-关键数据结构">5.2 I3C 关键数据结构</a></summary></p>
-
-<ul>
-<li><a href="#struct-i3c_master_controller"><code>struct i3c_master_controller</code></a></li>
-<li><a href="#struct-i3c_master_controller_ops"><code>struct i3c_master_controller_ops</code></a></li>
-<li><a href="#struct-i3c_bus"><code>struct i3c_bus</code></a></li>
-<li><a href="#struct-i3c_dev_desc-与-struct-i2c_dev_desc"><code>struct i3c_dev_desc</code> 与 <code>struct i2c_dev_desc</code></a></li>
-<li><a href="#struct-i3c_device_info"><code>struct i3c_device_info</code></a></li>
-<li><a href="#struct-i3c_priv_xfer"><code>struct i3c_priv_xfer</code></a></li>
-<li><a href="#struct-i3c_driver"><code>struct i3c_driver</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#53-driversi3cmasterc-的软件架构">5.3 <code>drivers/i3c/master.c</code> 的软件架构</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#54-i3c-master-cdnsc-的架构分析">5.4 <code>i3c-master-cdns.c</code> 的架构分析</a></summary></p>
-
-<ul>
-<li><a href="#它承担的职责">它承担的职责</a></li>
-<li><a href="#cdns_i3c_master_ops"><code>cdns_i3c_master_ops</code></a></li>
-<li><a href="#bus-init-逻辑">bus init 逻辑</a></li>
-<li><a href="#ibi-处理路径">IBI 处理路径</a></li>
-<li><a href="#probe-路径">probe 路径</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#55-当前树里的-i3c-边界">5.5 当前树里的 I3C 边界</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-i2c--i3c-gpio-模拟软件总结">6. I2C / I3C GPIO 模拟软件总结</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#61-i2c-gpio-模拟">6.1 I2C GPIO 模拟</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#62-i3c-gpio-模拟">6.2 I3C GPIO 模拟</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-如果不是-slave而是-client应如何软件模拟">7. 如果不是 slave，而是 client，应如何软件模拟</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#71-i2c-client-的软件模拟方法">7.1 I2C client 的软件模拟方法</a></summary></p>
-
-<ul>
-<li><a href="#方法-ai2c-stub-模拟外设">方法 A：<code>i2c-stub</code> 模拟外设</a></li>
-<li><a href="#方法-bqemu-i2c-设备模型模拟外设">方法 B：QEMU I2C 设备模型模拟外设</a></li>
-<li><a href="#方法-ci2c-gpio--对端-mcufpga逻辑分析器">方法 C：<code>i2c-gpio</code> + 对端 MCU/FPGA/逻辑分析器</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#72-i3c-client-的软件模拟方法">7.2 I3C client 的软件模拟方法</a></summary></p>
-
-<ul>
-<li><a href="#方法-a基于新版本-qemu-的-i3c-target-模型">方法 A：基于新版本 QEMU 的 I3C target 模型</a></li>
-<li><a href="#方法-b写一个测试用-i3c-target-模型在-qemu-中作为外设">方法 B：写一个“测试用 I3C target 模型”在 QEMU 中作为外设</a></li>
-<li><a href="#方法-c内核中写假-master-controller做协议单元测试">方法 C：内核中写“假 master controller”做协议单元测试</a></li>
-<li><a href="#方法-d双模器件用-i3c_i2c_driver_register-先走-i2c-验证">方法 D：双模器件用 <code>i3c_i2c_driver_register()</code> 先走 I2C 验证</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#73-最小-i2c-client-驱动示例">7.3 最小 I2C client 驱动示例</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#74-最小-i3c-device-driver-示例">7.4 最小 I3C device driver 示例</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-qemu-可做的-i2c--i3c-实验">8. QEMU 可做的 I2C / I3C 实验</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#81-i2c当前最容易落地">8.1 I2C：当前最容易落地</a></summary></p>
-
-<ul>
-<li><a href="#实验-1qemu--现成-i2c-设备--guest-用户态验证">实验 1：QEMU + 现成 I2C 设备 + guest 用户态验证</a></li>
-<li><a href="#实验-2qemu--你的-i2c-client-驱动">实验 2：QEMU + 你的 I2C client 驱动</a></li>
-<li><a href="#实验-3qemu-板级代码中添加一个-i2c-设备">实验 3：QEMU 板级代码中添加一个 I2C 设备</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#82-i3c可做但前提更多">8.2 I3C：可做，但前提更多</a></summary></p>
-
-<ul>
-<li><a href="#实验-4新版-qemu--ast2600--mock-i3c-target">实验 4：新版 QEMU + AST2600 + mock-i3c-target</a></li>
-<li><a href="#实验-5linux-guest-中的-i3c-设备驱动验证">实验 5：Linux guest 中的 I3C 设备驱动验证</a></li>
-<li><a href="#实验-6若你的-qemu-版本没有-i3c">实验 6：若你的 QEMU 版本没有 I3C</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-现成软件实验清单">9. 现成软件实验清单</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#91-i2c-最小实验清单">9.1 I2C 最小实验清单</a></summary></p>
-
-<ul>
-<li><a href="#实验-ai2c-stub-纯软件仿真">实验 A：<code>i2c-stub</code> 纯软件仿真</a></li>
-<li><a href="#实验-bslave-eeprom-backend">实验 B：slave EEPROM backend</a></li>
-<li><a href="#实验-ci2c-gpio">实验 C：i2c-gpio</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#92-i3c-最小实验清单">9.2 I3C 最小实验清单</a></summary></p>
-
-<ul>
-<li><a href="#实验-di3c-guest-驱动">实验 D：I3C guest 驱动</a></li>
-<li><a href="#实验-e新版-qemu-mock-i3c-target">实验 E：新版 QEMU <code>mock-i3c-target</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#93-抓波形与排障方法">9.3 抓波形与排障方法</a></summary></p>
-
-<ul>
-<li><a href="#931-i2c-抓波形排障方法">9.3.1 I2C 抓波形排障方法</a></li>
-<li><a href="#932-i3c-抓波形排障方法">9.3.2 I3C 抓波形排障方法</a></li>
-<li><a href="#933-抓波形时最容易犯的错误">9.3.3 抓波形时最容易犯的错误</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-面试经典问题与参考答案">10. 面试经典问题与参考答案</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#101-i2c-为什么要上拉电阻">10.1 I2C 为什么要上拉电阻</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#102-i2c-的-repeated-start-有什么用">10.2 I2C 的 repeated start 有什么用</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#103-i2c-clock-stretching-是什么">10.3 I2C clock stretching 是什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#104-i2c-总线卡死怎么恢复">10.4 I2C 总线卡死怎么恢复</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#105-i2c-i2c_client-和-slave-backend-的区别">10.5 I2C <code>i2c_client</code> 和 slave backend 的区别</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#106-i3c-相比-i2c-最大的改进是什么">10.6 I3C 相比 I2C 最大的改进是什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#107-i3c-为什么不适合简单-gpio-bit-bang">10.7 I3C 为什么不适合简单 GPIO bit-bang</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#108-i3c-里的-ccc-是什么">10.8 I3C 里的 CCC 是什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#109-i3c-的-ibi-和-i2c-中断-gpio-有什么区别">10.9 I3C 的 IBI 和 I2C 中断 GPIO 有什么区别</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#1010-i3c-驱动开发最容易忽略什么">10.10 I3C 驱动开发最容易忽略什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#11-代码阅读建议">11. 代码阅读建议</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#12-总结">12. 总结</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 文档目标与结论先行</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. I2C 与 I3C 协议规范总结</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2.1 I2C 的协议模型</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#i2c-协议规范波形图">I2C 协议规范波形图</a></li>
+          <li><a href="#i2c-进阶波形图">I2C 进阶波形图</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2.2 SMBus 与 I2C 的关系</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2.3 I3C 的协议模型</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#i3c-协议规范波形图">I3C 协议规范波形图</a></li>
+          <li><a href="#i3c-进阶波形图">I3C 进阶波形图</a></li>
+          <li><a href="#波形到驱动实现的关注点">波形到驱动实现的关注点</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2.4 I2C 与 I3C 的核心差异</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2.5 对软件设计的直接影响</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. I2C 与 I3C 的硬件规范和知识点</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3.1 I2C 硬件知识点</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3.2 I3C 硬件知识点</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3.3 I2C/I3C 混合总线知识点</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. 当前内核树中的 I2C 软件架构分析</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.1 I2C 总体软件分层</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.2 I2C 关键数据结构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-i2c_adapter">struct i2c_adapter</a></li>
+          <li><a href="#struct-i2c_client">struct i2c_client</a></li>
+          <li><a href="#struct-i2c_driver">struct i2c_driver</a></li>
+          <li><a href="#struct-i2c_algorithm">struct i2c_algorithm</a></li>
+          <li><a href="#struct-i2c_msg">struct i2c_msg</a></li>
+          <li><a href="#struct-i2c_bus_recovery_info">struct i2c_bus_recovery_info</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.3 i2c-core-base.c 的软件架构</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.4 i2c-core-slave.c 的架构意义</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.5 i2c-cadence.c 的架构分析</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#核心私有结构-struct-cdns_i2c">核心私有结构 struct cdns_i2c</a></li>
+          <li><a href="#功能入口">功能入口</a></li>
+          <li><a href="#master-传输主路径">master 传输主路径</a></li>
+          <li><a href="#slave-模式路径">slave 模式路径</a></li>
+          <li><a href="#该驱动体现出的工程要点">该驱动体现出的工程要点</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.6 i2c-gpio.c 与 i2c-algo-bit.c 的意义</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.7 I2C 软件模拟设施总结</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. 当前内核树中的 I3C 软件架构分析</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5.1 I3C 总体软件分层</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5.2 I3C 关键数据结构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-i3c_master_controller">struct i3c_master_controller</a></li>
+          <li><a href="#struct-i3c_master_controller_ops">struct i3c_master_controller_ops</a></li>
+          <li><a href="#struct-i3c_bus">struct i3c_bus</a></li>
+          <li><a href="#struct-i3c_dev_desc-与-struct-i2c_dev_desc">struct i3c_dev_desc 与 struct i2c_dev_desc</a></li>
+          <li><a href="#struct-i3c_device_info">struct i3c_device_info</a></li>
+          <li><a href="#struct-i3c_priv_xfer">struct i3c_priv_xfer</a></li>
+          <li><a href="#struct-i3c_driver">struct i3c_driver</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5.3 drivers/i3c/master.c 的软件架构</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5.4 i3c-master-cdns.c 的架构分析</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#它承担的职责">它承担的职责</a></li>
+          <li><a href="#cdns_i3c_master_ops">cdns_i3c_master_ops</a></li>
+          <li><a href="#bus-init-逻辑">bus init 逻辑</a></li>
+          <li><a href="#ibi-处理路径">IBI 处理路径</a></li>
+          <li><a href="#probe-路径">probe 路径</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5.5 当前树里的 I3C 边界</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. I2C / I3C GPIO 模拟软件总结</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6.1 I2C GPIO 模拟</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6.2 I3C GPIO 模拟</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. 如果不是 slave，而是 client，应如何软件模拟</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7.1 I2C client 的软件模拟方法</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#方法-ai2c-stub-模拟外设">方法 A：i2c-stub 模拟外设</a></li>
+          <li><a href="#方法-bqemu-i2c-设备模型模拟外设">方法 B：QEMU I2C 设备模型模拟外设</a></li>
+          <li><a href="#方法-ci2c-gpio--对端-mcufpga逻辑分析器">方法 C：i2c-gpio + 对端 MCU/FPGA/逻辑分析器</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7.2 I3C client 的软件模拟方法</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#方法-a基于新版本-qemu-的-i3c-target-模型">方法 A：基于新版本 QEMU 的 I3C target 模型</a></li>
+          <li><a href="#方法-b写一个测试用-i3c-target-模型在-qemu-中作为外设">方法 B：写一个“测试用 I3C target 模型”在 QEMU 中作为外设</a></li>
+          <li><a href="#方法-c内核中写假-master-controller做协议单元测试">方法 C：内核中写“假 master controller”做协议单元测试</a></li>
+          <li><a href="#方法-d双模器件用-i3c_i2c_driver_register-先走-i2c-验证">方法 D：双模器件用 i3c_i2c_driver_register() 先走 I2C 验证</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7.3 最小 I2C client 驱动示例</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7.4 最小 I3C device driver 示例</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. QEMU 可做的 I2C / I3C 实验</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.1 I2C：当前最容易落地</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#实验-1qemu--现成-i2c-设备--guest-用户态验证">实验 1：QEMU + 现成 I2C 设备 + guest 用户态验证</a></li>
+          <li><a href="#实验-2qemu--你的-i2c-client-驱动">实验 2：QEMU + 你的 I2C client 驱动</a></li>
+          <li><a href="#实验-3qemu-板级代码中添加一个-i2c-设备">实验 3：QEMU 板级代码中添加一个 I2C 设备</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.2 I3C：可做，但前提更多</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#实验-4新版-qemu--ast2600--mock-i3c-target">实验 4：新版 QEMU + AST2600 + mock-i3c-target</a></li>
+          <li><a href="#实验-5linux-guest-中的-i3c-设备驱动验证">实验 5：Linux guest 中的 I3C 设备驱动验证</a></li>
+          <li><a href="#实验-6若你的-qemu-版本没有-i3c">实验 6：若你的 QEMU 版本没有 I3C</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. 现成软件实验清单</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9.1 I2C 最小实验清单</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#实验-ai2c-stub-纯软件仿真">实验 A：i2c-stub 纯软件仿真</a></li>
+          <li><a href="#实验-bslave-eeprom-backend">实验 B：slave EEPROM backend</a></li>
+          <li><a href="#实验-ci2c-gpio">实验 C：i2c-gpio</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9.2 I3C 最小实验清单</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#实验-di3c-guest-驱动">实验 D：I3C guest 驱动</a></li>
+          <li><a href="#实验-e新版-qemu-mock-i3c-target">实验 E：新版 QEMU mock-i3c-target</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9.3 抓波形与排障方法</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#931-i2c-抓波形排障方法">9.3.1 I2C 抓波形排障方法</a></li>
+          <li><a href="#932-i3c-抓波形排障方法">9.3.2 I3C 抓波形排障方法</a></li>
+          <li><a href="#933-抓波形时最容易犯的错误">9.3.3 抓波形时最容易犯的错误</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. 面试经典问题与参考答案</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10.1 I2C 为什么要上拉电阻</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10.2 I2C 的 repeated start 有什么用</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10.3 I2C clock stretching 是什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10.4 I2C 总线卡死怎么恢复</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10.5 I2C i2c_client 和 slave backend 的区别</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10.6 I3C 相比 I2C 最大的改进是什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10.7 I3C 为什么不适合简单 GPIO bit-bang</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10.8 I3C 里的 CCC 是什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10.9 I3C 的 IBI 和 I2C 中断 GPIO 有什么区别</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10.10 I3C 驱动开发最容易忽略什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. 代码阅读建议</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 12. 总结</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -2230,6 +2287,131 @@ i2cget -y &lt;busnum&gt; 0x50 0x00</code></pre>
 <li>I3C 在 Linux 里已经形成了“master core + device driver + CCC/DAA/IBI + mixed I2C compatibility”的现代化架构，但 target/backend/gpio 模拟生态还远不如 I2C 完整。</li>
 <li>因而，做学习、面试、功能 bring-up 时，I2C 可以大量依赖纯软件；I3C 更适合依赖真实控制器或新版 QEMU 的专用总线模型。</li>
 </ul>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -208,88 +374,26 @@ hr {
 
 <blockquote>基于 Linux 6.18.1 内核源码（<code>kernel/hung_task.c</code>、<code>include/linux/hung_task.h</code>、<code>include/linux/sched.h</code>）</blockquote>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><b>1. 软件架构总览</b></summary></p>
-
-<ul>
-<li>1.1 <a href="#11-设计目标">设计目标</a></li>
-<li>1.2 <a href="#12-整体架构图">整体架构图</a></li>
-<li>1.3 <a href="#13-核心源文件">核心源文件</a></li>
-<li>1.4 <a href="#14-kconfig-编译选项">Kconfig 编译选项</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>2. 关键数据结构及其关系</b></summary></p>
-
-<ul>
-<li>2.1 <a href="#21-task_struct-中的-hung-task-字段">task_struct 中的 hung task 字段</a></li>
-<li>2.2 <a href="#22-blocker-编码机制">blocker 编码机制</a></li>
-<li>2.3 <a href="#23-sysctl-控制变量">sysctl 控制变量</a></li>
-<li>2.4 <a href="#24-数据结构关系图">数据结构关系图</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>3. 实现原理</b></summary></p>
-
-<ul>
-<li>3.1 <a href="#31-khungtaskd-内核线程">khungtaskd 内核线程</a></li>
-<li>3.2 <a href="#32-task_is_hung-判定算法">task_is_hung 判定算法</a></li>
-<li>3.3 <a href="#33-check_hung_task-处理流程">check_hung_task 处理流程</a></li>
-<li>3.4 <a href="#34-rcu-锁分段机制">RCU 锁分段机制</a></li>
-<li>3.5 <a href="#35-blocker-追踪机制">blocker 追踪机制</a></li>
-<li>3.6 <a href="#36-电源管理集成">电源管理集成</a></li>
-<li>3.7 <a href="#37-完整检测流程图">完整检测流程图</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>4. 用法总结</b></summary></p>
-
-<ul>
-<li>4.1 <a href="#41-编译配置">编译配置</a></li>
-<li>4.2 <a href="#42-运行时-sysctl-调优">运行时 sysctl 调优</a></li>
-<li>4.3 <a href="#43-内核启动参数">内核启动参数</a></li>
-<li>4.4 <a href="#44-典型使用场景">典型使用场景</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>5. hung task 发生意味着什么</b></summary></p>
-
-<ul>
-<li>5.1 <a href="#51-d-状态的本质">D 状态的本质</a></li>
-<li>5.2 <a href="#52-常见根因分类">常见根因分类</a></li>
-<li>5.3 <a href="#53-与其他检测机制的区别">与其他检测机制的区别</a></li>
-<li>5.4 <a href="#54-生产环境影响">生产环境影响</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>6. QEMU 模拟实验</b></summary></p>
-
-<ul>
-<li>6.1 <a href="#61-实验环境准备">实验环境准备</a></li>
-<li>6.2 <a href="#62-实验一触发基本-hung-task-告警">实验一：触发基本 hung task 告警</a></li>
-<li>6.3 <a href="#63-实验二hung_task_panic-触发内核-panic">实验二：hung_task_panic 触发内核 panic</a></li>
-<li>6.4 <a href="#64-实验三观察-blocker-信息输出">实验三：观察 blocker 信息输出</a></li>
-<li>6.5 <a href="#65-实验四动态调整-sysctl-参数">实验四：动态调整 sysctl 参数</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>7. 面试经典问题与答案</b></summary></p>
-
-<ul>
-<li><a href="#q1-什么是-hung-task">Q1: 什么是 hung task？</a></li>
-<li><a href="#q2-khungtaskd-如何判断一个任务是-hung">Q2: khungtaskd 如何判断一个任务是 hung？</a></li>
-<li><a href="#q3-为什么只检测-task_uninterruptible-而不检测-task_interruptible">Q3: 为什么只检测 TASK_UNINTERRUPTIBLE 而不检测 TASK_INTERRUPTIBLE？</a></li>
-<li><a href="#q4-task_killable-的任务会被检测为-hung-吗">Q4: TASK_KILLABLE 的任务会被检测为 hung 吗？</a></li>
-<li><a href="#q5-hung-task-与-soft-lockup--hard-lockup-有什么区别">Q5: hung task 与 soft lockup / hard lockup 有什么区别？</a></li>
-<li><a href="#q6-为什么检测循环中需要-rcu-lock-break">Q6: 为什么检测循环中需要 RCU lock break？</a></li>
-<li><a href="#q7-blocker-字段是如何编码的">Q7: blocker 字段是如何编码的？</a></li>
-<li><a href="#q8-生产环境中如何处理-hung-task">Q8: 生产环境中如何处理 hung task？</a></li>
-<li><a href="#q9-hung-task-检测在-suspendresume-流程中如何处理">Q9: hung task 检测在 suspend/resume 流程中如何处理？</a></li>
-<li><a href="#q10-如何区分真正的-hung-task-和合理的长时间-d-状态">Q10: 如何区分真正的 hung task 和合理的长时间 D 状态？</a></li>
-</ul>
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 软件架构总览</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-设计目标">设计目标</a></li>
+          <li><a href="#12-整体架构图">整体架构图</a></li>
+          <li><a href="#13-核心源文件">核心源文件</a></li>
+          <li><a href="#14-kconfig-编译选项">Kconfig 编译选项</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -1370,6 +1474,131 @@ echo 20 &gt; /proc/sys/kernel/hung_task_timeout_secs
 - <code>include/linux/hung_task.h</code> — blocker 类型定义和辅助函数<br>
 - <code>include/linux/sched.h</code> — task_struct 中 hung task 相关字段<br>
 - <code>lib/Kconfig.debug</code> — 编译配置选项</blockquote>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

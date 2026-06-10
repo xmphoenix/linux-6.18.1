@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -213,200 +379,165 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#为什么这份指南适合当前内核">为什么这份指南适合当前内核</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#学习路线总览">学习路线总览</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#先给结论学习-ebpf-最容易走偏的地方">先给结论：学习 eBPF 最容易走偏的地方</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#理解-ebpf-字节码的故事">理解 eBPF 字节码的故事</a></summary></p>
-
-<ul>
-<li><a href="#为什么-ebpf-要有自己的字节码">为什么 eBPF 要有自己的字节码</a></li>
-<li><a href="#这段字节码故事到底是怎样流动的">这段“字节码故事”到底是怎样流动的</a></li>
-<li><a href="#ebpf-字节码和普通虚拟机字节码有什么不同">eBPF 字节码和普通虚拟机字节码有什么不同</a></li>
-<li><a href="#为什么说-map-和-helper-也是这段故事的一部分">为什么说 map 和 helper 也是这段故事的一部分</a></li>
-<li><a href="#字节码解释器jit-三者的关系">字节码、解释器、JIT 三者的关系</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#从-linux-ebpf-ybzhang-ppt-吸收的历史与工程视角">从 Linux ebpf ybzhang PPT 吸收的历史与工程视角</a></summary></p>
-
-<ul>
-<li><a href="#1-用历史线索建立全局感">1. 用历史线索建立全局感</a></li>
-<li><a href="#2-ppt-里的使用场景分类值得保留">2. PPT 里的使用场景分类值得保留</a></li>
-<li><a href="#3-嵌入式和-arm64-场景下的工具选型">3. 嵌入式和 ARM64 场景下的工具选型</a></li>
-<li><a href="#4-嵌入式交叉编译视角的补足">4. 嵌入式/交叉编译视角的补足</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第0部分开始之前必须先建立的五条主线">第0部分：开始之前必须先建立的五条主线</a></summary></p>
-
-<ul>
-<li><a href="#01-如何使用-libbpf-编写一个-ebpf-程序">0.1 如何使用 libbpf 编写一个 eBPF 程序</a></li>
-<li><a href="#02-当前-ebpf-的系统调用">0.2 当前 eBPF 的系统调用</a></li>
-<li><a href="#03-kprobeftracetracepoint-以及其他-hook-怎么理解">0.3 kprobe、ftrace、tracepoint 以及其他 hook 怎么理解</a></li>
-<li><a href="#04-ebpf-内核如何加载并运行程序">0.4 eBPF 内核如何加载并运行程序</a></li>
-<li><a href="#05-用户空间如何使用-ebpf-程序">0.5 用户空间如何使用 eBPF 程序</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第a部分8周学习计划按天拆解">第A部分：8周学习计划，按天拆解</a></summary></p>
-
-<ul>
-<li><a href="#第0周建立对象模型与环境直觉">第0周：建立对象模型与环境直觉</a></li>
-<li><a href="#第1周verifier-是第一大关">第1周：Verifier 是第一大关</a></li>
-<li><a href="#第2周libbpfbtfco-re">第2周：libbpf、BTF、CO-RE</a></li>
-<li><a href="#第3周第一个-tracing-闭环项目">第3周：第一个 tracing 闭环项目</a></li>
-<li><a href="#第4周map-与数据通道">第4周：Map 与数据通道</a></li>
-<li><a href="#第5周attach-type-横向比较">第5周：Attach Type 横向比较</a></li>
-<li><a href="#第6周网络路径tc-先于-xdp">第6周：网络路径，TC 先于 XDP</a></li>
-<li><a href="#第7周arm64-jit-精读">第7周：ARM64 JIT 精读</a></li>
-<li><a href="#第8周内核开发者视角">第8周：内核开发者视角</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第b部分第一个可运行的-ebpf-tracing-项目实战">第B部分：第一个可运行的 eBPF Tracing 项目实战</a></summary></p>
-
-<ul>
-<li><a href="#1-项目目标">1. 项目目标</a></li>
-<li><a href="#2-先看-bpf-侧到底做了什么">2. 先看 BPF 侧到底做了什么</a></li>
-<li><a href="#3-用户态程序做了什么">3. 用户态程序做了什么</a></li>
-<li><a href="#4-这个项目涉及的理论点">4. 这个项目涉及的理论点</a></li>
-<li><a href="#5-你应该如何自己做一版最小项目">5. 你应该如何自己做一版最小项目</a></li>
-<li><a href="#6-建议的编译与运行准备">6. 建议的编译与运行准备</a></li>
-<li><a href="#7-这个项目完成后你应该具备什么能力">7. 这个项目完成后你应该具备什么能力</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第c部分arm64-ebpf-jit-精读路线">第C部分：ARM64 eBPF JIT 精读路线</a></summary></p>
-
-<ul>
-<li><a href="#1-第一个入口寄存器映射">1. 第一个入口：寄存器映射</a></li>
-<li><a href="#2-第二个入口立即数与地址装载">2. 第二个入口：立即数与地址装载</a></li>
-<li><a href="#3-第三个入口prologue-与栈布局">3. 第三个入口：prologue 与栈布局</a></li>
-<li><a href="#4-第四个入口helper-call-如何落到-aarch64-调用">4. 第四个入口：helper call 如何落到 AArch64 调用</a></li>
-<li><a href="#5-第五个入口helper-特化内联">5. 第五个入口：helper 特化内联</a></li>
-<li><a href="#6-第六个入口tail-call">6. 第六个入口：tail call</a></li>
-<li><a href="#7-第七个入口bti-与-kcfi">7. 第七个入口：BTI 与 KCFI</a></li>
-<li><a href="#8-第八个入口从一条-bpf-指令追到一串-a64-指令">8. 第八个入口：从一条 BPF 指令追到一串 A64 指令</a></li>
-<li><a href="#9-推荐的-jit-精读顺序">9. 推荐的 JIT 精读顺序</a></li>
-<li><a href="#10-jit-学习阶段的实践要求">10. JIT 学习阶段的实践要求</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第d部分基于当前源码树的阅读顺序">第D部分：基于当前源码树的阅读顺序</a></summary></p>
-
-<ul>
-<li><a href="#第一层官方文档层">第一层：官方文档层</a></li>
-<li><a href="#第二层用户态工程层">第二层：用户态工程层</a></li>
-<li><a href="#第三层内核实现层">第三层：内核实现层</a></li>
-<li><a href="#第四层测试与维护层">第四层：测试与维护层</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第e部分实践环境建议">第E部分：实践环境建议</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第f部分每阶段的结果判定标准">第F部分：每阶段的结果判定标准</a></summary></p>
-
-<ul>
-<li><a href="#verifier-阶段通过标准">Verifier 阶段通过标准</a></li>
-<li><a href="#co-re-阶段通过标准">CO-RE 阶段通过标准</a></li>
-<li><a href="#tracing-阶段通过标准">Tracing 阶段通过标准</a></li>
-<li><a href="#arm64-jit-阶段通过标准">ARM64 JIT 阶段通过标准</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第g部分最后的学习建议">第G部分：最后的学习建议</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第h部分前14天函数级精读清单">第H部分：前14天函数级精读清单</a></summary></p>
-
-<ul>
-<li><a href="#day-1建立对象模型">Day 1：建立对象模型</a></li>
-<li><a href="#day-2把-bpf-指令模型和-c-前端分开">Day 2：把 BPF 指令模型和 C 前端分开</a></li>
-<li><a href="#day-3verifier-总体流程">Day 3：Verifier 总体流程</a></li>
-<li><a href="#day-4verifier-状态结构">Day 4：Verifier 状态结构</a></li>
-<li><a href="#day-5verifier-日志与失败案例">Day 5：Verifier 日志与失败案例</a></li>
-<li><a href="#day-6libbpf-和-skeleton-的角色">Day 6：libbpf 和 skeleton 的角色</a></li>
-<li><a href="#day-7btf-与-co-re">Day 7：BTF 与 CO-RE</a></li>
-<li><a href="#day-8选一个真实-tracing-工具">Day 8：选一个真实 tracing 工具</a></li>
-<li><a href="#day-9先读-bpf-侧">Day 9：先读 BPF 侧</a></li>
-<li><a href="#day-10再读用户态侧">Day 10：再读用户态侧</a></li>
-<li><a href="#day-11从-tracing-扩展到-attach-type-比较">Day 11：从 tracing 扩展到 attach type 比较</a></li>
-<li><a href="#day-12进入-arm64-jit-的第一层">Day 12：进入 ARM64 JIT 的第一层</a></li>
-<li><a href="#day-13arm64-jit-的立即数与调用路径">Day 13：ARM64 JIT 的立即数与调用路径</a></li>
-<li><a href="#day-14arm64-jit-的-prologuetail-callhelper-特化">Day 14：ARM64 JIT 的 prologue、tail call、helper 特化</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第i部分可直接执行的命令模板">第I部分：可直接执行的命令模板</a></summary></p>
-
-<ul>
-<li><a href="#1-先确认内核bpf-基本能力">1. 先确认内核/BPF 基本能力</a></li>
-<li><a href="#2-构建基础工具">2. 构建基础工具</a></li>
-<li><a href="#3-arm64-交叉编译时的常用环境变量">3. ARM64 交叉编译时的常用环境变量</a></li>
-<li><a href="#4-观察已加载程序与-map">4. 观察已加载程序与 map</a></li>
-<li><a href="#5-查看-bpf-ir-和-jit-后机器码">5. 查看 BPF IR 和 JIT 后机器码</a></li>
-<li><a href="#6-观察-tracing-输出">6. 观察 tracing 输出</a></li>
-<li><a href="#7-打开程序统计信息">7. 打开程序统计信息</a></li>
-<li><a href="#8-观察和调整-jit-行为">8. 观察和调整 JIT 行为</a></li>
-<li><a href="#9-运行-selftests">9. 运行 selftests</a></li>
-<li><a href="#10-用-vmtest-跑隔离环境">10. 用 vmtest 跑隔离环境</a></li>
-<li><a href="#11-建议的最小日常闭环命令">11. 建议的最小日常闭环命令</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第j部分学习过程中最值得记录的笔记模板">第J部分：学习过程中最值得记录的笔记模板</a></summary></p>
-
-<ul>
-<li><a href="#笔记模板">笔记模板</a></li>
-<li><a href="#一个最小示例">一个最小示例</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第k部分继续深入时的自然下一步">第K部分：继续深入时的自然下一步</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 为什么这份指南适合当前内核</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 学习路线总览</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 先给结论：学习 eBPF 最容易走偏的地方</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 理解 eBPF 字节码的故事</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#为什么-ebpf-要有自己的字节码">为什么 eBPF 要有自己的字节码</a></li>
+          <li><a href="#这段字节码故事到底是怎样流动的">这段“字节码故事”到底是怎样流动的</a></li>
+          <li><a href="#ebpf-字节码和普通虚拟机字节码有什么不同">eBPF 字节码和普通虚拟机字节码有什么不同</a></li>
+          <li><a href="#为什么说-map-和-helper-也是这段故事的一部分">为什么说 map 和 helper 也是这段故事的一部分</a></li>
+          <li><a href="#字节码解释器jit-三者的关系">字节码、解释器、JIT 三者的关系</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 从 Linux ebpf ybzhang PPT 吸收的历史与工程视角</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-用历史线索建立全局感">1. 用历史线索建立全局感</a></li>
+          <li><a href="#2-ppt-里的使用场景分类值得保留">2. PPT 里的使用场景分类值得保留</a></li>
+          <li><a href="#3-嵌入式和-arm64-场景下的工具选型">3. 嵌入式和 ARM64 场景下的工具选型</a></li>
+          <li><a href="#4-嵌入式交叉编译视角的补足">4. 嵌入式/交叉编译视角的补足</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第0部分：开始之前必须先建立的五条主线</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#01-如何使用-libbpf-编写一个-ebpf-程序">0.1 如何使用 libbpf 编写一个 eBPF 程序</a></li>
+          <li><a href="#02-当前-ebpf-的系统调用">0.2 当前 eBPF 的系统调用</a></li>
+          <li><a href="#03-kprobeftracetracepoint-以及其他-hook-怎么理解">0.3 kprobe、ftrace、tracepoint 以及其他 hook 怎么理解</a></li>
+          <li><a href="#04-ebpf-内核如何加载并运行程序">0.4 eBPF 内核如何加载并运行程序</a></li>
+          <li><a href="#05-用户空间如何使用-ebpf-程序">0.5 用户空间如何使用 eBPF 程序</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第A部分：8周学习计划，按天拆解</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#第0周建立对象模型与环境直觉">第0周：建立对象模型与环境直觉</a></li>
+          <li><a href="#第1周verifier-是第一大关">第1周：Verifier 是第一大关</a></li>
+          <li><a href="#第2周libbpfbtfco-re">第2周：libbpf、BTF、CO-RE</a></li>
+          <li><a href="#第3周第一个-tracing-闭环项目">第3周：第一个 tracing 闭环项目</a></li>
+          <li><a href="#第4周map-与数据通道">第4周：Map 与数据通道</a></li>
+          <li><a href="#第5周attach-type-横向比较">第5周：Attach Type 横向比较</a></li>
+          <li><a href="#第6周网络路径tc-先于-xdp">第6周：网络路径，TC 先于 XDP</a></li>
+          <li><a href="#第7周arm64-jit-精读">第7周：ARM64 JIT 精读</a></li>
+          <li><a href="#第8周内核开发者视角">第8周：内核开发者视角</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第B部分：第一个可运行的 eBPF Tracing 项目实战</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-项目目标">1. 项目目标</a></li>
+          <li><a href="#2-先看-bpf-侧到底做了什么">2. 先看 BPF 侧到底做了什么</a></li>
+          <li><a href="#3-用户态程序做了什么">3. 用户态程序做了什么</a></li>
+          <li><a href="#4-这个项目涉及的理论点">4. 这个项目涉及的理论点</a></li>
+          <li><a href="#5-你应该如何自己做一版最小项目">5. 你应该如何自己做一版最小项目</a></li>
+          <li><a href="#6-建议的编译与运行准备">6. 建议的编译与运行准备</a></li>
+          <li><a href="#7-这个项目完成后你应该具备什么能力">7. 这个项目完成后你应该具备什么能力</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第C部分：ARM64 eBPF JIT 精读路线</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-第一个入口寄存器映射">1. 第一个入口：寄存器映射</a></li>
+          <li><a href="#2-第二个入口立即数与地址装载">2. 第二个入口：立即数与地址装载</a></li>
+          <li><a href="#3-第三个入口prologue-与栈布局">3. 第三个入口：prologue 与栈布局</a></li>
+          <li><a href="#4-第四个入口helper-call-如何落到-aarch64-调用">4. 第四个入口：helper call 如何落到 AArch64 调用</a></li>
+          <li><a href="#5-第五个入口helper-特化内联">5. 第五个入口：helper 特化内联</a></li>
+          <li><a href="#6-第六个入口tail-call">6. 第六个入口：tail call</a></li>
+          <li><a href="#7-第七个入口bti-与-kcfi">7. 第七个入口：BTI 与 KCFI</a></li>
+          <li><a href="#8-第八个入口从一条-bpf-指令追到一串-a64-指令">8. 第八个入口：从一条 BPF 指令追到一串 A64 指令</a></li>
+          <li><a href="#9-推荐的-jit-精读顺序">9. 推荐的 JIT 精读顺序</a></li>
+          <li><a href="#10-jit-学习阶段的实践要求">10. JIT 学习阶段的实践要求</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第D部分：基于当前源码树的阅读顺序</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#第一层官方文档层">第一层：官方文档层</a></li>
+          <li><a href="#第二层用户态工程层">第二层：用户态工程层</a></li>
+          <li><a href="#第三层内核实现层">第三层：内核实现层</a></li>
+          <li><a href="#第四层测试与维护层">第四层：测试与维护层</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第E部分：实践环境建议</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第F部分：每阶段的结果判定标准</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#verifier-阶段通过标准">Verifier 阶段通过标准</a></li>
+          <li><a href="#co-re-阶段通过标准">CO-RE 阶段通过标准</a></li>
+          <li><a href="#tracing-阶段通过标准">Tracing 阶段通过标准</a></li>
+          <li><a href="#arm64-jit-阶段通过标准">ARM64 JIT 阶段通过标准</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第G部分：最后的学习建议</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第H部分：前14天函数级精读清单</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#day-1建立对象模型">Day 1：建立对象模型</a></li>
+          <li><a href="#day-2把-bpf-指令模型和-c-前端分开">Day 2：把 BPF 指令模型和 C 前端分开</a></li>
+          <li><a href="#day-3verifier-总体流程">Day 3：Verifier 总体流程</a></li>
+          <li><a href="#day-4verifier-状态结构">Day 4：Verifier 状态结构</a></li>
+          <li><a href="#day-5verifier-日志与失败案例">Day 5：Verifier 日志与失败案例</a></li>
+          <li><a href="#day-6libbpf-和-skeleton-的角色">Day 6：libbpf 和 skeleton 的角色</a></li>
+          <li><a href="#day-7btf-与-co-re">Day 7：BTF 与 CO-RE</a></li>
+          <li><a href="#day-8选一个真实-tracing-工具">Day 8：选一个真实 tracing 工具</a></li>
+          <li><a href="#day-9先读-bpf-侧">Day 9：先读 BPF 侧</a></li>
+          <li><a href="#day-10再读用户态侧">Day 10：再读用户态侧</a></li>
+          <li><a href="#day-11从-tracing-扩展到-attach-type-比较">Day 11：从 tracing 扩展到 attach type 比较</a></li>
+          <li><a href="#day-12进入-arm64-jit-的第一层">Day 12：进入 ARM64 JIT 的第一层</a></li>
+          <li><a href="#day-13arm64-jit-的立即数与调用路径">Day 13：ARM64 JIT 的立即数与调用路径</a></li>
+          <li><a href="#day-14arm64-jit-的-prologuetail-callhelper-特化">Day 14：ARM64 JIT 的 prologue、tail call、helper 特化</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第I部分：可直接执行的命令模板</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-先确认内核bpf-基本能力">1. 先确认内核/BPF 基本能力</a></li>
+          <li><a href="#2-构建基础工具">2. 构建基础工具</a></li>
+          <li><a href="#3-arm64-交叉编译时的常用环境变量">3. ARM64 交叉编译时的常用环境变量</a></li>
+          <li><a href="#4-观察已加载程序与-map">4. 观察已加载程序与 map</a></li>
+          <li><a href="#5-查看-bpf-ir-和-jit-后机器码">5. 查看 BPF IR 和 JIT 后机器码</a></li>
+          <li><a href="#6-观察-tracing-输出">6. 观察 tracing 输出</a></li>
+          <li><a href="#7-打开程序统计信息">7. 打开程序统计信息</a></li>
+          <li><a href="#8-观察和调整-jit-行为">8. 观察和调整 JIT 行为</a></li>
+          <li><a href="#9-运行-selftests">9. 运行 selftests</a></li>
+          <li><a href="#10-用-vmtest-跑隔离环境">10. 用 vmtest 跑隔离环境</a></li>
+          <li><a href="#11-建议的最小日常闭环命令">11. 建议的最小日常闭环命令</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第J部分：学习过程中最值得记录的笔记模板</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#笔记模板">笔记模板</a></li>
+          <li><a href="#一个最小示例">一个最小示例</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第K部分：继续深入时的自然下一步</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -3279,6 +3410,131 @@ bpftool prog dump jited id &lt;prog_id&gt;</code></pre>
 </ol>
 
 <p>做到这一步，你就已经进入真正的 ARM64 eBPF 内核开发学习区，而不是工具使用层。</p>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

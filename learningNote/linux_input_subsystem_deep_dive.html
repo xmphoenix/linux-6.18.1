@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -210,142 +376,123 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-子系统概述">1. 子系统概述</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-关键数据结构">2. 关键数据结构</a></summary></p>
-
-<ul>
-<li><a href="#数据结构关系总览">数据结构关系总览</a></li>
-<li><a href="#21-struct-input_dev--输入设备">2.1 struct input_dev — 输入设备</a></li>
-<li><a href="#22-struct-input_handler--事件处理器">2.2 struct input_handler — 事件处理器</a></li>
-<li><a href="#23-struct-input_handle--设备与处理器的桥梁">2.3 struct input_handle — 设备与处理器的桥梁</a></li>
-<li><a href="#24-struct-input_event--用户空间事件">2.4 struct input_event — 用户空间事件</a></li>
-<li><a href="#25-struct-input_value--内核内部事件">2.5 struct input_value — 内核内部事件</a></li>
-<li><a href="#26-struct-input_id--设备标识">2.6 struct input_id — 设备标识</a></li>
-<li><a href="#27-struct-input_absinfo--绝对轴参数">2.7 struct input_absinfo — 绝对轴参数</a></li>
-<li><a href="#28-struct-evdev--struct-evdev_client--evdev-处理器内部结构">2.8 struct evdev / struct evdev_client — evdev 处理器内部结构</a></li>
-<li><a href="#29-struct-input_device_id--设备匹配表条目">2.9 struct input_device_id — 设备匹配表条目</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-软件框架分析">3. 软件框架分析</a></summary></p>
-
-<ul>
-<li><a href="#软件架构总览">软件架构总览</a></li>
-<li><a href="#31-设备注册流程">3.1 设备注册流程</a></li>
-<li><a href="#32-处理器注册流程">3.2 处理器注册流程</a></li>
-<li><a href="#33-设备-处理器匹配机制">3.3 设备-处理器匹配机制</a></li>
-<li><a href="#34-事件流转机制">3.4 事件流转机制</a></li>
-<li><a href="#35-设备打开关闭流程">3.5 设备打开/关闭流程</a></li>
-<li><a href="#36-独占抓取-grab-机制">3.6 独占抓取 (Grab) 机制</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-初始化路径">4. 初始化路径</a></summary></p>
-
-<ul>
-<li><a href="#41-input-core-初始化">4.1 Input Core 初始化</a></li>
-<li><a href="#42-完整的设备节点创建路径">4.2 完整的设备节点创建路径</a></li>
-<li><a href="#43-全局数据结构初始状态">4.3 全局数据结构初始状态</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-案例分析gpio_keys-驱动">5. 案例分析：gpio_keys 驱动</a></summary></p>
-
-<ul>
-<li><a href="#51-核心数据结构">5.1 核心数据结构</a></li>
-<li><a href="#52-探测函数-probe--驱动初始化入口">5.2 探测函数 (Probe) — 驱动初始化入口</a></li>
-<li><a href="#53-中断处理与事件上报">5.3 中断处理与事件上报</a></li>
-<li><a href="#54-完整事件链路追踪">5.4 完整事件链路追踪</a></li>
-<li><a href="#55-设备树配置示例">5.5 设备树配置示例</a></li>
-<li><a href="#56-用户空间测试程序">5.6 用户空间测试程序</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#附录关键-api-速查">附录：关键 API 速查</a></summary></p>
-
-<ul>
-<li><a href="#设备驱动常用-api">设备驱动常用 API</a></li>
-<li><a href="#handler-常用-api">Handler 常用 API</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-qemu-实践实验">6. QEMU 实践实验</a></summary></p>
-
-<ul>
-<li><a href="#61-实验一探索-qemu-virt-默认-input-设备">6.1 实验一：探索 QEMU virt 默认 Input 设备</a></li>
-<li><a href="#62-实验二使用-uinput-创建虚拟输入设备">6.2 实验二：使用 uinput 创建虚拟输入设备</a></li>
-<li><a href="#63-实验三内核模块模拟输入设备">6.3 实验三：内核模块模拟输入设备</a></li>
-<li><a href="#64-实验四使用-evdev-事件监控工具">6.4 实验四：使用 evdev 事件监控工具</a></li>
-<li><a href="#65-实验五eviocgrab-独占抓取实验">6.5 实验五：EVIOCGRAB 独占抓取实验</a></li>
-<li><a href="#66-实验六gdb-追踪事件分发路径">6.6 实验六：GDB 追踪事件分发路径</a></li>
-<li><a href="#67-实验总结与关键观察">6.7 实验总结与关键观察</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-面试题精选">7. 面试题精选</a></summary></p>
-
-<ul>
-<li><a href="#71-架构与设计类">7.1 架构与设计类</a></li>
-<li><a href="#72-事件流转类">7.2 事件流转类</a></li>
-<li><a href="#73-设备注册与匹配类">7.3 设备注册与匹配类</a></li>
-<li><a href="#74-并发与同步类">7.4 并发与同步类</a></li>
-<li><a href="#75-实践与调试类">7.5 实践与调试类</a></li>
-<li><a href="#76-高级与深入类">7.6 高级与深入类</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-调试指南">8. 调试指南</a></summary></p>
-
-<ul>
-<li><a href="#81-调试工具总览">8.1 调试工具总览</a></li>
-<li><a href="#82-第一步procfssysfs-快速诊断">8.2 第一步：procfs/sysfs 快速诊断</a></li>
-<li><a href="#83-第二步evtest-实时事件监控">8.3 第二步：evtest 实时事件监控</a></li>
-<li><a href="#84-第三步dmesg-内核日志分析">8.4 第三步：dmesg 内核日志分析</a></li>
-<li><a href="#85-第四步dynamic_debug-动态调试">8.5 第四步：dynamic_debug 动态调试</a></li>
-<li><a href="#86-第五步ftrace-函数追踪">8.6 第五步：ftrace 函数追踪</a></li>
-<li><a href="#87-第六步kprobes-动态探测">8.7 第六步：kprobes 动态探测</a></li>
-<li><a href="#88-第七步gdb-内核调试">8.8 第七步：GDB 内核调试</a></li>
-<li><a href="#89-第八步kunit-单元测试">8.9 第八步：KUnit 单元测试</a></li>
-<li><a href="#810-调试决策流程图">8.10 调试决策流程图</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-常见问题与解决方案">9. 常见问题与解决方案</a></summary></p>
-
-<ul>
-<li><a href="#91-设备注册类问题">9.1 设备注册类问题</a></li>
-<li><a href="#92-事件丢失类问题">9.2 事件丢失类问题</a></li>
-<li><a href="#93-驱动开发类问题">9.3 驱动开发类问题</a></li>
-<li><a href="#94-多点触摸类问题">9.4 多点触摸类问题</a></li>
-<li><a href="#95-电源管理类问题">9.5 电源管理类问题</a></li>
-<li><a href="#96-性能类问题">9.6 性能类问题</a></li>
-<li><a href="#97-问题速查表">9.7 问题速查表</a></li>
-</ul>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 子系统概述</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. 关键数据结构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#数据结构关系总览">数据结构关系总览</a></li>
+          <li><a href="#21-struct-input_dev--输入设备">2.1 struct input_dev — 输入设备</a></li>
+          <li><a href="#22-struct-input_handler--事件处理器">2.2 struct input_handler — 事件处理器</a></li>
+          <li><a href="#23-struct-input_handle--设备与处理器的桥梁">2.3 struct input_handle — 设备与处理器的桥梁</a></li>
+          <li><a href="#24-struct-input_event--用户空间事件">2.4 struct input_event — 用户空间事件</a></li>
+          <li><a href="#25-struct-input_value--内核内部事件">2.5 struct input_value — 内核内部事件</a></li>
+          <li><a href="#26-struct-input_id--设备标识">2.6 struct input_id — 设备标识</a></li>
+          <li><a href="#27-struct-input_absinfo--绝对轴参数">2.7 struct input_absinfo — 绝对轴参数</a></li>
+          <li><a href="#28-struct-evdev--struct-evdev_client--evdev-处理器内部结构">2.8 struct evdev / struct evdev_client — evdev 处理器内部结构</a></li>
+          <li><a href="#29-struct-input_device_id--设备匹配表条目">2.9 struct input_device_id — 设备匹配表条目</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. 软件框架分析</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#软件架构总览">软件架构总览</a></li>
+          <li><a href="#31-设备注册流程">3.1 设备注册流程</a></li>
+          <li><a href="#32-处理器注册流程">3.2 处理器注册流程</a></li>
+          <li><a href="#33-设备-处理器匹配机制">3.3 设备-处理器匹配机制</a></li>
+          <li><a href="#34-事件流转机制">3.4 事件流转机制</a></li>
+          <li><a href="#35-设备打开关闭流程">3.5 设备打开/关闭流程</a></li>
+          <li><a href="#36-独占抓取-grab-机制">3.6 独占抓取 (Grab) 机制</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. 初始化路径</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-input-core-初始化">4.1 Input Core 初始化</a></li>
+          <li><a href="#42-完整的设备节点创建路径">4.2 完整的设备节点创建路径</a></li>
+          <li><a href="#43-全局数据结构初始状态">4.3 全局数据结构初始状态</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. 案例分析：gpio_keys 驱动</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-核心数据结构">5.1 核心数据结构</a></li>
+          <li><a href="#52-探测函数-probe--驱动初始化入口">5.2 探测函数 (Probe) — 驱动初始化入口</a></li>
+          <li><a href="#53-中断处理与事件上报">5.3 中断处理与事件上报</a></li>
+          <li><a href="#54-完整事件链路追踪">5.4 完整事件链路追踪</a></li>
+          <li><a href="#55-设备树配置示例">5.5 设备树配置示例</a></li>
+          <li><a href="#56-用户空间测试程序">5.6 用户空间测试程序</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 附录：关键 API 速查</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#设备驱动常用-api">设备驱动常用 API</a></li>
+          <li><a href="#handler-常用-api">Handler 常用 API</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. QEMU 实践实验</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-实验一探索-qemu-virt-默认-input-设备">6.1 实验一：探索 QEMU virt 默认 Input 设备</a></li>
+          <li><a href="#62-实验二使用-uinput-创建虚拟输入设备">6.2 实验二：使用 uinput 创建虚拟输入设备</a></li>
+          <li><a href="#63-实验三内核模块模拟输入设备">6.3 实验三：内核模块模拟输入设备</a></li>
+          <li><a href="#64-实验四使用-evdev-事件监控工具">6.4 实验四：使用 evdev 事件监控工具</a></li>
+          <li><a href="#65-实验五eviocgrab-独占抓取实验">6.5 实验五：EVIOCGRAB 独占抓取实验</a></li>
+          <li><a href="#66-实验六gdb-追踪事件分发路径">6.6 实验六：GDB 追踪事件分发路径</a></li>
+          <li><a href="#67-实验总结与关键观察">6.7 实验总结与关键观察</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. 面试题精选</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-架构与设计类">7.1 架构与设计类</a></li>
+          <li><a href="#72-事件流转类">7.2 事件流转类</a></li>
+          <li><a href="#73-设备注册与匹配类">7.3 设备注册与匹配类</a></li>
+          <li><a href="#74-并发与同步类">7.4 并发与同步类</a></li>
+          <li><a href="#75-实践与调试类">7.5 实践与调试类</a></li>
+          <li><a href="#76-高级与深入类">7.6 高级与深入类</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. 调试指南</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-调试工具总览">8.1 调试工具总览</a></li>
+          <li><a href="#82-第一步procfssysfs-快速诊断">8.2 第一步：procfs/sysfs 快速诊断</a></li>
+          <li><a href="#83-第二步evtest-实时事件监控">8.3 第二步：evtest 实时事件监控</a></li>
+          <li><a href="#84-第三步dmesg-内核日志分析">8.4 第三步：dmesg 内核日志分析</a></li>
+          <li><a href="#85-第四步dynamic_debug-动态调试">8.5 第四步：dynamic_debug 动态调试</a></li>
+          <li><a href="#86-第五步ftrace-函数追踪">8.6 第五步：ftrace 函数追踪</a></li>
+          <li><a href="#87-第六步kprobes-动态探测">8.7 第六步：kprobes 动态探测</a></li>
+          <li><a href="#88-第七步gdb-内核调试">8.8 第七步：GDB 内核调试</a></li>
+          <li><a href="#89-第八步kunit-单元测试">8.9 第八步：KUnit 单元测试</a></li>
+          <li><a href="#810-调试决策流程图">8.10 调试决策流程图</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. 常见问题与解决方案</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#91-设备注册类问题">9.1 设备注册类问题</a></li>
+          <li><a href="#92-事件丢失类问题">9.2 事件丢失类问题</a></li>
+          <li><a href="#93-驱动开发类问题">9.3 驱动开发类问题</a></li>
+          <li><a href="#94-多点触摸类问题">9.4 多点触摸类问题</a></li>
+          <li><a href="#95-电源管理类问题">9.5 电源管理类问题</a></li>
+          <li><a href="#96-性能类问题">9.6 性能类问题</a></li>
+          <li><a href="#97-问题速查表">9.7 问题速查表</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -4478,6 +4625,131 @@ cat /proc/bus/input/handlers
 <hr>
 
 <blockquote><strong>总结：</strong> Linux Input 子系统通过三层架构（设备驱动层 → Input Core → Handler 层）实现了输入设备与用户空间接口的完全解耦。<code>input_dev</code> 描述设备能力，<code>input_handler</code> 实现事件处理，<code>input_handle</code> 连接两者。事件通过 <code>input_event()</code> → <code>input_pass_values()</code> → <code>handler->events()</code> 的路径从驱动流向用户空间。evdev 作为通用处理器为每个设备创建 <code>/dev/input/eventX</code> 节点，用户程序通过标准文件 I/O 读取 <code>struct input_event</code> 即可获取输入事件。</blockquote>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

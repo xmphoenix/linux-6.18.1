@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -212,199 +378,149 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-为什么-slub-是分析锁实现的最好切入点之一">1. 为什么 SLUB 是分析锁实现的最好切入点之一</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-slubc-文件头已经把锁层级写出来了">2. <code>slub.c</code> 文件头已经把锁层级写出来了</a></summary></p>
-
-<ul>
-<li><a href="#21-逐行解释这段锁顺序注释">2.1 逐行解释这段锁顺序注释</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-slub-里四种对象页状态">3. SLUB 里四种对象/页状态</a></summary></p>
-
-<ul>
-<li><a href="#31-对这四种状态的直观理解">3.1 对这四种状态的直观理解</a></li>
-<li><a href="#32-状态迁移图">3.2 状态迁移图</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-分配热路径总览kmalloc-到-slubc">4. 分配热路径总览：<code>kmalloc()</code> 到 <code>slub.c</code></a></summary></p>
-
-<ul>
-<li><a href="#41-分配热路径时序图">4.1 分配热路径时序图</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-<strong>slab_alloc_node真正的无锁快路径">5. <code></strong>slab_alloc_node()</code>：真正的无锁快路径</a></summary></p>
-
-<ul>
-<li><a href="#51-逐行解释">5.1 逐行解释</a></li>
-<li><a href="#52-这里为什么不需要-spinlock">5.2 这里为什么不需要 <code>spinlock</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-<strong><em>slab_alloc慢路径如何一步步把对象找出来">6. <code></em></strong>slab_alloc()</code>：慢路径如何一步步把对象找出来</a></summary></p>
-
-<ul>
-<li><a href="#61-关键代码片段">6.1 关键代码片段</a></li>
-<li><a href="#62-逐行解释">6.2 逐行解释</a></li>
-<li><a href="#63-get_freelist-的锁语义">6.3 <code>get_freelist()</code> 的锁语义</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-partial-路径什么时候会碰-node-list_lock">7. partial 路径：什么时候会碰 <code>node->list_lock</code></a></summary></p>
-
-<ul>
-<li><a href="#71-关键代码片段">7.1 关键代码片段</a></li>
-<li><a href="#72-逐行解释">7.2 逐行解释</a></li>
-<li><a href="#73-debug-cache-为什么更依赖-list_lock">7.3 debug cache 为什么更依赖 <code>list_lock</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-freeze_slab为什么说-cpu-slab-是冻结态">8. <code>freeze_slab()</code>：为什么说 cpu slab 是“冻结态”</a></summary></p>
-
-<ul>
-<li><a href="#81-关键代码片段">8.1 关键代码片段</a></li>
-<li><a href="#82-逐行解释">8.2 逐行解释</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-deactivate_slab把-cpu-slab-再放回共享世界">9. <code>deactivate_slab()</code>：把 cpu slab 再放回共享世界</a></summary></p>
-
-<ul>
-<li><a href="#91-关键代码片段">9.1 关键代码片段</a></li>
-<li><a href="#92-逐行解释">9.2 逐行解释</a></li>
-<li><a href="#93-这条路径用了哪些锁">9.3 这条路径用了哪些锁</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-释放热路径kfree-到-do_slab_free">10. 释放热路径：<code>kfree()</code> 到 <code>do_slab_free()</code></a></summary></p>
-
-<ul>
-<li><a href="#101-释放热路径时序图">10.1 释放热路径时序图</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#11-do_slab_free当前-cpu-slab-的-lockless-fast-free">11. <code>do_slab_free()</code>：当前 CPU slab 的 lockless fast free</a></summary></p>
-
-<ul>
-<li><a href="#111-关键代码片段">11.1 关键代码片段</a></li>
-<li><a href="#112-逐行解释">11.2 逐行解释</a></li>
-<li><a href="#113-为什么-free-fastpath-和-alloc-fastpath-几乎镜像对称">11.3 为什么 free fastpath 和 alloc fastpath 几乎镜像对称</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#12-<strong>slab_free释放慢路径如何决定是否碰-list_lock">12. <code></strong>slab_free()</code>：释放慢路径如何决定是否碰 <code>list_lock</code></a></summary></p>
-
-<ul>
-<li><a href="#121-关键代码片段">12.1 关键代码片段</a></li>
-<li><a href="#122-逐行解释">12.2 逐行解释</a></li>
-<li><a href="#123-这条路径体现出的性能策略">12.3 这条路径体现出的性能策略</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#13-free_to_partial_listdebug-cache-下的集中式路径">13. <code>free_to_partial_list()</code>：debug cache 下的集中式路径</a></summary></p>
-
-<ul>
-<li><a href="#131-关键代码片段">13.1 关键代码片段</a></li>
-<li><a href="#132-逐行解释">13.2 逐行解释</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#14-slab_lock没有-cmpxchg_double-时的兜底">14. <code>slab_lock()</code>：没有 <code>cmpxchg_double</code> 时的兜底</a></summary></p>
-
-<ul>
-<li><a href="#141-这里和-arm64-的关系">14.1 这里和 ARM64 的关系</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#15-slab_mutex-和-flush_lock为什么热路径里几乎看不到-mutex">15. <code>slab_mutex</code> 和 <code>flush_lock</code>：为什么热路径里几乎看不到 mutex</a></summary></p>
-
-<ul>
-<li><a href="#151-这说明什么">15.1 这说明什么</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#16-把主文档里的三类锁重新映射回-slub">16. 把主文档里的三类锁重新映射回 SLUB</a></summary></p>
-
-<ul>
-<li><a href="#161-spinlock-在-slub-里的真实位置">16.1 spinlock 在 SLUB 里的真实位置</a></li>
-<li><a href="#162-mutex-在-slub-里的真实位置">16.2 mutex 在 SLUB 里的真实位置</a></li>
-<li><a href="#163-semaphore-在-slub-里几乎不是核心角色">16.3 semaphore 在 SLUB 里几乎不是核心角色</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#17-最值得下断点打-trace-的函数">17. 最值得下断点/打 trace 的函数</a></summary></p>
-
-<ul>
-<li><a href="#分配路径">分配路径</a></li>
-<li><a href="#释放路径">释放路径</a></li>
-<li><a href="#管理路径">管理路径</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#18-建议的-slub-锁实验">18. 建议的 SLUB 锁实验</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#181-实验一验证-debug-cache-会放大-list_lock-争用">18.1 实验一：验证 debug cache 会放大 <code>list_lock</code> 争用</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#182-实验二观察-percpu-fastpath-是否真的占主导">18.2 实验二：观察 percpu fastpath 是否真的占主导</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#183-实验三观察-full-slab-第一次-free-如何重新回到-partial">18.3 实验三：观察 full slab 第一次 free 如何重新回到 partial</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#19-最后的总结">19. 最后的总结</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 为什么 SLUB 是分析锁实现的最好切入点之一</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. slub.c 文件头已经把锁层级写出来了</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-逐行解释这段锁顺序注释">2.1 逐行解释这段锁顺序注释</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. SLUB 里四种对象/页状态</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-对这四种状态的直观理解">3.1 对这四种状态的直观理解</a></li>
+          <li><a href="#32-状态迁移图">3.2 状态迁移图</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. 分配热路径总览：kmalloc() 到 slub.c</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-分配热路径时序图">4.1 分配热路径时序图</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. </strong>slab_alloc_node()：真正的无锁快路径</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-逐行解释">5.1 逐行解释</a></li>
+          <li><a href="#52-这里为什么不需要-spinlock">5.2 这里为什么不需要 spinlock</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. </em></strong>slab_alloc()：慢路径如何一步步把对象找出来</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-关键代码片段">6.1 关键代码片段</a></li>
+          <li><a href="#62-逐行解释">6.2 逐行解释</a></li>
+          <li><a href="#63-get_freelist-的锁语义">6.3 get_freelist() 的锁语义</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. partial 路径：什么时候会碰 node->list_lock</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-关键代码片段">7.1 关键代码片段</a></li>
+          <li><a href="#72-逐行解释">7.2 逐行解释</a></li>
+          <li><a href="#73-debug-cache-为什么更依赖-list_lock">7.3 debug cache 为什么更依赖 list_lock</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. freeze_slab()：为什么说 cpu slab 是“冻结态”</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-关键代码片段">8.1 关键代码片段</a></li>
+          <li><a href="#82-逐行解释">8.2 逐行解释</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. deactivate_slab()：把 cpu slab 再放回共享世界</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#91-关键代码片段">9.1 关键代码片段</a></li>
+          <li><a href="#92-逐行解释">9.2 逐行解释</a></li>
+          <li><a href="#93-这条路径用了哪些锁">9.3 这条路径用了哪些锁</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. 释放热路径：kfree() 到 do_slab_free()</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#101-释放热路径时序图">10.1 释放热路径时序图</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. do_slab_free()：当前 CPU slab 的 lockless fast free</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#111-关键代码片段">11.1 关键代码片段</a></li>
+          <li><a href="#112-逐行解释">11.2 逐行解释</a></li>
+          <li><a href="#113-为什么-free-fastpath-和-alloc-fastpath-几乎镜像对称">11.3 为什么 free fastpath 和 alloc fastpath 几乎镜像对称</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 12. </strong>slab_free()：释放慢路径如何决定是否碰 list_lock</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#121-关键代码片段">12.1 关键代码片段</a></li>
+          <li><a href="#122-逐行解释">12.2 逐行解释</a></li>
+          <li><a href="#123-这条路径体现出的性能策略">12.3 这条路径体现出的性能策略</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 13. free_to_partial_list()：debug cache 下的集中式路径</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#131-关键代码片段">13.1 关键代码片段</a></li>
+          <li><a href="#132-逐行解释">13.2 逐行解释</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 14. slab_lock()：没有 cmpxchg_double 时的兜底</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#141-这里和-arm64-的关系">14.1 这里和 ARM64 的关系</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 15. slab_mutex 和 flush_lock：为什么热路径里几乎看不到 mutex</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#151-这说明什么">15.1 这说明什么</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 16. 把主文档里的三类锁重新映射回 SLUB</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#161-spinlock-在-slub-里的真实位置">16.1 spinlock 在 SLUB 里的真实位置</a></li>
+          <li><a href="#162-mutex-在-slub-里的真实位置">16.2 mutex 在 SLUB 里的真实位置</a></li>
+          <li><a href="#163-semaphore-在-slub-里几乎不是核心角色">16.3 semaphore 在 SLUB 里几乎不是核心角色</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 17. 最值得下断点/打 trace 的函数</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#分配路径">分配路径</a></li>
+          <li><a href="#释放路径">释放路径</a></li>
+          <li><a href="#管理路径">管理路径</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 18. 建议的 SLUB 锁实验</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 18.1 实验一：验证 debug cache 会放大 list_lock 争用</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 18.2 实验二：观察 percpu fastpath 是否真的占主导</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 18.3 实验三：观察 full slab 第一次 free 如何重新回到 partial</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19. 最后的总结</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -1628,5 +1744,130 @@ mutex_unlock(&amp;slab_mutex);</code></pre>
 </ol>
 
 <p>这套分层恰好把主文档里的锁原理全部落地到了一个真实、复杂而且高频的内核子系统中。</p>
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
+
 </body>
 </html>

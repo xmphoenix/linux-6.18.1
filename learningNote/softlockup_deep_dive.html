@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -208,79 +374,23 @@ hr {
 
 <blockquote>基于 Linux 6.18.1 源码 <code>kernel/watchdog.c</code></blockquote>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><b>1. 软件架构总览</b></summary></p>
-
-<ul>
-<li><a href="#1-软件架构总览">软件架构总览</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>2. 关键数据结构及其关系</b></summary></p>
-
-<ul>
-<li><a href="#2-关键数据结构及其关系">关键数据结构及其关系</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>3. 实现原理</b></summary></p>
-
-<ul>
-<li>3.1 <a href="#31-核心思想">核心思想</a></li>
-<li>3.2 <a href="#32-初始化流程">初始化流程</a></li>
-<li>3.3 <a href="#33-定时器回调-watchdog_timer_fn">定时器回调 watchdog_timer_fn</a></li>
-<li>3.4 <a href="#34-喂狗函数-softlockup_fn">喂狗函数 softlockup_fn</a></li>
-<li>3.5 <a href="#35-判定逻辑-is_softlockup">判定逻辑 is_softlockup</a></li>
-<li>3.6 <a href="#36-touch-机制延迟报告">Touch 机制（延迟报告）</a></li>
-<li>3.7 <a href="#37-中断风暴检测">中断风暴检测</a></li>
-<li>3.8 <a href="#38-告警与-panic-流程">告警与 Panic 流程</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>4. 用法总结</b></summary></p>
-
-<ul>
-<li>4.1 <a href="#41-内核配置-kconfig">内核配置 Kconfig</a></li>
-<li>4.2 <a href="#42-启动参数">启动参数</a></li>
-<li>4.3 <a href="#43-运行时-sysctl-参数">运行时 sysctl 参数</a></li>
-<li>4.4 <a href="#44-驱动内核模块中的-touch-api">驱动/内核模块中的 Touch API</a></li>
-<li>4.5 <a href="#45-告警信息解读">告警信息解读</a></li>
-<li>4.6 <a href="#46-常见问题与调试">常见问题与调试</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>5. Softlockup 发生意味着什么</b></summary></p>
-
-<ul>
-<li>5.1 <a href="#51-直接含义">直接含义</a></li>
-<li>5.2 <a href="#52-对系统的影响">对系统的影响</a></li>
-<li>5.3 <a href="#53-典型根因分类">典型根因分类</a></li>
-<li>5.4 <a href="#54-与其他内核异常的关系">与其他内核异常的关系</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>6. QEMU 模拟实验</b></summary></p>
-
-<ul>
-<li>6.1 <a href="#61-实验环境搭建">实验环境搭建</a></li>
-<li>6.2 <a href="#62-实验一内核模块死循环触发-softlockup">实验一：内核模块死循环触发 softlockup</a></li>
-<li>6.3 <a href="#63-实验二关抢占长时间执行">实验二：关抢占长时间执行</a></li>
-<li>6.4 <a href="#64-实验三自旋锁长时间持有">实验三：自旋锁长时间持有</a></li>
-<li>6.5 <a href="#65-观察与验证">观察与验证</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>7. 面试经典问题与答案</b></summary></p>
-
-<ul>
-<li>7.1 <a href="#71-基础概念类">基础概念类</a></li>
-<li>7.2 <a href="#72-实现原理类">实现原理类</a></li>
-<li>7.3 <a href="#73-实战调试类">实战调试类</a></li>
-<li>7.4 <a href="#74-进阶设计类">进阶设计类</a></li>
-</ul>
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 软件架构总览</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1-软件架构总览">软件架构总览</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -1398,6 +1508,131 @@ irqreturn_t my_irq_handler(int irq, void *dev)
 <li>这只是一个"touch"操作（重置计时），不涉及内核安全敏感信息泄露</li>
 <li>社区的务实考量：与其让闭源驱动引发大量误报 bug report，不如让它们能正确 touch watchdog</li>
 </ul>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

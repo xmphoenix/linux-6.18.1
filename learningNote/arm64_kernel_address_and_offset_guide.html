@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -241,144 +407,120 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-先建立整体模型">1. 先建立整体模型</a></summary></p>
-
-<ul>
-<li><a href="#11-物理地址">1.1 物理地址</a></li>
-<li><a href="#12-线性映射地址">1.2 线性映射地址</a></li>
-<li><a href="#13-内核镜像地址">1.3 内核镜像地址</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-编译期固定宏的规范定义">2. 编译期固定宏的规范定义</a></summary></p>
-
-<ul>
-<li><a href="#21-va_bits">2.1 <code>VA_BITS</code></a></li>
-<li><a href="#22-va_bits_min">2.2 <code>VA_BITS_MIN</code></a></li>
-<li><a href="#23-page_offset">2.3 <code>PAGE_OFFSET</code></a></li>
-<li><a href="#24-page_end">2.4 <code>PAGE_END</code></a></li>
-<li><a href="#25-modules_vaddrmodules_end-和-modules_vsize">2.5 <code>MODULES_VADDR</code>、<code>MODULES_END</code> 和 <code>MODULES_VSIZE</code></a></li>
-<li><a href="#26-kimage_vaddr">2.6 <code>KIMAGE_VADDR</code></a></li>
-<li><a href="#27-kernel_start-和-kernel_end">2.7 <code>KERNEL_START</code> 和 <code>KERNEL_END</code></a></li>
-<li><a href="#28-vmalloc_start-和-vmalloc_end">2.8 <code>VMALLOC_START</code> 和 <code>VMALLOC_END</code></a></li>
-<li><a href="#29-vmemmap_rangevmemmap_sizevmemmap_startvmemmap_end">2.9 <code>VMEMMAP_RANGE</code>、<code>VMEMMAP_SIZE</code>、<code>VMEMMAP_START</code>、<code>VMEMMAP_END</code></a></li>
-<li><a href="#210-pci_io_start-和-pci_io_end">2.10 <code>PCI_IO_START</code> 和 <code>PCI_IO_END</code></a></li>
-<li><a href="#211-fixaddr_topfixaddr_startfixaddr_tot_start">2.11 <code>FIXADDR_TOP</code>、<code>FIXADDR_START</code>、<code>FIXADDR_TOT_START</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-运行时变量的规范定义">3. 运行时变量的规范定义</a></summary></p>
-
-<ul>
-<li><a href="#31-memstart_addr-与-phys_offset">3.1 <code>memstart_addr</code> 与 <code>PHYS_OFFSET</code></a></li>
-<li><a href="#32-vabits_actual">3.2 <code>vabits_actual</code></a></li>
-<li><a href="#33-min_memblock_addr-和-max_memblock_addr">3.3 <code>MIN_MEMBLOCK_ADDR</code> 和 <code>MAX_MEMBLOCK_ADDR</code></a></li>
-<li><a href="#34-kaslr_offset-和-kaslr_enabled">3.4 <code>kaslr_offset()</code> 和 <code>kaslr_enabled()</code></a></li>
-<li><a href="#35-kimage_voffset">3.5 <code>kimage_voffset</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-arm64-的两套地址换算规则">4. ARM64 的两套地址换算规则</a></summary></p>
-
-<ul>
-<li><a href="#41-线性映射换算">4.1 线性映射换算</a></li>
-<li><a href="#42-内核镜像换算">4.2 内核镜像换算</a></li>
-<li><a href="#43-arm64-如何区分一个-va-属于哪一类">4.3 ARM64 如何区分一个 VA 属于哪一类</a></li>
-<li><a href="#44-<strong>virt_to_phys-的真实逻辑">4.4 <code></strong>virt_to_phys()</code> 的真实逻辑</a></li>
-<li><a href="#45-<strong>phys_to_kimg-的意义">4.5 <code></strong>phys_to_kimg()</code> 的意义</a></li>
-<li><a href="#46-为什么-<strong>pa_symbol-和-</strong>pa-不能混用">4.6 为什么 <code><strong>pa_symbol()</code> 和 <code></strong>pa()</code> 不能混用</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-linear-mapkernel-imagevmalloc-三类-va-的判别方法">5. linear map、kernel image、vmalloc 三类 VA 的判别方法</a></summary></p>
-
-<ul>
-<li><a href="#51-第一优先级先判断它是不是-linear-map">5.1 第一优先级：先判断它是不是 linear map</a></li>
-<li><a href="#52-第二优先级判断它是不是-built-in-kernel-image-地址">5.2 第二优先级：判断它是不是 built-in kernel image 地址</a></li>
-<li><a href="#53-第三优先级判断它是不是-vmalloc-地址">5.3 第三优先级：判断它是不是 vmalloc 地址</a></li>
-<li><a href="#54-模块地址为什么容易和-vmalloc-混淆">5.4 模块地址为什么容易和 vmalloc 混淆</a></li>
-<li><a href="#55-最实用的判断顺序">5.5 最实用的判断顺序</a></li>
-<li><a href="#56-为什么不能把-vmalloc-地址直接传给-<strong>virt_to_phys">5.6 为什么不能把 <code>vmalloc</code> 地址直接传给 <code></strong>virt_to_phys()</code></a></li>
-<li><a href="#57-一句话决策法">5.7 一句话决策法</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-pfnstruct-pagevmemmap-三者关系">6. PFN、<code>struct page</code>、<code>vmemmap</code> 三者关系</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-几个实际推导例子">7. 几个实际推导例子</a></summary></p>
-
-<ul>
-<li><a href="#71-由-modules_vaddr-推到-modules_end">7.1 由 <code>MODULES_VADDR</code> 推到 <code>MODULES_END</code></a></li>
-<li><a href="#72-由-page_end-推到-direct_map_physmem_end">7.2 由 <code>PAGE_END</code> 推到 <code>DIRECT_MAP_PHYSMEM_END</code></a></li>
-<li><a href="#73-为什么-vmemmap--phys_pfn_offset-对应-direct-map-的第一个-struct-page">7.3 为什么 <code>vmemmap + PHYS_PFN_OFFSET</code> 对应 direct map 的第一个 <code>struct page</code></a></li>
-<li><a href="#74-一个-kernel-symbol-如何转成物理地址">7.4 一个 kernel symbol 如何转成物理地址</a></li>
-<li><a href="#75-同一个物理页可能有两种不同语义的虚拟地址">7.5 同一个物理页可能有两种不同语义的虚拟地址</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-启动阶段这些地址和-offset-是怎么建立起来的">8. 启动阶段这些地址和 offset 是怎么建立起来的</a></summary></p>
-
-<ul>
-<li><a href="#81-early_map_kernel-先建立早期-kernel-image-映射">8.1 <code>early_map_kernel()</code> 先建立早期 kernel image 映射</a></li>
-<li><a href="#82-<strong>primary_switched-保存-kimage_voffset">8.2 <code></strong>primary_switched</code> 保存 <code>kimage_voffset</code></a></li>
-<li><a href="#83-arm64_memblock_init-建立-memstart_addr从而建立-phys_offset">8.3 <code>arm64_memblock_init()</code> 建立 <code>memstart_addr</code>，从而建立 <code>PHYS_OFFSET</code></a></li>
-<li><a href="#84-paging_init-建立完整内存映射">8.4 <code>paging_init()</code> 建立完整内存映射</a></li>
-<li><a href="#85-setup_arch-里的大致顺序">8.5 <code>setup_arch()</code> 里的大致顺序</a></li>
-<li><a href="#86-这条时序的实际意义">8.6 这条时序的实际意义</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-当前内核配置下的关键数值">9. 当前内核配置下的关键数值</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-地址布局关系图">10. 地址布局关系图</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#11-最容易犯错的几个点">11. 最容易犯错的几个点</a></summary></p>
-
-<ul>
-<li><a href="#111-kimage_vaddr-不是-_text">11.1 <code>KIMAGE_VADDR</code> 不是 <code>_text</code></a></li>
-<li><a href="#112-phys_offset-不是简单的-dram-起始地址别名">11.2 <code>PHYS_OFFSET</code> 不是简单的 DRAM 起始地址别名</a></li>
-<li><a href="#113-<strong>pa_symbol-不是普通-virt_to_phys">11.3 <code></strong>pa_symbol()</code> 不是普通 <code>virt_to_phys()</code></a></li>
-<li><a href="#114-一个内核虚拟地址不一定属于-linear-map">11.4 一个内核虚拟地址不一定属于 linear map</a></li>
-<li><a href="#115-52-bit-内核不代表运行时一定真在-52-bit-va-下运行">11.5 52-bit 内核不代表运行时一定真在 52-bit VA 下运行</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#12-建议的源码阅读路径">12. 建议的源码阅读路径</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#13-一句话总结">13. 一句话总结</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 先建立整体模型</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-物理地址">1.1 物理地址</a></li>
+          <li><a href="#12-线性映射地址">1.2 线性映射地址</a></li>
+          <li><a href="#13-内核镜像地址">1.3 内核镜像地址</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. 编译期固定宏的规范定义</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-va_bits">2.1 VA_BITS</a></li>
+          <li><a href="#22-va_bits_min">2.2 VA_BITS_MIN</a></li>
+          <li><a href="#23-page_offset">2.3 PAGE_OFFSET</a></li>
+          <li><a href="#24-page_end">2.4 PAGE_END</a></li>
+          <li><a href="#25-modules_vaddrmodules_end-和-modules_vsize">2.5 MODULES_VADDR、MODULES_END 和 MODULES_VSIZE</a></li>
+          <li><a href="#26-kimage_vaddr">2.6 KIMAGE_VADDR</a></li>
+          <li><a href="#27-kernel_start-和-kernel_end">2.7 KERNEL_START 和 KERNEL_END</a></li>
+          <li><a href="#28-vmalloc_start-和-vmalloc_end">2.8 VMALLOC_START 和 VMALLOC_END</a></li>
+          <li><a href="#29-vmemmap_rangevmemmap_sizevmemmap_startvmemmap_end">2.9 VMEMMAP_RANGE、VMEMMAP_SIZE、VMEMMAP_START、VMEMMAP_END</a></li>
+          <li><a href="#210-pci_io_start-和-pci_io_end">2.10 PCI_IO_START 和 PCI_IO_END</a></li>
+          <li><a href="#211-fixaddr_topfixaddr_startfixaddr_tot_start">2.11 FIXADDR_TOP、FIXADDR_START、FIXADDR_TOT_START</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. 运行时变量的规范定义</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-memstart_addr-与-phys_offset">3.1 memstart_addr 与 PHYS_OFFSET</a></li>
+          <li><a href="#32-vabits_actual">3.2 vabits_actual</a></li>
+          <li><a href="#33-min_memblock_addr-和-max_memblock_addr">3.3 MIN_MEMBLOCK_ADDR 和 MAX_MEMBLOCK_ADDR</a></li>
+          <li><a href="#34-kaslr_offset-和-kaslr_enabled">3.4 kaslr_offset() 和 kaslr_enabled()</a></li>
+          <li><a href="#35-kimage_voffset">3.5 kimage_voffset</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. ARM64 的两套地址换算规则</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-线性映射换算">4.1 线性映射换算</a></li>
+          <li><a href="#42-内核镜像换算">4.2 内核镜像换算</a></li>
+          <li><a href="#43-arm64-如何区分一个-va-属于哪一类">4.3 ARM64 如何区分一个 VA 属于哪一类</a></li>
+          <li><a href="#44-<strong>virt_to_phys-的真实逻辑">4.4 virt_to_phys() 的真实逻辑</a></li>
+          <li><a href="#45-<strong>phys_to_kimg-的意义">4.5 phys_to_kimg() 的意义</a></li>
+          <li><a href="#46-为什么-<strong>pa_symbol-和-</strong>pa-不能混用">4.6 为什么 pa_symbol() 和 pa() 不能混用</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. linear map、kernel image、vmalloc 三类 VA 的判别方法</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-第一优先级先判断它是不是-linear-map">5.1 第一优先级：先判断它是不是 linear map</a></li>
+          <li><a href="#52-第二优先级判断它是不是-built-in-kernel-image-地址">5.2 第二优先级：判断它是不是 built-in kernel image 地址</a></li>
+          <li><a href="#53-第三优先级判断它是不是-vmalloc-地址">5.3 第三优先级：判断它是不是 vmalloc 地址</a></li>
+          <li><a href="#54-模块地址为什么容易和-vmalloc-混淆">5.4 模块地址为什么容易和 vmalloc 混淆</a></li>
+          <li><a href="#55-最实用的判断顺序">5.5 最实用的判断顺序</a></li>
+          <li><a href="#56-为什么不能把-vmalloc-地址直接传给-<strong>virt_to_phys">5.6 为什么不能把 vmalloc 地址直接传给 virt_to_phys()</a></li>
+          <li><a href="#57-一句话决策法">5.7 一句话决策法</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. PFN、struct page、vmemmap 三者关系</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. 几个实际推导例子</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-由-modules_vaddr-推到-modules_end">7.1 由 MODULES_VADDR 推到 MODULES_END</a></li>
+          <li><a href="#72-由-page_end-推到-direct_map_physmem_end">7.2 由 PAGE_END 推到 DIRECT_MAP_PHYSMEM_END</a></li>
+          <li><a href="#73-为什么-vmemmap--phys_pfn_offset-对应-direct-map-的第一个-struct-page">7.3 为什么 vmemmap + PHYS_PFN_OFFSET 对应 direct map 的第一个 struct page</a></li>
+          <li><a href="#74-一个-kernel-symbol-如何转成物理地址">7.4 一个 kernel symbol 如何转成物理地址</a></li>
+          <li><a href="#75-同一个物理页可能有两种不同语义的虚拟地址">7.5 同一个物理页可能有两种不同语义的虚拟地址</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. 启动阶段这些地址和 offset 是怎么建立起来的</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-early_map_kernel-先建立早期-kernel-image-映射">8.1 early_map_kernel() 先建立早期 kernel image 映射</a></li>
+          <li><a href="#82-<strong>primary_switched-保存-kimage_voffset">8.2 primary_switched 保存 kimage_voffset</a></li>
+          <li><a href="#83-arm64_memblock_init-建立-memstart_addr从而建立-phys_offset">8.3 arm64_memblock_init() 建立 memstart_addr，从而建立 PHYS_OFFSET</a></li>
+          <li><a href="#84-paging_init-建立完整内存映射">8.4 paging_init() 建立完整内存映射</a></li>
+          <li><a href="#85-setup_arch-里的大致顺序">8.5 setup_arch() 里的大致顺序</a></li>
+          <li><a href="#86-这条时序的实际意义">8.6 这条时序的实际意义</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. 当前内核配置下的关键数值</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. 地址布局关系图</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. 最容易犯错的几个点</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#111-kimage_vaddr-不是-_text">11.1 KIMAGE_VADDR 不是 _text</a></li>
+          <li><a href="#112-phys_offset-不是简单的-dram-起始地址别名">11.2 PHYS_OFFSET 不是简单的 DRAM 起始地址别名</a></li>
+          <li><a href="#113-<strong>pa_symbol-不是普通-virt_to_phys">11.3 pa_symbol() 不是普通 virt_to_phys()</a></li>
+          <li><a href="#114-一个内核虚拟地址不一定属于-linear-map">11.4 一个内核虚拟地址不一定属于 linear map</a></li>
+          <li><a href="#115-52-bit-内核不代表运行时一定真在-52-bit-va-下运行">11.5 52-bit 内核不代表运行时一定真在 52-bit VA 下运行</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 12. 建议的源码阅读路径</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 13. 一句话总结</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -1587,5 +1729,130 @@ high kernel VA</code></pre>
 </ul>
 
 <p>其它像 <code>KIMAGE_VADDR</code>、<code>MODULES_VADDR</code>、<code>VMALLOC_START</code>、<code>VMEMMAP_END</code>、<code>FIXADDR_TOP</code>，本质上都是围绕这两条主线组织整个 TTBR1 内核地址空间。</p>
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
+
 </body>
 </html>

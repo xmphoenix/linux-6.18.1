@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -210,183 +376,151 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-perf-相关代码文件总览">1. Perf 相关代码文件总览</a></summary></p>
-
-<ul>
-<li><a href="#11-用户态工具-toolsperf">1.1 用户态工具 (<code>tools/perf/</code>)</a></li>
-<li><a href="#12-内核态代码">1.2 内核态代码</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-perf-依赖的内核选项与用户态依赖">2. Perf 依赖的内核选项与用户态依赖</a></summary></p>
-
-<ul>
-<li><a href="#21-内核配置选项">2.1 内核配置选项</a></li>
-<li><a href="#22-用户态依赖库">2.2 用户态依赖库</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-perf-实现原理">3. Perf 实现原理</a></summary></p>
-
-<ul>
-<li><a href="#31-整体架构">3.1 整体架构</a></li>
-<li><a href="#32-核心系统调用perf_event_open">3.2 核心系统调用：<code>perf_event_open()</code></a></li>
-<li><a href="#33-事件类型体系">3.3 事件类型体系</a></li>
-<li><a href="#34-两种工作模式">3.4 两种工作模式</a></li>
-<li><a href="#35-pmu-驱动模型-struct-pmu">3.5 PMU 驱动模型 (<code>struct pmu</code>)</a></li>
-<li><a href="#36-环形缓冲区机制">3.6 环形缓冲区机制</a></li>
-<li><a href="#37-事件调度算法">3.7 事件调度算法</a></li>
-<li><a href="#38-用户态工具工作流">3.8 用户态工具工作流</a></li>
-<li><a href="#39-perf_event_attr-关键字段">3.9 <code>perf_event_attr</code> 关键字段</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-arm64-架构-perf-编译指南">4. ARM64 架构 Perf 编译指南</a></summary></p>
-
-<ul>
-<li><a href="#41-前置条件">4.1 前置条件</a></li>
-<li><a href="#42-编译方法">4.2 编译方法</a></li>
-<li><a href="#43-安装与部署">4.3 安装与部署</a></li>
-<li><a href="#44-编译特性检测">4.4 编译特性检测</a></li>
-<li><a href="#45-验证编译结果">4.5 验证编译结果</a></li>
-<li><a href="#46-常见编译问题">4.6 常见编译问题</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#附录-a常用-perf-命令速查">附录 A：常用 Perf 命令速查</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#附录-b关键源码文件索引">附录 B：关键源码文件索引</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-arm64-pmu-硬件内部细节">5. ARM64 PMU 硬件内部细节</a></summary></p>
-
-<ul>
-<li><a href="#51-pmuv3-架构概述">5.1 PMUv3 架构概述</a></li>
-<li><a href="#52-关键寄存器详解">5.2 关键寄存器详解</a></li>
-<li><a href="#53-pmuv3-版本演进">5.3 PMUv3 版本演进</a></li>
-<li><a href="#54-计数器宽度与溢出机制">5.4 计数器宽度与溢出机制</a></li>
-<li><a href="#55-bias-技术长计数器-32-位溢出模拟">5.5 Bias 技术（长计数器 32 位溢出模拟）</a></li>
-<li><a href="#56-链式计数器chained-events">5.6 链式计数器（Chained Events）</a></li>
-<li><a href="#57-中断流程">5.7 中断流程</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-arm64-pmu-驱动重要数据结构">6. ARM64 PMU 驱动重要数据结构</a></summary></p>
-
-<ul>
-<li><a href="#61-struct-arm_pmu核心-pmu-抽象">6.1 <code>struct arm_pmu</code>（核心 PMU 抽象）</a></li>
-<li><a href="#62-struct-pmu_hw_events每-cpu-硬件事件状态">6.2 <code>struct pmu_hw_events</code>（每 CPU 硬件事件状态）</a></li>
-<li><a href="#63-struct-hw_perf_event通用-perf-硬件事件状态">6.3 <code>struct hw_perf_event</code>（通用 perf 硬件事件状态）</a></li>
-<li><a href="#64-关键数据结构关系图">6.4 关键数据结构关系图</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-arm64-pmu-初始化流程与重要接口">7. ARM64 PMU 初始化流程与重要接口</a></summary></p>
-
-<ul>
-<li><a href="#71-完整初始化流程">7.1 完整初始化流程</a></li>
-<li><a href="#72-事件生命周期接口">7.2 事件生命周期接口</a></li>
-<li><a href="#73-事件映射机制">7.3 事件映射机制</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-arm64-pmu-代码中的关键算法">8. ARM64 PMU 代码中的关键算法</a></summary></p>
-
-<ul>
-<li><a href="#81-计数器分配算法armv8pmu_get_event_idx">8.1 计数器分配算法（<code>armv8pmu_get_event_idx</code>）</a></li>
-<li><a href="#82-采样周期设置算法armpmu_event_set_period">8.2 采样周期设置算法（<code>armpmu_event_set_period</code>）</a></li>
-<li><a href="#83-计数器更新算法armpmu_event_update">8.3 计数器更新算法（<code>armpmu_event_update</code>）</a></li>
-<li><a href="#84-事件组验证算法validate_group">8.4 事件组验证算法（<code>validate_group</code>）</a></li>
-<li><a href="#85-中断处理算法armv8pmu_handle_irq">8.5 中断处理算法（<code>armv8pmu_handle_irq</code>）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-arm64-pmu-驱动软件框架图">9. ARM64 PMU 驱动软件框架图</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-arm64-pmuv3-驱动源码注释详解">10. ARM64 PMUv3 驱动源码注释详解</a></summary></p>
-
-<ul>
-<li><a href="#101-pmu-初始化函数">10.1 PMU 初始化函数</a></li>
-<li><a href="#102-硬件探测函数">10.2 硬件探测函数</a></li>
-<li><a href="#103-中断处理函数">10.3 中断处理函数</a></li>
-<li><a href="#104-事件使能禁用函数">10.4 事件使能/禁用函数</a></li>
-<li><a href="#105-计数器读写函数">10.5 计数器读写函数</a></li>
-<li><a href="#106-pmu-重置函数">10.6 PMU 重置函数</a></li>
-<li><a href="#107-平台驱动注册">10.7 平台驱动注册</a></li>
-<li><a href="#108-厂商特定-pmu-初始化宏">10.8 厂商特定 PMU 初始化宏</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#11-arm64-perf-全部命令详解与实战案例">11. ARM64 Perf 全部命令详解与实战案例</a></summary></p>
-
-<ul>
-<li><a href="#111-命令总览">11.1 命令总览</a></li>
-<li><a href="#112-性能剖析类命令">11.2 性能剖析类命令</a></li>
-<li><a href="#113-追踪调试类命令">11.3 追踪调试类命令</a></li>
-<li><a href="#114-专项分析类命令">11.4 专项分析类命令</a></li>
-<li><a href="#115-数据管理类命令">11.5 数据管理类命令</a></li>
-<li><a href="#116-系统工具类命令">11.6 系统工具类命令</a></li>
-<li><a href="#117-arm64-特有的-perf-使用技巧">11.7 ARM64 特有的 Perf 使用技巧</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#12-qemu-上-perf-实践经典-case">12. QEMU 上 Perf 实践经典 Case</a></summary></p>
-
-<ul>
-<li><a href="#121-case-1cpu-热点函数定位--死循环--计算密集">12.1 Case 1：CPU 热点函数定位 — 死循环 / 计算密集</a></li>
-<li><a href="#122-case-2cache-miss-分析--数组遍历顺序">12.2 Case 2：Cache Miss 分析 — 数组遍历顺序</a></li>
-<li><a href="#123-case-3上下文切换分析--多线程锁竞争">12.3 Case 3：上下文切换分析 — 多线程锁竞争</a></li>
-<li><a href="#124-case-4page-fault-分析--内存分配模式">12.4 Case 4：Page Fault 分析 — 内存分配模式</a></li>
-<li><a href="#125-case-5内核-tracepoint-追踪--调度延迟与-io">12.5 Case 5：内核 tracepoint 追踪 — 调度延迟与 I/O</a></li>
-<li><a href="#126-case-6false-sharing-检测--多核缓存行冲突">12.6 Case 6：False Sharing 检测 — 多核缓存行冲突</a></li>
-<li><a href="#127-case-7内核模块性能分析--自定义驱动热点">12.7 Case 7：内核模块性能分析 — 自定义驱动热点</a></li>
-<li><a href="#128-qemu-perf-实践注意事项汇总">12.8 QEMU Perf 实践注意事项汇总</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#13-perf-高频面试题精选附详细答案">13. Perf 高频面试题精选（附详细答案）</a></summary></p>
-
-<ul>
-<li><a href="#131-基础概念类">13.1 基础概念类</a></li>
-<li><a href="#132-实战分析类">13.2 实战分析类</a></li>
-<li><a href="#133-内核原理类">13.3 内核原理类</a></li>
-<li><a href="#134-高级场景类">13.4 高级场景类</a></li>
-</ul>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. Perf 相关代码文件总览</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-用户态工具-toolsperf">1.1 用户态工具 (tools/perf/)</a></li>
+          <li><a href="#12-内核态代码">1.2 内核态代码</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. Perf 依赖的内核选项与用户态依赖</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-内核配置选项">2.1 内核配置选项</a></li>
+          <li><a href="#22-用户态依赖库">2.2 用户态依赖库</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. Perf 实现原理</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-整体架构">3.1 整体架构</a></li>
+          <li><a href="#32-核心系统调用perf_event_open">3.2 核心系统调用：perf_event_open()</a></li>
+          <li><a href="#33-事件类型体系">3.3 事件类型体系</a></li>
+          <li><a href="#34-两种工作模式">3.4 两种工作模式</a></li>
+          <li><a href="#35-pmu-驱动模型-struct-pmu">3.5 PMU 驱动模型 (struct pmu)</a></li>
+          <li><a href="#36-环形缓冲区机制">3.6 环形缓冲区机制</a></li>
+          <li><a href="#37-事件调度算法">3.7 事件调度算法</a></li>
+          <li><a href="#38-用户态工具工作流">3.8 用户态工具工作流</a></li>
+          <li><a href="#39-perf_event_attr-关键字段">3.9 perf_event_attr 关键字段</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. ARM64 架构 Perf 编译指南</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-前置条件">4.1 前置条件</a></li>
+          <li><a href="#42-编译方法">4.2 编译方法</a></li>
+          <li><a href="#43-安装与部署">4.3 安装与部署</a></li>
+          <li><a href="#44-编译特性检测">4.4 编译特性检测</a></li>
+          <li><a href="#45-验证编译结果">4.5 验证编译结果</a></li>
+          <li><a href="#46-常见编译问题">4.6 常见编译问题</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 附录 A：常用 Perf 命令速查</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 附录 B：关键源码文件索引</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. ARM64 PMU 硬件内部细节</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-pmuv3-架构概述">5.1 PMUv3 架构概述</a></li>
+          <li><a href="#52-关键寄存器详解">5.2 关键寄存器详解</a></li>
+          <li><a href="#53-pmuv3-版本演进">5.3 PMUv3 版本演进</a></li>
+          <li><a href="#54-计数器宽度与溢出机制">5.4 计数器宽度与溢出机制</a></li>
+          <li><a href="#55-bias-技术长计数器-32-位溢出模拟">5.5 Bias 技术（长计数器 32 位溢出模拟）</a></li>
+          <li><a href="#56-链式计数器chained-events">5.6 链式计数器（Chained Events）</a></li>
+          <li><a href="#57-中断流程">5.7 中断流程</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. ARM64 PMU 驱动重要数据结构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-struct-arm_pmu核心-pmu-抽象">6.1 struct arm_pmu（核心 PMU 抽象）</a></li>
+          <li><a href="#62-struct-pmu_hw_events每-cpu-硬件事件状态">6.2 struct pmu_hw_events（每 CPU 硬件事件状态）</a></li>
+          <li><a href="#63-struct-hw_perf_event通用-perf-硬件事件状态">6.3 struct hw_perf_event（通用 perf 硬件事件状态）</a></li>
+          <li><a href="#64-关键数据结构关系图">6.4 关键数据结构关系图</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. ARM64 PMU 初始化流程与重要接口</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-完整初始化流程">7.1 完整初始化流程</a></li>
+          <li><a href="#72-事件生命周期接口">7.2 事件生命周期接口</a></li>
+          <li><a href="#73-事件映射机制">7.3 事件映射机制</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. ARM64 PMU 代码中的关键算法</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-计数器分配算法armv8pmu_get_event_idx">8.1 计数器分配算法（armv8pmu_get_event_idx）</a></li>
+          <li><a href="#82-采样周期设置算法armpmu_event_set_period">8.2 采样周期设置算法（armpmu_event_set_period）</a></li>
+          <li><a href="#83-计数器更新算法armpmu_event_update">8.3 计数器更新算法（armpmu_event_update）</a></li>
+          <li><a href="#84-事件组验证算法validate_group">8.4 事件组验证算法（validate_group）</a></li>
+          <li><a href="#85-中断处理算法armv8pmu_handle_irq">8.5 中断处理算法（armv8pmu_handle_irq）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. ARM64 PMU 驱动软件框架图</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. ARM64 PMUv3 驱动源码注释详解</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#101-pmu-初始化函数">10.1 PMU 初始化函数</a></li>
+          <li><a href="#102-硬件探测函数">10.2 硬件探测函数</a></li>
+          <li><a href="#103-中断处理函数">10.3 中断处理函数</a></li>
+          <li><a href="#104-事件使能禁用函数">10.4 事件使能/禁用函数</a></li>
+          <li><a href="#105-计数器读写函数">10.5 计数器读写函数</a></li>
+          <li><a href="#106-pmu-重置函数">10.6 PMU 重置函数</a></li>
+          <li><a href="#107-平台驱动注册">10.7 平台驱动注册</a></li>
+          <li><a href="#108-厂商特定-pmu-初始化宏">10.8 厂商特定 PMU 初始化宏</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. ARM64 Perf 全部命令详解与实战案例</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#111-命令总览">11.1 命令总览</a></li>
+          <li><a href="#112-性能剖析类命令">11.2 性能剖析类命令</a></li>
+          <li><a href="#113-追踪调试类命令">11.3 追踪调试类命令</a></li>
+          <li><a href="#114-专项分析类命令">11.4 专项分析类命令</a></li>
+          <li><a href="#115-数据管理类命令">11.5 数据管理类命令</a></li>
+          <li><a href="#116-系统工具类命令">11.6 系统工具类命令</a></li>
+          <li><a href="#117-arm64-特有的-perf-使用技巧">11.7 ARM64 特有的 Perf 使用技巧</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 12. QEMU 上 Perf 实践经典 Case</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#121-case-1cpu-热点函数定位--死循环--计算密集">12.1 Case 1：CPU 热点函数定位 — 死循环 / 计算密集</a></li>
+          <li><a href="#122-case-2cache-miss-分析--数组遍历顺序">12.2 Case 2：Cache Miss 分析 — 数组遍历顺序</a></li>
+          <li><a href="#123-case-3上下文切换分析--多线程锁竞争">12.3 Case 3：上下文切换分析 — 多线程锁竞争</a></li>
+          <li><a href="#124-case-4page-fault-分析--内存分配模式">12.4 Case 4：Page Fault 分析 — 内存分配模式</a></li>
+          <li><a href="#125-case-5内核-tracepoint-追踪--调度延迟与-io">12.5 Case 5：内核 tracepoint 追踪 — 调度延迟与 I/O</a></li>
+          <li><a href="#126-case-6false-sharing-检测--多核缓存行冲突">12.6 Case 6：False Sharing 检测 — 多核缓存行冲突</a></li>
+          <li><a href="#127-case-7内核模块性能分析--自定义驱动热点">12.7 Case 7：内核模块性能分析 — 自定义驱动热点</a></li>
+          <li><a href="#128-qemu-perf-实践注意事项汇总">12.8 QEMU Perf 实践注意事项汇总</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 13. Perf 高频面试题精选（附详细答案）</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#131-基础概念类">13.1 基础概念类</a></li>
+          <li><a href="#132-实战分析类">13.2 实战分析类</a></li>
+          <li><a href="#133-内核原理类">13.3 内核原理类</a></li>
+          <li><a href="#134-高级场景类">13.4 高级场景类</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -7518,6 +7652,131 @@ ARM64 上的缓解措施：
 # 查看当前 CPU 支持的精度级别
 perf record -e cycles:ppp -- sleep 1 2&gt;&amp;1
 # 如果报错 → 当前 CPU 不支持该精度级别</code></pre>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

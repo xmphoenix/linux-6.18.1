@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -211,195 +377,169 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-pcie-协议规范总结">1. PCIe 协议规范总结</a></summary></p>
-
-<ul>
-<li><a href="#11-协议分层模型">1.1 协议分层模型</a></li>
-<li><a href="#12-事务层协议-tlp">1.2 事务层协议 (TLP)</a></li>
-<li><a href="#13-数据链路层协议-dllp">1.3 数据链路层协议 (DLLP)</a></li>
-<li><a href="#14-物理层协议">1.4 物理层协议</a></li>
-<li><a href="#15-配置空间规范">1.5 配置空间规范</a></li>
-<li><a href="#16-电源管理规范">1.6 电源管理规范</a></li>
-<li><a href="#17-中断机制规范">1.7 中断机制规范</a></li>
-<li><a href="#18-相关规范文档索引">1.8 相关规范文档索引</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-pcie-发展历史">2. PCIe 发展历史</a></summary></p>
-
-<ul>
-<li><a href="#21-从-pci-到-pcie-的演进">2.1 从 PCI 到 PCIe 的演进</a></li>
-<li><a href="#22-pcie-版本演进时间线">2.2 PCIe 版本演进时间线</a></li>
-<li><a href="#23-关键里程碑">2.3 关键里程碑</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-pcie-各版本速率总结">3. PCIe 各版本速率总结</a></summary></p>
-
-<ul>
-<li><a href="#31-速率对照表">3.1 速率对照表</a></li>
-<li><a href="#32-编码方式演进">3.2 编码方式演进</a></li>
-<li><a href="#33-带宽计算示例">3.3 带宽计算示例</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-pcie-专业术语词典">4. PCIe 专业术语词典</a></summary></p>
-
-<ul>
-<li><a href="#41-拓扑与设备术语">4.1 拓扑与设备术语</a></li>
-<li><a href="#42-协议与传输术语">4.2 协议与传输术语</a></li>
-<li><a href="#43-配置空间与能力术语">4.3 配置空间与能力术语</a></li>
-<li><a href="#44-电源与链路状态术语">4.4 电源与链路状态术语</a></li>
-<li><a href="#45-错误处理与可靠性术语">4.5 错误处理与可靠性术语</a></li>
-<li><a href="#46-高级特性术语">4.6 高级特性术语</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-linux-pcie-子系统软件架构">5. Linux PCIe 子系统软件架构</a></summary></p>
-
-<ul>
-<li><a href="#51-总体分层架构">5.1 总体分层架构</a></li>
-<li><a href="#52-核心源码文件与职责">5.2 核心源码文件与职责</a></li>
-<li><a href="#53-关键数据结构">5.3 关键数据结构</a></li>
-<li><a href="#54-pcie-端口服务框架">5.4 PCIe 端口服务框架</a></li>
-<li><a href="#55-主机桥驱动层">5.5 主机桥驱动层</a></li>
-<li><a href="#56-设备枚举流程">5.6 设备枚举流程</a></li>
-<li><a href="#57-中断子系统-msimsi-x">5.7 中断子系统 (MSI/MSI-X)</a></li>
-<li><a href="#58-endpoint-子系统">5.8 Endpoint 子系统</a></li>
-<li><a href="#59-关键-kconfig-配置">5.9 关键 Kconfig 配置</a></li>
-<li><a href="#510-目录结构总览">5.10 目录结构总览</a></li>
-<li><a href="#511-核心调用链速览">5.11 核心调用链速览</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-wifi-pcie-驱动案例分析">6. WiFi PCIe 驱动案例分析</a></summary></p>
-
-<ul>
-<li><a href="#61-为什么选-mt7915-pcie-驱动">6.1 为什么选 <code>mt7915</code> PCIe 驱动</a></li>
-<li><a href="#62-设备匹配与-probe-主路径">6.2 设备匹配与 <code>probe</code> 主路径</a></li>
-<li><a href="#63-bar-映射dmairq-和第二-hif">6.3 BAR 映射、DMA、IRQ 和第二 HIF</a></li>
-<li><a href="#64-它和-pcie-核心数据结构的对应关系">6.4 它和 PCIe 核心数据结构的对应关系</a></li>
-<li><a href="#65-调试这个-wifi-pcie-驱动时看什么">6.5 调试这个 WiFi PCIe 驱动时看什么</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-qemu-中-pcie-实践测试例子">7. QEMU 中 PCIe 实践测试例子</a></summary></p>
-
-<ul>
-<li><a href="#71-当前工作区里的-qemu-pcie-基线环境">7.1 当前工作区里的 QEMU PCIe 基线环境</a></li>
-<li><a href="#72-实践一观察默认-pcie-根总线和设备枚举">7.2 实践一：观察默认 PCIe 根总线和设备枚举</a></li>
-<li><a href="#73-实践二给-qemu-挂一个-nvme-pcie-设备">7.3 实践二：给 QEMU 挂一个 NVMe PCIe 设备</a></li>
-<li><a href="#74-实践三用-root-port-观察桥和下级总线">7.4 实践三：用 root port 观察桥和下级总线</a></li>
-<li><a href="#75-如果想在-qemu-里进一步逼近-wifi-pcie-场景">7.5 如果想在 QEMU 里进一步逼近 WiFi PCIe 场景</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-pcie-面试高频问题与答案">8. PCIe 面试高频问题与答案</a></summary></p>
-
-<ul>
-<li><a href="#81-pci-和-pcie-最大区别是什么">8.1 PCI 和 PCIe 最大区别是什么</a></li>
-<li><a href="#82-pcie-为什么是点对点还需要-bus-概念">8.2 PCIe 为什么是点对点还需要 bus 概念</a></li>
-<li><a href="#83-pcie-的三层分别做什么">8.3 PCIe 的三层分别做什么</a></li>
-<li><a href="#84-tlp-和-dllp-的区别是什么">8.4 TLP 和 DLLP 的区别是什么</a></li>
-<li><a href="#85-posted-和-non-posted-请求有什么区别">8.5 Posted 和 Non-Posted 请求有什么区别</a></li>
-<li><a href="#86-msi-和-msi-x-的区别是什么">8.6 MSI 和 MSI-X 的区别是什么</a></li>
-<li><a href="#87-bar-是什么本质上在做什么">8.7 BAR 是什么，本质上在做什么</a></li>
-<li><a href="#88-为什么驱动里常常要-pci_set_master">8.8 为什么驱动里常常要 <code>pci_set_master</code></a></li>
-<li><a href="#89-pcie-设备枚举的大致流程是什么">8.9 PCIe 设备枚举的大致流程是什么</a></li>
-<li><a href="#810-struct-pci_dev-和-struct-pci_bus-分别代表什么">8.10 <code>struct pci_dev</code> 和 <code>struct pci_bus</code> 分别代表什么</a></li>
-<li><a href="#811-root-complexroot-portswitchendpoint-分别是什么">8.11 Root Complex、Root Port、Switch、Endpoint 分别是什么</a></li>
-<li><a href="#812-sr-iov-里-pf-和-vf-的区别是什么">8.12 SR-IOV 里 PF 和 VF 的区别是什么</a></li>
-<li><a href="#813-atspripasid-分别解决什么问题">8.13 ATS、PRI、PASID 分别解决什么问题</a></li>
-<li><a href="#814-aspm-是什么为什么有些驱动会关闭它">8.14 ASPM 是什么，为什么有些驱动会关闭它</a></li>
-<li><a href="#815-aer-和-dpc-是做什么的">8.15 AER 和 DPC 是做什么的</a></li>
-<li><a href="#816-面试里如果让你分析一个-pcie-驱动你应该怎么答">8.16 面试里如果让你分析一个 PCIe 驱动，你应该怎么答</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-pcie-软件框架涉及到的算法">9. PCIe 软件框架涉及到的算法</a></summary></p>
-
-<ul>
-<li><a href="#91-总线递归扫描算法">9.1 总线递归扫描算法</a></li>
-<li><a href="#92-bar-大小探测算法">9.2 BAR 大小探测算法</a></li>
-<li><a href="#93-桥窗口-sizing-与资源分配算法">9.3 桥窗口 sizing 与资源分配算法</a></li>
-<li><a href="#94-msimsi-x-向量分配与降级算法">9.4 MSI/MSI-X 向量分配与降级算法</a></li>
-<li><a href="#95-错误恢复与状态机算法">9.5 错误恢复与状态机算法</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-pcie-debug-调试工具和内核方法">10. PCIe debug 调试工具和内核方法</a></summary></p>
-
-<ul>
-<li><a href="#101-用户态排查工具">10.1 用户态排查工具</a></li>
-<li><a href="#102-sysfs-和配置空间直接观察法">10.2 sysfs 和配置空间直接观察法</a></li>
-<li><a href="#103-内核日志dynamic-debug-和驱动内埋点">10.3 内核日志、dynamic debug 和驱动内埋点</a></li>
-<li><a href="#104-ftracetrace-cmd-和函数调用链跟踪">10.4 ftrace、trace-cmd 和函数调用链跟踪</a></li>
-<li><a href="#105-pcie-专项-debug-方法">10.5 PCIe 专项 debug 方法</a></li>
-<li><a href="#106-一个实用的-pcie-调试顺序">10.6 一个实用的 PCIe 调试顺序</a></li>
-<li><a href="#107-pcie-调试命令速查表">10.7 PCIe 调试命令速查表</a></li>
-<li><a href="#108-pcie-debug-checklist">10.8 PCIe debug checklist</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#11-pcie-面试追问题">11. PCIe 面试追问题</a></summary></p>
-
-<ul>
-<li><a href="#111-pci_enable_device-和-pcim_enable_device-的区别">11.1 <code>pci_enable_device()</code> 和 <code>pcim_enable_device()</code> 的区别</a></li>
-<li><a href="#112-pci_request_regionspci_iomappcim_iomap_regions-的关系">11.2 <code>pci_request_regions()</code>、<code>pci_iomap()</code>、<code>pcim_iomap_regions()</code> 的关系</a></li>
-<li><a href="#113-resource-是怎么分配出来的">11.3 <code>resource</code> 是怎么分配出来的</a></li>
-<li><a href="#114-msi-申请失败时-linux-一般怎么降级">11.4 MSI 申请失败时 Linux 一般怎么降级</a></li>
-<li><a href="#115-为什么-remove-路径经常比-probe-更难写对">11.5 为什么 <code>remove</code> 路径经常比 <code>probe</code> 更难写对</a></li>
-<li><a href="#116-为什么有些驱动-prefer-devm-或-pcim-管理接口">11.6 为什么有些驱动 prefer <code>devm</code> 或 <code>pcim</code> 管理接口</a></li>
-<li><a href="#117-什么时候要重新分配桥资源或重新扫描总线">11.7 什么时候要重新分配桥资源或重新扫描总线</a></li>
-<li><a href="#118-pci_enable_device_mem-和-pci_enable_device-怎么选">11.8 <code>pci_enable_device_mem()</code> 和 <code>pci_enable_device()</code> 怎么选</a></li>
-<li><a href="#119-pci_select_bars-是干什么的">11.9 <code>pci_select_bars()</code> 是干什么的</a></li>
-<li><a href="#1110-pci_save_state-和-pci_restore_state-什么时候必须关心">11.10 <code>pci_save_state()</code> 和 <code>pci_restore_state()</code> 什么时候必须关心</a></li>
-<li><a href="#1111-aer-回调顺序和-pci_error_handlers-应该怎么理解">11.11 AER 回调顺序和 <code>pci_error_handlers</code> 应该怎么理解</a></li>
-<li><a href="#1112-热插拔rescan-和-remove-为什么要加锁">11.12 热插拔、rescan 和 remove 为什么要加锁</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#12-pcie-故障定位面试题">12. PCIe 故障定位面试题</a></summary></p>
-
-<ul>
-<li><a href="#121-场景一设备枚举不到">12.1 场景一：设备枚举不到</a></li>
-<li><a href="#122-场景二bar-映射失败">12.2 场景二：BAR 映射失败</a></li>
-<li><a href="#123-场景三msi-或-msi-x-不工作">12.3 场景三：MSI 或 MSI-X 不工作</a></li>
-<li><a href="#124-场景四驱动-probe-失败但设备已经枚举到">12.4 场景四：驱动 probe 失败但设备已经枚举到</a></li>
-<li><a href="#125-场景五链路能起来但吞吐异常或不稳定">12.5 场景五：链路能起来但吞吐异常或不稳定</a></li>
-<li><a href="#126-真实案例题mt7915-这类-wifi-pcie-驱动-probe-失败怎么排">12.6 真实案例题：mt7915 这类 WiFi PCIe 驱动 probe 失败怎么排</a></li>
-<li><a href="#127-真实案例题qemu-里-nvme-已挂载但-guest-看不到怎么排">12.7 真实案例题：QEMU 里 NVMe 已挂载但 guest 看不到怎么排</a></li>
-<li><a href="#128-真实案例题系统报-aer-fatal-error-该怎么答">12.8 真实案例题：系统报 AER fatal error 该怎么答</a></li>
-<li><a href="#129-真实案例题sr-iov-打开后-vf-起不来怎么排">12.9 真实案例题：SR-IOV 打开后 VF 起不来怎么排</a></li>
-<li><a href="#1210-真实案例题suspendresume-后设备失效怎么排">12.10 真实案例题：suspend/resume 后设备失效怎么排</a></li>
-</ul>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. PCIe 协议规范总结</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-协议分层模型">1.1 协议分层模型</a></li>
+          <li><a href="#12-事务层协议-tlp">1.2 事务层协议 (TLP)</a></li>
+          <li><a href="#13-数据链路层协议-dllp">1.3 数据链路层协议 (DLLP)</a></li>
+          <li><a href="#14-物理层协议">1.4 物理层协议</a></li>
+          <li><a href="#15-配置空间规范">1.5 配置空间规范</a></li>
+          <li><a href="#16-电源管理规范">1.6 电源管理规范</a></li>
+          <li><a href="#17-中断机制规范">1.7 中断机制规范</a></li>
+          <li><a href="#18-相关规范文档索引">1.8 相关规范文档索引</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. PCIe 发展历史</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-从-pci-到-pcie-的演进">2.1 从 PCI 到 PCIe 的演进</a></li>
+          <li><a href="#22-pcie-版本演进时间线">2.2 PCIe 版本演进时间线</a></li>
+          <li><a href="#23-关键里程碑">2.3 关键里程碑</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. PCIe 各版本速率总结</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-速率对照表">3.1 速率对照表</a></li>
+          <li><a href="#32-编码方式演进">3.2 编码方式演进</a></li>
+          <li><a href="#33-带宽计算示例">3.3 带宽计算示例</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. PCIe 专业术语词典</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-拓扑与设备术语">4.1 拓扑与设备术语</a></li>
+          <li><a href="#42-协议与传输术语">4.2 协议与传输术语</a></li>
+          <li><a href="#43-配置空间与能力术语">4.3 配置空间与能力术语</a></li>
+          <li><a href="#44-电源与链路状态术语">4.4 电源与链路状态术语</a></li>
+          <li><a href="#45-错误处理与可靠性术语">4.5 错误处理与可靠性术语</a></li>
+          <li><a href="#46-高级特性术语">4.6 高级特性术语</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. Linux PCIe 子系统软件架构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-总体分层架构">5.1 总体分层架构</a></li>
+          <li><a href="#52-核心源码文件与职责">5.2 核心源码文件与职责</a></li>
+          <li><a href="#53-关键数据结构">5.3 关键数据结构</a></li>
+          <li><a href="#54-pcie-端口服务框架">5.4 PCIe 端口服务框架</a></li>
+          <li><a href="#55-主机桥驱动层">5.5 主机桥驱动层</a></li>
+          <li><a href="#56-设备枚举流程">5.6 设备枚举流程</a></li>
+          <li><a href="#57-中断子系统-msimsi-x">5.7 中断子系统 (MSI/MSI-X)</a></li>
+          <li><a href="#58-endpoint-子系统">5.8 Endpoint 子系统</a></li>
+          <li><a href="#59-关键-kconfig-配置">5.9 关键 Kconfig 配置</a></li>
+          <li><a href="#510-目录结构总览">5.10 目录结构总览</a></li>
+          <li><a href="#511-核心调用链速览">5.11 核心调用链速览</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. WiFi PCIe 驱动案例分析</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-为什么选-mt7915-pcie-驱动">6.1 为什么选 mt7915 PCIe 驱动</a></li>
+          <li><a href="#62-设备匹配与-probe-主路径">6.2 设备匹配与 probe 主路径</a></li>
+          <li><a href="#63-bar-映射dmairq-和第二-hif">6.3 BAR 映射、DMA、IRQ 和第二 HIF</a></li>
+          <li><a href="#64-它和-pcie-核心数据结构的对应关系">6.4 它和 PCIe 核心数据结构的对应关系</a></li>
+          <li><a href="#65-调试这个-wifi-pcie-驱动时看什么">6.5 调试这个 WiFi PCIe 驱动时看什么</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. QEMU 中 PCIe 实践测试例子</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-当前工作区里的-qemu-pcie-基线环境">7.1 当前工作区里的 QEMU PCIe 基线环境</a></li>
+          <li><a href="#72-实践一观察默认-pcie-根总线和设备枚举">7.2 实践一：观察默认 PCIe 根总线和设备枚举</a></li>
+          <li><a href="#73-实践二给-qemu-挂一个-nvme-pcie-设备">7.3 实践二：给 QEMU 挂一个 NVMe PCIe 设备</a></li>
+          <li><a href="#74-实践三用-root-port-观察桥和下级总线">7.4 实践三：用 root port 观察桥和下级总线</a></li>
+          <li><a href="#75-如果想在-qemu-里进一步逼近-wifi-pcie-场景">7.5 如果想在 QEMU 里进一步逼近 WiFi PCIe 场景</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. PCIe 面试高频问题与答案</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-pci-和-pcie-最大区别是什么">8.1 PCI 和 PCIe 最大区别是什么</a></li>
+          <li><a href="#82-pcie-为什么是点对点还需要-bus-概念">8.2 PCIe 为什么是点对点还需要 bus 概念</a></li>
+          <li><a href="#83-pcie-的三层分别做什么">8.3 PCIe 的三层分别做什么</a></li>
+          <li><a href="#84-tlp-和-dllp-的区别是什么">8.4 TLP 和 DLLP 的区别是什么</a></li>
+          <li><a href="#85-posted-和-non-posted-请求有什么区别">8.5 Posted 和 Non-Posted 请求有什么区别</a></li>
+          <li><a href="#86-msi-和-msi-x-的区别是什么">8.6 MSI 和 MSI-X 的区别是什么</a></li>
+          <li><a href="#87-bar-是什么本质上在做什么">8.7 BAR 是什么，本质上在做什么</a></li>
+          <li><a href="#88-为什么驱动里常常要-pci_set_master">8.8 为什么驱动里常常要 pci_set_master</a></li>
+          <li><a href="#89-pcie-设备枚举的大致流程是什么">8.9 PCIe 设备枚举的大致流程是什么</a></li>
+          <li><a href="#810-struct-pci_dev-和-struct-pci_bus-分别代表什么">8.10 struct pci_dev 和 struct pci_bus 分别代表什么</a></li>
+          <li><a href="#811-root-complexroot-portswitchendpoint-分别是什么">8.11 Root Complex、Root Port、Switch、Endpoint 分别是什么</a></li>
+          <li><a href="#812-sr-iov-里-pf-和-vf-的区别是什么">8.12 SR-IOV 里 PF 和 VF 的区别是什么</a></li>
+          <li><a href="#813-atspripasid-分别解决什么问题">8.13 ATS、PRI、PASID 分别解决什么问题</a></li>
+          <li><a href="#814-aspm-是什么为什么有些驱动会关闭它">8.14 ASPM 是什么，为什么有些驱动会关闭它</a></li>
+          <li><a href="#815-aer-和-dpc-是做什么的">8.15 AER 和 DPC 是做什么的</a></li>
+          <li><a href="#816-面试里如果让你分析一个-pcie-驱动你应该怎么答">8.16 面试里如果让你分析一个 PCIe 驱动，你应该怎么答</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. PCIe 软件框架涉及到的算法</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#91-总线递归扫描算法">9.1 总线递归扫描算法</a></li>
+          <li><a href="#92-bar-大小探测算法">9.2 BAR 大小探测算法</a></li>
+          <li><a href="#93-桥窗口-sizing-与资源分配算法">9.3 桥窗口 sizing 与资源分配算法</a></li>
+          <li><a href="#94-msimsi-x-向量分配与降级算法">9.4 MSI/MSI-X 向量分配与降级算法</a></li>
+          <li><a href="#95-错误恢复与状态机算法">9.5 错误恢复与状态机算法</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. PCIe debug 调试工具和内核方法</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#101-用户态排查工具">10.1 用户态排查工具</a></li>
+          <li><a href="#102-sysfs-和配置空间直接观察法">10.2 sysfs 和配置空间直接观察法</a></li>
+          <li><a href="#103-内核日志dynamic-debug-和驱动内埋点">10.3 内核日志、dynamic debug 和驱动内埋点</a></li>
+          <li><a href="#104-ftracetrace-cmd-和函数调用链跟踪">10.4 ftrace、trace-cmd 和函数调用链跟踪</a></li>
+          <li><a href="#105-pcie-专项-debug-方法">10.5 PCIe 专项 debug 方法</a></li>
+          <li><a href="#106-一个实用的-pcie-调试顺序">10.6 一个实用的 PCIe 调试顺序</a></li>
+          <li><a href="#107-pcie-调试命令速查表">10.7 PCIe 调试命令速查表</a></li>
+          <li><a href="#108-pcie-debug-checklist">10.8 PCIe debug checklist</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. PCIe 面试追问题</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#111-pci_enable_device-和-pcim_enable_device-的区别">11.1 pci_enable_device() 和 pcim_enable_device() 的区别</a></li>
+          <li><a href="#112-pci_request_regionspci_iomappcim_iomap_regions-的关系">11.2 pci_request_regions()、pci_iomap()、pcim_iomap_regions() 的关系</a></li>
+          <li><a href="#113-resource-是怎么分配出来的">11.3 resource 是怎么分配出来的</a></li>
+          <li><a href="#114-msi-申请失败时-linux-一般怎么降级">11.4 MSI 申请失败时 Linux 一般怎么降级</a></li>
+          <li><a href="#115-为什么-remove-路径经常比-probe-更难写对">11.5 为什么 remove 路径经常比 probe 更难写对</a></li>
+          <li><a href="#116-为什么有些驱动-prefer-devm-或-pcim-管理接口">11.6 为什么有些驱动 prefer devm 或 pcim 管理接口</a></li>
+          <li><a href="#117-什么时候要重新分配桥资源或重新扫描总线">11.7 什么时候要重新分配桥资源或重新扫描总线</a></li>
+          <li><a href="#118-pci_enable_device_mem-和-pci_enable_device-怎么选">11.8 pci_enable_device_mem() 和 pci_enable_device() 怎么选</a></li>
+          <li><a href="#119-pci_select_bars-是干什么的">11.9 pci_select_bars() 是干什么的</a></li>
+          <li><a href="#1110-pci_save_state-和-pci_restore_state-什么时候必须关心">11.10 pci_save_state() 和 pci_restore_state() 什么时候必须关心</a></li>
+          <li><a href="#1111-aer-回调顺序和-pci_error_handlers-应该怎么理解">11.11 AER 回调顺序和 pci_error_handlers 应该怎么理解</a></li>
+          <li><a href="#1112-热插拔rescan-和-remove-为什么要加锁">11.12 热插拔、rescan 和 remove 为什么要加锁</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 12. PCIe 故障定位面试题</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#121-场景一设备枚举不到">12.1 场景一：设备枚举不到</a></li>
+          <li><a href="#122-场景二bar-映射失败">12.2 场景二：BAR 映射失败</a></li>
+          <li><a href="#123-场景三msi-或-msi-x-不工作">12.3 场景三：MSI 或 MSI-X 不工作</a></li>
+          <li><a href="#124-场景四驱动-probe-失败但设备已经枚举到">12.4 场景四：驱动 probe 失败但设备已经枚举到</a></li>
+          <li><a href="#125-场景五链路能起来但吞吐异常或不稳定">12.5 场景五：链路能起来但吞吐异常或不稳定</a></li>
+          <li><a href="#126-真实案例题mt7915-这类-wifi-pcie-驱动-probe-失败怎么排">12.6 真实案例题：mt7915 这类 WiFi PCIe 驱动 probe 失败怎么排</a></li>
+          <li><a href="#127-真实案例题qemu-里-nvme-已挂载但-guest-看不到怎么排">12.7 真实案例题：QEMU 里 NVMe 已挂载但 guest 看不到怎么排</a></li>
+          <li><a href="#128-真实案例题系统报-aer-fatal-error-该怎么答">12.8 真实案例题：系统报 AER fatal error 该怎么答</a></li>
+          <li><a href="#129-真实案例题sr-iov-打开后-vf-起不来怎么排">12.9 真实案例题：SR-IOV 打开后 VF 起不来怎么排</a></li>
+          <li><a href="#1210-真实案例题suspendresume-后设备失效怎么排">12.10 真实案例题：suspend/resume 后设备失效怎么排</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -4299,6 +4439,131 @@ pcie_aspm=off</code></pre>
 - Linux 内核源码 6.18.1: <code>drivers/pci/</code>, <code>include/linux/pci.h</code><br>
 - 内核文档: <code>Documentation/PCI/</code><br>
 - <code>lspci</code> / <code>setpci</code> 工具 (pciutils)</blockquote>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

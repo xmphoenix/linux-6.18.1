@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -210,164 +376,137 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-linked-lists">1. Linked Lists</a></summary></p>
-
-<ul>
-<li><a href="#struct-definitions">Struct Definitions</a></li>
-<li><a href="#key-api-functions">Key API Functions</a></li>
-<li><a href="#iteration-macros">Iteration Macros</a></li>
-<li><a href="#kernel-usage-examples">Kernel Usage Examples</a></li>
-<li><a href="#核心实现源码逐行注释">核心实现源码逐行注释</a></li>
-<li><a href="#hlist-的设计精妙之处">hlist 的设计精妙之处</a></li>
-<li><a href="#time-complexity">Time Complexity</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-red-black-trees">2. Red-Black Trees</a></summary></p>
-
-<ul>
-<li><a href="#struct-definitions-1">Struct Definitions</a></li>
-<li><a href="#key-api-functions-1">Key API Functions</a></li>
-<li><a href="#insert-pattern-caller-implemented">Insert Pattern (Caller-implemented)</a></li>
-<li><a href="lib/rbtree.c#L89">核心实现源码逐行注释 — 红黑树插入修复 ([rbtree.c</a>)](#核心实现源码逐行注释--红黑树插入修复-rbtreeclibrbtreecl89)</li>
-<li><a href="#kernel-usage-examples-red-black-tree">Kernel Usage Examples (Red-Black Tree)</a></li>
-<li><a href="#time-complexity-1">Time Complexity</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-xarray--radix-tree">3. XArray / Radix Tree</a></summary></p>
-
-<ul>
-<li><a href="#struct-definitions-2">Struct Definitions</a></li>
-<li><a href="#key-api-functions-2">Key API Functions</a></li>
-<li><a href="include/linux/xarray.h#L1168">内部节点结构 — <code>xa_node</code> ([xarray.h</a>)](#内部节点结构--xa_node-xarrayhincludelinuxxarrayhl1168)</li>
-<li><a href="#legacy-radix-tree-api-wrappers">Legacy Radix Tree API (Wrappers)</a></li>
-<li><a href="#kernel-usage-examples-1">Kernel Usage Examples</a></li>
-<li><a href="#time-complexity-2">Time Complexity</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-hash-tables">4. Hash Tables</a></summary></p>
-
-<ul>
-<li><a href="#struct-definition-macro-based">"Struct" Definition (Macro-based)</a></li>
-<li><a href="#key-api-functions-3">Key API Functions</a></li>
-<li><a href="#hash-functions">Hash Functions</a></li>
-<li><a href="#kernel-usage-examples-2">Kernel Usage Examples</a></li>
-<li><a href="#time-complexity-3">Time Complexity</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-bitmap">5. Bitmap</a></summary></p>
-
-<ul>
-<li><a href="#struct-definition">"Struct" Definition</a></li>
-<li><a href="#key-api-functions-4">Key API Functions</a></li>
-<li><a href="#kernel-usage-examples-3">Kernel Usage Examples</a></li>
-<li><a href="#time-complexity-4">Time Complexity</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-idr--ida">6. IDR / IDA</a></summary></p>
-
-<ul>
-<li><a href="#struct-definitions-3">Struct Definitions</a></li>
-<li><a href="#key-api-functions--idr">Key API Functions — IDR</a></li>
-<li><a href="#key-api-functions--ida">Key API Functions — IDA</a></li>
-<li><a href="#kernel-usage-examples-4">Kernel Usage Examples</a></li>
-<li><a href="#time-complexity-5">Time Complexity</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-maple-tree">7. Maple Tree</a></summary></p>
-
-<ul>
-<li><a href="#struct-definitions-4">Struct Definitions</a></li>
-<li><a href="#key-api-functions-5">Key API Functions</a></li>
-<li><a href="#kernel-usage-examples-5">Kernel Usage Examples</a></li>
-<li><a href="#time-complexity-6">Time Complexity</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-priority-lists-plist">8. Priority Lists (plist)</a></summary></p>
-
-<ul>
-<li><a href="#struct-definitions-5">Struct Definitions</a></li>
-<li><a href="#key-api-functions-6">Key API Functions</a></li>
-<li><a href="#kernel-usage-examples-6">Kernel Usage Examples</a></li>
-<li><a href="#time-complexity-7">Time Complexity</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-fifo-kfifo">9. FIFO (kfifo)</a></summary></p>
-
-<ul>
-<li><a href="#struct-definitions-6">Struct Definitions</a></li>
-<li><a href="#核心实现源码逐行注释--无锁环形缓冲区">核心实现源码逐行注释 — 无锁环形缓冲区</a></li>
-<li><a href="#key-api-functions-7">Key API Functions</a></li>
-<li><a href="#kernel-usage-examples-7">Kernel Usage Examples</a></li>
-<li><a href="#time-complexity-8">Time Complexity</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-lru-list">10. LRU List</a></summary></p>
-
-<ul>
-<li><a href="#struct-definitions-7">Struct Definitions</a></li>
-<li><a href="#key-api-functions-8">Key API Functions</a></li>
-<li><a href="#kernel-usage-examples-8">Kernel Usage Examples</a></li>
-<li><a href="#time-complexity-9">Time Complexity</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#11-core-kernel-objects">11. Core Kernel Objects</a></summary></p>
-
-<ul>
-<li><a href="#reading-strategy">Reading Strategy</a></li>
-<li><a href="#process-context">Process Context</a></li>
-<li><a href="#address-space">Address Space</a></li>
-<li><a href="#page-cache">Page Cache</a></li>
-<li><a href="#vfs-object-model">VFS Object Model</a></li>
-<li><a href="#device-security-and-cgroups">Device, Security, and Cgroups</a></li>
-<li><a href="#networking-data-path">Networking Data Path</a></li>
-<li><a href="#block-io-data-path">Block I/O Data Path</a></li>
-<li><a href="#core-object-graph">Core Object Graph</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#summary-comparison-table">Summary Comparison Table</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#architecture-of-relationships">Architecture of Relationships</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. Linked Lists</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-definitions">Struct Definitions</a></li>
+          <li><a href="#key-api-functions">Key API Functions</a></li>
+          <li><a href="#iteration-macros">Iteration Macros</a></li>
+          <li><a href="#kernel-usage-examples">Kernel Usage Examples</a></li>
+          <li><a href="#核心实现源码逐行注释">核心实现源码逐行注释</a></li>
+          <li><a href="#hlist-的设计精妙之处">hlist 的设计精妙之处</a></li>
+          <li><a href="#time-complexity">Time Complexity</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. Red-Black Trees</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-definitions-1">Struct Definitions</a></li>
+          <li><a href="#key-api-functions-1">Key API Functions</a></li>
+          <li><a href="#insert-pattern-caller-implemented">Insert Pattern (Caller-implemented)</a></li>
+          <li><a href="lib/rbtree.c#L89">核心实现源码逐行注释 — 红黑树插入修复 ([rbtree.c</a></li>
+          <li><a href="#kernel-usage-examples-red-black-tree">Kernel Usage Examples (Red-Black Tree)</a></li>
+          <li><a href="#time-complexity-1">Time Complexity</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. XArray / Radix Tree</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-definitions-2">Struct Definitions</a></li>
+          <li><a href="#key-api-functions-2">Key API Functions</a></li>
+          <li><a href="include/linux/xarray.h#L1168">内部节点结构 — xa_node ([xarray.h</a></li>
+          <li><a href="#legacy-radix-tree-api-wrappers">Legacy Radix Tree API (Wrappers)</a></li>
+          <li><a href="#kernel-usage-examples-1">Kernel Usage Examples</a></li>
+          <li><a href="#time-complexity-2">Time Complexity</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. Hash Tables</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-definition-macro-based">"Struct" Definition (Macro-based)</a></li>
+          <li><a href="#key-api-functions-3">Key API Functions</a></li>
+          <li><a href="#hash-functions">Hash Functions</a></li>
+          <li><a href="#kernel-usage-examples-2">Kernel Usage Examples</a></li>
+          <li><a href="#time-complexity-3">Time Complexity</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. Bitmap</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-definition">"Struct" Definition</a></li>
+          <li><a href="#key-api-functions-4">Key API Functions</a></li>
+          <li><a href="#kernel-usage-examples-3">Kernel Usage Examples</a></li>
+          <li><a href="#time-complexity-4">Time Complexity</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. IDR / IDA</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-definitions-3">Struct Definitions</a></li>
+          <li><a href="#key-api-functions--idr">Key API Functions — IDR</a></li>
+          <li><a href="#key-api-functions--ida">Key API Functions — IDA</a></li>
+          <li><a href="#kernel-usage-examples-4">Kernel Usage Examples</a></li>
+          <li><a href="#time-complexity-5">Time Complexity</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. Maple Tree</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-definitions-4">Struct Definitions</a></li>
+          <li><a href="#key-api-functions-5">Key API Functions</a></li>
+          <li><a href="#kernel-usage-examples-5">Kernel Usage Examples</a></li>
+          <li><a href="#time-complexity-6">Time Complexity</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. Priority Lists (plist)</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-definitions-5">Struct Definitions</a></li>
+          <li><a href="#key-api-functions-6">Key API Functions</a></li>
+          <li><a href="#kernel-usage-examples-6">Kernel Usage Examples</a></li>
+          <li><a href="#time-complexity-7">Time Complexity</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. FIFO (kfifo)</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-definitions-6">Struct Definitions</a></li>
+          <li><a href="#核心实现源码逐行注释--无锁环形缓冲区">核心实现源码逐行注释 — 无锁环形缓冲区</a></li>
+          <li><a href="#key-api-functions-7">Key API Functions</a></li>
+          <li><a href="#kernel-usage-examples-7">Kernel Usage Examples</a></li>
+          <li><a href="#time-complexity-8">Time Complexity</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. LRU List</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#struct-definitions-7">Struct Definitions</a></li>
+          <li><a href="#key-api-functions-8">Key API Functions</a></li>
+          <li><a href="#kernel-usage-examples-8">Kernel Usage Examples</a></li>
+          <li><a href="#time-complexity-9">Time Complexity</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. Core Kernel Objects</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#reading-strategy">Reading Strategy</a></li>
+          <li><a href="#process-context">Process Context</a></li>
+          <li><a href="#address-space">Address Space</a></li>
+          <li><a href="#page-cache">Page Cache</a></li>
+          <li><a href="#vfs-object-model">VFS Object Model</a></li>
+          <li><a href="#device-security-and-cgroups">Device, Security, and Cgroups</a></li>
+          <li><a href="#networking-data-path">Networking Data Path</a></li>
+          <li><a href="#block-io-data-path">Block I/O Data Path</a></li>
+          <li><a href="#core-object-graph">Core Object Graph</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> Summary Comparison Table</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> Architecture of Relationships</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -3041,6 +3180,131 @@ list_head (types.h)
 Standalone trees:
  ├── Red-Black Tree (rbtree.h) — self-balancing BST
  └── Maple Tree (maple_tree.h) — B-tree for ranges, replaced rbtree for VMAs</code></pre>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

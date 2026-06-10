@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -208,197 +374,158 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-软件架构总览">1. 软件架构总览</a></summary></p>
-
-<ul>
-<li><a href="#架构全景图">架构全景图</a></li>
-<li><a href="#文本架构图">文本架构图</a></li>
-<li><a href="#11-设计原则">1.1 设计原则</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-分层架构详解">2. 分层架构详解</a></summary></p>
-
-<ul>
-<li><a href="#21-硬件驱动层provider">2.1 硬件驱动层（Provider）</a></li>
-<li><a href="#22-核心框架层gpiolib">2.2 核心框架层（gpiolib）</a></li>
-<li><a href="#23-消费者接口层consumer-api">2.3 消费者接口层（Consumer API）</a></li>
-<li><a href="#24-用户空间接口层">2.4 用户空间接口层</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-核心数据结构">3. 核心数据结构</a></summary></p>
-
-<ul>
-<li><a href="#31-struct-gpio_device--gpio-设备容器">3.1 struct gpio_device — GPIO 设备容器</a></li>
-<li><a href="#32-struct-gpio_desc--gpio-行描述符">3.2 struct gpio_desc — GPIO 行描述符</a></li>
-<li><a href="#33-struct-gpio_chip--gpio-控制器硬件接口">3.3 struct gpio_chip — GPIO 控制器硬件接口</a></li>
-<li><a href="#34-struct-gpio_irq_chip--gpio-中断控制器">3.4 struct gpio_irq_chip — GPIO 中断控制器</a></li>
-<li><a href="#35-struct-gpio_array--批量操作描述符">3.5 struct gpio_array — 批量操作描述符</a></li>
-<li><a href="#36-struct-gpio_descs--gpio-描述符集合">3.6 struct gpio_descs — GPIO 描述符集合</a></li>
-<li><a href="#37-平台查找表结构">3.7 平台查找表结构</a></li>
-<li><a href="#38-数据结构关系图">3.8 数据结构关系图</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-内核空间-consumer-api描述符接口">4. 内核空间 Consumer API（描述符接口）</a></summary></p>
-
-<ul>
-<li><a href="#41-获取释放-gpio">4.1 获取/释放 GPIO</a></li>
-<li><a href="#42-方向控制">4.2 方向控制</a></li>
-<li><a href="#43-值读写非睡眠上下文">4.3 值读写（非睡眠上下文）</a></li>
-<li><a href="#44-值读写可睡眠上下文">4.4 值读写（可睡眠上下文）</a></li>
-<li><a href="#45-配置与属性">4.5 配置与属性</a></li>
-<li><a href="#46-逻辑值-vs-原始值">4.6 逻辑值 vs 原始值</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-gpio-驱动注册-apiprovider-接口">5. GPIO 驱动注册 API（Provider 接口）</a></summary></p>
-
-<ul>
-<li><a href="#51-芯片注册与注销">5.1 芯片注册与注销</a></li>
-<li><a href="#52-注册流程-gpiochip_add_data_with_key">5.2 注册流程 (<code>gpiochip_add_data_with_key</code>)</a></li>
-<li><a href="#53-通用辅助回调">5.3 通用辅助回调</a></li>
-<li><a href="#54-irq-芯片集成辅助">5.4 IRQ 芯片集成辅助</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-用户空间接口">6. 用户空间接口</a></summary></p>
-
-<ul>
-<li><a href="#61-字符设备接口v2-api推荐">6.1 字符设备接口（V2 API，推荐）</a></li>
-<li><a href="#62-sysfs-接口已废弃">6.2 sysfs 接口（已废弃）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-中断子系统集成gpio_irq_chip">7. 中断子系统集成（gpio_irq_chip）</a></summary></p>
-
-<ul>
-<li><a href="#71-gpio-中断架构">7.1 GPIO 中断架构</a></li>
-<li><a href="#72-驱动中配置-irq-芯片">7.2 驱动中配置 IRQ 芯片</a></li>
-<li><a href="#73-软件去抖流程cdev-边沿事件">7.3 软件去抖流程（cdev 边沿事件）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-设备树device-tree集成">8. 设备树（Device Tree）集成</a></summary></p>
-
-<ul>
-<li><a href="#81-设备树-gpio-描述格式">8.1 设备树 GPIO 描述格式</a></li>
-<li><a href="#82-dt-标志位">8.2 DT 标志位</a></li>
-<li><a href="#83-关键-dt-解析函数">8.3 关键 DT 解析函数</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-pinctrl-子系统集成">9. Pinctrl 子系统集成</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-设备资源管理devm接口">10. 设备资源管理（devm）接口</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#11-同步与并发机制">11. 同步与并发机制</a></summary></p>
-
-<ul>
-<li><a href="#111-全局锁">11.1 全局锁</a></li>
-<li><a href="#112-设备级锁">11.2 设备级锁</a></li>
-<li><a href="#113-字符设备级锁">11.3 字符设备级锁</a></li>
-<li><a href="#114-srcu-保护的-chip-访问模式">11.4 SRCU 保护的 chip 访问模式</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#12-典型驱动实例pl061">12. 典型驱动实例：PL061</a></summary></p>
-
-<ul>
-<li><a href="#121-驱动结构体">12.1 驱动结构体</a></li>
-<li><a href="#122-probe-函数关键流程">12.2 probe 函数关键流程</a></li>
-<li><a href="#123-中断处理链">12.3 中断处理链</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#13-gpio-请求与查找流程">13. GPIO 请求与查找流程</a></summary></p>
-
-<ul>
-<li><a href="#131-内核消费者的查找优先级">13.1 内核消费者的查找优先级</a></li>
-<li><a href="#132-完整请求流程">13.2 完整请求流程</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#14-源码文件组织">14. 源码文件组织</a></summary></p>
-
-<ul>
-<li><a href="#141-头文件">14.1 头文件</a></li>
-<li><a href="#142-核心实现">14.2 核心实现</a></li>
-<li><a href="#143-硬件驱动100-个">14.3 硬件驱动（100+ 个）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#15-架构总结">15. 架构总结</a></summary></p>
-
-<ul>
-<li><a href="#151-核心设计模式">15.1 核心设计模式</a></li>
-<li><a href="#152-api-选择指南">15.2 API 选择指南</a></li>
-<li><a href="#153-关键-api-速查表">15.3 关键 API 速查表</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#16-实战如何申请-gpio-和-button">16. 实战：如何申请 GPIO 和 Button</a></summary></p>
-
-<ul>
-<li><a href="#161-内核驱动中申请-gpio-的三种方式">16.1 内核驱动中申请 GPIO 的三种方式</a></li>
-<li><a href="#162-gpio-flags-参数详解">16.2 GPIO flags 参数详解</a></li>
-<li><a href="#163-gpio-keys-驱动深度解析">16.3 gpio-keys 驱动深度解析</a></li>
-<li><a href="#164-gpio-keys-dt-绑定规范">16.4 gpio-keys DT 绑定规范</a></li>
-<li><a href="#165-常用-key-码速查">16.5 常用 KEY 码速查</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#17-qemu-gpiobutton-实践">17. QEMU GPIO/Button 实践</a></summary></p>
-
-<ul>
-<li><a href="#171-qemu-virt-平台-gpio-硬件">17.1 QEMU virt 平台 GPIO 硬件</a></li>
-<li><a href="#172-实践一编写-gpio-测试内核模块">17.2 实践一：编写 GPIO 测试内核模块</a></li>
-<li><a href="#173-实践二用户空间-gpio-操作-chardev-方式">17.3 实践二：用户空间 GPIO 操作 (chardev 方式)</a></li>
-<li><a href="#174-实践三sysfs-gpio-操作-legacy已废弃">17.4 实践三：sysfs GPIO 操作 (Legacy，已废弃)</a></li>
-<li><a href="#175-qemu-调试-gpio-状态">17.5 QEMU 调试 GPIO 状态</a></li>
-<li><a href="#176-完整-qemu-gpio-实践步骤">17.6 完整 QEMU GPIO 实践步骤</a></li>
-<li><a href="#177-gpio-用户空间接口对比">17.7 GPIO 用户空间接口对比</a></li>
-</ul>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 软件架构总览</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#架构全景图">架构全景图</a></li>
+          <li><a href="#文本架构图">文本架构图</a></li>
+          <li><a href="#11-设计原则">1.1 设计原则</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. 分层架构详解</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-硬件驱动层provider">2.1 硬件驱动层（Provider）</a></li>
+          <li><a href="#22-核心框架层gpiolib">2.2 核心框架层（gpiolib）</a></li>
+          <li><a href="#23-消费者接口层consumer-api">2.3 消费者接口层（Consumer API）</a></li>
+          <li><a href="#24-用户空间接口层">2.4 用户空间接口层</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. 核心数据结构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-struct-gpio_device--gpio-设备容器">3.1 struct gpio_device — GPIO 设备容器</a></li>
+          <li><a href="#32-struct-gpio_desc--gpio-行描述符">3.2 struct gpio_desc — GPIO 行描述符</a></li>
+          <li><a href="#33-struct-gpio_chip--gpio-控制器硬件接口">3.3 struct gpio_chip — GPIO 控制器硬件接口</a></li>
+          <li><a href="#34-struct-gpio_irq_chip--gpio-中断控制器">3.4 struct gpio_irq_chip — GPIO 中断控制器</a></li>
+          <li><a href="#35-struct-gpio_array--批量操作描述符">3.5 struct gpio_array — 批量操作描述符</a></li>
+          <li><a href="#36-struct-gpio_descs--gpio-描述符集合">3.6 struct gpio_descs — GPIO 描述符集合</a></li>
+          <li><a href="#37-平台查找表结构">3.7 平台查找表结构</a></li>
+          <li><a href="#38-数据结构关系图">3.8 数据结构关系图</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. 内核空间 Consumer API（描述符接口）</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-获取释放-gpio">4.1 获取/释放 GPIO</a></li>
+          <li><a href="#42-方向控制">4.2 方向控制</a></li>
+          <li><a href="#43-值读写非睡眠上下文">4.3 值读写（非睡眠上下文）</a></li>
+          <li><a href="#44-值读写可睡眠上下文">4.4 值读写（可睡眠上下文）</a></li>
+          <li><a href="#45-配置与属性">4.5 配置与属性</a></li>
+          <li><a href="#46-逻辑值-vs-原始值">4.6 逻辑值 vs 原始值</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. GPIO 驱动注册 API（Provider 接口）</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-芯片注册与注销">5.1 芯片注册与注销</a></li>
+          <li><a href="#52-注册流程-gpiochip_add_data_with_key">5.2 注册流程 (gpiochip_add_data_with_key)</a></li>
+          <li><a href="#53-通用辅助回调">5.3 通用辅助回调</a></li>
+          <li><a href="#54-irq-芯片集成辅助">5.4 IRQ 芯片集成辅助</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. 用户空间接口</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-字符设备接口v2-api推荐">6.1 字符设备接口（V2 API，推荐）</a></li>
+          <li><a href="#62-sysfs-接口已废弃">6.2 sysfs 接口（已废弃）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. 中断子系统集成（gpio_irq_chip）</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-gpio-中断架构">7.1 GPIO 中断架构</a></li>
+          <li><a href="#72-驱动中配置-irq-芯片">7.2 驱动中配置 IRQ 芯片</a></li>
+          <li><a href="#73-软件去抖流程cdev-边沿事件">7.3 软件去抖流程（cdev 边沿事件）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. 设备树（Device Tree）集成</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-设备树-gpio-描述格式">8.1 设备树 GPIO 描述格式</a></li>
+          <li><a href="#82-dt-标志位">8.2 DT 标志位</a></li>
+          <li><a href="#83-关键-dt-解析函数">8.3 关键 DT 解析函数</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. Pinctrl 子系统集成</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. 设备资源管理（devm）接口</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. 同步与并发机制</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#111-全局锁">11.1 全局锁</a></li>
+          <li><a href="#112-设备级锁">11.2 设备级锁</a></li>
+          <li><a href="#113-字符设备级锁">11.3 字符设备级锁</a></li>
+          <li><a href="#114-srcu-保护的-chip-访问模式">11.4 SRCU 保护的 chip 访问模式</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 12. 典型驱动实例：PL061</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#121-驱动结构体">12.1 驱动结构体</a></li>
+          <li><a href="#122-probe-函数关键流程">12.2 probe 函数关键流程</a></li>
+          <li><a href="#123-中断处理链">12.3 中断处理链</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 13. GPIO 请求与查找流程</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#131-内核消费者的查找优先级">13.1 内核消费者的查找优先级</a></li>
+          <li><a href="#132-完整请求流程">13.2 完整请求流程</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 14. 源码文件组织</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#141-头文件">14.1 头文件</a></li>
+          <li><a href="#142-核心实现">14.2 核心实现</a></li>
+          <li><a href="#143-硬件驱动100-个">14.3 硬件驱动（100+ 个）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 15. 架构总结</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#151-核心设计模式">15.1 核心设计模式</a></li>
+          <li><a href="#152-api-选择指南">15.2 API 选择指南</a></li>
+          <li><a href="#153-关键-api-速查表">15.3 关键 API 速查表</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 16. 实战：如何申请 GPIO 和 Button</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#161-内核驱动中申请-gpio-的三种方式">16.1 内核驱动中申请 GPIO 的三种方式</a></li>
+          <li><a href="#162-gpio-flags-参数详解">16.2 GPIO flags 参数详解</a></li>
+          <li><a href="#163-gpio-keys-驱动深度解析">16.3 gpio-keys 驱动深度解析</a></li>
+          <li><a href="#164-gpio-keys-dt-绑定规范">16.4 gpio-keys DT 绑定规范</a></li>
+          <li><a href="#165-常用-key-码速查">16.5 常用 KEY 码速查</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 17. QEMU GPIO/Button 实践</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#171-qemu-virt-平台-gpio-硬件">17.1 QEMU virt 平台 GPIO 硬件</a></li>
+          <li><a href="#172-实践一编写-gpio-测试内核模块">17.2 实践一：编写 GPIO 测试内核模块</a></li>
+          <li><a href="#173-实践二用户空间-gpio-操作-chardev-方式">17.3 实践二：用户空间 GPIO 操作 (chardev 方式)</a></li>
+          <li><a href="#174-实践三sysfs-gpio-操作-legacy已废弃">17.4 实践三：sysfs GPIO 操作 (Legacy，已废弃)</a></li>
+          <li><a href="#175-qemu-调试-gpio-状态">17.5 QEMU 调试 GPIO 状态</a></li>
+          <li><a href="#176-完整-qemu-gpio-实践步骤">17.6 完整 QEMU GPIO 实践步骤</a></li>
+          <li><a href="#177-gpio-用户空间接口对比">17.7 GPIO 用户空间接口对比</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -2678,6 +2805,131 @@ dmesg | grep gpio_test</code></pre>
 <td>❌ 竞争条件</td>
 </tr>
 </tbody></table>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

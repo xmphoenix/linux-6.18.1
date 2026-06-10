@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -210,168 +376,143 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-cfs-完全公平调度器-completely-fair-scheduler">1. CFS 完全公平调度器 (Completely Fair Scheduler)</a></summary></p>
-
-<ul>
-<li><a href="#11-核心思想">1.1 核心思想</a></li>
-<li><a href="#12-virtual-runtime-vruntime-计算">1.2 Virtual Runtime (vruntime) 计算</a></li>
-<li><a href="#13-nice-to-weight-映射">1.3 Nice-to-Weight 映射</a></li>
-<li><a href="#14-eevdf-earliest-eligible-virtual-deadline-first">1.4 EEVDF: Earliest Eligible Virtual Deadline First</a></li>
-<li><a href="#15-red-black-tree-调度">1.5 Red-Black Tree 调度</a></li>
-<li><a href="#15-enqueue_entity--完整入队流程">1.5 <code>enqueue_entity()</code> — 完整入队流程</a></li>
-<li><a href="#16-pick_next_task_fair--选择下一个任务">1.6 <code>pick_next_task_fair()</code> — 选择下一个任务</a></li>
-<li><a href="#17-load-balancing">1.7 Load Balancing</a></li>
-<li><a href="#18-复杂度">1.8 复杂度</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-slub-allocator-小对象分配器">2. SLUB Allocator (小对象分配器)</a></summary></p>
-
-<ul>
-<li><a href="#21-核心思想">2.1 核心思想</a></li>
-<li><a href="#22-关键数据结构">2.2 关键数据结构</a></li>
-<li><a href="#23-slab-状态分类">2.3 Slab 状态分类</a></li>
-<li><a href="#24-分配快速路径-fast-path">2.4 分配快速路径 (Fast Path)</a></li>
-<li><a href="#25-分配慢速路径-slow-path">2.5 分配慢速路径 (Slow Path)</a></li>
-<li><a href="#26-释放快速路径">2.6 释放快速路径</a></li>
-<li><a href="#27-<strong>slab_free-慢路径">2.7 <code></strong>slab_free()</code> 慢路径</a></li>
-<li><a href="#28-复杂度">2.8 复杂度</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-buddy-system-伙伴系统">3. Buddy System (伙伴系统)</a></summary></p>
-
-<ul>
-<li><a href="#31-核心思想">3.1 核心思想</a></li>
-<li><a href="#32-关键数据结构">3.2 关键数据结构</a></li>
-<li><a href="mm/page_alloc.c#L1880">3.3 分配算法: <code><strong>rmqueue_smallest()</code> ([page_alloc.c</a>)](#33-分配算法-</strong>rmqueue_smallest-page_alloccmmpage_alloccl1880)</li>
-<li><a href="mm/page_alloc.c#L940">3.4 释放与合并: <code><strong>free_one_page()</code> ([page_alloc.c</a>)](#34-释放与合并-</strong>free_one_page-page_alloccmmpage_alloccl940)</li>
-<li><a href="#35-fallback-机制">3.5 Fallback 机制</a></li>
-<li><a href="#36-复杂度">3.6 复杂度</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-page-reclaim--lru-页面回收">4. Page Reclaim / LRU (页面回收)</a></summary></p>
-
-<ul>
-<li><a href="#41-核心思想">4.1 核心思想</a></li>
-<li><a href="#42-lru-链表">4.2 LRU 链表</a></li>
-<li><a href="#43-scan_control-结构">4.3 <code>scan_control</code> 结构</a></li>
-<li><a href="#44-second-chance--reference-checking">4.4 Second Chance / Reference Checking</a></li>
-<li><a href="mm/vmscan.c#L1099">4.5 <code>shrink_folio_list()</code> — 回收决策核心 ([vmscan.c</a>)](#45-shrink_folio_list--回收决策核心-vmscancmmvmscancl1099)</li>
-<li><a href="#46-shrink_inactive_list">4.6 <code>shrink_inactive_list()</code></a></li>
-<li><a href="#47-kswapd-vs-direct-reclaim">4.7 kswapd vs Direct Reclaim</a></li>
-<li><a href="#48-复杂度">4.8 复杂度</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-vma-management-maple-tree">5. VMA Management (Maple Tree)</a></summary></p>
-
-<ul>
-<li><a href="#51-核心思想">5.1 核心思想</a></li>
-<li><a href="#52-关键数据结构">5.2 关键数据结构</a></li>
-<li><a href="#53-find_vma--olog-n-查找">5.3 <code>find_vma()</code> — O(log n) 查找</a></li>
-<li><a href="#54-find_vma_intersection">5.4 <code>find_vma_intersection()</code></a></li>
-<li><a href="#55-do_mmap--创建映射">5.5 <code>do_mmap()</code> — 创建映射</a></li>
-<li><a href="#56-maple-tree-vs-rb-tree">5.6 Maple Tree vs RB-tree</a></li>
-<li><a href="#57-复杂度">5.7 复杂度</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-writeback-algorithm-写回算法">6. Writeback Algorithm (写回算法)</a></summary></p>
-
-<ul>
-<li><a href="#61-核心思想">6.1 核心思想</a></li>
-<li><a href="#62-关键参数">6.2 关键参数</a></li>
-<li><a href="#63-dirty-limits-计算">6.3 Dirty Limits 计算</a></li>
-<li><a href="#64-两阶段写回机制">6.4 两阶段写回机制</a></li>
-<li><a href="#65-balance_dirty_pages">6.5 <code>balance_dirty_pages()</code></a></li>
-<li><a href="#66-bdi-backing-device-info">6.6 BDI (Backing Device Info)</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-io-schedulers">7. I/O Schedulers</a></summary></p>
-
-<ul>
-<li><a href="#71-mq-deadline">7.1 mq-deadline</a></li>
-<li><a href="#72-bfq-budget-fair-queueing">7.2 BFQ (Budget Fair Queueing)</a></li>
-<li><a href="#73-复杂度">7.3 复杂度</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-rcu-grace-period-detection">8. RCU Grace Period Detection</a></summary></p>
-
-<ul>
-<li><a href="#81-核心思想">8.1 核心思想</a></li>
-<li><a href="#82-rcu_node-树结构">8.2 rcu_node 树结构</a></li>
-<li><a href="kernel/rcu/tree.c#L1803">8.3 Grace Period 初始化 — <code>rcu_gp_init()</code> ([tree.c</a>)](#83-grace-period-初始化--rcu_gp_init-treeckernelrcutreecl1803)</li>
-<li><a href="#84-grace-period-kthread-主循环">8.4 Grace Period Kthread 主循环</a></li>
-<li><a href="#85-quiescent-state-报告--自底向上传播">8.5 Quiescent State 报告 — 自底向上传播</a></li>
-<li><a href="#86-复杂度">8.6 复杂度</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-timer-wheel-定时器轮">9. Timer Wheel (定时器轮)</a></summary></p>
-
-<ul>
-<li><a href="#91-核心思想">9.1 核心思想</a></li>
-<li><a href="#92-层次结构-hz1000">9.2 层次结构 (HZ=1000)</a></li>
-<li><a href="#93-timer_base-结构">9.3 <code>timer_base</code> 结构</a></li>
-<li><a href="#94-定时器添加">9.4 定时器添加</a></li>
-<li><a href="#95-到期定时器的收集与处理">9.5 到期定时器的收集与处理</a></li>
-<li><a href="#95-优势-vs-经典实现">9.5 优势 vs 经典实现</a></li>
-<li><a href="#96-复杂度">9.6 复杂度</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-kernel-sort-内核排序">10. Kernel Sort (内核排序)</a></summary></p>
-
-<ul>
-<li><a href="#101-核心思想">10.1 核心思想</a></li>
-<li><a href="lib/sort.c#L196">10.2 <code><strong>sort_r()</code> 完整实现源码注释 ([sort.c</a>)](#102-</strong>sort_r-完整实现源码注释-sortclibsortcl196)</li>
-<li><a href="#103-bottom-up-优化">10.3 Bottom-up 优化</a></li>
-<li><a href="#104-swap-优化">10.4 Swap 优化</a></li>
-<li><a href="#105-复杂度">10.5 复杂度</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#11-crchash-algorithms">11. CRC/Hash Algorithms</a></summary></p>
-
-<ul>
-<li><a href="#111-multiplicative-hash-hash_long">11.1 Multiplicative Hash (<code>hash_long</code>)</a></li>
-<li><a href="#112-jenkins-hash-jhash">11.2 Jenkins Hash (jhash)</a></li>
-<li><a href="#113-crc32">11.3 CRC32</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#总结对比">总结对比</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. CFS 完全公平调度器 (Completely Fair Scheduler)</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-核心思想">1.1 核心思想</a></li>
+          <li><a href="#12-virtual-runtime-vruntime-计算">1.2 Virtual Runtime (vruntime) 计算</a></li>
+          <li><a href="#13-nice-to-weight-映射">1.3 Nice-to-Weight 映射</a></li>
+          <li><a href="#14-eevdf-earliest-eligible-virtual-deadline-first">1.4 EEVDF: Earliest Eligible Virtual Deadline First</a></li>
+          <li><a href="#15-red-black-tree-调度">1.5 Red-Black Tree 调度</a></li>
+          <li><a href="#15-enqueue_entity--完整入队流程">1.5 enqueue_entity() — 完整入队流程</a></li>
+          <li><a href="#16-pick_next_task_fair--选择下一个任务">1.6 pick_next_task_fair() — 选择下一个任务</a></li>
+          <li><a href="#17-load-balancing">1.7 Load Balancing</a></li>
+          <li><a href="#18-复杂度">1.8 复杂度</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. SLUB Allocator (小对象分配器)</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-核心思想">2.1 核心思想</a></li>
+          <li><a href="#22-关键数据结构">2.2 关键数据结构</a></li>
+          <li><a href="#23-slab-状态分类">2.3 Slab 状态分类</a></li>
+          <li><a href="#24-分配快速路径-fast-path">2.4 分配快速路径 (Fast Path)</a></li>
+          <li><a href="#25-分配慢速路径-slow-path">2.5 分配慢速路径 (Slow Path)</a></li>
+          <li><a href="#26-释放快速路径">2.6 释放快速路径</a></li>
+          <li><a href="#27-<strong>slab_free-慢路径">2.7 slab_free() 慢路径</a></li>
+          <li><a href="#28-复杂度">2.8 复杂度</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. Buddy System (伙伴系统)</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-核心思想">3.1 核心思想</a></li>
+          <li><a href="#32-关键数据结构">3.2 关键数据结构</a></li>
+          <li><a href="mm/page_alloc.c#L1880">3.3 分配算法: rmqueue_smallest() ([page_alloc.c</a></li>
+          <li><a href="mm/page_alloc.c#L940">3.4 释放与合并: free_one_page() ([page_alloc.c</a></li>
+          <li><a href="#35-fallback-机制">3.5 Fallback 机制</a></li>
+          <li><a href="#36-复杂度">3.6 复杂度</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. Page Reclaim / LRU (页面回收)</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-核心思想">4.1 核心思想</a></li>
+          <li><a href="#42-lru-链表">4.2 LRU 链表</a></li>
+          <li><a href="#43-scan_control-结构">4.3 scan_control 结构</a></li>
+          <li><a href="#44-second-chance--reference-checking">4.4 Second Chance / Reference Checking</a></li>
+          <li><a href="mm/vmscan.c#L1099">4.5 shrink_folio_list() — 回收决策核心 ([vmscan.c</a></li>
+          <li><a href="#46-shrink_inactive_list">4.6 shrink_inactive_list()</a></li>
+          <li><a href="#47-kswapd-vs-direct-reclaim">4.7 kswapd vs Direct Reclaim</a></li>
+          <li><a href="#48-复杂度">4.8 复杂度</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. VMA Management (Maple Tree)</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-核心思想">5.1 核心思想</a></li>
+          <li><a href="#52-关键数据结构">5.2 关键数据结构</a></li>
+          <li><a href="#53-find_vma--olog-n-查找">5.3 find_vma() — O(log n) 查找</a></li>
+          <li><a href="#54-find_vma_intersection">5.4 find_vma_intersection()</a></li>
+          <li><a href="#55-do_mmap--创建映射">5.5 do_mmap() — 创建映射</a></li>
+          <li><a href="#56-maple-tree-vs-rb-tree">5.6 Maple Tree vs RB-tree</a></li>
+          <li><a href="#57-复杂度">5.7 复杂度</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. Writeback Algorithm (写回算法)</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-核心思想">6.1 核心思想</a></li>
+          <li><a href="#62-关键参数">6.2 关键参数</a></li>
+          <li><a href="#63-dirty-limits-计算">6.3 Dirty Limits 计算</a></li>
+          <li><a href="#64-两阶段写回机制">6.4 两阶段写回机制</a></li>
+          <li><a href="#65-balance_dirty_pages">6.5 balance_dirty_pages()</a></li>
+          <li><a href="#66-bdi-backing-device-info">6.6 BDI (Backing Device Info)</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. I/O Schedulers</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-mq-deadline">7.1 mq-deadline</a></li>
+          <li><a href="#72-bfq-budget-fair-queueing">7.2 BFQ (Budget Fair Queueing)</a></li>
+          <li><a href="#73-复杂度">7.3 复杂度</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. RCU Grace Period Detection</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-核心思想">8.1 核心思想</a></li>
+          <li><a href="#82-rcu_node-树结构">8.2 rcu_node 树结构</a></li>
+          <li><a href="kernel/rcu/tree.c#L1803">8.3 Grace Period 初始化 — rcu_gp_init() ([tree.c</a></li>
+          <li><a href="#84-grace-period-kthread-主循环">8.4 Grace Period Kthread 主循环</a></li>
+          <li><a href="#85-quiescent-state-报告--自底向上传播">8.5 Quiescent State 报告 — 自底向上传播</a></li>
+          <li><a href="#86-复杂度">8.6 复杂度</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. Timer Wheel (定时器轮)</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#91-核心思想">9.1 核心思想</a></li>
+          <li><a href="#92-层次结构-hz1000">9.2 层次结构 (HZ=1000)</a></li>
+          <li><a href="#93-timer_base-结构">9.3 timer_base 结构</a></li>
+          <li><a href="#94-定时器添加">9.4 定时器添加</a></li>
+          <li><a href="#95-到期定时器的收集与处理">9.5 到期定时器的收集与处理</a></li>
+          <li><a href="#95-优势-vs-经典实现">9.5 优势 vs 经典实现</a></li>
+          <li><a href="#96-复杂度">9.6 复杂度</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. Kernel Sort (内核排序)</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#101-核心思想">10.1 核心思想</a></li>
+          <li><a href="lib/sort.c#L196">10.2 sort_r() 完整实现源码注释 ([sort.c</a></li>
+          <li><a href="#103-bottom-up-优化">10.3 Bottom-up 优化</a></li>
+          <li><a href="#104-swap-优化">10.4 Swap 优化</a></li>
+          <li><a href="#105-复杂度">10.5 复杂度</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. CRC/Hash Algorithms</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#111-multiplicative-hash-hash_long">11.1 Multiplicative Hash (hash_long)</a></li>
+          <li><a href="#112-jenkins-hash-jhash">11.2 Jenkins Hash (jhash)</a></li>
+          <li><a href="#113-crc32">11.3 CRC32</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 总结对比</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -2208,6 +2349,131 @@ $$h(k) = \lfloor (k \cdot A \cdot 2^w) \gg (w - p) \rfloor$$</p>
 <td>Golden ratio 乘法散列</td>
 </tr>
 </tbody></table>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

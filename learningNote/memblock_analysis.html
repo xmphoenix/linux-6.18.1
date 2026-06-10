@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -210,113 +376,96 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#一设计定位与生命周期">一、设计定位与生命周期</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#二数据结构">二、数据结构</a></summary></p>
-
-<ul>
-<li><a href="#21-三层嵌套结构">2.1 三层嵌套结构</a></li>
-<li><a href="#22-静态初始化">2.2 静态初始化</a></li>
-<li><a href="#23-flag-标志位">2.3 Flag 标志位</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#三核心-api-一览">三、核心 API 一览</a></summary></p>
-
-<ul>
-<li><a href="#31-内存注册">3.1 内存注册</a></li>
-<li><a href="#32-内存分配">3.2 内存分配</a></li>
-<li><a href="#33-属性操作">3.3 属性操作</a></li>
-<li><a href="#34-查询">3.4 查询</a></li>
-<li><a href="#35-迭代器">3.5 迭代器</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#四核心算法详解">四、核心算法详解</a></summary></p>
-
-<ul>
-<li><a href="#41-有序区间插入--memblock_add_range">4.1 有序区间插入 —— <code>memblock_add_range()</code></a></li>
-<li><a href="#42-区间隔离分裂--memblock_isolate_range">4.2 区间隔离/分裂 —— <code>memblock_isolate_range()</code></a></li>
-<li><a href="#43-区间合并--memblock_merge_regions">4.3 区间合并 —— <code>memblock_merge_regions()</code></a></li>
-<li><a href="#44-双有序区间集合差遍历--<strong>next_mem_range">4.4 双有序区间集合差遍历 —— <code></strong>next_mem_range()</code></a></li>
-<li><a href="#45-二分查找--memblock_search">4.5 二分查找 —— <code>memblock_search()</code></a></li>
-<li><a href="#46-动态数组倍增扩容--memblock_double_array">4.6 动态数组倍增扩容 —— <code>memblock_double_array()</code></a></li>
-<li><a href="#47-贪心累减定位--<strong>find_max_addr">4.7 贪心累减定位 —— <code></strong>find_max_addr()</code></a></li>
-<li><a href="#48-数组元素删除--memblock_remove_region">4.8 数组元素删除 —— <code>memblock_remove_region()</code></a></li>
-<li><a href="#49-对齐裁剪--memblock_trim_memory">4.9 对齐裁剪 —— <code>memblock_trim_memory()</code></a></li>
-<li><a href="#410-逆序首次适配--<strong>memblock_find_range_top_down">4.10 逆序首次适配 —— <code></strong>memblock_find_range_top_down()</code></a></li>
-<li><a href="#411-正序首次适配--<strong>memblock_find_range_bottom_up">4.11 正序首次适配 —— <code></strong>memblock_find_range_bottom_up()</code></a></li>
-<li><a href="#412-多维条件谓词过滤--should_skip_region">4.12 多维条件谓词过滤 —— <code>should_skip_region()</code></a></li>
-<li><a href="#413-级联降级回退策略--memblock_alloc_range_nid--memblock_alloc_internal">4.13 级联降级回退策略 —— <code>memblock_alloc_range_nid()</code> + <code>memblock_alloc_internal()</code></a></li>
-<li><a href="#414-地址范围规范化--memblock_find_in_range_node">4.14 地址范围规范化 —— <code>memblock_find_in_range_node()</code></a></li>
-<li><a href="#415-区间批量删除--memblock_remove_range">4.15 区间批量删除 —— <code>memblock_remove_range()</code></a></li>
-<li><a href="#416-选择性区间保留--memblock_cap_memory_range">4.16 选择性区间保留 —— <code>memblock_cap_memory_range()</code></a></li>
-<li><a href="#417-区间属性批量设置--memblock_set_node">4.17 区间属性批量设置 —— <code>memblock_set_node()</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#五算法汇总表">五、算法汇总表</a></summary></p>
-
-<ul>
-<li><a href="#51-基础数据结构算法">5.1 基础数据结构算法</a></li>
-<li><a href="#52-内存分配算法">5.2 内存分配算法</a></li>
-<li><a href="#53-区间操作算法">5.3 区间操作算法</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#六内存分配完整调用链带算法标注">六、内存分配完整调用链（带算法标注）</a></summary></p>
-
-<ul>
-<li><a href="#分配路径中算法的协作关系">分配路径中算法的协作关系</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#七关键设计模式">七、关键设计模式</a></summary></p>
-
-<ul>
-<li><a href="#71-isolate-→-操作-→-merge-三步模式">7.1 isolate → 操作 → merge 三步模式</a></li>
-<li><a href="#72-memory-−-reserved--free">7.2 memory − reserved = free</a></li>
-<li><a href="#73-nomap-trickarm64">7.3 NOMAP trick（ARM64）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#八调试方法">八、调试方法</a></summary></p>
-
-<ul>
-<li><a href="#81-启动参数">8.1 启动参数</a></li>
-<li><a href="#82-运行时查看需要-config_arch_keep_memblock">8.2 运行时查看（需要 CONFIG_ARCH_KEEP_MEMBLOCK）</a></li>
-<li><a href="#83-dmesg-输出示例">8.3 dmesg 输出示例</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#九与后续子系统的衔接">九、与后续子系统的衔接</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#十总结">十、总结</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 一、设计定位与生命周期</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 二、数据结构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-三层嵌套结构">2.1 三层嵌套结构</a></li>
+          <li><a href="#22-静态初始化">2.2 静态初始化</a></li>
+          <li><a href="#23-flag-标志位">2.3 Flag 标志位</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 三、核心 API 一览</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-内存注册">3.1 内存注册</a></li>
+          <li><a href="#32-内存分配">3.2 内存分配</a></li>
+          <li><a href="#33-属性操作">3.3 属性操作</a></li>
+          <li><a href="#34-查询">3.4 查询</a></li>
+          <li><a href="#35-迭代器">3.5 迭代器</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 四、核心算法详解</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-有序区间插入--memblock_add_range">4.1 有序区间插入 —— memblock_add_range()</a></li>
+          <li><a href="#42-区间隔离分裂--memblock_isolate_range">4.2 区间隔离/分裂 —— memblock_isolate_range()</a></li>
+          <li><a href="#43-区间合并--memblock_merge_regions">4.3 区间合并 —— memblock_merge_regions()</a></li>
+          <li><a href="#44-双有序区间集合差遍历--<strong>next_mem_range">4.4 双有序区间集合差遍历 —— next_mem_range()</a></li>
+          <li><a href="#45-二分查找--memblock_search">4.5 二分查找 —— memblock_search()</a></li>
+          <li><a href="#46-动态数组倍增扩容--memblock_double_array">4.6 动态数组倍增扩容 —— memblock_double_array()</a></li>
+          <li><a href="#47-贪心累减定位--<strong>find_max_addr">4.7 贪心累减定位 —— find_max_addr()</a></li>
+          <li><a href="#48-数组元素删除--memblock_remove_region">4.8 数组元素删除 —— memblock_remove_region()</a></li>
+          <li><a href="#49-对齐裁剪--memblock_trim_memory">4.9 对齐裁剪 —— memblock_trim_memory()</a></li>
+          <li><a href="#410-逆序首次适配--<strong>memblock_find_range_top_down">4.10 逆序首次适配 —— memblock_find_range_top_down()</a></li>
+          <li><a href="#411-正序首次适配--<strong>memblock_find_range_bottom_up">4.11 正序首次适配 —— memblock_find_range_bottom_up()</a></li>
+          <li><a href="#412-多维条件谓词过滤--should_skip_region">4.12 多维条件谓词过滤 —— should_skip_region()</a></li>
+          <li><a href="#413-级联降级回退策略--memblock_alloc_range_nid--memblock_alloc_internal">4.13 级联降级回退策略 —— memblock_alloc_range_nid() + memblock_alloc_internal()</a></li>
+          <li><a href="#414-地址范围规范化--memblock_find_in_range_node">4.14 地址范围规范化 —— memblock_find_in_range_node()</a></li>
+          <li><a href="#415-区间批量删除--memblock_remove_range">4.15 区间批量删除 —— memblock_remove_range()</a></li>
+          <li><a href="#416-选择性区间保留--memblock_cap_memory_range">4.16 选择性区间保留 —— memblock_cap_memory_range()</a></li>
+          <li><a href="#417-区间属性批量设置--memblock_set_node">4.17 区间属性批量设置 —— memblock_set_node()</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 五、算法汇总表</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-基础数据结构算法">5.1 基础数据结构算法</a></li>
+          <li><a href="#52-内存分配算法">5.2 内存分配算法</a></li>
+          <li><a href="#53-区间操作算法">5.3 区间操作算法</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 六、内存分配完整调用链（带算法标注）</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#分配路径中算法的协作关系">分配路径中算法的协作关系</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 七、关键设计模式</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-isolate-→-操作-→-merge-三步模式">7.1 isolate → 操作 → merge 三步模式</a></li>
+          <li><a href="#72-memory-−-reserved--free">7.2 memory − reserved = free</a></li>
+          <li><a href="#73-nomap-trickarm64">7.3 NOMAP trick（ARM64）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 八、调试方法</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-启动参数">8.1 启动参数</a></li>
+          <li><a href="#82-运行时查看需要-config_arch_keep_memblock">8.2 运行时查看（需要 CONFIG_ARCH_KEEP_MEMBLOCK）</a></li>
+          <li><a href="#83-dmesg-输出示例">8.3 dmesg 输出示例</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 九、与后续子系统的衔接</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 十、总结</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -1508,6 +1657,131 @@ cat /sys/kernel/debug/memblock/reserved</code></pre>
 <li><strong>生命周期清晰</strong>——启动完成后自动消亡（除非架构要求保留）</li>
 <li><strong>算法选择务实</strong>——O(n) 线性操作 + O(log n) 二分查询，足够应对早期启动场景</li>
 </ol>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

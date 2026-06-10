@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -219,1177 +385,758 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-先建立全局图gicv3-到底解决什么问题">1. 先建立全局图：GICv3 到底解决什么问题</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-gicv3-的核心硬件组件">2. GICv3 的核心硬件组件</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#21-distributor">2.1 Distributor</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#22-redistributor">2.2 Redistributor</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#23-cpu-interface">2.3 CPU Interface</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#24-its">2.4 ITS</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#3-gicv3-的中断类型和-intid-空间">3. GICv3 的中断类型和 INTID 空间</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#31-具体举例哪些东西通常会是-sgi--ppi--eppi--lpi">3.1 具体举例：哪些东西通常会是 SGI / PPI / EPPI / LPI</a></summary></p>
-
-<ul>
-<li><a href="#sgi-的典型例子">SGI 的典型例子</a></li>
-<li><a href="#ppi-的典型例子">PPI 的典型例子</a></li>
-<li><a href="#eppi-的典型例子">EPPI 的典型例子</a></li>
-<li><a href="#lpi-的典型例子">LPI 的典型例子</a></li>
-<li><a href="#一张最实用的对照表">一张最实用的对照表</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-gicdgicr-和-icc_-三层寄存器接口怎么理解">4. GICD、GICR 和 ICC_* 三层寄存器接口怎么理解</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#40-先记前缀它决定这是谁的寄存器">4.0 先记前缀：它决定“这是谁的寄存器”</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#401-再记动作词它决定这个寄存器到底干什么">4.0.1 再记动作词：它决定“这个寄存器到底干什么”</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4011-名字里的数字和后缀是什么意思">4.0.1.1 名字里的数字和后缀是什么意思</a></summary></p>
-
-<ul>
-<li><a href="#末尾的-el1">末尾的 <code>EL1</code></a></li>
-<li><a href="#中间的-1">中间的 <code>1</code></a></li>
-<li><a href="#末尾的-ne">末尾的 <code>nE</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4012-现场拆-6-个最常见寄存器">4.0.1.2 现场拆 6 个最常见寄存器</a></summary></p>
-
-<ul>
-<li><a href="#例子-1-gicd_isenabler">例子 1: <code>GICD_ISENABLER</code></a></li>
-<li><a href="#例子-2-gicd_irouter">例子 2: <code>GICD_IROUTER</code></a></li>
-<li><a href="#例子-3-gicr_waker">例子 3: <code>GICR_WAKER</code></a></li>
-<li><a href="#例子-4-icc_iar1_el1">例子 4: <code>ICC_IAR1_EL1</code></a></li>
-<li><a href="#例子-5-icc_eoir1_el1">例子 5: <code>ICC_EOIR1_EL1</code></a></li>
-<li><a href="#例子-6-gicr_propbaser">例子 6: <code>GICR_PROPBASER</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4013-再加一层场景记忆不要孤立背寄存器">4.0.1.3 再加一层场景记忆，不要孤立背寄存器</a></summary></p>
-
-<ul>
-<li><a href="#场景一打开一条共享中断">场景一：打开一条共享中断</a></li>
-<li><a href="#场景二cpu-进入中断处理">场景二：CPU 进入中断处理</a></li>
-<li><a href="#场景三lpimsi-初始化">场景三：LPI/MSI 初始化</a></li>
-<li><a href="#场景四本地-redistributor-上下电">场景四：本地 Redistributor 上下电</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#402-常见寄存器怎么从名字直接反推作用">4.0.2 常见寄存器怎么从名字直接反推作用</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#403-最容易背混的几个寄存器怎么区分">4.0.3 最容易背混的几个寄存器，怎么区分</a></summary></p>
-
-<ul>
-<li><a href="#isenabler-和-icenabler"><code>ISENABLER</code> 和 <code>ICENABLER</code></a></li>
-<li><a href="#ispendr-和-icpendr"><code>ISPENDR</code> 和 <code>ICPENDR</code></a></li>
-<li><a href="#isactiver-和-icactiver"><code>ISACTIVER</code> 和 <code>ICACTIVER</code></a></li>
-<li><a href="#iareoirdir"><code>IAR</code>、<code>EOIR</code>、<code>DIR</code></a></li>
-<li><a href="#propbaser-和-pendbaser"><code>PROPBASER</code> 和 <code>PENDBASER</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#404-一个最好用的记忆框架">4.0.4 一个最好用的记忆框架</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#41-gicd-寄存器是全局共享中断的控制面">4.1 GICD 寄存器是全局共享中断的控制面</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#42-gicr-寄存器是每-cpu-本地中断和-lpi-的控制面">4.2 GICR 寄存器是每 CPU 本地中断和 LPI 的控制面</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#43-icc_-是-cpu-和-gic-之间的握手面">4.3 ICC_* 是 CPU 和 GIC 之间的握手面</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-一条中断在硬件里是怎么流动的">5. 一条中断在硬件里是怎么流动的</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#51-共享-spi-的路径">5.1 共享 SPI 的路径</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#52-本地-ppisgi-的路径">5.2 本地 PPI/SGI 的路径</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#53-msilpi-的路径">5.3 MSI/LPI 的路径</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-中断状态机必须吃透">6. 中断状态机必须吃透</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-eoi-mode-0-和-eoi-mode-1-的差别">7. EOI mode 0 和 EOI mode 1 的差别</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#71-eoi-mode-0">7.1 EOI mode 0</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#72-eoi-mode-1">7.2 EOI mode 1</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-优先级屏蔽和-group">8. 优先级、屏蔽和 Group</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#81-优先级不是数字大就更高">8.1 优先级不是数字大就更高</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#82-icc_pmr_el1-控制当前-cpu-愿意接收什么优先级">8.2 ICC_PMR_EL1 控制当前 CPU 愿意接收什么优先级</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#821-为什么它像一道门槛">8.2.1 为什么它像一道门槛</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#822-一个最直观的例子">8.2.2 一个最直观的例子</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#823-为什么它和-icc_rpr_el1-总是一起提">8.2.3 为什么它和 <code>ICC_RPR_EL1</code> 总是一起提</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#824-放到-linux-运行时路径里看">8.2.4 放到 Linux 运行时路径里看</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#825-再给一个更贴近内核的例子">8.2.5 再给一个更贴近内核的例子</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#826-容易混淆的点">8.2.6 容易混淆的点</a></summary></p>
-
-<ul>
-<li><a href="#icc_pmr_el1-不是-enable-位"><code>ICC_PMR_EL1</code> 不是 enable 位</a></li>
-<li><a href="#icc_pmr_el1-不是在改中断本身的优先级"><code>ICC_PMR_EL1</code> 不是在改中断本身的优先级</a></li>
-<li><a href="#icc_pmr_el1-和-daifif-不是一回事"><code>ICC_PMR_EL1</code> 和 <code>DAIF.IF</code> 不是一回事</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#827-把-pmr--rpr-放进真实代码路径里看">8.2.7 把 <code>PMR</code> / <code>RPR</code> 放进真实代码路径里看</a></summary></p>
-
-<ul>
-<li><a href="#第一gic_handle_irq-不是一上来就只管读-iar">第一，<code>gic_handle_irq()</code> 不是一上来就只管读 IAR</a></li>
-<li><a href="#第二rpr-被用来判断当前这条是不是-pseudo-nmi-优先级">第二，<code>RPR</code> 被用来判断“当前这条是不是 pseudo-NMI 优先级”</a></li>
-<li><a href="#第三pmr-在-irq-处理中被动态调整">第三，<code>PMR</code> 在 IRQ 处理中被动态调整</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#828-irqsoff-路径为什么还要额外折腾-pmr">8.2.8 <code>irqsoff</code> 路径为什么还要额外折腾 <code>PMR</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#83-group-0-和-group-1">8.3 Group 0 和 Group 1</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#831-先建立最基础的理解">8.3.1 先建立最基础的理解</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#832-为什么-linux-常见的是-icc_iar1_el1">8.3.2 为什么 Linux 常见的是 <code>ICC_IAR1_EL1</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#833-一个很直观的例子">8.3.3 一个很直观的例子</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#834-那-group-0-可以怎样理解">8.3.4 那 Group 0 可以怎样理解</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#835-为什么-gicd_ctlrds-和-scr_el3fiq-会扯进来">8.3.5 为什么 <code>GICD_CTLR.DS</code> 和 <code>SCR_EL3.FIQ</code> 会扯进来</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#836-一个贴近代码的例子">8.3.6 一个贴近代码的例子</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#837-对学习-linux-arm64-gicv3-来说到底该抓什么">8.3.7 对学习 Linux ARM64 GICv3 来说，到底该抓什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#838-容易混淆的点">8.3.8 容易混淆的点</a></summary></p>
-
-<ul>
-<li><a href="#group-0--group-1-不是高优先级组--低优先级组">Group 0 / Group 1 不是“高优先级组 / 低优先级组”</a></li>
-<li><a href="#group-0--group-1-也不是外设中断--软件中断的分类">Group 0 / Group 1 也不是“外设中断 / 软件中断”的分类</a></li>
-<li><a href="#普通世界-linux-看到的世界不一定等于硬件的完整世界">普通世界 Linux 看到的世界不一定等于硬件的完整世界</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#839-把-group-1-放进-linux-初始化和异常入口里看">8.3.9 把 Group 1 放进 Linux 初始化和异常入口里看</a></summary></p>
-
-<ul>
-<li><a href="#初始化阶段">初始化阶段</a></li>
-<li><a href="#运行时阶段">运行时阶段</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8310-一条最值得记的group-1-主路径">8.3.10 一条最值得记的“Group 1 主路径”</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8311-group-0-在-linux-里为什么显得存在感弱">8.3.11 Group 0 在 Linux 里为什么显得“存在感弱”</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8312-一个贴近调试的例子">8.3.12 一个贴近调试的例子</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-affinity-和路由">9. Affinity 和路由</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-redistributor-的电源管理也属于硬件基础">10. Redistributor 的电源管理也属于硬件基础</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#11-espi-和-eppi-为什么值得单独记">11. ESPI 和 EPPI 为什么值得单独记</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#12-lpi-是-gicv3-进入现代-msi-世界的关键">12. LPI 是 GICv3 进入现代 MSI 世界的关键</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#13-站在-linux-角度硬件知识应该怎样映射到源码">13. 站在 Linux 角度，硬件知识应该怎样映射到源码</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#14-几个最容易混淆的点">14. 几个最容易混淆的点</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#141-distributor-不是总入口redistributor-也不是辅助块">14.1 Distributor 不是“总入口”，Redistributor 也不是“辅助块”</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#142-ppisgi-不是先去-distributor-再回来">14.2 PPI/SGI 不是先去 Distributor 再回来</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#143-eoi-不一定等于完整结束中断">14.3 EOI 不一定等于完整结束中断</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#144-spi-的路由和-lpi-的落点不是同一套机制">14.4 SPI 的路由和 LPI 的落点不是同一套机制</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#145-gicv3-的-cpu-interface-重点是-system-register而不是老的-mmio-gicc">14.5 GICv3 的 CPU interface 重点是 system register，而不是老的 MMIO GICC</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#15-适合作为下一步的学习顺序">15. 适合作为下一步的学习顺序</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#16-一页总结">16. 一页总结</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#17-group-1-下不同类型中断的完整响应流程">17. Group 1 下不同类型中断的完整响应流程</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#171-场景一sgi典型是-reschedule-ipi">17.1 场景一：SGI，典型是 reschedule IPI</a></summary></p>
-
-<ul>
-<li><a href="#场景描述">场景描述</a></li>
-<li><a href="#硬件到软件的完整流程">硬件到软件的完整流程</a></li>
-<li><a href="#这里最该抓住什么">这里最该抓住什么</a></li>
-<li><a href="#再换个贴近内核的例子">再换个贴近内核的例子</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#172-场景二ppi典型是-architected-timer-中断">17.2 场景二：PPI，典型是 architected timer 中断</a></summary></p>
-
-<ul>
-<li><a href="#场景描述-1">场景描述</a></li>
-<li><a href="#完整流程">完整流程</a></li>
-<li><a href="#这里最该抓住什么-1">这里最该抓住什么</a></li>
-<li><a href="#再给一个-ppi-例子">再给一个 PPI 例子</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#173-场景三spi典型是网卡共享中断">17.3 场景三：SPI，典型是网卡共享中断</a></summary></p>
-
-<ul>
-<li><a href="#场景描述-2">场景描述</a></li>
-<li><a href="#完整流程-1">完整流程</a></li>
-<li><a href="#这里最该抓住什么-2">这里最该抓住什么</a></li>
-<li><a href="#再给一个更具体的例子">再给一个更具体的例子</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#174-场景四eppi典型是扩展本地错误上报中断">17.4 场景四：EPPI，典型是扩展本地错误上报中断</a></summary></p>
-
-<ul>
-<li><a href="#场景描述-3">场景描述</a></li>
-<li><a href="#完整流程-2">完整流程</a></li>
-<li><a href="#核心理解">核心理解</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#175-场景五lpi典型是-nvme-的-msi-x">17.5 场景五：LPI，典型是 NVMe 的 MSI-X</a></summary></p>
-
-<ul>
-<li><a href="#场景描述-4">场景描述</a></li>
-<li><a href="#完整流程-3">完整流程</a></li>
-<li><a href="#这里最该抓住什么-3">这里最该抓住什么</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#176-把五种类型放在一张图里对比">17.6 把五种类型放在一张图里对比</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#18-初始化-gicv3-控制器的最小流程">18. 初始化 GICv3 控制器的最小流程</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#181-最小流程总览">18.1 最小流程总览</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#182-每一步的最小含义">18.2 每一步的最小含义</a></summary></p>
-
-<ul>
-<li><a href="#第一步映射-gicd--gicr">第一步：映射 GICD / GICR</a></li>
-<li><a href="#第二步验证-gic-版本">第二步：验证 GIC 版本</a></li>
-<li><a href="#第三步建立-linux-中断命名空间">第三步：建立 Linux 中断命名空间</a></li>
-<li><a href="#第四步开启-system-register-interface">第四步：开启 system register interface</a></li>
-<li><a href="#第五步准备优先级和-pmr">第五步：准备优先级和 PMR</a></li>
-<li><a href="#第六步初始化-distributor">第六步：初始化 Distributor</a></li>
-<li><a href="#第七步初始化当前-cpu-的-redistributor">第七步：初始化当前 CPU 的 Redistributor</a></li>
-<li><a href="#第八步注册异常入口处理函数">第八步：注册异常入口处理函数</a></li>
-<li><a href="#第九步itslpi-可选步骤">第九步：ITS/LPI 可选步骤</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#183-最小流程的核心目标">18.3 最小流程的核心目标</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#19-linux-6181-当前版本初始化-gicv3-的详细具体流程">19. Linux 6.18.1 当前版本初始化 GICv3 的详细具体流程</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#190-gicv3-初始化之前arm64-异常向量表和-irq-根入口其实已经准备好了">19.0 GICv3 初始化之前：ARM64 异常向量表和 IRQ 根入口其实已经准备好了</a></summary></p>
-
-<ul>
-<li><a href="#1901-第一步boot-cpu-和-secondary-cpu-先把-vbar_el1-指向-vectors">19.0.1 第一步：boot CPU 和 secondary CPU 先把 <code>VBAR_EL1</code> 指向 <code>vectors</code></a></li>
-<li><a href="#1902-第二步entrys-里-irq-槽位早就定义好了">19.0.2 第二步：<code>entry.S</code> 里 IRQ 槽位早就定义好了</a></li>
-<li><a href="#1903-第三步entry-commonc-已经定义好了-irq-的-c-入口">19.0.3 第三步：<code>entry-common.c</code> 已经定义好了 IRQ 的 C 入口</a></li>
-<li><a href="#1904-第四步gicv3-初始化前handle_arch_irq-还只是默认占位符">19.0.4 第四步：GICv3 初始化前，<code>handle_arch_irq</code> 还只是默认占位符</a></li>
-<li><a href="#1905-把这段前置条件压缩成一条最值得背的链">19.0.5 把这段前置条件压缩成一条最值得背的链</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#191-入口一设备树路径-gic_of_init">19.1 入口一：设备树路径 <code>gic_of_init()</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#192-入口二acpi-路径-gic_acpi_init">19.2 入口二：ACPI 路径 <code>gic_acpi_init()</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#193-初始化主入口gic_init_bases">19.3 初始化主入口：<code>gic_init_bases()</code></a></summary></p>
-
-<ul>
-<li><a href="#第一步建立全局-gic_data">第一步：建立全局 <code>gic_data</code></a></li>
-<li><a href="#第二步读-gicd_typer识别能力">第二步：读 <code>GICD_TYPER</code>，识别能力</a></li>
-<li><a href="#第三步处理-quirk-和-gicd_typer2">第三步：处理 quirk 和 <code>GICD_TYPER2</code></a></li>
-<li><a href="#第四步创建-irq_domain">第四步：创建 <code>irq_domain</code></a></li>
-<li><a href="#第五步初始化-mbi-能力">第五步：初始化 MBI 能力</a></li>
-<li><a href="#第六步注册异常入口处理函数">第六步：注册异常入口处理函数</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#194-gic_update_rdist_properties摸清-redistributor-能力">19.4 <code>gic_update_rdist_properties()</code>：摸清 Redistributor 能力</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#195-gic_cpu_sys_reg_enable打开-cpu-system-register-接口">19.5 <code>gic_cpu_sys_reg_enable()</code>：打开 CPU system register 接口</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#196-gic_prio_init建立优先级语义基线">19.6 <code>gic_prio_init()</code>：建立优先级语义基线</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#197-gic_dist_init初始化-distributor">19.7 <code>gic_dist_init()</code>：初始化 Distributor</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#198-gic_cpu_init初始化当前-cpu-对应的-redistributor-和本地-group1-中断">19.8 <code>gic_cpu_init()</code>：初始化当前 CPU 对应的 Redistributor 和本地 Group1 中断</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#199-gic_cpu_sys_reg_init初始化-cpu-interface-运行方式">19.9 <code>gic_cpu_sys_reg_init()</code>：初始化 CPU interface 运行方式</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#1910-gic_enable_nmi_support尝试启用-pseudo-nmi-能力">19.10 <code>gic_enable_nmi_support()</code>：尝试启用 pseudo-NMI 能力</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#1911-gic_smp_init把多核启动路径接上">19.11 <code>gic_smp_init()</code>：把多核启动路径接上</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#1912-gic_cpu_pm_init接上-cpu-pm-路径">19.12 <code>gic_cpu_pm_init()</code>：接上 CPU PM 路径</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#1913-lpiits-路径its_init--its_cpu_init--its_lpi_memreserve_init">19.13 LPI/ITS 路径：<code>its_init()</code> / <code>its_cpu_init()</code> / <code>its_lpi_memreserve_init()</code></a></summary></p>
-
-<ul>
-<li><a href="#its_init-主要做什么"><code>its_init()</code> 主要做什么</a></li>
-<li><a href="#its_cpu_init-的位置含义"><code>its_cpu_init()</code> 的位置含义</a></li>
-<li><a href="#its_lpi_memreserve_init-的位置含义"><code>its_lpi_memreserve_init()</code> 的位置含义</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#1914-最后给一条当前版本最值得背的初始化主线">19.14 最后给一条“当前版本最值得背的初始化主线”</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#1915-初始化完成后第一次真正-irq-到来时这些初始化结果分别在哪里被消费">19.15 初始化完成后，第一次真正 IRQ 到来时，这些初始化结果分别在哪里被消费</a></summary></p>
-
-<ul>
-<li><a href="#19151-vbar_el1--vectors保证cpu-能接住-irq">19.15.1 <code>VBAR_EL1 = vectors</code>：保证“CPU 能接住 IRQ”</a></li>
-<li><a href="#19152-set_handle_irqgic_handle_irq把-arm64-架构-irq-根入口接到-gicv3">19.15.2 <code>set_handle_irq(gic_handle_irq)</code>：把 ARM64 架构 IRQ 根入口接到 GICv3</a></li>
-<li><a href="#19153-gic_cpu_sys_reg_enable让-gic_handle_irq-能真的访问-icc_">19.15.3 <code>gic_cpu_sys_reg_enable()</code>：让 <code>gic_handle_irq()</code> 能真的访问 <code>ICC_*</code></a></li>
-<li><a href="#19154-gic_prio_init决定运行时优先级语义到底怎么解释">19.15.4 <code>gic_prio_init()</code>：决定运行时优先级语义到底怎么解释</a></li>
-<li><a href="#19155-gic_dist_init决定全局-spi-能不能真的送到某个-cpu">19.15.5 <code>gic_dist_init()</code>：决定全局 SPI 能不能真的送到某个 CPU</a></li>
-<li><a href="#19156-gic_cpu_init--gic_cpu_sys_reg_init决定本地-cpu-interface-能不能真的取号和开中断">19.15.6 <code>gic_cpu_init()</code> / <code>gic_cpu_sys_reg_init()</code>：决定本地 CPU interface 能不能真的取号和开中断</a></li>
-<li><a href="#19157-irq_domain_create_tree决定-hwirq---virq-能不能翻译成功">19.15.7 <code>irq_domain_create_tree()</code>：决定 <code>hwirq -> virq</code> 能不能翻译成功</a></li>
-<li><a href="#19158-itslpi-初始化决定-lpi-路径是不是只停在硬件支持层面">19.15.8 ITS/LPI 初始化：决定 LPI 路径是不是只停在“硬件支持”层面</a></li>
-<li><a href="#19159-最后把初始化和第一次-irq压成一条完整闭环">19.15.9 最后把“初始化”和“第一次 IRQ”压成一条完整闭环</a></li>
-<li><a href="#191510-最后再给一张初始化函数-vs-运行时消费点速查表">19.15.10 最后再给一张“初始化函数 vs 运行时消费点”速查表</a></li>
-<li><a href="#1916-用一个具体-spi-例子把-dt---hwirq---virq---runtime-irq-一次走完">19.16 用一个具体 SPI 例子把 <code>DT -> hwirq -> virq -> runtime IRQ</code> 一次走完</a></li>
-<li><a href="#1917-再给一个完全对称的-ppi-例子为什么它不走-gicd_irouter">19.17 再给一个完全对称的 PPI 例子：为什么它不走 <code>GICD_IROUTER</code></a></li>
-<li><a href="#1918-最后补第三个对称例子lpi为什么它既不像-spi-也不像-ppi">19.18 最后补第三个对称例子：LPI，为什么它既不像 SPI 也不像 PPI</a></li>
-<li><a href="#1919-再往源码里压一层mapd--mapc--mapti-到底分别把哪三件事钉死">19.19 再往源码里压一层：<code>MAPD / MAPC / MAPTI</code> 到底分别把哪三件事钉死</a></li>
-<li><a href="#1920-再补最后一跳驱动调用-pci_alloc_irq_vectors-以后linux-是怎么走到-its-domain-的">19.20 再补最后一跳：驱动调用 <code>pci_alloc_irq_vectors()</code> 以后，Linux 是怎么走到 ITS domain 的</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#20-从异常向量表到驱动-isr-的逐行源码讲解">20. 从异常向量表到驱动 ISR 的逐行源码讲解</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#201-第一段异常向量表本体-vectors">20.1 第一段：异常向量表本体 <code>vectors</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#202-第二段kernel_ventry-1-h-64-irq-进入真正的汇编入口">20.2 第二段：<code>kernel_ventry 1, h, 64, irq</code> 进入真正的汇编入口</a></summary></p>
-
-<ul>
-<li><a href="#2021-把-kernel_ventry-宏按逐行注释直接翻成白话">20.2.1 把 <code>kernel_ventry</code> 宏按“逐行注释”直接翻成白话</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#203-第三段el1h_64_irq-是怎么生成的">20.3 第三段：<code>el1h_64_irq</code> 是怎么生成的</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#204-第四段c-层-irq-入口-el1h_64_irq_handler">20.4 第四段：C 层 IRQ 入口 <code>el1h_64_irq_handler()</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#205-第五段handle_arch_irq-指向-gicv3-的-gic_handle_irq">20.5 第五段：<code>handle_arch_irq</code> 指向 GICv3 的 <code>gic_handle_irq()</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#206-第六段真正从-gic-里取出中断号">20.6 第六段：真正从 GIC 里取出中断号</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#207-第七段ack--进入-linux-irq-core">20.7 第七段：ACK + 进入 Linux IRQ core</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#208-第八段最终怎么到驱动-isr">20.8 第八段：最终怎么到驱动 ISR</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#209-整条路径压缩成一行">20.9 整条路径压缩成一行</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#21-单独展开-entrys-里的-el1h_64_irq-irq-汇编路径">21. 单独展开 <code>entry.S</code> 里的 <code>el1h_64_irq</code> IRQ 汇编路径</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#211-第一步向量槽位实际执行的代码">21.1 第一步：向量槽位实际执行的代码</a></summary></p>
-
-<ul>
-<li><a href="#align-7"><code>.align 7</code></a></li>
-<li><a href="#sub-sp-sp-pt_regs_size"><code>sub sp, sp, #PT_REGS_SIZE</code></a></li>
-<li><a href="#add-sp-sp-x0"><code>add sp, sp, x0</code></a></li>
-<li><a href="#sub-x0-sp-x0"><code>sub x0, sp, x0</code></a></li>
-<li><a href="#tbnz-x0-thread_shift-0f"><code>tbnz x0, #THREAD_SHIFT, 0f</code></a></li>
-<li><a href="#sub-x0-sp-x0-1"><code>sub x0, sp, x0</code></a></li>
-<li><a href="#sub-sp-sp-x0"><code>sub sp, sp, x0</code></a></li>
-<li><a href="#b-el1h_64_irq"><code>b el1h_64_irq</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#212-第二步el1h_64_irq-的骨架代码">21.2 第二步：<code>el1h_64_irq</code> 的骨架代码</a></summary></p>
-
-<ul>
-<li><a href="#kernel_entry-1-64"><code>kernel_entry 1, 64</code></a></li>
-<li><a href="#mov-x0-sp"><code>mov x0, sp</code></a></li>
-<li><a href="#bl-el1h_64_irq_handler"><code>bl el1h_64_irq_handler</code></a></li>
-<li><a href="#b-ret_to_kernel"><code>b ret_to_kernel</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#213-第三步kernel_entry-164-的逐句解释">21.3 第三步：<code>kernel_entry 1,64</code> 的逐句解释</a></summary></p>
-
-<ul>
-<li>[<code>stp x0, x1, [sp, #16 * 0]</code>](#stp-x0-x1-sp-16--0)</li>
-<li>[<code>stp x2, x3, [sp, #16 * 1]</code>](#stp-x2-x3-sp-16--1)</li>
-<li>[<code>stp x4, x5, [sp, #16 * 2]</code>](#stp-x4-x5-sp-16--2)</li>
-<li>[<code>stp x6, x7, [sp, #16 * 3]</code>](#stp-x6-x7-sp-16--3)</li>
-<li>[<code>stp x8, x9, [sp, #16 * 4]</code>](#stp-x8-x9-sp-16--4)</li>
-<li>[<code>stp x10, x11, [sp, #16 * 5]</code>](#stp-x10-x11-sp-16--5)</li>
-<li>[<code>stp x12, x13, [sp, #16 * 6]</code>](#stp-x12-x13-sp-16--6)</li>
-<li>[<code>stp x14, x15, [sp, #16 * 7]</code>](#stp-x14-x15-sp-16--7)</li>
-<li>[<code>stp x16, x17, [sp, #16 * 8]</code>](#stp-x16-x17-sp-16--8)</li>
-<li>[<code>stp x18, x19, [sp, #16 * 9]</code>](#stp-x18-x19-sp-16--9)</li>
-<li>[<code>stp x20, x21, [sp, #16 * 10]</code>](#stp-x20-x21-sp-16--10)</li>
-<li>[<code>stp x22, x23, [sp, #16 * 11]</code>](#stp-x22-x23-sp-16--11)</li>
-<li>[<code>stp x24, x25, [sp, #16 * 12]</code>](#stp-x24-x25-sp-16--12)</li>
-<li>[<code>stp x26, x27, [sp, #16 * 13]</code>](#stp-x26-x27-sp-16--13)</li>
-<li>[<code>stp x28, x29, [sp, #16 * 14]</code>](#stp-x28-x29-sp-16--14)</li>
-<li><a href="#add-x21-sp-pt_regs_size"><code>add x21, sp, #PT_REGS_SIZE</code></a></li>
-<li><a href="#get_current_task-tsk"><code>get_current_task tsk</code></a></li>
-<li><a href="#mrs-x22-elr_el1"><code>mrs x22, elr_el1</code></a></li>
-<li><a href="#mrs-x23-spsr_el1"><code>mrs x23, spsr_el1</code></a></li>
-<li>[<code>stp lr, x21, [sp, #S_LR]</code>](#stp-lr-x21-sp-s_lr)</li>
-<li>[<code>stp xzr, xzr, [sp, #S_STACKFRAME]</code>](#stp-xzr-xzr-sp-s_stackframe)</li>
-<li><a href="#mov-x0-frame_meta_type_pt_regs"><code>mov x0, #FRAME_META_TYPE_PT_REGS</code></a></li>
-<li>[<code>str x0, [sp, #S_STACKFRAME_TYPE]</code>](#str-x0-sp-s_stackframe_type)</li>
-<li><a href="#add-x29-sp-s_stackframe"><code>add x29, sp, #S_STACKFRAME</code></a></li>
-<li>[<code>stp x22, x23, [sp, #S_PC]</code>](#stp-x22-x23-sp-s_pc)</li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#214-第四步如果启用了-pseudo-nmi还会额外保存-icc_pmr_el1">21.4 第四步：如果启用了 pseudo-NMI，还会额外保存 <code>ICC_PMR_EL1</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#215-第五步进入-c-层后el1h_64_irq_handler-自己其实很薄">21.5 第五步：进入 C 层后，<code>el1h_64_irq_handler()</code> 自己其实很薄</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#216-第六步从-ret_to_kernel-收尾返回">21.6 第六步：从 <code>ret_to_kernel</code> 收尾返回</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#22-irq-和-fiq-的区别">22. IRQ 和 FIQ 的区别</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#221-最直观的区别它们是两类不同异常入口">22.1 最直观的区别：它们是两类不同异常入口</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#222-在-arm64--gicv3--普通世界-linux-里最常见的是-irq">22.2 在 ARM64 + GICv3 + 普通世界 Linux 里，最常见的是 IRQ</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#223-fiq-为什么在普通-linux-里存在感很弱">22.3 FIQ 为什么在普通 Linux 里“存在感很弱”</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#224-用-group-视角理解-irq--fiq-更稳">22.4 用 Group 视角理解 IRQ / FIQ 更稳</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#225-irq-和-fiq-在入口代码上的区别">22.5 IRQ 和 FIQ 在入口代码上的区别</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#226-irq-和-fiq-在学习上的优先级">22.6 IRQ 和 FIQ 在学习上的优先级</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#227-一句话总结-irq-和-fiq-的区别">22.7 一句话总结 IRQ 和 FIQ 的区别</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#23-从-gic_handle_irq-到驱动-isr-的-linux-通用-irq-core-路径">23. 从 <code>gic_handle_irq()</code> 到驱动 ISR 的 Linux 通用 IRQ core 路径</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#231-第一跳generic_handle_domain_irqdomain-hwirq">23.1 第一跳：<code>generic_handle_domain_irq(domain, hwirq)</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#232-第二跳irq_resolve_mapping-到底在查什么">23.2 第二跳：<code>irq_resolve_mapping()</code> 到底在查什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#233-第三跳handle_irq_descdesc-开始真正分发">23.3 第三跳：<code>handle_irq_desc(desc)</code> 开始真正分发</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#234-第四跳gicv3-在-gic_irq_domain_map-里给不同类型中断选-flow-handler">23.4 第四跳：GICv3 在 <code>gic_irq_domain_map()</code> 里给不同类型中断选 flow handler</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#235-第五跳handle_fasteoi_irq-做了什么">23.5 第五跳：<code>handle_fasteoi_irq()</code> 做了什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#236-第六跳handle_percpu_devid_irq-做了什么">23.6 第六跳：<code>handle_percpu_devid_irq()</code> 做了什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#237-第七跳handle_irq_event--handle_irq_event_percpu-才真正调用驱动-isr">23.7 第七跳：<code>handle_irq_event()</code> / <code>handle_irq_event_percpu()</code> 才真正调用驱动 ISR</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#238-把这条后半段路径压成一条主线">23.8 把这条后半段路径压成一条主线</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#239-一张最有用的对照表">23.9 一张最有用的对照表</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2310-你现在应该怎样理解驱动-isr">23.10 你现在应该怎样理解“驱动 ISR”</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#24-从-request_irq-到-irqaction-再到-action-handler-的驱动注册视角">24. 从 <code>request_irq()</code> 到 <code>irqaction</code> 再到 <code>action->handler()</code> 的驱动注册视角</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#241-request_irq-本质上是在注册一个-irqaction">24.1 <code>request_irq()</code> 本质上是在注册一个 <code>irqaction</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#242-request_threaded_irq-的核心代码到底做了什么">24.2 <code>request_threaded_irq()</code> 的核心代码到底做了什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#243-request_irq-和-request_threaded_irq-的关系">24.3 <code>request_irq()</code> 和 <code>request_threaded_irq()</code> 的关系</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#244-<strong>setup_irq-是整个注册路径的核心">24.4 <code></strong>setup_irq()</code> 是整个注册路径的核心</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#245-<strong>setup_irq-里最值得抓住的几个关键动作">24.5 <code></strong>setup_irq()</code> 里最值得抓住的几个关键动作</a></summary></p>
-
-<ul>
-<li><a href="#动作一把-new-irq--irq">动作一：把 <code>new->irq = irq</code></a></li>
-<li><a href="#动作二如果提供了-thread_fn就准备线程化处理">动作二：如果提供了 <code>thread_fn</code>，就准备线程化处理</a></li>
-<li><a href="#动作三首次安装-action-时请求-irqchip-资源">动作三：首次安装 action 时请求 irqchip 资源</a></li>
-<li><a href="#动作四共享中断检查">动作四：共享中断检查</a></li>
-<li><a href="#动作五第一次注册时激活并可能启动中断">动作五：第一次注册时激活并可能启动中断</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#246-最关键的一步irqaction-最终挂在哪里">24.6 最关键的一步：<code>irqaction</code> 最终挂在哪里</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#247-request_percpu_irq-和-request_irq-有什么不同">24.7 <code>request_percpu_irq()</code> 和 <code>request_irq()</code> 有什么不同</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#248-这一节最该背下来的主链">24.8 这一节最该背下来的主链</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#25-具体场景一平台设备-spi-从初始化到-isr-返回完整串一次">25. 具体场景一：平台设备 SPI 从初始化到 ISR 返回完整串一次</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#251-设备-probe-时怎么拿到-irq">25.1 设备 probe 时怎么拿到 IRQ</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#252-驱动怎么注册-isr">25.2 驱动怎么注册 ISR</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#253-这条-spi-在-gicv3-那边是什么样子">25.3 这条 SPI 在 GICv3 那边是什么样子</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#254-中断真正发生时完整路径怎么走">25.4 中断真正发生时，完整路径怎么走</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#255-isr-返回之后怎么回去">25.5 ISR 返回之后怎么回去</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#256-这一类场景最该记住什么">25.6 这一类场景最该记住什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#26-具体场景二architected-timer-ppi-从初始化到-isr-返回完整串一次">26. 具体场景二：architected timer PPI 从初始化到 ISR 返回完整串一次</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#261-arch-timer-初始化时怎么注册中断">26.1 arch timer 初始化时怎么注册中断</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#262-注册时-irq-core-帮它做了什么">26.2 注册时 IRQ core 帮它做了什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#263-arch-timer-的-isr-本体是什么">26.3 arch timer 的 ISR 本体是什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#264-一次-ppi-真正到来时完整路径怎么走">26.4 一次 PPI 真正到来时，完整路径怎么走</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#265-isr-返回之后怎么回去">26.5 ISR 返回之后怎么回去</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#266-把-spi-和-ppi-两个具体场景放一起对比">26.6 把 SPI 和 PPI 两个具体场景放一起对比</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#267-这两节最该背下来的结论">26.7 这两节最该背下来的结论</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#27-设备是怎么拿到-linux-irq-号的of_irq_get--platform_get_irq-路径">27. 设备是怎么拿到 Linux irq 号的：<code>of_irq_get()</code> / <code>platform_get_irq()</code> 路径</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#271-最常见的驱动视角只有一句话">27.1 最常见的驱动视角只有一句话</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#272-platform_get_irq-先干了什么">27.2 <code>platform_get_irq()</code> 先干了什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#273-of_irq_get-本质上在做什么">27.3 <code>of_irq_get()</code> 本质上在做什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#274-更早一层irq_of_parse_and_map-是同一类事情的老朋友">27.4 更早一层：<code>irq_of_parse_and_map()</code> 是同一类事情的老朋友</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#275-把设备树gic-irq_domain驱动拿到-irq-号串起来">27.5 把设备树、GIC irq_domain、驱动拿到 irq 号串起来</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#276-这一节最该记住什么">27.6 这一节最该记住什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#28-一个真实网卡驱动场景request_irq---isr---napi-完整串一次">28. 一个真实网卡驱动场景：<code>request_irq -> ISR -> NAPI</code> 完整串一次</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#281-驱动-open初始化时怎么申请-irq">28.1 驱动 open/初始化时怎么申请 IRQ</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#282-isr-本体先做了什么">28.2 ISR 本体先做了什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#283-napi-是怎么被拉起来的">28.3 NAPI 是怎么被拉起来的</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#284-把整条真实网卡路径串起来">28.4 把整条真实网卡路径串起来</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#285-这条路径里最该抓住的分层">28.5 这条路径里最该抓住的分层</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#286-一句话总结这个真实场景">28.6 一句话总结这个真实场景</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#29-sym_code_startvectors-这些异常向量表具体放在代码段哪里">29. <code>SYM_CODE_START(vectors)</code> 这些异常向量表具体放在代码段哪里</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#291-第一层在源码里它被放进-entrytext">29.1 第一层：在源码里它被放进 <code>.entry.text</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#292-第二层entrytext-最终被链接进主-text">29.2 第二层：<code>.entry.text</code> 最终被链接进主 <code>.text</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#293-第三层谁把它装进-vbar_el1">29.3 第三层：谁把它装进 <code>VBAR_EL1</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#294-每个-cpu-平时用的向量表指针从哪来">29.4 每个 CPU 平时用的向量表指针从哪来</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#295-在你当前这份-vmlinux-里它的真实地址是多少">29.5 在你当前这份 <code>vmlinux</code> 里，它的真实地址是多少</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2951-你想要的具体偏移位置可以分成三种看法">29.5.1 你想要的“具体偏移位置”可以分成三种看法</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2952-vectors-自己这张表内部的槽位偏移">29.5.2 <code>vectors</code> 自己这张表内部的槽位偏移</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2953-再把-el1h-irq-这条和后面的-handler-符号分清">29.5.3 再把 <code>EL1h irq</code> 这条和后面的 handler 符号分清</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2954-把-el1h-irq-slot---el1h_64_irq---el1h_64_irq_handler-的真实地址彻底对上">29.5.4 把 <code>EL1h irq slot -> el1h_64_irq -> el1h_64_irq_handler</code> 的真实地址彻底对上</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2955-el1h-irq-这个-slot-里每条指令的实际地址">29.5.5 <code>EL1h irq</code> 这个 slot 里每条指令的实际地址</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2956-再往下一跳汇编-handler-到-c-handler-的距离">29.5.6 再往下一跳：汇编 handler 到 C handler 的距离</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2957-sym_code_startvectors-这个宏本身到底做了什么">29.5.7 <code>SYM_CODE_START(vectors)</code> 这个宏本身到底做了什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2958-再往下展开el1h_64_irq-这个汇编-handler-自己的精确地址布局">29.5.8 再往下展开：<code>el1h_64_irq</code> 这个汇编 handler 自己的精确地址布局</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2959-el1h_64_irq-逐条指令地址图">29.5.9 <code>el1h_64_irq</code> 逐条指令地址图</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#29510-从-el1h_64_irq-到-c-handler-的精确跳转点">29.5.10 从 <code>el1h_64_irq</code> 到 C handler 的精确跳转点</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#29511-el1h_64_irq_handler-在-c-里到底又做了什么">29.5.11 <code>el1h_64_irq_handler()</code> 在 C 里到底又做了什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#29512-handle_arch_irq-不是写死的它是启动时绑定上的根-irq-入口">29.5.12 <code>handle_arch_irq</code> 不是写死的，它是启动时绑定上的根 IRQ 入口</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#29513-do_interrupt_handler-这一层到底做了什么">29.5.13 <code>do_interrupt_handler()</code> 这一层到底做了什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#29514-gic_handle_irq-的核心动作就是读-iar再进-irq_domain">29.5.14 <code>gic_handle_irq()</code> 的核心动作就是：读 IAR，再进 irq_domain</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#29515-generic_handle_domain_irq-怎么把-hwirq-变成-irq_desc">29.5.15 <code>generic_handle_domain_irq()</code> 怎么把 hwirq 变成 <code>irq_desc</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#29516-irq_desc-里具体走哪种-flow-handler是-gic-域映射时就决定好的">29.5.16 <code>irq_desc</code> 里具体走哪种 flow handler，是 GIC 域映射时就决定好的</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#29517-以最常见的-spi-为例最后怎么落到-action-handler">29.5.17 以最常见的 SPI 为例，最后怎么落到 <code>action->handler()</code></a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#29518-把-el1h-irq-这条完整链第一次彻底串成一行">29.5.18 把 <code>EL1h irq</code> 这条完整链第一次彻底串成一行</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#296-你可以怎么理解-vectors-和-tramp_vectors-的关系">29.6 你可以怎么理解 <code>vectors</code> 和 <code>tramp_vectors</code> 的关系</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#297-这一节最该背下来的结论">29.7 这一节最该背下来的结论</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 先建立全局图：GICv3 到底解决什么问题</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. GICv3 的核心硬件组件</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2.1 Distributor</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2.2 Redistributor</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2.3 CPU Interface</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2.4 ITS</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3. GICv3 的中断类型和 INTID 空间</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 3.1 具体举例：哪些东西通常会是 SGI / PPI / EPPI / LPI</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#sgi-的典型例子">SGI 的典型例子</a></li>
+          <li><a href="#ppi-的典型例子">PPI 的典型例子</a></li>
+          <li><a href="#eppi-的典型例子">EPPI 的典型例子</a></li>
+          <li><a href="#lpi-的典型例子">LPI 的典型例子</a></li>
+          <li><a href="#一张最实用的对照表">一张最实用的对照表</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. GICD、GICR 和 ICC_* 三层寄存器接口怎么理解</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.0 先记前缀：它决定“这是谁的寄存器”</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.0.1 再记动作词：它决定“这个寄存器到底干什么”</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.0.1.1 名字里的数字和后缀是什么意思</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#末尾的-el1">末尾的 EL1</a></li>
+          <li><a href="#中间的-1">中间的 1</a></li>
+          <li><a href="#末尾的-ne">末尾的 nE</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.0.1.2 现场拆 6 个最常见寄存器</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#例子-1-gicd_isenabler">例子 1: GICD_ISENABLER</a></li>
+          <li><a href="#例子-2-gicd_irouter">例子 2: GICD_IROUTER</a></li>
+          <li><a href="#例子-3-gicr_waker">例子 3: GICR_WAKER</a></li>
+          <li><a href="#例子-4-icc_iar1_el1">例子 4: ICC_IAR1_EL1</a></li>
+          <li><a href="#例子-5-icc_eoir1_el1">例子 5: ICC_EOIR1_EL1</a></li>
+          <li><a href="#例子-6-gicr_propbaser">例子 6: GICR_PROPBASER</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.0.1.3 再加一层场景记忆，不要孤立背寄存器</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#场景一打开一条共享中断">场景一：打开一条共享中断</a></li>
+          <li><a href="#场景二cpu-进入中断处理">场景二：CPU 进入中断处理</a></li>
+          <li><a href="#场景三lpimsi-初始化">场景三：LPI/MSI 初始化</a></li>
+          <li><a href="#场景四本地-redistributor-上下电">场景四：本地 Redistributor 上下电</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.0.2 常见寄存器怎么从名字直接反推作用</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.0.3 最容易背混的几个寄存器，怎么区分</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#isenabler-和-icenabler">ISENABLER 和 ICENABLER</a></li>
+          <li><a href="#ispendr-和-icpendr">ISPENDR 和 ICPENDR</a></li>
+          <li><a href="#isactiver-和-icactiver">ISACTIVER 和 ICACTIVER</a></li>
+          <li><a href="#iareoirdir">IAR、EOIR、DIR</a></li>
+          <li><a href="#propbaser-和-pendbaser">PROPBASER 和 PENDBASER</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.0.4 一个最好用的记忆框架</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.1 GICD 寄存器是全局共享中断的控制面</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.2 GICR 寄存器是每 CPU 本地中断和 LPI 的控制面</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4.3 ICC_* 是 CPU 和 GIC 之间的握手面</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. 一条中断在硬件里是怎么流动的</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5.1 共享 SPI 的路径</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5.2 本地 PPI/SGI 的路径</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5.3 MSI/LPI 的路径</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. 中断状态机必须吃透</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. EOI mode 0 和 EOI mode 1 的差别</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7.1 EOI mode 0</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7.2 EOI mode 1</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. 优先级、屏蔽和 Group</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.1 优先级不是数字大就更高</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.2 ICC_PMR_EL1 控制当前 CPU 愿意接收什么优先级</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.2.1 为什么它像一道门槛</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.2.2 一个最直观的例子</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.2.3 为什么它和 ICC_RPR_EL1 总是一起提</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.2.4 放到 Linux 运行时路径里看</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.2.5 再给一个更贴近内核的例子</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.2.6 容易混淆的点</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#icc_pmr_el1-不是-enable-位">ICC_PMR_EL1 不是 enable 位</a></li>
+          <li><a href="#icc_pmr_el1-不是在改中断本身的优先级">ICC_PMR_EL1 不是在改中断本身的优先级</a></li>
+          <li><a href="#icc_pmr_el1-和-daifif-不是一回事">ICC_PMR_EL1 和 DAIF.IF 不是一回事</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.2.7 把 PMR / RPR 放进真实代码路径里看</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#第一gic_handle_irq-不是一上来就只管读-iar">第一，gic_handle_irq() 不是一上来就只管读 IAR</a></li>
+          <li><a href="#第二rpr-被用来判断当前这条是不是-pseudo-nmi-优先级">第二，RPR 被用来判断“当前这条是不是 pseudo-NMI 优先级”</a></li>
+          <li><a href="#第三pmr-在-irq-处理中被动态调整">第三，PMR 在 IRQ 处理中被动态调整</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.2.8 irqsoff 路径为什么还要额外折腾 PMR</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3 Group 0 和 Group 1</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.1 先建立最基础的理解</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.2 为什么 Linux 常见的是 ICC_IAR1_EL1</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.3 一个很直观的例子</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.4 那 Group 0 可以怎样理解</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.5 为什么 GICD_CTLR.DS 和 SCR_EL3.FIQ 会扯进来</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.6 一个贴近代码的例子</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.7 对学习 Linux ARM64 GICv3 来说，到底该抓什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.8 容易混淆的点</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#group-0--group-1-不是高优先级组--低优先级组">Group 0 / Group 1 不是“高优先级组 / 低优先级组”</a></li>
+          <li><a href="#group-0--group-1-也不是外设中断--软件中断的分类">Group 0 / Group 1 也不是“外设中断 / 软件中断”的分类</a></li>
+          <li><a href="#普通世界-linux-看到的世界不一定等于硬件的完整世界">普通世界 Linux 看到的世界不一定等于硬件的完整世界</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.9 把 Group 1 放进 Linux 初始化和异常入口里看</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#初始化阶段">初始化阶段</a></li>
+          <li><a href="#运行时阶段">运行时阶段</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.10 一条最值得记的“Group 1 主路径”</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.11 Group 0 在 Linux 里为什么显得“存在感弱”</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8.3.12 一个贴近调试的例子</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. Affinity 和路由</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. Redistributor 的电源管理也属于硬件基础</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 11. ESPI 和 EPPI 为什么值得单独记</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 12. LPI 是 GICv3 进入现代 MSI 世界的关键</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 13. 站在 Linux 角度，硬件知识应该怎样映射到源码</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 14. 几个最容易混淆的点</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 14.1 Distributor 不是“总入口”，Redistributor 也不是“辅助块”</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 14.2 PPI/SGI 不是先去 Distributor 再回来</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 14.3 EOI 不一定等于完整结束中断</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 14.4 SPI 的路由和 LPI 的落点不是同一套机制</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 14.5 GICv3 的 CPU interface 重点是 system register，而不是老的 MMIO GICC</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 15. 适合作为下一步的学习顺序</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 16. 一页总结</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 17. Group 1 下不同类型中断的完整响应流程</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 17.1 场景一：SGI，典型是 reschedule IPI</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#场景描述">场景描述</a></li>
+          <li><a href="#硬件到软件的完整流程">硬件到软件的完整流程</a></li>
+          <li><a href="#这里最该抓住什么">这里最该抓住什么</a></li>
+          <li><a href="#再换个贴近内核的例子">再换个贴近内核的例子</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 17.2 场景二：PPI，典型是 architected timer 中断</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#场景描述-1">场景描述</a></li>
+          <li><a href="#完整流程">完整流程</a></li>
+          <li><a href="#这里最该抓住什么-1">这里最该抓住什么</a></li>
+          <li><a href="#再给一个-ppi-例子">再给一个 PPI 例子</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 17.3 场景三：SPI，典型是网卡共享中断</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#场景描述-2">场景描述</a></li>
+          <li><a href="#完整流程-1">完整流程</a></li>
+          <li><a href="#这里最该抓住什么-2">这里最该抓住什么</a></li>
+          <li><a href="#再给一个更具体的例子">再给一个更具体的例子</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 17.4 场景四：EPPI，典型是扩展本地错误上报中断</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#场景描述-3">场景描述</a></li>
+          <li><a href="#完整流程-2">完整流程</a></li>
+          <li><a href="#核心理解">核心理解</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 17.5 场景五：LPI，典型是 NVMe 的 MSI-X</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#场景描述-4">场景描述</a></li>
+          <li><a href="#完整流程-3">完整流程</a></li>
+          <li><a href="#这里最该抓住什么-3">这里最该抓住什么</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 17.6 把五种类型放在一张图里对比</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 18. 初始化 GICv3 控制器的最小流程</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 18.1 最小流程总览</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 18.2 每一步的最小含义</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#第一步映射-gicd--gicr">第一步：映射 GICD / GICR</a></li>
+          <li><a href="#第二步验证-gic-版本">第二步：验证 GIC 版本</a></li>
+          <li><a href="#第三步建立-linux-中断命名空间">第三步：建立 Linux 中断命名空间</a></li>
+          <li><a href="#第四步开启-system-register-interface">第四步：开启 system register interface</a></li>
+          <li><a href="#第五步准备优先级和-pmr">第五步：准备优先级和 PMR</a></li>
+          <li><a href="#第六步初始化-distributor">第六步：初始化 Distributor</a></li>
+          <li><a href="#第七步初始化当前-cpu-的-redistributor">第七步：初始化当前 CPU 的 Redistributor</a></li>
+          <li><a href="#第八步注册异常入口处理函数">第八步：注册异常入口处理函数</a></li>
+          <li><a href="#第九步itslpi-可选步骤">第九步：ITS/LPI 可选步骤</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 18.3 最小流程的核心目标</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19. Linux 6.18.1 当前版本初始化 GICv3 的详细具体流程</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.0 GICv3 初始化之前：ARM64 异常向量表和 IRQ 根入口其实已经准备好了</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#1901-第一步boot-cpu-和-secondary-cpu-先把-vbar_el1-指向-vectors">19.0.1 第一步：boot CPU 和 secondary CPU 先把 VBAR_EL1 指向 vectors</a></li>
+          <li><a href="#1902-第二步entrys-里-irq-槽位早就定义好了">19.0.2 第二步：entry.S 里 IRQ 槽位早就定义好了</a></li>
+          <li><a href="#1903-第三步entry-commonc-已经定义好了-irq-的-c-入口">19.0.3 第三步：entry-common.c 已经定义好了 IRQ 的 C 入口</a></li>
+          <li><a href="#1904-第四步gicv3-初始化前handle_arch_irq-还只是默认占位符">19.0.4 第四步：GICv3 初始化前，handle_arch_irq 还只是默认占位符</a></li>
+          <li><a href="#1905-把这段前置条件压缩成一条最值得背的链">19.0.5 把这段前置条件压缩成一条最值得背的链</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.1 入口一：设备树路径 gic_of_init()</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.2 入口二：ACPI 路径 gic_acpi_init()</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.3 初始化主入口：gic_init_bases()</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#第一步建立全局-gic_data">第一步：建立全局 gic_data</a></li>
+          <li><a href="#第二步读-gicd_typer识别能力">第二步：读 GICD_TYPER，识别能力</a></li>
+          <li><a href="#第三步处理-quirk-和-gicd_typer2">第三步：处理 quirk 和 GICD_TYPER2</a></li>
+          <li><a href="#第四步创建-irq_domain">第四步：创建 irq_domain</a></li>
+          <li><a href="#第五步初始化-mbi-能力">第五步：初始化 MBI 能力</a></li>
+          <li><a href="#第六步注册异常入口处理函数">第六步：注册异常入口处理函数</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.4 gic_update_rdist_properties()：摸清 Redistributor 能力</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.5 gic_cpu_sys_reg_enable()：打开 CPU system register 接口</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.6 gic_prio_init()：建立优先级语义基线</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.7 gic_dist_init()：初始化 Distributor</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.8 gic_cpu_init()：初始化当前 CPU 对应的 Redistributor 和本地 Group1 中断</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.9 gic_cpu_sys_reg_init()：初始化 CPU interface 运行方式</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.10 gic_enable_nmi_support()：尝试启用 pseudo-NMI 能力</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.11 gic_smp_init()：把多核启动路径接上</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.12 gic_cpu_pm_init()：接上 CPU PM 路径</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.13 LPI/ITS 路径：its_init() / its_cpu_init() / its_lpi_memreserve_init()</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#its_init-主要做什么">its_init() 主要做什么</a></li>
+          <li><a href="#its_cpu_init-的位置含义">its_cpu_init() 的位置含义</a></li>
+          <li><a href="#its_lpi_memreserve_init-的位置含义">its_lpi_memreserve_init() 的位置含义</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.14 最后给一条“当前版本最值得背的初始化主线”</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 19.15 初始化完成后，第一次真正 IRQ 到来时，这些初始化结果分别在哪里被消费</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#19151-vbar_el1--vectors保证cpu-能接住-irq">19.15.1 VBAR_EL1 = vectors：保证“CPU 能接住 IRQ”</a></li>
+          <li><a href="#19152-set_handle_irqgic_handle_irq把-arm64-架构-irq-根入口接到-gicv3">19.15.2 set_handle_irq(gic_handle_irq)：把 ARM64 架构 IRQ 根入口接到 GICv3</a></li>
+          <li><a href="#19153-gic_cpu_sys_reg_enable让-gic_handle_irq-能真的访问-icc_">19.15.3 gic_cpu_sys_reg_enable()：让 gic_handle_irq() 能真的访问 ICC_*</a></li>
+          <li><a href="#19154-gic_prio_init决定运行时优先级语义到底怎么解释">19.15.4 gic_prio_init()：决定运行时优先级语义到底怎么解释</a></li>
+          <li><a href="#19155-gic_dist_init决定全局-spi-能不能真的送到某个-cpu">19.15.5 gic_dist_init()：决定全局 SPI 能不能真的送到某个 CPU</a></li>
+          <li><a href="#19156-gic_cpu_init--gic_cpu_sys_reg_init决定本地-cpu-interface-能不能真的取号和开中断">19.15.6 gic_cpu_init() / gic_cpu_sys_reg_init()：决定本地 CPU interface 能不能真的取号和开中断</a></li>
+          <li><a href="#19157-irq_domain_create_tree决定-hwirq---virq-能不能翻译成功">19.15.7 irq_domain_create_tree()：决定 hwirq -> virq 能不能翻译成功</a></li>
+          <li><a href="#19158-itslpi-初始化决定-lpi-路径是不是只停在硬件支持层面">19.15.8 ITS/LPI 初始化：决定 LPI 路径是不是只停在“硬件支持”层面</a></li>
+          <li><a href="#19159-最后把初始化和第一次-irq压成一条完整闭环">19.15.9 最后把“初始化”和“第一次 IRQ”压成一条完整闭环</a></li>
+          <li><a href="#191510-最后再给一张初始化函数-vs-运行时消费点速查表">19.15.10 最后再给一张“初始化函数 vs 运行时消费点”速查表</a></li>
+          <li><a href="#1916-用一个具体-spi-例子把-dt---hwirq---virq---runtime-irq-一次走完">19.16 用一个具体 SPI 例子把 DT -> hwirq -> virq -> runtime IRQ 一次走完</a></li>
+          <li><a href="#1917-再给一个完全对称的-ppi-例子为什么它不走-gicd_irouter">19.17 再给一个完全对称的 PPI 例子：为什么它不走 GICD_IROUTER</a></li>
+          <li><a href="#1918-最后补第三个对称例子lpi为什么它既不像-spi-也不像-ppi">19.18 最后补第三个对称例子：LPI，为什么它既不像 SPI 也不像 PPI</a></li>
+          <li><a href="#1919-再往源码里压一层mapd--mapc--mapti-到底分别把哪三件事钉死">19.19 再往源码里压一层：MAPD / MAPC / MAPTI 到底分别把哪三件事钉死</a></li>
+          <li><a href="#1920-再补最后一跳驱动调用-pci_alloc_irq_vectors-以后linux-是怎么走到-its-domain-的">19.20 再补最后一跳：驱动调用 pci_alloc_irq_vectors() 以后，Linux 是怎么走到 ITS domain 的</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20. 从异常向量表到驱动 ISR 的逐行源码讲解</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20.1 第一段：异常向量表本体 vectors</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20.2 第二段：kernel_ventry 1, h, 64, irq 进入真正的汇编入口</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#2021-把-kernel_ventry-宏按逐行注释直接翻成白话">20.2.1 把 kernel_ventry 宏按“逐行注释”直接翻成白话</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20.3 第三段：el1h_64_irq 是怎么生成的</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20.4 第四段：C 层 IRQ 入口 el1h_64_irq_handler()</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20.5 第五段：handle_arch_irq 指向 GICv3 的 gic_handle_irq()</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20.6 第六段：真正从 GIC 里取出中断号</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20.7 第七段：ACK + 进入 Linux IRQ core</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20.8 第八段：最终怎么到驱动 ISR</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 20.9 整条路径压缩成一行</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 21. 单独展开 entry.S 里的 el1h_64_irq IRQ 汇编路径</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 21.1 第一步：向量槽位实际执行的代码</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#align-7">.align 7</a></li>
+          <li><a href="#sub-sp-sp-pt_regs_size">sub sp, sp, #PT_REGS_SIZE</a></li>
+          <li><a href="#add-sp-sp-x0">add sp, sp, x0</a></li>
+          <li><a href="#sub-x0-sp-x0">sub x0, sp, x0</a></li>
+          <li><a href="#tbnz-x0-thread_shift-0f">tbnz x0, #THREAD_SHIFT, 0f</a></li>
+          <li><a href="#sub-x0-sp-x0-1">sub x0, sp, x0</a></li>
+          <li><a href="#sub-sp-sp-x0">sub sp, sp, x0</a></li>
+          <li><a href="#b-el1h_64_irq">b el1h_64_irq</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 21.2 第二步：el1h_64_irq 的骨架代码</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#kernel_entry-1-64">kernel_entry 1, 64</a></li>
+          <li><a href="#mov-x0-sp">mov x0, sp</a></li>
+          <li><a href="#bl-el1h_64_irq_handler">bl el1h_64_irq_handler</a></li>
+          <li><a href="#b-ret_to_kernel">b ret_to_kernel</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 21.3 第三步：kernel_entry 1,64 的逐句解释</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#add-x21-sp-pt_regs_size">add x21, sp, #PT_REGS_SIZE</a></li>
+          <li><a href="#get_current_task-tsk">get_current_task tsk</a></li>
+          <li><a href="#mrs-x22-elr_el1">mrs x22, elr_el1</a></li>
+          <li><a href="#mrs-x23-spsr_el1">mrs x23, spsr_el1</a></li>
+          <li><a href="#mov-x0-frame_meta_type_pt_regs">mov x0, #FRAME_META_TYPE_PT_REGS</a></li>
+          <li><a href="#add-x29-sp-s_stackframe">add x29, sp, #S_STACKFRAME</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 21.4 第四步：如果启用了 pseudo-NMI，还会额外保存 ICC_PMR_EL1</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 21.5 第五步：进入 C 层后，el1h_64_irq_handler() 自己其实很薄</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 21.6 第六步：从 ret_to_kernel 收尾返回</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 22. IRQ 和 FIQ 的区别</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 22.1 最直观的区别：它们是两类不同异常入口</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 22.2 在 ARM64 + GICv3 + 普通世界 Linux 里，最常见的是 IRQ</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 22.3 FIQ 为什么在普通 Linux 里“存在感很弱”</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 22.4 用 Group 视角理解 IRQ / FIQ 更稳</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 22.5 IRQ 和 FIQ 在入口代码上的区别</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 22.6 IRQ 和 FIQ 在学习上的优先级</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 22.7 一句话总结 IRQ 和 FIQ 的区别</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23. 从 gic_handle_irq() 到驱动 ISR 的 Linux 通用 IRQ core 路径</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23.1 第一跳：generic_handle_domain_irq(domain, hwirq)</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23.2 第二跳：irq_resolve_mapping() 到底在查什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23.3 第三跳：handle_irq_desc(desc) 开始真正分发</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23.4 第四跳：GICv3 在 gic_irq_domain_map() 里给不同类型中断选 flow handler</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23.5 第五跳：handle_fasteoi_irq() 做了什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23.6 第六跳：handle_percpu_devid_irq() 做了什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23.7 第七跳：handle_irq_event() / handle_irq_event_percpu() 才真正调用驱动 ISR</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23.8 把这条后半段路径压成一条主线</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23.9 一张最有用的对照表</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 23.10 你现在应该怎样理解“驱动 ISR”</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 24. 从 request_irq() 到 irqaction 再到 action->handler() 的驱动注册视角</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 24.1 request_irq() 本质上是在注册一个 irqaction</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 24.2 request_threaded_irq() 的核心代码到底做了什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 24.3 request_irq() 和 request_threaded_irq() 的关系</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 24.4 </strong>setup_irq() 是整个注册路径的核心</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 24.5 </strong>setup_irq() 里最值得抓住的几个关键动作</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#动作一把-new-irq--irq">动作一：把 new->irq = irq</a></li>
+          <li><a href="#动作二如果提供了-thread_fn就准备线程化处理">动作二：如果提供了 thread_fn，就准备线程化处理</a></li>
+          <li><a href="#动作三首次安装-action-时请求-irqchip-资源">动作三：首次安装 action 时请求 irqchip 资源</a></li>
+          <li><a href="#动作四共享中断检查">动作四：共享中断检查</a></li>
+          <li><a href="#动作五第一次注册时激活并可能启动中断">动作五：第一次注册时激活并可能启动中断</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 24.6 最关键的一步：irqaction 最终挂在哪里</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 24.7 request_percpu_irq() 和 request_irq() 有什么不同</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 24.8 这一节最该背下来的主链</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 25. 具体场景一：平台设备 SPI 从初始化到 ISR 返回完整串一次</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 25.1 设备 probe 时怎么拿到 IRQ</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 25.2 驱动怎么注册 ISR</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 25.3 这条 SPI 在 GICv3 那边是什么样子</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 25.4 中断真正发生时，完整路径怎么走</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 25.5 ISR 返回之后怎么回去</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 25.6 这一类场景最该记住什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 26. 具体场景二：architected timer PPI 从初始化到 ISR 返回完整串一次</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 26.1 arch timer 初始化时怎么注册中断</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 26.2 注册时 IRQ core 帮它做了什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 26.3 arch timer 的 ISR 本体是什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 26.4 一次 PPI 真正到来时，完整路径怎么走</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 26.5 ISR 返回之后怎么回去</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 26.6 把 SPI 和 PPI 两个具体场景放一起对比</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 26.7 这两节最该背下来的结论</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 27. 设备是怎么拿到 Linux irq 号的：of_irq_get() / platform_get_irq() 路径</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 27.1 最常见的驱动视角只有一句话</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 27.2 platform_get_irq() 先干了什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 27.3 of_irq_get() 本质上在做什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 27.4 更早一层：irq_of_parse_and_map() 是同一类事情的老朋友</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 27.5 把设备树、GIC irq_domain、驱动拿到 irq 号串起来</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 27.6 这一节最该记住什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 28. 一个真实网卡驱动场景：request_irq -> ISR -> NAPI 完整串一次</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 28.1 驱动 open/初始化时怎么申请 IRQ</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 28.2 ISR 本体先做了什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 28.3 NAPI 是怎么被拉起来的</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 28.4 把整条真实网卡路径串起来</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 28.5 这条路径里最该抓住的分层</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 28.6 一句话总结这个真实场景</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29. SYM_CODE_START(vectors) 这些异常向量表具体放在代码段哪里</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.1 第一层：在源码里它被放进 .entry.text</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.2 第二层：.entry.text 最终被链接进主 .text</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.3 第三层：谁把它装进 VBAR_EL1</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.4 每个 CPU 平时用的向量表指针从哪来</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5 在你当前这份 vmlinux 里，它的真实地址是多少</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.1 你想要的“具体偏移位置”可以分成三种看法</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.2 vectors 自己这张表内部的槽位偏移</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.3 再把 EL1h irq 这条和后面的 handler 符号分清</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.4 把 EL1h irq slot -> el1h_64_irq -> el1h_64_irq_handler 的真实地址彻底对上</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.5 EL1h irq 这个 slot 里每条指令的实际地址</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.6 再往下一跳：汇编 handler 到 C handler 的距离</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.7 SYM_CODE_START(vectors) 这个宏本身到底做了什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.8 再往下展开：el1h_64_irq 这个汇编 handler 自己的精确地址布局</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.9 el1h_64_irq 逐条指令地址图</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.10 从 el1h_64_irq 到 C handler 的精确跳转点</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.11 el1h_64_irq_handler() 在 C 里到底又做了什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.12 handle_arch_irq 不是写死的，它是启动时绑定上的根 IRQ 入口</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.13 do_interrupt_handler() 这一层到底做了什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.14 gic_handle_irq() 的核心动作就是：读 IAR，再进 irq_domain</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.15 generic_handle_domain_irq() 怎么把 hwirq 变成 irq_desc</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.16 irq_desc 里具体走哪种 flow handler，是 GIC 域映射时就决定好的</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.17 以最常见的 SPI 为例，最后怎么落到 action->handler()</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.5.18 把 EL1h irq 这条完整链第一次彻底串成一行</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.6 你可以怎么理解 vectors 和 tramp_vectors 的关系</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 29.7 这一节最该背下来的结论</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -11717,5 +11464,130 @@ handle_irq_event_percpu = ffff800080144a8c</code></pre>
 head.S 在 __primary_switched() 里把 vectors 地址写入 VBAR_EL1
 
 当前这份 vmlinux 里，vectors 的实际链接地址是 ffff800080010800</code></pre>
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
+
 </body>
 </html>

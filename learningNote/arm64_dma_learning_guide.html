@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -210,154 +376,132 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#第一部分dma-硬件基础">第一部分：DMA 硬件基础</a></summary></p>
-
-<ul>
-<li><a href="#11-dma-概念与动机">1.1 DMA 概念与动机</a></li>
-<li><a href="#12-armv8-dma-硬件架构">1.2 ARMv8 DMA 硬件架构</a></li>
-<li><a href="#13-dma-传输模式">1.3 DMA 传输模式</a></li>
-<li><a href="#14-mmuiommusmmu区别与联系">1.4 MMU、IOMMU、SMMU：区别与联系</a></li>
-<li><a href="#15-arm-smmu-system-mmu-详解">1.5 ARM SMMU (System MMU) 详解</a></li>
-<li><a href="#16-cache-一致性与-dma">1.6 Cache 一致性与 DMA</a></li>
-<li><a href="#17-dma-地址空间与总线拓扑">1.7 DMA 地址空间与总线拓扑</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第二部分内核-dma-软件框架">第二部分：内核 DMA 软件框架</a></summary></p>
-
-<ul>
-<li><a href="#21-dma-mapping-api流式映射">2.1 DMA Mapping API（流式映射）</a></li>
-<li><a href="#22-dma-engine-框架dma-控制器抽象">2.2 DMA Engine 框架（DMA 控制器抽象）</a></li>
-<li><a href="#23-地址转换流程">2.3 地址转换流程</a></li>
-<li><a href="#24-三条-dma-映射路径">2.4 三条 DMA 映射路径</a></li>
-<li><a href="#25-bounce-buffer-swiotlb-机制">2.5 Bounce Buffer (swiotlb) 机制</a></li>
-<li><a href="#26-cma-连续内存分配器">2.6 CMA 连续内存分配器</a></li>
-<li><a href="#27-coherent-dma-内存池">2.7 Coherent DMA 内存池</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第三部分arm64-平台特有实现">第三部分：ARM64 平台特有实现</a></summary></p>
-
-<ul>
-<li><a href="#31-cache-维护操作">3.1 Cache 维护操作</a></li>
-<li><a href="#32-dma-zone-配置">3.2 DMA Zone 配置</a></li>
-<li><a href="#33-arm-smmuv3-驱动">3.3 ARM SMMUv3 驱动</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第四部分核心数据结构">第四部分：核心数据结构</a></summary></p>
-
-<ul>
-<li><a href="#设备-dma-配置struct-device-相关字段">设备 DMA 配置（<code>struct device</code> 相关字段）</a></li>
-<li><a href="#dma-cookie-机制">DMA Cookie 机制</a></li>
-<li><a href="#dma-slave-配置">DMA Slave 配置</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第五部分关键-api-速查">第五部分：关键 API 速查</a></summary></p>
-
-<ul>
-<li><a href="#dma-mapping-api驱动开发者必知">DMA Mapping API（驱动开发者必知）</a></li>
-<li><a href="#dma-engine-apidma-控制器使用者">DMA Engine API（DMA 控制器使用者）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第六部分典型使用模式">第六部分：典型使用模式</a></summary></p>
-
-<ul>
-<li><a href="#模式一流式-dma-映射网络驱动典型">模式一：流式 DMA 映射（网络驱动典型）</a></li>
-<li><a href="#模式二一致性-dma-内存设备描述符环典型">模式二：一致性 DMA 内存（设备描述符环典型）</a></li>
-<li><a href="#模式三dma-engine-从设备传输uartspi-典型">模式三：DMA Engine 从设备传输（UART/SPI 典型）</a></li>
-<li><a href="#模式四scatter-gather-映射块设备典型">模式四：Scatter-Gather 映射（块设备典型）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第七部分调试与问题排查">第七部分：调试与问题排查</a></summary></p>
-
-<ul>
-<li><a href="#常见-dma-问题">常见 DMA 问题</a></li>
-<li><a href="#调试工具与内核配置">调试工具与内核配置</a></li>
-<li><a href="#dma-编程检查清单">DMA 编程检查清单</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第八部分内核经典-dma-映射案例分析">第八部分：内核经典 DMA 映射案例分析</a></summary></p>
-
-<ul>
-<li><a href="#案例一流式-dma-映射--dma-enginepl011-uart-tx">案例一：流式 DMA 映射 + DMA Engine（PL011 UART TX）</a></li>
-<li><a href="#案例二coherent-dma-内存分配pl011-dma-缓冲区">案例二：Coherent DMA 内存分配（PL011 DMA 缓冲区）</a></li>
-<li><a href="#案例三scatter-gather-dma-映射dw-mmc-控制器">案例三：Scatter-Gather DMA 映射（DW MMC 控制器）</a></li>
-<li><a href="#案例四spi-dma-全双工传输--sgpl022-spi-控制器">案例四：SPI DMA 全双工传输 + SG（PL022 SPI 控制器）</a></li>
-<li><a href="#案例五网络驱动-coherent-描述符环--流式数据映射stmmac">案例五：网络驱动 Coherent 描述符环 + 流式数据映射（STMMAC）</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第九部分qemu-arm64-dma-实验">第九部分：QEMU ARM64 DMA 实验</a></summary></p>
-
-<ul>
-<li><a href="#91-实验环境准备">9.1 实验环境准备</a></li>
-<li><a href="#92-实验一dma-coherent-内存分配内核模块">9.2 实验一：DMA Coherent 内存分配内核模块</a></li>
-<li><a href="#93-实验二流式-dma-映射--cache-同步">9.3 实验二：流式 DMA 映射 + Cache 同步</a></li>
-<li><a href="#94-实验三dma-engine--pl011-uart-观察">9.4 实验三：DMA Engine + PL011 UART 观察</a></li>
-<li><a href="#95-makefile通用适用于以上三个模块">9.5 Makefile（通用，适用于以上三个模块）</a></li>
-<li><a href="#96-实验操作步骤">9.6 实验操作步骤</a></li>
-<li><a href="#97-实验观察要点">9.7 实验观察要点</a></li>
-<li><a href="#98-进阶实验qemu-开启-smmu-对比">9.8 进阶实验：QEMU 开启 SMMU 对比</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第十部分dma-面试高频问题与解答">第十部分：DMA 面试高频问题与解答</a></summary></p>
-
-<ul>
-<li><a href="#q1什么是-dma为什么需要-dma">Q1：什么是 DMA？为什么需要 DMA？</a></li>
-<li><a href="#q2dma-和-cpu-都要访问内存为什么-dma-还能提升性能">Q2：DMA 和 CPU 都要访问内存，为什么 DMA 还能提升性能？</a></li>
-<li><a href="#q3dma-传输有哪几种模式分别应用在什么场景">Q3：DMA 传输有哪几种模式？分别应用在什么场景？</a></li>
-<li><a href="#q4dma_alloc_coherent-和-dma_map_single-有什么区别什么时候用哪个">Q4：<code>dma_alloc_coherent()</code> 和 <code>dma_map_single()</code> 有什么区别？什么时候用哪个？</a></li>
-<li><a href="#q5什么是-dma-的-cache-一致性问题arm64-上如何解决">Q5：什么是 DMA 的 Cache 一致性问题？ARM64 上如何解决？</a></li>
-<li><a href="#q6什么是-iommu和-mmu-有什么区别arm-平台的-iommu-叫什么">Q6：什么是 IOMMU？和 MMU 有什么区别？ARM 平台的 IOMMU 叫什么？</a></li>
-<li><a href="#q7dma_map_single-之后dma_unmap_single-之前cpu-能不能访问这块内存">Q7：<code>dma_map_single()</code> 之后、<code>dma_unmap_single()</code> 之前，CPU 能不能访问这块内存？</a></li>
-<li><a href="#q8什么是-bounce-bufferswiotlb什么时候会触发">Q8：什么是 Bounce Buffer（swiotlb）？什么时候会触发？</a></li>
-<li><a href="#q9dma_map_sg-返回值和传入的-nents-可能不同为什么">Q9：<code>dma_map_sg()</code> 返回值和传入的 nents 可能不同，为什么？</a></li>
-<li><a href="#q10dma-缓冲区为什么必须-cache-行对齐">Q10：DMA 缓冲区为什么必须 Cache 行对齐？</a></li>
-<li><a href="#q11linux-dma-子系统中有几条映射路径如何选择">Q11：Linux DMA 子系统中有几条映射路径？如何选择？</a></li>
-<li><a href="#q12dma_set_mask-和-dma_set_coherent_mask-有什么区别">Q12：<code>dma_set_mask()</code> 和 <code>dma_set_coherent_mask()</code> 有什么区别？</a></li>
-<li><a href="#q13dma-mapping-之后必须检查错误吗怎么检查">Q13：DMA mapping 之后必须检查错误吗？怎么检查？</a></li>
-<li><a href="#q14什么是-cma为什么-dma-需要-cma">Q14：什么是 CMA？为什么 DMA 需要 CMA？</a></li>
-<li><a href="#q15驱动开发中最常见的-dma-bug-有哪些">Q15：驱动开发中最常见的 DMA bug 有哪些？</a></li>
-<li><a href="#q16解释-dma-地址转换的完整链路从内核虚拟地址到设备访问物理内存">Q16：解释 DMA 地址转换的完整链路（从内核虚拟地址到设备访问物理内存）</a></li>
-<li><a href="#q17linux-中-dma-engine-框架和-dma-mapping-api-是什么关系">Q17：Linux 中 DMA Engine 框架和 DMA Mapping API 是什么关系？</a></li>
-<li><a href="#q18arm64-上-dma_coherent-设备和非-coherent-设备的区别性能差异">Q18：ARM64 上 <code>dma_coherent</code> 设备和非 coherent 设备的区别？性能差异？</a></li>
-<li><a href="#q19如何调试-dma-相关问题">Q19：如何调试 DMA 相关问题？</a></li>
-<li><a href="#q20简述一个网络驱动收包的完整-dma-流程">Q20：简述一个网络驱动收包的完整 DMA 流程</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#附录源码文件索引">附录：源码文件索引</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第一部分：DMA 硬件基础</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-dma-概念与动机">1.1 DMA 概念与动机</a></li>
+          <li><a href="#12-armv8-dma-硬件架构">1.2 ARMv8 DMA 硬件架构</a></li>
+          <li><a href="#13-dma-传输模式">1.3 DMA 传输模式</a></li>
+          <li><a href="#14-mmuiommusmmu区别与联系">1.4 MMU、IOMMU、SMMU：区别与联系</a></li>
+          <li><a href="#15-arm-smmu-system-mmu-详解">1.5 ARM SMMU (System MMU) 详解</a></li>
+          <li><a href="#16-cache-一致性与-dma">1.6 Cache 一致性与 DMA</a></li>
+          <li><a href="#17-dma-地址空间与总线拓扑">1.7 DMA 地址空间与总线拓扑</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第二部分：内核 DMA 软件框架</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-dma-mapping-api流式映射">2.1 DMA Mapping API（流式映射）</a></li>
+          <li><a href="#22-dma-engine-框架dma-控制器抽象">2.2 DMA Engine 框架（DMA 控制器抽象）</a></li>
+          <li><a href="#23-地址转换流程">2.3 地址转换流程</a></li>
+          <li><a href="#24-三条-dma-映射路径">2.4 三条 DMA 映射路径</a></li>
+          <li><a href="#25-bounce-buffer-swiotlb-机制">2.5 Bounce Buffer (swiotlb) 机制</a></li>
+          <li><a href="#26-cma-连续内存分配器">2.6 CMA 连续内存分配器</a></li>
+          <li><a href="#27-coherent-dma-内存池">2.7 Coherent DMA 内存池</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第三部分：ARM64 平台特有实现</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-cache-维护操作">3.1 Cache 维护操作</a></li>
+          <li><a href="#32-dma-zone-配置">3.2 DMA Zone 配置</a></li>
+          <li><a href="#33-arm-smmuv3-驱动">3.3 ARM SMMUv3 驱动</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第四部分：核心数据结构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#设备-dma-配置struct-device-相关字段">设备 DMA 配置（struct device 相关字段）</a></li>
+          <li><a href="#dma-cookie-机制">DMA Cookie 机制</a></li>
+          <li><a href="#dma-slave-配置">DMA Slave 配置</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第五部分：关键 API 速查</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#dma-mapping-api驱动开发者必知">DMA Mapping API（驱动开发者必知）</a></li>
+          <li><a href="#dma-engine-apidma-控制器使用者">DMA Engine API（DMA 控制器使用者）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第六部分：典型使用模式</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#模式一流式-dma-映射网络驱动典型">模式一：流式 DMA 映射（网络驱动典型）</a></li>
+          <li><a href="#模式二一致性-dma-内存设备描述符环典型">模式二：一致性 DMA 内存（设备描述符环典型）</a></li>
+          <li><a href="#模式三dma-engine-从设备传输uartspi-典型">模式三：DMA Engine 从设备传输（UART/SPI 典型）</a></li>
+          <li><a href="#模式四scatter-gather-映射块设备典型">模式四：Scatter-Gather 映射（块设备典型）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第七部分：调试与问题排查</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#常见-dma-问题">常见 DMA 问题</a></li>
+          <li><a href="#调试工具与内核配置">调试工具与内核配置</a></li>
+          <li><a href="#dma-编程检查清单">DMA 编程检查清单</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第八部分：内核经典 DMA 映射案例分析</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#案例一流式-dma-映射--dma-enginepl011-uart-tx">案例一：流式 DMA 映射 + DMA Engine（PL011 UART TX）</a></li>
+          <li><a href="#案例二coherent-dma-内存分配pl011-dma-缓冲区">案例二：Coherent DMA 内存分配（PL011 DMA 缓冲区）</a></li>
+          <li><a href="#案例三scatter-gather-dma-映射dw-mmc-控制器">案例三：Scatter-Gather DMA 映射（DW MMC 控制器）</a></li>
+          <li><a href="#案例四spi-dma-全双工传输--sgpl022-spi-控制器">案例四：SPI DMA 全双工传输 + SG（PL022 SPI 控制器）</a></li>
+          <li><a href="#案例五网络驱动-coherent-描述符环--流式数据映射stmmac">案例五：网络驱动 Coherent 描述符环 + 流式数据映射（STMMAC）</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第九部分：QEMU ARM64 DMA 实验</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#91-实验环境准备">9.1 实验环境准备</a></li>
+          <li><a href="#92-实验一dma-coherent-内存分配内核模块">9.2 实验一：DMA Coherent 内存分配内核模块</a></li>
+          <li><a href="#93-实验二流式-dma-映射--cache-同步">9.3 实验二：流式 DMA 映射 + Cache 同步</a></li>
+          <li><a href="#94-实验三dma-engine--pl011-uart-观察">9.4 实验三：DMA Engine + PL011 UART 观察</a></li>
+          <li><a href="#95-makefile通用适用于以上三个模块">9.5 Makefile（通用，适用于以上三个模块）</a></li>
+          <li><a href="#96-实验操作步骤">9.6 实验操作步骤</a></li>
+          <li><a href="#97-实验观察要点">9.7 实验观察要点</a></li>
+          <li><a href="#98-进阶实验qemu-开启-smmu-对比">9.8 进阶实验：QEMU 开启 SMMU 对比</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第十部分：DMA 面试高频问题与解答</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#q1什么是-dma为什么需要-dma">Q1：什么是 DMA？为什么需要 DMA？</a></li>
+          <li><a href="#q2dma-和-cpu-都要访问内存为什么-dma-还能提升性能">Q2：DMA 和 CPU 都要访问内存，为什么 DMA 还能提升性能？</a></li>
+          <li><a href="#q3dma-传输有哪几种模式分别应用在什么场景">Q3：DMA 传输有哪几种模式？分别应用在什么场景？</a></li>
+          <li><a href="#q4dma_alloc_coherent-和-dma_map_single-有什么区别什么时候用哪个">Q4：dma_alloc_coherent() 和 dma_map_single() 有什么区别？什么时候用哪个？</a></li>
+          <li><a href="#q5什么是-dma-的-cache-一致性问题arm64-上如何解决">Q5：什么是 DMA 的 Cache 一致性问题？ARM64 上如何解决？</a></li>
+          <li><a href="#q6什么是-iommu和-mmu-有什么区别arm-平台的-iommu-叫什么">Q6：什么是 IOMMU？和 MMU 有什么区别？ARM 平台的 IOMMU 叫什么？</a></li>
+          <li><a href="#q7dma_map_single-之后dma_unmap_single-之前cpu-能不能访问这块内存">Q7：dma_map_single() 之后、dma_unmap_single() 之前，CPU 能不能访问这块内存？</a></li>
+          <li><a href="#q8什么是-bounce-bufferswiotlb什么时候会触发">Q8：什么是 Bounce Buffer（swiotlb）？什么时候会触发？</a></li>
+          <li><a href="#q9dma_map_sg-返回值和传入的-nents-可能不同为什么">Q9：dma_map_sg() 返回值和传入的 nents 可能不同，为什么？</a></li>
+          <li><a href="#q10dma-缓冲区为什么必须-cache-行对齐">Q10：DMA 缓冲区为什么必须 Cache 行对齐？</a></li>
+          <li><a href="#q11linux-dma-子系统中有几条映射路径如何选择">Q11：Linux DMA 子系统中有几条映射路径？如何选择？</a></li>
+          <li><a href="#q12dma_set_mask-和-dma_set_coherent_mask-有什么区别">Q12：dma_set_mask() 和 dma_set_coherent_mask() 有什么区别？</a></li>
+          <li><a href="#q13dma-mapping-之后必须检查错误吗怎么检查">Q13：DMA mapping 之后必须检查错误吗？怎么检查？</a></li>
+          <li><a href="#q14什么是-cma为什么-dma-需要-cma">Q14：什么是 CMA？为什么 DMA 需要 CMA？</a></li>
+          <li><a href="#q15驱动开发中最常见的-dma-bug-有哪些">Q15：驱动开发中最常见的 DMA bug 有哪些？</a></li>
+          <li><a href="#q16解释-dma-地址转换的完整链路从内核虚拟地址到设备访问物理内存">Q16：解释 DMA 地址转换的完整链路（从内核虚拟地址到设备访问物理内存）</a></li>
+          <li><a href="#q17linux-中-dma-engine-框架和-dma-mapping-api-是什么关系">Q17：Linux 中 DMA Engine 框架和 DMA Mapping API 是什么关系？</a></li>
+          <li><a href="#q18arm64-上-dma_coherent-设备和非-coherent-设备的区别性能差异">Q18：ARM64 上 dma_coherent 设备和非 coherent 设备的区别？性能差异？</a></li>
+          <li><a href="#q19如何调试-dma-相关问题">Q19：如何调试 DMA 相关问题？</a></li>
+          <li><a href="#q20简述一个网络驱动收包的完整-dma-流程">Q20：简述一个网络驱动收包的完整 DMA 流程</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 附录：源码文件索引</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -3800,6 +3944,131 @@ NAPI poll 处理:
 <hr>
 
 <blockquote><strong>学习建议</strong>：建议按 "硬件基础 → Cache 一致性 → Mapping API → Engine API → IOMMU" 的顺序逐步深入，结合实际驱动代码（如网络驱动的 DMA 使用）加深理解。</blockquote>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

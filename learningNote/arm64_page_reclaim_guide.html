@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -209,85 +375,27 @@ hr {
 <blockquote>基于 Linux 6.18.1 内核源码 (<code>mm/vmscan.c</code>, <code>mm/page_alloc.c</code>, <code>mm/workingset.c</code>, <code>mm/shrinker.c</code>)，<br>
 重点分析 ARM64 架构下页面回收的完整流程，并讨论嵌入式设备（512MB/1GB）场景下的回收行为。</blockquote>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><b>1. 页面回收整体架构</b></summary></p>
-
-<ul>
-<li>1.1 <a href="#11-回收触发路径">回收触发路径</a></li>
-<li>1.1.1 <a href="#111-三条路径的触发条件">三条路径的触发条件</a></li>
-<li>1.1.2 <a href="#112-触发条件对比表">触发条件对比表</a></li>
-<li>1.2 <a href="#12-核心数据结构-scan_control">核心数据结构 scan_control</a></li>
-<li>1.3 <a href="#13-lru-列表组织">LRU 列表组织</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>2. 水位线机制与回收触发</b></summary></p>
-
-<ul>
-<li>2.1 <a href="#21-水位线定义与数据结构">水位线定义与数据结构</a></li>
-<li>2.1.1 <a href="#211-水位线枚举定义">水位线枚举定义</a></li>
-<li>2.1.2 <a href="#212-存储结构">存储结构</a></li>
-<li>2.1.3 <a href="#213-水位线计算流程">水位线计算流程</a></li>
-<li>2.1.4 <a href="#214-计算公式总结">计算公式总结</a></li>
-<li>2.2 <a href="#22-512mb1gb-嵌入式设备水位线实例">512MB/1GB 嵌入式设备水位线实例</a></li>
-<li>2.3 <a href="#23-运行时调整与调优">运行时调整与调优</a></li>
-<li>2.3.1 <a href="#231-sysctl-参数调整">sysctl 参数调整</a></li>
-<li>2.3.2 <a href="#232-调优建议">调优建议</a></li>
-<li>2.3.3 <a href="#233-查看当前水位线">查看当前水位线</a></li>
-<li>2.4 <a href="#24-kswapd-唤醒机制">kswapd 唤醒机制</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>3. 传统 LRU 回收路径</b></summary></p>
-
-<ul>
-<li>3.1 <a href="#31-direct-reclaim-直接回收">direct reclaim 直接回收</a></li>
-<li>3.2 <a href="#32-kswapd-后台回收">kswapd 后台回收</a></li>
-<li>3.3 <a href="#33-shrink_node-节点级回收">shrink_node 节点级回收</a></li>
-<li>3.4 <a href="#34-匿名页与文件页的平衡">匿名页与文件页的平衡</a></li>
-<li>3.5 <a href="#35-shrink_folio_list-逐页回收决策">shrink_folio_list 逐页回收决策</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>4. MGLRU 多代 LRU 回收机制</b></summary></p>
-
-<ul>
-<li>4.1 <a href="#41-mglru-基本原理">MGLRU 基本原理</a></li>
-<li>4.2 <a href="#42-代际老化aging">代际老化（Aging）</a></li>
-<li>4.3 <a href="#43-页面驱逐eviction">页面驱逐（Eviction）</a></li>
-<li>4.4 <a href="#44-arm64-硬件访问位支持">ARM64 硬件访问位支持</a></li>
-<li>4.5 <a href="#45-pid-反馈控制器">PID 反馈控制器</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>5. 嵌入式设备（512MB/1GB）页面回收分析</b></summary></p>
-
-<ul>
-<li>5.1 <a href="#51-内存布局与-zone-划分">内存布局与 zone 划分</a></li>
-<li>5.2 <a href="#52-回收压力分析">回收压力分析</a></li>
-<li>5.3 <a href="#53-swap-与-zram-配置策略">swap 与 zram 配置策略</a></li>
-<li>5.4 <a href="#54-内存回收调优建议">内存回收调优建议</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>6. 页面回收案例分析</b></summary></p>
-
-<ul>
-<li>6.1 <a href="#61-案例一文件缓存回收读取大文件">案例一：文件缓存回收（读取大文件）</a></li>
-<li>6.2 <a href="#62-案例二匿名页交换内存紧张时的-malloc">案例二：匿名页交换（内存紧张时的 malloc）</a></li>
-<li>6.3 <a href="#63-案例三slab-缓存回收dentryinode">案例三：slab 缓存回收（dentry/inode）</a></li>
-<li>6.4 <a href="#64-案例四mglru-代际驱逐实例">案例四：MGLRU 代际驱逐实例</a></li>
-</ul>
-<p></details><br>
-<details><br>
-<summary><b>7. 关键源码路径速查</b></summary></p>
-
-<ul>
-<li><a href="#7-关键源码路径速查">关键源码路径速查</a></li>
-</ul>
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. 页面回收整体架构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-回收触发路径">回收触发路径</a></li>
+          <li><a href="#111-三条路径的触发条件">三条路径的触发条件</a></li>
+          <li><a href="#112-触发条件对比表">触发条件对比表</a></li>
+          <li><a href="#12-核心数据结构-scan_control">核心数据结构 scan_control</a></li>
+          <li><a href="#13-lru-列表组织">LRU 列表组织</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -2270,6 +2378,131 @@ evict_folios(lruvec, sc, swappiness)
 #define BLOOM_FILTER_SHIFT    15      // bloom filter 大小 (32K bits)
 #define vm_swappiness         60      // 默认 swappiness
 #define watermark_scale_factor 10     // 水位线比例因子 (0.1%)</code></pre>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

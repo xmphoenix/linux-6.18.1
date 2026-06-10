@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -213,265 +379,214 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#学习路线总览">学习路线总览</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#先给结论研究-gicv3-应该抓住什么">先给结论：研究 GICv3 应该抓住什么</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第0课gicv3-架构总图">第0课：GICv3 架构总图</a></summary></p>
-
-<ul>
-<li><a href="#01-硬件组件图">0.1 硬件组件图</a></li>
-<li><a href="#011-distributorredistributorcpu-interface-三者从架构上分别代表什么">0.1.1 Distributor、Redistributor、CPU Interface 三者从架构上分别代表什么</a></li>
-<li><a href="#012-distributor-的架构意义">0.1.2 Distributor 的架构意义</a></li>
-<li><a href="#013-redistributor-的架构意义">0.1.3 Redistributor 的架构意义</a></li>
-<li><a href="#014-cpu-interface-的架构意义">0.1.4 CPU Interface 的架构意义</a></li>
-<li><a href="#015-为什么架构上必须拆成这三层">0.1.5 为什么架构上必须拆成这三层</a></li>
-<li><a href="#016-三者在一条中断路径里怎么协作">0.1.6 三者在一条中断路径里怎么协作</a></li>
-<li><a href="#017-站在普通世界-linux-视角三者各自最常对应什么问题">0.1.7 站在普通世界 Linux 视角，三者各自最常对应什么问题</a></li>
-<li><a href="#02-中断类型一定要先分清">0.2 中断类型一定要先分清</a></li>
-<li><a href="#03-gicv3-的四状态模型">0.3 GICv3 的四状态模型</a></li>
-<li><a href="#04-架构文档与源码对照阅读法">0.4 架构文档与源码对照阅读法</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第1课先掌握-linux-通用-irq-四件套">第1课：先掌握 Linux 通用 IRQ 四件套</a></summary></p>
-
-<ul>
-<li><a href="#11-irq_desc">1.1 <code>irq_desc</code></a></li>
-<li><a href="#12-irq_data">1.2 <code>irq_data</code></a></li>
-<li><a href="#13-irq_chip">1.3 <code>irq_chip</code></a></li>
-<li><a href="#14-irq_domain">1.4 <code>irq_domain</code></a></li>
-<li><a href="#141-把设备树里的中断描述变成-irq_desc最短静态建链图">1.4.1 把“设备树里的中断描述”变成 <code>irq_desc</code>：最短静态建链图</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第2课arm64-从异常入口走到-gic-驱动">第2课：ARM64 从异常入口走到 GIC 驱动</a></summary></p>
-
-<ul>
-<li><a href="#21-异常向量表内容">2.1 异常向量表内容</a></li>
-<li><a href="#22-kernel_ventry-和-entry_handler-宏展开后的真实含义">2.2 <code>kernel_ventry</code> 和 <code>entry_handler</code> 宏展开后的真实含义</a></li>
-<li><a href="#23-入口总链路">2.3 入口总链路</a></li>
-<li><a href="#24-关键源码点">2.4 关键源码点</a></li>
-<li><a href="#25-nmipseudo-nmi-特殊路径">2.5 NMI/Pseudo-NMI 特殊路径</a></li>
-<li><a href="#26-pseudo-nmi-专题">2.6 Pseudo-NMI 专题</a></li>
-<li><a href="#2616-fiq-和-irq区别联系以及在内核代码里的具体实现">2.6.16 FIQ 和 IRQ：区别、联系，以及在内核代码里的具体实现</a></li>
-<li><a href="#27-linux-中断处理全景hardirq--softirq--tasklet--threaded-irq">2.7 Linux 中断处理全景：Hardirq / Softirq / Tasklet / Threaded IRQ</a></li>
-<li><a href="#28-中断与同步真正容易出错的部分">2.8 中断与同步：真正容易出错的部分</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第3课gicv3-初始化总流程">第3课：GICv3 初始化总流程</a></summary></p>
-
-<ul>
-<li><a href="#31-device-treeacpi-初始化入口">3.1 Device Tree/ACPI 初始化入口</a></li>
-<li><a href="#311-如果从设备树-bring-up-角度看最容易记住的入口链">3.1.1 如果从设备树 bring-up 角度看，最容易记住的入口链</a></li>
-<li><a href="#32-distributor-初始化gic_dist_init">3.2 Distributor 初始化：<code>gic_dist_init()</code></a></li>
-<li><a href="#33-redistributor-初始化gic_populate_rdist--gic_cpu_init">3.3 Redistributor 初始化：<code>gic_populate_rdist()</code> + <code>gic_cpu_init()</code></a></li>
-<li><a href="#34-cpu-interface-初始化gic_cpu_sys_reg_init">3.4 CPU Interface 初始化：<code>gic_cpu_sys_reg_init()</code></a></li>
-<li><a href="#35-把三层寄存器配置串起来看到底要配哪些寄存器">3.5 把三层寄存器配置串起来看：到底要配哪些寄存器</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第4课核心数据结构必须建立对象图">第4课：核心数据结构必须建立对象图</a></summary></p>
-
-<ul>
-<li><a href="#41-gicv3-核心对象图">4.1 GICv3 核心对象图</a></li>
-<li><a href="#42-struct-gic_chip_data">4.2 <code>struct gic_chip_data</code></a></li>
-<li><a href="#43-struct-rdists">4.3 <code>struct rdists</code></a></li>
-<li><a href="#44-its-核心结构">4.4 ITS 核心结构</a></li>
-<li><a href="#45-关系要这样记">4.5 关系要这样记</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第5课运行时中断路径的关键算法">第5课：运行时中断路径的关键算法</a></summary></p>
-
-<ul>
-<li><a href="#51-intid-分类算法<strong>get_intid_range">5.1 INTID 分类算法：<code></strong>get_intid_range()</code></a></li>
-<li><a href="#52-寄存器地址换算convert_offset_index">5.2 寄存器地址换算：<code>convert_offset_index()</code></a></li>
-<li><a href="#53-ackeoideactivate-路径">5.3 ACK/EOI/Deactivate 路径</a></li>
-<li><a href="#54-中断路由算法gic_set_affinity">5.4 中断路由算法：<code>gic_set_affinity()</code></a></li>
-<li><a href="#55-sgi-目标列表算法gic_compute_target_list">5.5 SGI 目标列表算法：<code>gic_compute_target_list()</code></a></li>
-<li><a href="#56-its-lpi-分配算法">5.6 ITS LPI 分配算法</a></li>
-<li><a href="#57-its-命令队列算法">5.7 ITS 命令队列算法</a></li>
-<li><a href="#58-its-负载均衡算法its_select_cpu">5.8 ITS 负载均衡算法：<code>its_select_cpu()</code></a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第6课gicv3-的-irq-domain-实现">第6课：GICv3 的 IRQ domain 实现</a></summary></p>
-
-<ul>
-<li><a href="#61-顶层-gic-domain">6.1 顶层 GIC domain</a></li>
-<li><a href="#62-gic_irq_domain_translate-很重要">6.2 <code>gic_irq_domain_translate()</code> 很重要</a></li>
-<li><a href="#63-gic_irq_domain_map-把-hwirq-绑定到-flow-handler">6.3 <code>gic_irq_domain_map()</code> 把 hwirq 绑定到 flow handler</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第7课itslpimsi-是第二战场">第7课：ITS/LPI/MSI 是第二战场</a></summary></p>
-
-<ul>
-<li><a href="#71-必须先建立翻译模型">7.1 必须先建立翻译模型</a></li>
-<li><a href="#72-its-初始化主线">7.2 ITS 初始化主线</a></li>
-<li><a href="#73-lpi-两张表">7.3 LPI 两张表</a></li>
-<li><a href="#74-msi-domain-层次">7.4 MSI domain 层次</a></li>
-<li><a href="#75-最关键的-its-命令">7.5 最关键的 ITS 命令</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第8课gicv4-是高级专题但必须知道边界">第8课：GICv4 是高级专题，但必须知道边界</a></summary></p>
-
-<ul>
-<li><a href="#81-gicv4-解决的核心问题">8.1 GICv4 解决的核心问题</a></li>
-<li><a href="#82-三个核心对象">8.2 三个核心对象</a></li>
-<li><a href="#83-当前源码中的体现">8.3 当前源码中的体现</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第9课按源码文件建立研究地图">第9课：按源码文件建立研究地图</a></summary></p>
-
-<ul>
-<li><a href="#91-必读源码优先级">9.1 必读源码优先级</a></li>
-<li><a href="#92-推荐阅读顺序">9.2 推荐阅读顺序</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第10课源码结合实践的四阶段研究规划">第10课：源码结合实践的四阶段研究规划</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#阶段a打基础建立对象模型第1周">阶段A：打基础，建立对象模型（第1周）</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#阶段b跑通中断入口与本地中断第2周">阶段B：跑通中断入口与本地中断（第2周）</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#阶段c跑通-affinity-与-ipi第3周">阶段C：跑通 affinity 与 IPI（第3周）</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#阶段d跑通-itslpimsi最后看-gicv4第4-5周">阶段D：跑通 ITS/LPI/MSI，最后看 GICv4（第4-5周）</a></summary></p>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第11课结合你当前仓库的实操建议">第11课：结合你当前仓库的实操建议</a></summary></p>
-
-<ul>
-<li><a href="#111-启动环境建议">11.1 启动环境建议</a></li>
-<li><a href="#112-最实用的实验命令">11.2 最实用的实验命令</a></li>
-<li><a href="#113-研究-its-的实验切入点">11.3 研究 ITS 的实验切入点</a></li>
-<li><a href="#114-结合-qemu-的分组实验设计">11.4 结合 QEMU 的分组实验设计</a></li>
-<li><a href="#实验组a最小化-gicv3-启动确认实验">实验组A：最小化 GICv3 启动确认实验</a></li>
-<li><a href="#实验组a-1pseudo-nmi-启用验证实验">实验组A-1：Pseudo-NMI 启用验证实验</a></li>
-<li><a href="#实验组bppi-路径实验盯住本地-timer-中断">实验组B：PPI 路径实验，盯住本地 timer 中断</a></li>
-<li><a href="#实验组cspi-路径实验观察共享设备中断和-affinity-迁移">实验组C：SPI 路径实验，观察共享设备中断和 affinity 迁移</a></li>
-<li><a href="#实验组dipisgi-路径实验观察核间中断">实验组D：IPI/SGI 路径实验，观察核间中断</a></li>
-<li><a href="#实验组eitslpimsi-进阶实验">实验组E：ITS/LPI/MSI 进阶实验</a></li>
-<li><a href="#实验组fgdb-单步实验从异常入口走到-flow-handler">实验组F：GDB 单步实验，从异常入口走到 flow handler</a></li>
-<li><a href="#115-一个建议的实验顺序">11.5 一个建议的实验顺序</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第12课学完这部分内容能解决哪些问题">第12课：学完这部分内容能解决哪些问题</a></summary></p>
-
-<ul>
-<li><a href="#121-能判断问题到底在架构层irq-core-层还是驱动层">12.1 能判断问题到底在架构层、IRQ core 层，还是驱动层</a></li>
-<li><a href="#122-能解释为什么中断只在某个-cpu-上跑">12.2 能解释“为什么中断只在某个 CPU 上跑”</a></li>
-<li><a href="#123-能解释为什么改了-affinity-但流量中断没有按预期迁移">12.3 能解释“为什么改了 affinity 但流量/中断没有按预期迁移”</a></li>
-<li><a href="#124-能区分-hardirq-高softirq-高ksoftirqd-高threaded-irq-卡住这几类不同现场">12.4 能区分 hardirq 高、softirq 高、ksoftirqd 高、threaded irq 卡住这几类不同现场</a></li>
-<li><a href="#125-能解释为什么某类中断根本不能像预期那样绑核">12.5 能解释“为什么某类中断根本不能像预期那样绑核”</a></li>
-<li><a href="#126-能处理-itsmsilpi-相关的看起来像普通-spi其实不是的问题">12.6 能处理 ITS/MSI/LPI 相关的“看起来像普通 SPI，其实不是”的问题</a></li>
-<li><a href="#127-能把性能问题和同步问题联系起来看">12.7 能把性能问题和同步问题联系起来看</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第13课经典问题处理手册">第13课：经典问题处理手册</a></summary></p>
-
-<ul>
-<li><a href="#130-一套真正能落地的-irq-debug-方案">13.0 一套真正能落地的 IRQ Debug 方案</a></li>
-<li><a href="#131-经典问题一中断绑定-cpu">13.1 经典问题一：中断绑定 CPU</a></li>
-<li><a href="#132-经典问题二softirq-过高">13.2 经典问题二：softirq 过高</a></li>
-<li><a href="#133-中断绑核和-softirq-过高正确的整体处置思路">13.3 中断绑核和 softirq 过高，正确的整体处置思路</a></li>
-<li><a href="#134-一条最实用的现场排查清单">13.4 一条最实用的现场排查清单</a></li>
-<li><a href="#135-用-qemu-复现中断绑定-cpu问题">13.5 用 QEMU 复现“中断绑定 CPU”问题</a></li>
-<li><a href="#136-用-qemu-复现softirq-过高问题">13.6 用 QEMU 复现“softirq 过高”问题</a></li>
-<li><a href="#137-经典问题的源码定位清单">13.7 经典问题的源码定位清单</a></li>
-<li><a href="#138-处理这类问题的一条总原则">13.8 处理这类问题的一条总原则</a></li>
-<li><a href="#139-经典问题三关中断时间过长">13.9 经典问题三：关中断时间过长</a></li>
-<li><a href="#1310-经典问题四中断上下文里出现-loop风暴或反复-pending">13.10 经典问题四：中断上下文里出现 loop、风暴或反复 pending</a></li>
-<li><a href="#1311-这几类问题的实战判断口诀">13.11 这几类问题的实战判断口诀</a></li>
-<li><a href="#1312-把源码读成闭环的一份函数级阅读地图">13.12 把源码读成闭环的一份函数级阅读地图</a></li>
-<li><a href="#1313-常用-irq-经典问题总表">13.13 常用 IRQ 经典问题总表</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#第14课最值得你亲手画的三张图">第14课：最值得你亲手画的三张图</a></summary></p>
-
-<ul>
-<li><a href="#图1从异常向量到设备-isr-的调用链">图1：从异常向量到设备 ISR 的调用链</a></li>
-<li><a href="#图2gicv3-初始化对象图">图2：GICv3 初始化对象图</a></li>
-<li><a href="#图3its-翻译图">图3：ITS 翻译图</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#总总结顶级内核工程师视角下的-gicv3-研究结论">总总结：顶级内核工程师视角下的 GICv3 研究结论</a></summary></p>
-
-<ul>
-<li><a href="#结论1gicv3-的本质不是寄存器集合而是分层中断路由系统">结论1：GICv3 的本质不是寄存器集合，而是“分层中断路由系统”</a></li>
-<li><a href="#结论2研究-gicv3-最容易走偏的地方是只盯寄存器不盯-irq-core">结论2：研究 GICv3 最容易走偏的地方，是只盯寄存器，不盯 IRQ core</a></li>
-<li><a href="#结论3gicv3-真正复杂的部分不是普通-spippi而是-itslpigicv4">结论3：GICv3 真正复杂的部分，不是普通 SPI/PPI，而是 ITS/LPI/GICv4</a></li>
-<li><a href="#结论4算法层面最值得反复咀嚼的是四个点">结论4：算法层面最值得反复咀嚼的是四个点</a></li>
-<li><a href="#结论5最有效的学习方式不是看完所有源码而是按路径验证源码">结论5：最有效的学习方式不是“看完所有源码”，而是“按路径验证源码”</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#最后给你的研究建议">最后给你的研究建议</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 学习路线总览</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 先给结论：研究 GICv3 应该抓住什么</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第0课：GICv3 架构总图</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#01-硬件组件图">0.1 硬件组件图</a></li>
+          <li><a href="#011-distributorredistributorcpu-interface-三者从架构上分别代表什么">0.1.1 Distributor、Redistributor、CPU Interface 三者从架构上分别代表什么</a></li>
+          <li><a href="#012-distributor-的架构意义">0.1.2 Distributor 的架构意义</a></li>
+          <li><a href="#013-redistributor-的架构意义">0.1.3 Redistributor 的架构意义</a></li>
+          <li><a href="#014-cpu-interface-的架构意义">0.1.4 CPU Interface 的架构意义</a></li>
+          <li><a href="#015-为什么架构上必须拆成这三层">0.1.5 为什么架构上必须拆成这三层</a></li>
+          <li><a href="#016-三者在一条中断路径里怎么协作">0.1.6 三者在一条中断路径里怎么协作</a></li>
+          <li><a href="#017-站在普通世界-linux-视角三者各自最常对应什么问题">0.1.7 站在普通世界 Linux 视角，三者各自最常对应什么问题</a></li>
+          <li><a href="#02-中断类型一定要先分清">0.2 中断类型一定要先分清</a></li>
+          <li><a href="#03-gicv3-的四状态模型">0.3 GICv3 的四状态模型</a></li>
+          <li><a href="#04-架构文档与源码对照阅读法">0.4 架构文档与源码对照阅读法</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第1课：先掌握 Linux 通用 IRQ 四件套</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-irq_desc">1.1 irq_desc</a></li>
+          <li><a href="#12-irq_data">1.2 irq_data</a></li>
+          <li><a href="#13-irq_chip">1.3 irq_chip</a></li>
+          <li><a href="#14-irq_domain">1.4 irq_domain</a></li>
+          <li><a href="#141-把设备树里的中断描述变成-irq_desc最短静态建链图">1.4.1 把“设备树里的中断描述”变成 irq_desc：最短静态建链图</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第2课：ARM64 从异常入口走到 GIC 驱动</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-异常向量表内容">2.1 异常向量表内容</a></li>
+          <li><a href="#22-kernel_ventry-和-entry_handler-宏展开后的真实含义">2.2 kernel_ventry 和 entry_handler 宏展开后的真实含义</a></li>
+          <li><a href="#23-入口总链路">2.3 入口总链路</a></li>
+          <li><a href="#24-关键源码点">2.4 关键源码点</a></li>
+          <li><a href="#25-nmipseudo-nmi-特殊路径">2.5 NMI/Pseudo-NMI 特殊路径</a></li>
+          <li><a href="#26-pseudo-nmi-专题">2.6 Pseudo-NMI 专题</a></li>
+          <li><a href="#2616-fiq-和-irq区别联系以及在内核代码里的具体实现">2.6.16 FIQ 和 IRQ：区别、联系，以及在内核代码里的具体实现</a></li>
+          <li><a href="#27-linux-中断处理全景hardirq--softirq--tasklet--threaded-irq">2.7 Linux 中断处理全景：Hardirq / Softirq / Tasklet / Threaded IRQ</a></li>
+          <li><a href="#28-中断与同步真正容易出错的部分">2.8 中断与同步：真正容易出错的部分</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第3课：GICv3 初始化总流程</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-device-treeacpi-初始化入口">3.1 Device Tree/ACPI 初始化入口</a></li>
+          <li><a href="#311-如果从设备树-bring-up-角度看最容易记住的入口链">3.1.1 如果从设备树 bring-up 角度看，最容易记住的入口链</a></li>
+          <li><a href="#32-distributor-初始化gic_dist_init">3.2 Distributor 初始化：gic_dist_init()</a></li>
+          <li><a href="#33-redistributor-初始化gic_populate_rdist--gic_cpu_init">3.3 Redistributor 初始化：gic_populate_rdist() + gic_cpu_init()</a></li>
+          <li><a href="#34-cpu-interface-初始化gic_cpu_sys_reg_init">3.4 CPU Interface 初始化：gic_cpu_sys_reg_init()</a></li>
+          <li><a href="#35-把三层寄存器配置串起来看到底要配哪些寄存器">3.5 把三层寄存器配置串起来看：到底要配哪些寄存器</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第4课：核心数据结构必须建立对象图</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-gicv3-核心对象图">4.1 GICv3 核心对象图</a></li>
+          <li><a href="#42-struct-gic_chip_data">4.2 struct gic_chip_data</a></li>
+          <li><a href="#43-struct-rdists">4.3 struct rdists</a></li>
+          <li><a href="#44-its-核心结构">4.4 ITS 核心结构</a></li>
+          <li><a href="#45-关系要这样记">4.5 关系要这样记</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第5课：运行时中断路径的关键算法</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-intid-分类算法<strong>get_intid_range">5.1 INTID 分类算法：get_intid_range()</a></li>
+          <li><a href="#52-寄存器地址换算convert_offset_index">5.2 寄存器地址换算：convert_offset_index()</a></li>
+          <li><a href="#53-ackeoideactivate-路径">5.3 ACK/EOI/Deactivate 路径</a></li>
+          <li><a href="#54-中断路由算法gic_set_affinity">5.4 中断路由算法：gic_set_affinity()</a></li>
+          <li><a href="#55-sgi-目标列表算法gic_compute_target_list">5.5 SGI 目标列表算法：gic_compute_target_list()</a></li>
+          <li><a href="#56-its-lpi-分配算法">5.6 ITS LPI 分配算法</a></li>
+          <li><a href="#57-its-命令队列算法">5.7 ITS 命令队列算法</a></li>
+          <li><a href="#58-its-负载均衡算法its_select_cpu">5.8 ITS 负载均衡算法：its_select_cpu()</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第6课：GICv3 的 IRQ domain 实现</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-顶层-gic-domain">6.1 顶层 GIC domain</a></li>
+          <li><a href="#62-gic_irq_domain_translate-很重要">6.2 gic_irq_domain_translate() 很重要</a></li>
+          <li><a href="#63-gic_irq_domain_map-把-hwirq-绑定到-flow-handler">6.3 gic_irq_domain_map() 把 hwirq 绑定到 flow handler</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第7课：ITS/LPI/MSI 是第二战场</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-必须先建立翻译模型">7.1 必须先建立翻译模型</a></li>
+          <li><a href="#72-its-初始化主线">7.2 ITS 初始化主线</a></li>
+          <li><a href="#73-lpi-两张表">7.3 LPI 两张表</a></li>
+          <li><a href="#74-msi-domain-层次">7.4 MSI domain 层次</a></li>
+          <li><a href="#75-最关键的-its-命令">7.5 最关键的 ITS 命令</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第8课：GICv4 是高级专题，但必须知道边界</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-gicv4-解决的核心问题">8.1 GICv4 解决的核心问题</a></li>
+          <li><a href="#82-三个核心对象">8.2 三个核心对象</a></li>
+          <li><a href="#83-当前源码中的体现">8.3 当前源码中的体现</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第9课：按源码文件建立研究地图</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#91-必读源码优先级">9.1 必读源码优先级</a></li>
+          <li><a href="#92-推荐阅读顺序">9.2 推荐阅读顺序</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第10课：源码结合实践的四阶段研究规划</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 阶段A：打基础，建立对象模型（第1周）</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 阶段B：跑通中断入口与本地中断（第2周）</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 阶段C：跑通 affinity 与 IPI（第3周）</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 阶段D：跑通 ITS/LPI/MSI，最后看 GICv4（第4-5周）</div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第11课：结合你当前仓库的实操建议</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#111-启动环境建议">11.1 启动环境建议</a></li>
+          <li><a href="#112-最实用的实验命令">11.2 最实用的实验命令</a></li>
+          <li><a href="#113-研究-its-的实验切入点">11.3 研究 ITS 的实验切入点</a></li>
+          <li><a href="#114-结合-qemu-的分组实验设计">11.4 结合 QEMU 的分组实验设计</a></li>
+          <li><a href="#实验组a最小化-gicv3-启动确认实验">实验组A：最小化 GICv3 启动确认实验</a></li>
+          <li><a href="#实验组a-1pseudo-nmi-启用验证实验">实验组A-1：Pseudo-NMI 启用验证实验</a></li>
+          <li><a href="#实验组bppi-路径实验盯住本地-timer-中断">实验组B：PPI 路径实验，盯住本地 timer 中断</a></li>
+          <li><a href="#实验组cspi-路径实验观察共享设备中断和-affinity-迁移">实验组C：SPI 路径实验，观察共享设备中断和 affinity 迁移</a></li>
+          <li><a href="#实验组dipisgi-路径实验观察核间中断">实验组D：IPI/SGI 路径实验，观察核间中断</a></li>
+          <li><a href="#实验组eitslpimsi-进阶实验">实验组E：ITS/LPI/MSI 进阶实验</a></li>
+          <li><a href="#实验组fgdb-单步实验从异常入口走到-flow-handler">实验组F：GDB 单步实验，从异常入口走到 flow handler</a></li>
+          <li><a href="#115-一个建议的实验顺序">11.5 一个建议的实验顺序</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第12课：学完这部分内容能解决哪些问题</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#121-能判断问题到底在架构层irq-core-层还是驱动层">12.1 能判断问题到底在架构层、IRQ core 层，还是驱动层</a></li>
+          <li><a href="#122-能解释为什么中断只在某个-cpu-上跑">12.2 能解释“为什么中断只在某个 CPU 上跑”</a></li>
+          <li><a href="#123-能解释为什么改了-affinity-但流量中断没有按预期迁移">12.3 能解释“为什么改了 affinity 但流量/中断没有按预期迁移”</a></li>
+          <li><a href="#124-能区分-hardirq-高softirq-高ksoftirqd-高threaded-irq-卡住这几类不同现场">12.4 能区分 hardirq 高、softirq 高、ksoftirqd 高、threaded irq 卡住这几类不同现场</a></li>
+          <li><a href="#125-能解释为什么某类中断根本不能像预期那样绑核">12.5 能解释“为什么某类中断根本不能像预期那样绑核”</a></li>
+          <li><a href="#126-能处理-itsmsilpi-相关的看起来像普通-spi其实不是的问题">12.6 能处理 ITS/MSI/LPI 相关的“看起来像普通 SPI，其实不是”的问题</a></li>
+          <li><a href="#127-能把性能问题和同步问题联系起来看">12.7 能把性能问题和同步问题联系起来看</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第13课：经典问题处理手册</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#130-一套真正能落地的-irq-debug-方案">13.0 一套真正能落地的 IRQ Debug 方案</a></li>
+          <li><a href="#131-经典问题一中断绑定-cpu">13.1 经典问题一：中断绑定 CPU</a></li>
+          <li><a href="#132-经典问题二softirq-过高">13.2 经典问题二：softirq 过高</a></li>
+          <li><a href="#133-中断绑核和-softirq-过高正确的整体处置思路">13.3 中断绑核和 softirq 过高，正确的整体处置思路</a></li>
+          <li><a href="#134-一条最实用的现场排查清单">13.4 一条最实用的现场排查清单</a></li>
+          <li><a href="#135-用-qemu-复现中断绑定-cpu问题">13.5 用 QEMU 复现“中断绑定 CPU”问题</a></li>
+          <li><a href="#136-用-qemu-复现softirq-过高问题">13.6 用 QEMU 复现“softirq 过高”问题</a></li>
+          <li><a href="#137-经典问题的源码定位清单">13.7 经典问题的源码定位清单</a></li>
+          <li><a href="#138-处理这类问题的一条总原则">13.8 处理这类问题的一条总原则</a></li>
+          <li><a href="#139-经典问题三关中断时间过长">13.9 经典问题三：关中断时间过长</a></li>
+          <li><a href="#1310-经典问题四中断上下文里出现-loop风暴或反复-pending">13.10 经典问题四：中断上下文里出现 loop、风暴或反复 pending</a></li>
+          <li><a href="#1311-这几类问题的实战判断口诀">13.11 这几类问题的实战判断口诀</a></li>
+          <li><a href="#1312-把源码读成闭环的一份函数级阅读地图">13.12 把源码读成闭环的一份函数级阅读地图</a></li>
+          <li><a href="#1313-常用-irq-经典问题总表">13.13 常用 IRQ 经典问题总表</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 第14课：最值得你亲手画的三张图</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#图1从异常向量到设备-isr-的调用链">图1：从异常向量到设备 ISR 的调用链</a></li>
+          <li><a href="#图2gicv3-初始化对象图">图2：GICv3 初始化对象图</a></li>
+          <li><a href="#图3its-翻译图">图3：ITS 翻译图</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 总总结：顶级内核工程师视角下的 GICv3 研究结论</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#结论1gicv3-的本质不是寄存器集合而是分层中断路由系统">结论1：GICv3 的本质不是寄存器集合，而是“分层中断路由系统”</a></li>
+          <li><a href="#结论2研究-gicv3-最容易走偏的地方是只盯寄存器不盯-irq-core">结论2：研究 GICv3 最容易走偏的地方，是只盯寄存器，不盯 IRQ core</a></li>
+          <li><a href="#结论3gicv3-真正复杂的部分不是普通-spippi而是-itslpigicv4">结论3：GICv3 真正复杂的部分，不是普通 SPI/PPI，而是 ITS/LPI/GICv4</a></li>
+          <li><a href="#结论4算法层面最值得反复咀嚼的是四个点">结论4：算法层面最值得反复咀嚼的是四个点</a></li>
+          <li><a href="#结论5最有效的学习方式不是看完所有源码而是按路径验证源码">结论5：最有效的学习方式不是“看完所有源码”，而是“按路径验证源码”</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 最后给你的研究建议</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -6828,5 +6943,130 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 </ol>
 
 <p>当你做到这一步，你对 Linux ARM64 GICv3 中断子系统的理解，就已经超过绝大多数只会背概念的人。</p>
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
+
 </body>
 </html>

@@ -36,7 +36,7 @@ body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
     max-width: 860px;
-    margin: 0 auto;
+    margin: 0 auto 0 340px;
     padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
@@ -200,6 +200,172 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
 </style>
 
 </head>
@@ -210,146 +376,127 @@ hr {
 
 <hr>
 
-<h2>目录</h2>
-
-<p><details><br>
-<summary><a href="#1-flash-涉及的标准协议">1. Flash 涉及的标准协议</a></summary></p>
-
-<ul>
-<li><a href="#11-spi-协议标准">1.1 SPI 协议标准</a></li>
-<li><a href="#12-jedec-标准">1.2 JEDEC 标准</a></li>
-<li><a href="#13-onfi-open-nand-flash-interface">1.3 ONFI (Open NAND Flash Interface)</a></li>
-<li><a href="#14-cfi-common-flash-interface">1.4 CFI (Common Flash Interface)</a></li>
-<li><a href="#15-spi-nand-标准命令集">1.5 SPI NAND 标准命令集</a></li>
-<li><a href="#16-spi-nor-标准命令集">1.6 SPI NOR 标准命令集</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#2-spi-flash-硬件属性分析">2. SPI Flash 硬件属性分析</a></summary></p>
-
-<ul>
-<li><a href="#21-存储组织结构">2.1 存储组织结构</a></li>
-<li><a href="#22-内核中的内存组织数据结构">2.2 内核中的内存组织数据结构</a></li>
-<li><a href="#23-block-size块大小">2.3 Block Size（块大小）</a></li>
-<li><a href="#24-otp-one-time-programmable">2.4 OTP (One-Time Programmable)</a></li>
-<li><a href="#25-ecc-error-correction-code">2.5 ECC (Error Correction Code)</a></li>
-<li><a href="#26-block-数据布局与坏块有效块-layout">2.6 Block 数据布局与坏块/有效块 Layout</a></li>
-<li><a href="#27-oob-区域内容详细布局">2.7 OOB 区域内容详细布局</a></li>
-<li><a href="#28-坏块标记-bad-block-marker-详解">2.8 坏块标记 (Bad Block Marker) 详解</a></li>
-<li><a href="#29-如何区分出厂坏块首次烧写坏块和运行时坏块">2.9 如何区分出厂坏块、首次烧写坏块和运行时坏块</a></li>
-<li><a href="#210-spi-flash-关键寄存器">2.10 SPI Flash 关键寄存器</a></li>
-<li><a href="#211-时钟频率datasheet-标称-vs-soc-实际提供">2.11 时钟频率：Datasheet 标称 vs SoC 实际提供</a></li>
-<li><a href="#31-源码目录结构">3.1 源码目录结构</a></li>
-<li><a href="#32-软件架构层次">3.2 软件架构层次</a></li>
-<li><a href="#33-spi-nand-核心操作流程">3.3 SPI NAND 核心操作流程</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#4-nand-flash-与-mtd-驱动框架及数据结构">4. NAND Flash 与 MTD 驱动框架及数据结构</a></summary></p>
-
-<ul>
-<li><a href="#41-核心数据结构关系图">4.1 核心数据结构关系图</a></li>
-<li><a href="#42-mtd-核心数据结构">4.2 MTD 核心数据结构</a></li>
-<li><a href="#43-nand-设备数据结构">4.3 NAND 设备数据结构</a></li>
-<li><a href="#44-ecc-引擎数据结构">4.4 ECC 引擎数据结构</a></li>
-<li><a href="#45-spi-nand-芯片描述结构">4.5 SPI NAND 芯片描述结构</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#5-坏块处理机制与流程">5. 坏块处理机制与流程</a></summary></p>
-
-<ul>
-<li><a href="#51-坏块类型">5.1 坏块类型</a></li>
-<li><a href="#52-bbt-bad-block-table-实现">5.2 BBT (Bad Block Table) 实现</a></li>
-<li><a href="#53-坏块检测流程">5.3 坏块检测流程</a></li>
-<li><a href="#54-坏块标记流程">5.4 坏块标记流程</a></li>
-<li><a href="#55-擦除时的坏块保护">5.5 擦除时的坏块保护</a></li>
-<li><a href="#56-bbt-惰性加载策略">5.6 BBT 惰性加载策略</a></li>
-<li><a href="#57-坏块池-bad-block-reserve-与-bmt-bad-block-management-table">5.7 坏块池 (Bad Block Reserve) 与 BMT (Bad Block Management Table)</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#6-flash-经典测试-case">6. Flash 经典测试 Case</a></summary></p>
-
-<ul>
-<li><a href="#61-内核自带-mtd-测试模块">6.1 内核自带 MTD 测试模块</a></li>
-<li><a href="#62-使用方法">6.2 使用方法</a></li>
-<li><a href="#63-用户空间测试工具-mtd-utils">6.3 用户空间测试工具 (mtd-utils)</a></li>
-<li><a href="#64-典型测试场景">6.4 典型测试场景</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#7-如何适配一个新的-flash">7. 如何适配一个新的 Flash</a></summary></p>
-
-<ul>
-<li><a href="#71-适配-spi-nand-步骤">7.1 适配 SPI NAND 步骤</a></li>
-<li><a href="#72-适配检查清单">7.2 适配检查清单</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#8-qemu-上测试-flash-特性的-case-和驱动代码">8. QEMU 上测试 Flash 特性的 Case 和驱动代码</a></summary></p>
-
-<ul>
-<li><a href="#81-qemu-flash-模拟支持">8.1 QEMU Flash 模拟支持</a></li>
-<li><a href="#82-qemu-启动配置">8.2 QEMU 启动配置</a></li>
-<li><a href="#83-使用-mtd_nandsim-模拟-nand-flash">8.3 使用 mtd_nandsim 模拟 NAND Flash</a></li>
-<li><a href="#84-qemu--nandsim-测试脚本">8.4 QEMU + nandsim 测试脚本</a></li>
-<li><a href="#85-模拟坏块测试">8.5 模拟坏块测试</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#9-soc-bootrom-从-nand-flash-启动流程">9. SoC BootROM 从 NAND Flash 启动流程</a></summary></p>
-
-<ul>
-<li><a href="#91-上电启动全景">9.1 上电启动全景</a></li>
-<li><a href="#92-bootrom-如何识别外部-flash">9.2 BootROM 如何识别外部 Flash</a></li>
-<li><a href="#93-bootrom-如何读取-flash-数据">9.3 BootROM 如何读取 Flash 数据</a></li>
-<li><a href="#94-bootrom-碰到坏块怎么处理">9.4 BootROM 碰到坏块怎么处理</a></li>
-<li><a href="#95-bootrom-vs-linux-内核--坏块处理对比">9.5 BootROM vs Linux 内核 — 坏块处理对比</a></li>
-<li><a href="#96-量产烧录时的坏块处理">9.6 量产烧录时的坏块处理</a></li>
-<li><a href="#97-如果-block-0-本身就是坏块怎么办">9.7 如果 Block 0 本身就是坏块怎么办</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#10-面试问题与答案">10. 面试问题与答案</a></summary></p>
-
-<ul>
-<li><a href="#q1-nor-flash-和-nand-flash-的区别是什么">Q1: NOR Flash 和 NAND Flash 的区别是什么？</a></li>
-<li><a href="#q2-spi-nand-的读取操作分为哪几步为什么需要两步">Q2: SPI NAND 的读取操作分为哪几步？为什么需要两步？</a></li>
-<li><a href="#q3-什么是-eccspi-nand-支持哪些-ecc-方式">Q3: 什么是 ECC？SPI NAND 支持哪些 ECC 方式？</a></li>
-<li><a href="#q4-nand-flash-为什么会有坏块如何管理">Q4: NAND Flash 为什么会有坏块？如何管理？</a></li>
-<li><a href="#q5-mtd-子系统的层次结构是怎样的">Q5: MTD 子系统的层次结构是怎样的？</a></li>
-<li><a href="#q6-mtd_info-结构中-erasesize-和-writesize-分别代表什么">Q6: <code>mtd_info</code> 结构中 <code>erasesize</code> 和 <code>writesize</code> 分别代表什么？</a></li>
-<li><a href="#q7-spi-flash-支持的-quaddual-模式有什么区别命名含义是什么">Q7: SPI Flash 支持的 Quad/Dual 模式有什么区别？命名含义是什么？</a></li>
-<li><a href="#q8-如何在-linux-内核中为一款新的-spi-nand-flash-添加支持">Q8: 如何在 Linux 内核中为一款新的 SPI NAND Flash 添加支持？</a></li>
-<li><a href="#q9-oob-out-of-band-区域是做什么的">Q9: OOB (Out-Of-Band) 区域是做什么的？</a></li>
-<li><a href="#q10-什么是磨损均衡-wear-leveling为什么-nand-flash-需要它">Q10: 什么是磨损均衡 (Wear Leveling)？为什么 NAND Flash 需要它？</a></li>
-<li><a href="#q11-spi-nand-和-raw-nand-的区别">Q11: SPI NAND 和 Raw NAND 的区别？</a></li>
-<li><a href="#q12-描述一下-spinand_probe-函数的完整流程">Q12: 描述一下 <code>spinand_probe()</code> 函数的完整流程。</a></li>
-</ul>
-
-<p></details></p>
-
-<p><details><br>
-<summary><a href="#附录-关键文件索引">附录: 关键文件索引</a></summary></p>
-
-<p></details></p>
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <span>📑 目录</span>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter expanded">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 1. Flash 涉及的标准协议</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#11-spi-协议标准">1.1 SPI 协议标准</a></li>
+          <li><a href="#12-jedec-标准">1.2 JEDEC 标准</a></li>
+          <li><a href="#13-onfi-open-nand-flash-interface">1.3 ONFI (Open NAND Flash Interface)</a></li>
+          <li><a href="#14-cfi-common-flash-interface">1.4 CFI (Common Flash Interface)</a></li>
+          <li><a href="#15-spi-nand-标准命令集">1.5 SPI NAND 标准命令集</a></li>
+          <li><a href="#16-spi-nor-标准命令集">1.6 SPI NOR 标准命令集</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 2. SPI Flash 硬件属性分析</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-存储组织结构">2.1 存储组织结构</a></li>
+          <li><a href="#22-内核中的内存组织数据结构">2.2 内核中的内存组织数据结构</a></li>
+          <li><a href="#23-block-size块大小">2.3 Block Size（块大小）</a></li>
+          <li><a href="#24-otp-one-time-programmable">2.4 OTP (One-Time Programmable)</a></li>
+          <li><a href="#25-ecc-error-correction-code">2.5 ECC (Error Correction Code)</a></li>
+          <li><a href="#26-block-数据布局与坏块有效块-layout">2.6 Block 数据布局与坏块/有效块 Layout</a></li>
+          <li><a href="#27-oob-区域内容详细布局">2.7 OOB 区域内容详细布局</a></li>
+          <li><a href="#28-坏块标记-bad-block-marker-详解">2.8 坏块标记 (Bad Block Marker) 详解</a></li>
+          <li><a href="#29-如何区分出厂坏块首次烧写坏块和运行时坏块">2.9 如何区分出厂坏块、首次烧写坏块和运行时坏块</a></li>
+          <li><a href="#210-spi-flash-关键寄存器">2.10 SPI Flash 关键寄存器</a></li>
+          <li><a href="#211-时钟频率datasheet-标称-vs-soc-实际提供">2.11 时钟频率：Datasheet 标称 vs SoC 实际提供</a></li>
+          <li><a href="#31-源码目录结构">3.1 源码目录结构</a></li>
+          <li><a href="#32-软件架构层次">3.2 软件架构层次</a></li>
+          <li><a href="#33-spi-nand-核心操作流程">3.3 SPI NAND 核心操作流程</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 4. NAND Flash 与 MTD 驱动框架及数据结构</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-核心数据结构关系图">4.1 核心数据结构关系图</a></li>
+          <li><a href="#42-mtd-核心数据结构">4.2 MTD 核心数据结构</a></li>
+          <li><a href="#43-nand-设备数据结构">4.3 NAND 设备数据结构</a></li>
+          <li><a href="#44-ecc-引擎数据结构">4.4 ECC 引擎数据结构</a></li>
+          <li><a href="#45-spi-nand-芯片描述结构">4.5 SPI NAND 芯片描述结构</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 5. 坏块处理机制与流程</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-坏块类型">5.1 坏块类型</a></li>
+          <li><a href="#52-bbt-bad-block-table-实现">5.2 BBT (Bad Block Table) 实现</a></li>
+          <li><a href="#53-坏块检测流程">5.3 坏块检测流程</a></li>
+          <li><a href="#54-坏块标记流程">5.4 坏块标记流程</a></li>
+          <li><a href="#55-擦除时的坏块保护">5.5 擦除时的坏块保护</a></li>
+          <li><a href="#56-bbt-惰性加载策略">5.6 BBT 惰性加载策略</a></li>
+          <li><a href="#57-坏块池-bad-block-reserve-与-bmt-bad-block-management-table">5.7 坏块池 (Bad Block Reserve) 与 BMT (Bad Block Management Table)</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 6. Flash 经典测试 Case</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-内核自带-mtd-测试模块">6.1 内核自带 MTD 测试模块</a></li>
+          <li><a href="#62-使用方法">6.2 使用方法</a></li>
+          <li><a href="#63-用户空间测试工具-mtd-utils">6.3 用户空间测试工具 (mtd-utils)</a></li>
+          <li><a href="#64-典型测试场景">6.4 典型测试场景</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 7. 如何适配一个新的 Flash</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-适配-spi-nand-步骤">7.1 适配 SPI NAND 步骤</a></li>
+          <li><a href="#72-适配检查清单">7.2 适配检查清单</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 8. QEMU 上测试 Flash 特性的 Case 和驱动代码</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-qemu-flash-模拟支持">8.1 QEMU Flash 模拟支持</a></li>
+          <li><a href="#82-qemu-启动配置">8.2 QEMU 启动配置</a></li>
+          <li><a href="#83-使用-mtd_nandsim-模拟-nand-flash">8.3 使用 mtd_nandsim 模拟 NAND Flash</a></li>
+          <li><a href="#84-qemu--nandsim-测试脚本">8.4 QEMU + nandsim 测试脚本</a></li>
+          <li><a href="#85-模拟坏块测试">8.5 模拟坏块测试</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 9. SoC BootROM 从 NAND Flash 启动流程</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#91-上电启动全景">9.1 上电启动全景</a></li>
+          <li><a href="#92-bootrom-如何识别外部-flash">9.2 BootROM 如何识别外部 Flash</a></li>
+          <li><a href="#93-bootrom-如何读取-flash-数据">9.3 BootROM 如何读取 Flash 数据</a></li>
+          <li><a href="#94-bootrom-碰到坏块怎么处理">9.4 BootROM 碰到坏块怎么处理</a></li>
+          <li><a href="#95-bootrom-vs-linux-内核--坏块处理对比">9.5 BootROM vs Linux 内核 — 坏块处理对比</a></li>
+          <li><a href="#96-量产烧录时的坏块处理">9.6 量产烧录时的坏块处理</a></li>
+          <li><a href="#97-如果-block-0-本身就是坏块怎么办">9.7 如果 Block 0 本身就是坏块怎么办</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 10. 面试问题与答案</div>
+        <ul class="toc-chapter-items">
+          <li><a href="#q1-nor-flash-和-nand-flash-的区别是什么">Q1: NOR Flash 和 NAND Flash 的区别是什么？</a></li>
+          <li><a href="#q2-spi-nand-的读取操作分为哪几步为什么需要两步">Q2: SPI NAND 的读取操作分为哪几步？为什么需要两步？</a></li>
+          <li><a href="#q3-什么是-eccspi-nand-支持哪些-ecc-方式">Q3: 什么是 ECC？SPI NAND 支持哪些 ECC 方式？</a></li>
+          <li><a href="#q4-nand-flash-为什么会有坏块如何管理">Q4: NAND Flash 为什么会有坏块？如何管理？</a></li>
+          <li><a href="#q5-mtd-子系统的层次结构是怎样的">Q5: MTD 子系统的层次结构是怎样的？</a></li>
+          <li><a href="#q6-mtd_info-结构中-erasesize-和-writesize-分别代表什么">Q6: mtd_info 结构中 erasesize 和 writesize 分别代表什么？</a></li>
+          <li><a href="#q7-spi-flash-支持的-quaddual-模式有什么区别命名含义是什么">Q7: SPI Flash 支持的 Quad/Dual 模式有什么区别？命名含义是什么？</a></li>
+          <li><a href="#q8-如何在-linux-内核中为一款新的-spi-nand-flash-添加支持">Q8: 如何在 Linux 内核中为一款新的 SPI NAND Flash 添加支持？</a></li>
+          <li><a href="#q9-oob-out-of-band-区域是做什么的">Q9: OOB (Out-Of-Band) 区域是做什么的？</a></li>
+          <li><a href="#q10-什么是磨损均衡-wear-leveling为什么-nand-flash-需要它">Q10: 什么是磨损均衡 (Wear Leveling)？为什么 NAND Flash 需要它？</a></li>
+          <li><a href="#q11-spi-nand-和-raw-nand-的区别">Q11: SPI NAND 和 Raw NAND 的区别？</a></li>
+          <li><a href="#q12-描述一下-spinand_probe-函数的完整流程">Q12: 描述一下 spinand_probe() 函数的完整流程。</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> 附录: 关键文件索引</div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
 
 <hr>
 
@@ -4378,6 +4525,131 @@ SPI NAND/Raw NAND/SPI NOR: 协议特定实现
 <td>MTD 测试模块集合</td>
 </tr>
 </tbody></table>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
 
 </body>
 </html>
