@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 Linux 内核启动：五个页表目录及其生命周期</title>
+<style>
+/* ================================================================
+   微信公众号适配样式 — 简洁、可读、移动优先
+   ================================================================ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.8;
+    color: #3f3f3f;
+    background: #fff;
+    padding: 16px;
+    max-width: 100%;
+    word-wrap: break-word;
+    -webkit-text-size-adjust: 100%;
+}
+
+/* ========== 标题 ========== */
+h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+    text-align: center;
+    margin: 10px 0 18px 0;
+    line-height: 1.5;
+}
+
+h2 {
+    font-size: 17px;
+    font-weight: 700;
+    color: #2c2c2c;
+    margin: 24px 0 12px 0;
+    padding-left: 8px;
+    border-left: 3px solid #D9750A;
+    line-height: 1.5;
+}
+
+h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 20px 0 10px 0;
+}
+
+/* ========== 段落 ========== */
+p {
+    margin: 0 0 12px 0;
+    text-align: justify;
+}
+
+/* ========== 引言/摘要块 ========== */
+.intro-box {
+    background: #FDF8F0;
+    border-left: 4px solid #E8A84C;
+    padding: 12px 14px;
+    margin: 16px 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 14px;
+    color: #5C5144;
+    line-height: 1.7;
+}
+
+/* ========== 强调文字 ========== */
+strong {
+    color: #2D2A26;
+}
+
+em {
+    color: #D9750A;
+    font-style: normal;
+    font-weight: 600;
+}
+
+/* ========== 内联代码 ========== */
+code {
+    font-family: "SF Mono", "Cascadia Code", "Fira Code", Consolas,
+                 "Liberation Mono", Menlo, monospace;
+    font-size: 0.88em;
+    background: #F0EBE0;
+    color: #8B4513;
+    padding: 1px 5px;
+    border-radius: 3px;
+    word-break: break-all;
+}
+
+/* ========== 代码块 / 预格式化文本 ========== */
+pre {
+    background: #F5F3EF;
+    border: 1px solid #E8E3D8;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 14px 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #3D3429;
+    white-space: pre;
+}
+
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: inherit;
+    color: inherit;
+}
+
+/* ========== 表格 ========== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+thead {
+    border-bottom: 2px solid #E0D8C8;
+}
+
+th {
+    background: #F5F0E8;
+    color: #5C5144;
+    font-weight: 700;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #F0EBE3;
+    vertical-align: top;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+/* ========== 列表 ========== */
+ul, ol {
+    padding-left: 22px;
+    margin: 10px 0;
+}
+
+li {
+    margin: 6px 0;
+}
+
+/* ========== 分割线 ========== */
+hr {
+    border: none;
+    border-top: 1px solid #E8E3D8;
+    margin: 24px 0;
+}
+
+/* ========== 图片 ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 16px auto;
+    border-radius: 4px;
+}
+
+/* ========== 引用 ========== */
+blockquote {
+    border-left: 3px solid #E8A84C;
+    margin: 14px 0;
+    padding: 10px 14px;
+    background: #FDF8F0;
+    border-radius: 0 4px 4px 0;
+    color: #5C5144;
+    font-size: 14px;
+}
+
+/* ========== 尾部信息 ========== */
+.footer-note {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid #E8E3D8;
+    font-size: 12px;
+    color: #999;
+    text-align: center;
+    line-height: 1.6;
+}
+
+/* ========== 重点高亮标签 ========== */
+.tag-star {
+    display: inline-block;
+    background: #D9750A;
+    color: #fff;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+    font-weight: 600;
+}
+
+/* ========== 页表目录名高亮 ========== */
+.pgdir-name {
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    font-weight: 700;
+    color: #8B4513;
+    background: #FDF0E0;
+    padding: 1px 4px;
+    border-radius: 2px;
+    font-size: 0.92em;
+}
+</style>
+</head>
+<body>
+
+<h1>ARM64 Linux 内核启动：<br>五个页表目录及其生命周期</h1>
+
+<div class="intro-box">
+<strong>📖 导读：</strong>ARM64 Linux 内核从上电到 <code>start_kernel()</code> 的启动过程中，共涉及 <strong>5 个不同的页表目录</strong>。它们分别在 MMU 开启前、MMU 开启瞬间、早期内核映射阶段和最终页表建立阶段发挥作用。本文逐一拆解每个页表目录的用途、生命周期、级数骨架和叶子映射模式，帮助建立完整的 ARM64 启动页表演进认知。
+</div>
+
+<h2>一、五个页表目录总览</h2>
+
+<table>
+<thead><tr>
+<th style="width:28%">页表目录名</th>
+<th style="width:28%">用途</th>
+<th style="width:44%">生命周期</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>init_idmap_pg_dir</code></td>
+<td>恒等映射 (PA=VA)<br>MMU 开启瞬间使用</td>
+<td>head.S 创建 → setup_arch 卸载<br>TTBR0 使用</td>
+</tr>
+<tr>
+<td><code>reserved_pg_dir</code></td>
+<td>空页表（安全占位）<br>防止野指针访问</td>
+<td>切换 TTBR1 时临时使用<br>全程保留</td>
+</tr>
+<tr>
+<td><code>init_pg_dir</code></td>
+<td>早期内核映射<br>内核镜像虚拟映射</td>
+<td>early_map_kernel 创建<br>根页表复制到 swapper_pg_dir 后废弃</td>
+</tr>
+<tr>
+<td><code>swapper_pg_dir</code></td>
+<td><span class="tag-star">★</span> 最终内核页表<br>内核镜像 + 线性映射</td>
+<td>early_map_kernel 初始化（从init复制）<br>paging_init 完善，永久使用<br>TTBR1 使用</td>
+</tr>
+<tr>
+<td><code>idmap_pg_dir</code></td>
+<td><span class="tag-star">★</span> 最终恒等映射<br>仅映射 .idmap.text 段</td>
+<td>paging_init → create_idmap() 创建<br>CPU hotplug/suspend 时 TTBR0 使用</td>
+</tr>
+</tbody></table>
+
+<h2>二、关键细节补充</h2>
+
+<p>除了记住"谁在什么时候用"，还要记住<strong>"它到底是几级页表、叶子条目是 block 还是 page"</strong>。以下是逐个要点：</p>
+
+<ul>
+<li><strong>主内核地址空间是 5 级页表</strong>：<code>PAGE_SIZE=4KB</code>、<code>VA_BITS=52</code>、<code>CONFIG_PGTABLE_LEVELS=5</code>，Linux 命名层次是 <code>PGD → P4D → PUD → PMD → PTE</code></li>
+
+<li><strong>每级单个条目的典型覆盖范围</strong>：<code>PGD=256TB</code>，<code>P4D=512GB</code>，<code>PUD=1GB</code>，<code>PMD=2MB</code>，<code>PTE=4KB</code></li>
+
+<li><strong>本文口语里的"段映射"在 ARM64 里更准确叫 block mapping</strong>：对 4KB granule，常见 block leaf 是 <code>PUD</code> 的 <code>1GB block</code> 和 <code>PMD</code> 的 <code>2MB block</code>；真正的页映射是 <code>PTE</code> 的 <code>4KB page</code></li>
+
+<li><strong><code>idmap</code> 不是 52-bit 五级，而是固定 48-bit 四级</strong>：源码里 <code>IDMAP_VA_BITS=48</code>，<code>IDMAP_ROOT_LEVEL = 4 - 4 = 0</code>，因此 <code>init_idmap_pg_dir</code> / <code>idmap_pg_dir</code> 的根表位于 <strong>level 0（即 P4D 层）</strong>，遍历路径为 <code>P4D→PUD→PMD→PTE</code>，不需要顶层 <code>PGD（level -1）</code></li>
+
+<li><strong>启动早期的 <code>create_init_idmap()</code> / <code>map_kernel()</code></strong> 走的是 <code>arch/arm64/kernel/pi/map_range.c</code> 这套 PI 建表器：<code>idmap</code> 侧从 level 0 开始（四级），内核主映射侧从 level -1 开始（五级）；PI 建表器的叶子只在 <strong>level 2 放 PMD 2MB block</strong> 或 <strong>level 3 放 PTE 4KB page</strong>（<code>level &lt; 2</code> 时一律递归，因此 PI 建表器不会产生 PUD 1GB block）</li>
+
+<li><strong>最终 <code>paging_init()</code> 的 <code>swapper_pg_dir</code></strong> 走通用建表器 <code>__create_pgd_mapping()</code>：在 4KB 页配置下会优先尝试 <code>PUD 1GB block</code> 或 <code>PMD 2MB block</code>，只有需要更细粒度权限、边界切分或后续拆分时才下沉到 <code>PTE 4KB page</code></li>
+
+<li><strong><code>reserved_pg_dir</code> 只是空根表</strong>，只负责占位，不承载实际叶子映射</li>
+</ul>
+
+<h2>三、页表目录对照表</h2>
+
+<table>
+<thead><tr>
+<th>页表目录</th>
+<th>生命周期阶段</th>
+<th>级数骨架</th>
+<th>实际叶子映射模式</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>init_idmap_pg_dir</code></td>
+<td><code>head.S</code> 早期恒等映射</td>
+<td>4 级 (root 在 level 0 即 <code>P4D→PUD→PMD→PTE</code>；无 <code>PGD</code>)</td>
+<td>以 <code>PMD 2MB block</code> 为主，必要时降到 <code>PTE 4KB page</code></td>
+</tr>
+<tr>
+<td><code>reserved_pg_dir</code></td>
+<td>MMU 刚打开时给 <code>TTBR1</code> 占位</td>
+<td>只有根表占位</td>
+<td>无实际映射</td>
+</tr>
+<tr>
+<td><code>init_pg_dir</code></td>
+<td><code>early_map_kernel()</code> 早期内核镜像映射</td>
+<td>5 级</td>
+<td>以 <code>PMD 2MB block</code> 为主，段边界/权限切分处用 <code>PTE 4KB page</code></td>
+</tr>
+<tr>
+<td><code>swapper_pg_dir</code></td>
+<td><code>early_map_kernel()</code> 初始化，<code>paging_init()</code> 完善</td>
+<td>5 级</td>
+<td>最终内核页表，优先 <code>PUD 1GB block</code> / <code>PMD 2MB block</code>，必要时 <code>PTE 4KB page</code></td>
+</tr>
+<tr>
+<td><code>idmap_pg_dir</code></td>
+<td><code>paging_init()</code> 后的最终 idmap</td>
+<td>4 级 (<code>IDMAP_ROOT_LEVEL=0</code>，即 <code>P4D→PUD→PMD→PTE</code>，无 <code>PGD</code>)</td>
+<td>只覆盖 <code>.idmap.text</code> 一小段，通常是 <code>PMD block</code>，不够对齐时退化为 <code>PTE page</code></td>
+</tr>
+</tbody></table>
+
+<h2>四、总结</h2>
+
+<p>ARM64 内核启动过程中，五个页表目录按"出场顺序"形成一条清晰的演进链：</p>
+
+<ol>
+<li><strong><code>init_idmap_pg_dir</code></strong>（四级，head.S 汇编创建）→ 恒等映射，安全开启 MMU</li>
+<li><strong><code>reserved_pg_dir</code></strong>（空根表）→ TTBR1 安全占位，防止野指针</li>
+<li><strong><code>init_pg_dir</code></strong>（五级，early_map_kernel 创建）→ 内核镜像的临时虚拟映射，让内核跳入高地址运行</li>
+<li><strong><code>swapper_pg_dir</code></strong>（五级，paging_init 完善）→ ★ 最终内核页表，TTBR1 使用，伴随内核整个生命周期</li>
+<li><strong><code>idmap_pg_dir</code></strong>（四级，paging_init 创建）→ ★ 最终恒等映射，CPU hotplug/suspend 时 TTBR0 使用</li>
+</ol>
+
+<p>理解这五个目录的<strong>级数差异</strong>（idmap 固定四级 48-bit vs 主内核五级 52-bit）和<strong>叶子映射差异</strong>（PI 建表器只用 PMD block/PTE page vs 通用建表器优先尝试 PUD 1GB block），是掌握 ARM64 启动内存管理的关键。</p>
+
+<hr>
+
+<div class="footer-note">
+<p>本文节选自《Linux ARM64 内存管理完全学习指南》第0课<br>
+基于 Linux 6.18.1，ARM64 架构，VA_BITS=52，PGTABLE_LEVELS=5</p>
+</div>
+
+</body>
+</html>

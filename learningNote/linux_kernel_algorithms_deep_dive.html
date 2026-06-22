@@ -391,10 +391,10 @@ hr {
           <li><a href="#13-nice-to-weight-映射">1.3 Nice-to-Weight 映射</a></li>
           <li><a href="#14-eevdf-earliest-eligible-virtual-deadline-first">1.4 EEVDF: Earliest Eligible Virtual Deadline First</a></li>
           <li><a href="#15-red-black-tree-调度">1.5 Red-Black Tree 调度</a></li>
-          <li><a href="#15-enqueue_entity--完整入队流程">1.5 enqueue_entity() — 完整入队流程</a></li>
-          <li><a href="#16-pick_next_task_fair--选择下一个任务">1.6 pick_next_task_fair() — 选择下一个任务</a></li>
-          <li><a href="#17-load-balancing">1.7 Load Balancing</a></li>
-          <li><a href="#18-复杂度">1.8 复杂度</a></li>
+          <li><a href="#16-enqueue_entity--完整入队流程">1.6 enqueue_entity() — 完整入队流程</a></li>
+          <li><a href="#17-pick_next_task_fair--选择下一个任务">1.7 pick_next_task_fair() — 选择下一个任务</a></li>
+          <li><a href="#18-load-balancing">1.8 Load Balancing</a></li>
+          <li><a href="#19-复杂度">1.9 复杂度</a></li>
         </ul>
       </li>
       <li class="toc-chapter">
@@ -557,10 +557,35 @@ static u64 __calc_delta(u64 delta_exec, unsigned long weight, struct load_weight
     return mul_u64_u32_shr(delta_exec, fact, shift);
 }</code></pre>
 
-<p><strong>数学公式</strong>:<br>
-$$vruntime_{new} = vruntime_{old} + \Delta_{exec} \times \frac{weight_{nice_0}}{weight_{task}}$$</p>
+<p><strong>数学公式 — 直观理解</strong>:</p>
 
-<h3>1.3 Nice-to-Weight 映射</h3>
+<p>CFS 每次更新 vruntime 只做一件事：用<strong>物理运行时间</strong>乘以一个<strong>放大/缩小系数</strong>，然后加到旧值上。</p>
+
+<div style="text-align:center;font-size:1.2em;margin:18px 0;padding:14px;background:var(--accent-soft);border-radius:6px;">
+<strong>新 vruntime = 旧 vruntime + 物理运行时间 × (1024 ÷ 任务权重)</strong>
+</div>
+
+<p>括号里的 <code>1024 ÷ 权重</code> 就是<strong>调节系数</strong>。看三个具体例子：</p>
+
+<table>
+<thead><tr><th>任务类型</th><th>nice</th><th>权重</th><th>调节系数 1024÷权重</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td>高优先级</td><td>-20</td><td>88761</td><td>1024÷88761 ≈ <strong>0.0115</strong></td><td>跑了 1ms 物理时间，vruntime 只涨 <strong>0.0115ms</strong></td></tr>
+<tr><td>普通</td><td>0</td><td>1024</td><td>1024÷1024 = <strong>1.0</strong></td><td>跑了 1ms 物理时间，vruntime 涨 <strong>1ms</strong></td></tr>
+<tr><td>低优先级</td><td>+19</td><td>15</td><td>1024÷15 ≈ <strong>68.3</strong></td><td>跑了 1ms 物理时间，vruntime 涨 <strong>68.3ms</strong></td></tr>
+</tbody>
+</table>
+
+<p>通俗总结：</p>
+<ul>
+<li><strong>权重越大 → 调节系数越小 → vruntime 涨得越慢 → 在红黑树里排前面 → 拿 CPU 多</strong></li>
+<li><strong>权重越小 → 调节系数越大 → vruntime 涨得越快 → 在红黑树里排后面 → 拿 CPU 少</strong></li>
+</ul>
+
+
+<h3>1.3 Nice-to-Weight 映射与权重设计原理</h3>
+
+<h4>1.3.1 权重表</h4>
 
 <p><strong><code>sched_prio_to_weight[]</code></strong> (<a href="kernel/sched/core.c#L10342">core.c</a>):</p>
 <pre><code class="language-c">const int sched_prio_to_weight[40] = {
@@ -574,9 +599,526 @@ $$vruntime_{new} = vruntime_{old} + \Delta_{exec} \times \frac{weight_{nice_0}}{
  /*  15 */        36,        29,        23,        18,        15,
 };</code></pre>
 
-<p><strong>设计原则</strong>: 相邻 nice 值之间的权重比大约为 <strong>~1.25</strong> (25%)，保证每降低1个nice值，获得约10%更多的CPU时间。<code>NICE_0_LOAD = 1024</code>。</p>
+<h4>1.3.2 权重比的数学性质</h4>
 
-<p>预计算的逆值 <code>sched_prio_to_wmult[]</code> 用于将除法转换为乘法+右移，避免运行时除法的开销。</p>
+<p><strong>相邻 nice 值之间的权重比</strong>：把权重表里相邻两个数字相除，结果都非常接近 <strong>1.25</strong>。</p>
+
+<div style="text-align:center;font-size:1.15em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>相邻权重比 ≈ 1.25</strong>（每降一级 nice，权重约乘以 1.25）
+</div>
+
+<p>具体验证：</p>
+<pre><code>nice  权重     除以前一个
+-20   88761    —
+-19   71755    88761 ÷ 71755 = 1.237
+-18   56483    71755 ÷ 56483 = 1.271
+-17   46273    56483 ÷ 46273 = 1.221
+ ...
+  0    1024     1277 ÷ 1024 = 1.247
+ +1     820     1024 ÷  820 = 1.249
+ +4     423      526 ÷  423 = 1.243
+ +5     335      423 ÷  335 = 1.263
+ +8     215      272 ÷  215 = 1.265
++12      87      110 ÷   87 = 1.264
++19      15       18 ÷   15 = 1.200</code></pre>
+
+<p>这意味着：<strong>每降低一个 nice 级别，CPU 时间份额增加约 25%</strong>（1.25≈1+25%）。</p>
+
+<h4>1.3.3 数值举例 — 相同物理时间, 不同 vruntime 增长</h4>
+
+<p>假设三个任务各实际运行了 <strong>1ms</strong>，看看各自的 vruntime 分别涨了多少：</p>
+
+<table>
+<thead><tr><th>任务</th><th>nice</th><th>权重</th><th>调节系数 = 1024÷权重</th><th>本次 vruntime 增量</th></tr></thead>
+<tbody>
+<tr><td>高优先级</td><td>-20</td><td>88761</td><td>1024÷88761 ≈ <strong>0.0115</strong></td><td><strong>11.5 µs</strong></td></tr>
+<tr><td>普通</td><td>0</td><td>1024</td><td>1024÷1024 = <strong>1.0</strong></td><td><strong>1 ms</strong></td></tr>
+<tr><td>低优先级</td><td>+19</td><td>15</td><td>1024÷15 ≈ <strong>68.3</strong></td><td><strong>68.3 ms</strong></td></tr>
+</tbody>
+</table>
+
+<p>nice=-20 与 nice=+19 的 vruntime 增长速度之比：</p>
+
+<div style="text-align:center;font-size:1.1em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>68.3 ÷ 0.0115 ≈ 5917 倍</strong>
+</div>
+
+<h4>1.3.4 CPU 时间公平分配原理</h4>
+
+<p>两个任务同时竞争 CPU 时，CFS 要保证它们的 <strong>vruntime 增长速度一样</strong>——这就是"公平"的定义。用大白话说：两个任务跑完一段物理时间后，每单位 vruntime 分配的 CPU 时间是相等的。</p>
+
+<p>任务A 的 vruntime 增长 = 任务B 的 vruntime 增长，即：</p>
+
+<div style="text-align:center;font-size:1.1em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>物理时间A × (1024 ÷ 权重A) = 物理时间B × (1024 ÷ 权重B)</strong>
+</div>
+
+<p>两边同时约掉 1024，得到最终结论：</p>
+
+<div style="text-align:center;font-size:1.15em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>CPU时间A ÷ CPU时间B = 权重A ÷ 权重B</strong><br>
+<small>（谁的权重大，谁拿的 CPU 就多，比例恰好等于权重比）</small>
+</div>
+
+<p>实例化：</p>
+
+<table>
+<thead><tr><th>对比</th><th>权重比</th><th>CPU 时间分配</th></tr></thead>
+<tbody>
+<tr><td>nice=-20 vs nice=0</td><td>88761 / 1024</td><td>nice=-20 获得 <strong>86.7×</strong> 更多 CPU</td></tr>
+<tr><td>nice=0 vs nice=+19</td><td>1024 / 15</td><td>nice=0 获得 <strong>68.3×</strong> 更多 CPU</td></tr>
+<tr><td>nice=-10 vs nice=0</td><td>9548 / 1024</td><td>nice=-10 获得 <strong>9.3×</strong> 更多 CPU</td></tr>
+<tr><td>nice=-5 vs nice=+5</td><td>3121 / 335</td><td>nice=-5 获得 <strong>9.3×</strong> 更多 CPU</td></tr>
+<tr><td>nice=-20 vs nice=+19</td><td>88761 / 15</td><td>nice=-20 获得 <strong>5917×</strong> 更多 CPU</td></tr>
+</tbody>
+</table>
+
+<h4>1.3.5 红黑树中的可视化模拟</h4>
+
+<p>以下用三个场景展示 vruntime 如何决定红黑树的位置与调度次序。每个节点用圆形表示，<span style="color:#2D2A26;font-weight:700;">● 黑色</span> / <span style="color:#C04040;font-weight:700;">● 红色</span> 标注 RB-tree 颜色，<strong>vr 值</strong> 是排序键。所有 NIL 叶子（黑色空节点）略去不画。</p>
+
+<div style="margin:20px 0;border:1px solid var(--border);border-radius:8px;background:#fff;padding:16px;">
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 1020" width="100%" style="display:block;max-width:840px;margin:0 auto;">
+
+  <defs>
+    <filter id="sh"><feDropShadow dx="1" dy="1" stdDeviation="2" flood-color="#00000015"/></filter>
+  </defs>
+
+  <!-- ================================================================ -->
+  <!-- SCENE 1: Initial RB-tree  (y=0 ~ 330) -->
+  <!-- ================================================================ -->
+  <text x="420" y="22" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="700" fill="#1E1B18">CFS 红黑树：vruntime 是排序键，最左节点是下一个要运行的任务</text>
+
+  <rect x="0" y="38" width="840" height="28" rx="4" fill="#F5F0E8"/>
+  <text x="420" y="57" text-anchor="middle" font-family="sans-serif" font-size="12.5" font-weight="700" fill="#5C4A2E">场景 1：初始状态 — 5 个任务按 vruntime 排序在红黑树中</text>
+
+  <!-- RB rules box -->
+  <rect x="620" y="76" width="200" height="72" rx="5" fill="#F8F6F0" stroke="#E0D8C0" stroke-width="1"/>
+  <text x="720" y="94" text-anchor="middle" font-family="sans-serif" font-size="9.5" font-weight="700" fill="#6B625A">RB-tree 规则</text>
+  <text x="630" y="112" font-family="monospace" font-size="8.5" fill="#8B8070">● 黑色  █ NIL(空叶)</text>
+  <text x="630" y="128" font-family="monospace" font-size="8.5" fill="#8B8070">1.根必黑 2.红子必黑</text>
+  <text x="630" y="142" font-family="monospace" font-size="8.5" fill="#8B8070">3.任一路径黑节点数相等</text>
+
+  <!-- Tree: C(vr=200,BLACK root), A(vr=100,BLACK left), E(vr=300,RED right), D(vr=250,BLACK left-of-E), F(vr=400,BLACK right-of-E) -->
+
+  <!-- ROOT C -->
+  <circle cx="380" cy="175" r="30" fill="#2D2A26" stroke="#1E1B18" stroke-width="2" filter="url(#sh)"/>
+  <text x="380" y="171" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#fff">C</text>
+  <text x="380" y="185" text-anchor="middle" font-family="monospace" font-size="8.5" fill="#D8D0C0">vr=200</text>
+  <text x="380" y="218" text-anchor="middle" font-family="monospace" font-size="8" fill="#8B7355">root</text>
+
+  <!-- LEFT: A -->
+  <line x1="358" y1="198" x2="260" y2="248" stroke="#2D2A26" stroke-width="1.5"/>
+  <circle cx="230" cy="272" r="30" fill="#2D2A26" stroke="#1E1B18" stroke-width="2" filter="url(#sh)"/>
+  <text x="230" y="268" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#fff">A</text>
+  <text x="230" y="282" text-anchor="middle" font-family="monospace" font-size="8.5" fill="#D8D0C0">vr=100 ★</text>
+
+  <!-- A NILs -->
+  <rect x="188" y="318" width="10" height="10" fill="#2D2A26"/>
+  <line x1="216" y1="299" x2="194" y2="321" stroke="#2D2A26" stroke-width="1"/>
+  <rect x="258" y="318" width="10" height="10" fill="#2D2A26"/>
+  <line x1="242" y1="299" x2="262" y2="321" stroke="#2D2A26" stroke-width="1"/>
+
+  <!-- RIGHT: E -->
+  <line x1="405" y1="198" x2="510" y2="248" stroke="#C04040" stroke-width="1.5"/>
+  <circle cx="540" cy="272" r="30" fill="#D44545" stroke="#A03030" stroke-width="2" filter="url(#sh)"/>
+  <text x="540" y="268" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#fff">E</text>
+  <text x="540" y="282" text-anchor="middle" font-family="monospace" font-size="8.5" fill="#F8E0E0">vr=300</text>
+
+  <!-- E left: D -->
+  <line x1="516" y1="296" x2="460" y2="340" stroke="#2D2A26" stroke-width="1.5"/>
+  <circle cx="440" cy="365" r="30" fill="#2D2A26" stroke="#1E1B18" stroke-width="2" filter="url(#sh)"/>
+  <text x="440" y="361" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#fff">D</text>
+  <text x="440" y="375" text-anchor="middle" font-family="monospace" font-size="8.5" fill="#D8D0C0">vr=250</text>
+
+  <!-- D NILs -->
+  <rect x="398" y="408" width="10" height="10" fill="#2D2A26"/>
+  <line x1="426" y1="392" x2="404" y2="411" stroke="#2D2A26" stroke-width="1"/>
+  <rect x="468" y="408" width="10" height="10" fill="#2D2A26"/>
+  <line x1="452" y1="392" x2="472" y2="411" stroke="#2D2A26" stroke-width="1"/>
+
+  <!-- E right: F -->
+  <line x1="564" y1="296" x2="610" y2="340" stroke="#2D2A26" stroke-width="1.5"/>
+  <circle cx="630" cy="365" r="30" fill="#2D2A26" stroke="#1E1B18" stroke-width="2" filter="url(#sh)"/>
+  <text x="630" y="361" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#fff">F</text>
+  <text x="630" y="375" text-anchor="middle" font-family="monospace" font-size="8.5" fill="#D8D0C0">vr=400</text>
+
+  <!-- F NILs -->
+  <rect x="588" y="408" width="10" height="10" fill="#2D2A26"/>
+  <line x1="616" y1="392" x2="594" y2="411" stroke="#2D2A26" stroke-width="1"/>
+  <rect x="658" y="408" width="10" height="10" fill="#2D2A26"/>
+  <line x1="642" y1="392" x2="662" y2="411" stroke="#2D2A26" stroke-width="1"/>
+
+  <!-- leftmost highlight -->
+  <rect x="60" y="262" width="95" height="22" rx="4" fill="#FDF0E0" stroke="#E8C888" stroke-width="1"/>
+  <text x="107" y="277" text-anchor="middle" font-family="monospace" font-size="9.5" font-weight="700" fill="#C2680A">← leftmost</text>
+
+  <!-- Inorder traversal hint -->
+  <text x="65" y="320" font-family="monospace" font-size="9" fill="#8B8070">中序遍历: A(100)</text>
+  <text x="65" y="336" font-family="monospace" font-size="9" fill="#8B8070">→ C(200) → D(250)</text>
+  <text x="65" y="352" font-family="monospace" font-size="9" fill="#8B8070">→ E(300) → F(400)</text>
+  <text x="65" y="368" font-family="monospace" font-size="9" fill="#6B625A">值递增 = 红黑树BST性质</text>
+
+  <!-- ================================================================ -->
+  <!-- SCENE 2: Pick & Re-enqueue  (y=440 ~ 690) -->
+  <!-- ================================================================ -->
+  <rect x="0" y="440" width="840" height="28" rx="4" fill="#F5F0E8"/>
+  <text x="420" y="459" text-anchor="middle" font-family="sans-serif" font-size="12.5" font-weight="700" fill="#5C4A2E">场景 2：pick A（leftmost）→ 运行 1ms → vr 几乎不变 → 重新插入仍是最左</text>
+
+  <!-- Step 1: A removed, tree rebalanced -->
+  <text x="140" y="500" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#D9750A">① 删除 A，树重平衡</text>
+
+  <!-- Small tree after removal: C root, E red, D/F black -->
+  <circle cx="210" cy="562" r="28" fill="#2D2A26" stroke="#1E1B18" stroke-width="2" filter="url(#sh)"/>
+  <text x="210" y="558" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#fff">C</text>
+  <text x="210" y="572" text-anchor="middle" font-family="monospace" font-size="8" fill="#D8D0C0">vr=200</text>
+
+  <circle cx="330" cy="562" r="28" fill="#D44545" stroke="#A03030" stroke-width="2" filter="url(#sh)"/>
+  <text x="330" y="558" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#fff">E</text>
+  <text x="330" y="572" text-anchor="middle" font-family="monospace" font-size="8" fill="#F8E0E0">vr=300</text>
+
+  <line x1="236" y1="555" x2="304" y2="555" stroke="#C04040" stroke-width="1.3"/>
+
+  <circle cx="270" cy="620" r="26" fill="#2D2A26" stroke="#1E1B18" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="270" y="616" text-anchor="middle" font-family="monospace" font-size="10.5" font-weight="700" fill="#fff">D</text>
+  <text x="270" y="630" text-anchor="middle" font-family="monospace" font-size="8" fill="#D8D0C0">vr=250</text>
+
+  <circle cx="380" cy="620" r="26" fill="#2D2A26" stroke="#1E1B18" stroke-width="1.8" filter="url(#sh)"/>
+  <text x="380" y="616" text-anchor="middle" font-family="monospace" font-size="10.5" font-weight="700" fill="#fff">F</text>
+  <text x="380" y="630" text-anchor="middle" font-family="monospace" font-size="8" fill="#D8D0C0">vr=400</text>
+
+  <line x1="314" y1="588" x2="282" y2="597" stroke="#2D2A26" stroke-width="1.3"/>
+  <line x1="346" y1="588" x2="365" y2="597" stroke="#2D2A26" stroke-width="1.3"/>
+
+  <rect x="145" y="510" width="90" height="18" rx="3" fill="#FDF0E0" stroke="#E8C888" stroke-width="1"/>
+  <text x="190" y="523" text-anchor="middle" font-family="monospace" font-size="8" font-weight="700" fill="#C2680A">leftmost=C</text>
+
+  <!-- A running box - right side -->
+  <rect x="480" y="500" width="340" height="130" rx="7" fill="#F8F0E0" stroke="#E0C080" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="650" y="522" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#C2680A">A 正在运行 (rq→curr)</text>
+  <text x="500" y="545" font-family="monospace" font-size="10" fill="#8B6914">nice=-5, weight=3121</text>
+  <text x="500" y="565" font-family="monospace" font-size="10" fill="#8B6914">物理运行 1ms</text>
+  <text x="500" y="585" font-family="monospace" font-size="10" fill="#8B6914">vr 增量 = 1ms × 1024/3121</text>
+  <text x="500" y="605" font-family="monospace" font-size="10" fill="#8B6914">       = 1ms × 0.328 ≈ <strong>0.33ms</strong></text>
+  <text x="500" y="625" font-family="monospace" font-size="9.5" fill="#A08050">vr: 100.00 → 100.33</text>
+
+  <!-- Step 2 -->
+  <text x="140" y="680" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#D9750A">② 重新入队，vr≈100 < C 的 200</text>
+  <text x="140" y="697" text-anchor="middle" font-family="sans-serif" font-size="9.5" fill="#A08050">→ A 插入后仍是 leftmost</text>
+
+  <!-- ================================================================ -->
+  <!-- SCENE 3: Wakeup preempt  (y=730 ~ 920) -->
+  <!-- ================================================================ -->
+  <rect x="0" y="730" width="840" height="28" rx="4" fill="#F5F0E8"/>
+  <text x="420" y="749" text-anchor="middle" font-family="sans-serif" font-size="12.5" font-weight="700" fill="#5C4A2E">场景 3：睡眠任务 W 醒来（vr=80），比 leftmost 还小 → 插入最左 → 抢占</text>
+
+  <!-- Wakeup box — positioned at top-left of scene, above the tree -->
+  <rect x="30" y="772" width="310" height="60" rx="6" fill="#FFF0F0" stroke="#E8A0A0" stroke-width="1.2" filter="url(#sh)"/>
+  <text x="185" y="792" text-anchor="middle" font-family="monospace" font-size="10.5" font-weight="700" fill="#B13E3E">W 从磁盘 IO 中醒来</text>
+  <text x="185" y="810" text-anchor="middle" font-family="monospace" font-size="9.5" fill="#B87080">睡眠前 vr=80（很小），sleep 期间冻结</text>
+  <text x="185" y="826" text-anchor="middle" font-family="monospace" font-size="9.5" fill="#B87080">醒来：vr=80 < leftmost vr=100 → 抢占!</text>
+
+  <!-- Arrow from wakeup box to tree -->
+  <path d="M 340,802 L 390,802 L 390,862" fill="none" stroke="#B13E3E" stroke-width="1.3" stroke-dasharray="4,3"/>
+
+  <!-- RB tree: W(red) as leftmost, A(black), C(black) -->
+  <circle cx="430" cy="885" r="30" fill="#2D2A26" stroke="#1E1B18" stroke-width="2" filter="url(#sh)"/>
+  <text x="430" y="881" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#fff">A</text>
+  <text x="430" y="895" text-anchor="middle" font-family="monospace" font-size="8.5" fill="#D8D0C0">vr=100</text>
+
+  <!-- W left of A -->
+  <line x1="405" y1="870" x2="320" y2="860" stroke="#C04040" stroke-width="1.5"/>
+  <circle cx="280" cy="885" r="30" fill="#D44545" stroke="#A03030" stroke-width="2" filter="url(#sh)"/>
+  <text x="280" y="881" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#fff">W</text>
+  <text x="280" y="895" text-anchor="middle" font-family="monospace" font-size="8.5" fill="#F8E0E0">vr=80 ☆</text>
+
+  <!-- C right of A -->
+  <line x1="455" y1="870" x2="550" y2="860" stroke="#2D2A26" stroke-width="1.5"/>
+  <circle cx="590" cy="885" r="30" fill="#2D2A26" stroke="#1E1B18" stroke-width="2" filter="url(#sh)"/>
+  <text x="590" y="881" text-anchor="middle" font-family="monospace" font-size="12" font-weight="700" fill="#fff">C</text>
+  <text x="590" y="895" text-anchor="middle" font-family="monospace" font-size="8.5" fill="#D8D0C0">vr=200</text>
+
+  <!-- leftmost -->
+  <rect x="160" y="874" width="80" height="20" rx="3" fill="#FFEEEE" stroke="#E8A0A0" stroke-width="1"/>
+  <text x="200" y="888" text-anchor="middle" font-family="monospace" font-size="8.5" font-weight="700" fill="#B13E3E">leftmost=W</text>
+
+  <!-- Summary -->
+  <rect x="80" y="950" width="680" height="54" rx="7" fill="#FDF8F0" stroke="#E8A84C" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="420" y="970" text-anchor="middle" font-family="sans-serif" font-size="10.5" font-weight="700" fill="#5C4A2E">红黑树只看 vruntime 排序 · weight 只影响 vr 增长速度 · leftmost 始终是下一个运行的任务</text>
+  <text x="420" y="992" text-anchor="middle" font-family="monospace" font-size="9.5" fill="#8B6914">高权重任务 vr 涨得慢 → 长期占据最左 → 获得更多 CPU · 睡眠任务 vr 冻结 → 醒来往往立即抢占</text>
+
+</svg>
+
+</div>
+
+<p><strong>结论</strong>: 红黑树只看 vruntime 排序，weight 只决定 vruntime 增长速度。这两个机制正交但协同——weight 大的任务 vruntime 涨得慢，自然长时间占据树的最左位置，获得更多 CPU。睡眠唤醒的任务因为 vr"冻结"在较小值，醒来后往往能立即抢占。</p>
+
+<div class="info-box"><strong>附：RB-tree 三条规则解读 —— 对着图里的树逐条验证</strong></div>
+
+<p>红黑树每个节点只能是红色 ● 或黑色 ●。满足以下三条就是合法红黑树，能保证 O(log n)：</p>
+
+<h5>规则 1：根必黑</h5>
+
+<p>图中 C 是根，黑色 ✓。如果根是红色，在某些插入/删除路径上会破坏下面的规则 2，迫使根变色。</p>
+
+<h5>规则 2：红节点的两个孩子必须是黑色</h5>
+
+<p>图中 E 是唯一的红节点，它的左右孩子 D 和 F 都是黑色 ✓。这条规则禁止"红-红"父子连续出现——否则从根到叶可能连续堆叠红节点，树会退化失衡。</p>
+
+<h5>规则 3：从根到任意 NIL 叶子，经过的黑色节点数量相同</h5>
+
+<p>对着图数三条路径（NIL 空叶算隐性黑色）：</p>
+
+<pre><code>路径  C→A→NIL        :  黑(C) + 黑(A) + [NIL黑]  = 3 个黑
+路径  C→E→D→NIL      :  黑(C) + 红(E不计) + 黑(D) + [NIL黑]  = 3 个黑
+路径  C→E→F→NIL      :  黑(C) + 红(E不计) + 黑(F) + [NIL黑]  = 3 个黑</code></pre>
+
+<p>全部 3 个黑，一致 ✓。正是这条规则保证：<strong>最长路径 ≤ 2 × 最短路径</strong>——因为最长路径只能红黑交替（黑-红-黑-红-...-黑），而最短路径是全黑，所以树的高度永远是 O(log n)，插入/删除/查找的复杂度上界有保证。</p>
+
+<p>图上验证：最长 C→E→D→NIL（3 条边），最短 C→A→NIL（2 条边），比值 1.5 远低于理论上界 2。</p>
+
+<h5>隐含规则：新插入节点默认是红色</h5>
+
+<p>因为插红色最多违反规则 2（红-红相邻），只需在插入路径上逐级向上变色或旋转修复。如果插黑色，直接违反规则 3（该路径多了一个黑节点），整棵树都要调整，代价大得多。</p>
+
+<h4>1.3.6 内核整数运算实现</h4>
+
+<p>为避免浮点除法，内核使用预计算的倒数表 <code>sched_prio_to_wmult[]</code> (<a href="kernel/sched/core.c#L10356">core.c</a>)：每个权重的倒数乘以 2<sup>32</sup> 预先存好，这样运行时用乘法代替除法。</p>
+
+<div style="text-align:center;font-size:1.1em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>wmult[k] = (2<sup>32</sup> ÷ 权重[k]) 取整</strong>
+</div>
+
+<p>验证：nice=0, 权重=1024 → wmult = 2<sup>32</sup> ÷ 1024 = 4194304 → 4194304 × 1024 = 4294967296 = 2<sup>32</sup> ✓</p>
+
+<p>运行时直接算<span style="white-space:nowrap">(无除法)</span>：</p>
+
+<div style="text-align:center;font-size:1.1em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>物理运行时间 × (1024 ÷ 权重) ≈ (物理运行时间 × wmult[权重]) 右移 32 位</strong>
+</div>
+
+<h4>1.3.7 权重表的设计原理与数学依据</h4>
+
+<p><strong>核心问题：为什么权重必须成等比数列？</strong></p>
+
+<p>因为 nice 值的语义是<strong>相对差异</strong>。如果 nice 0 比 nice +1 多拿的 CPU 比例，不等于 nice +10 比 nice +11 多拿的比例，那 nice 值的含义就"不均匀"了。只有等比数列才能保证——</p>
+
+<div style="text-align:center;font-size:1.1em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>相邻 nice 级的 CPU 时间比值恒定（≈ 1.25），与具体在哪一级无关</strong>
+</div>
+
+<p>因此 weight[nice=k] = 1024 × r^k，其中 r 是公比。</p>
+
+<p><strong>r 怎么定？</strong> 由两个边界条件决定：</p>
+
+<table>
+<thead><tr><th>约束</th><th>要求</th></tr></thead>
+<tbody>
+<tr><td>nice +19 的任务不能完全饿死</td><td>r 不能太大，否则 1024 / r^19 趋近于 0（极端：r=2 时 weight_nice19 = 1024/524288 ≈ 0.002，无意义）</td></tr>
+<tr><td>nice -20 的任务不能独占 CPU</td><td>r 不能太小，否则 -20 和 0 拉不开差距（r=1.05 时 weight-20 = 1024×2.65 = 2717，仅 2.7 倍）</td></tr>
+<tr><td>每一步 nice 差异应"可感知"</td><td>每降一级 nice，大约多拿 10 个百分点 CPU（r≈1.25 时验证通过）</td></tr>
+</tbody>
+</table>
+
+<p>取 r ≈ 1.25 时验证：</p>
+
+<pre><code>nice -20 到 nice +19 跨度: 1.25^39 ≈ 6000
+  实际: 88761 ÷ 15 = 5917  ✓（约四个数量级，足够宽但不极端）
+
+单步差异验证 (nice 0 vs nice +1):
+  CPU份额比 = 1024 ÷ 820 = 1.249
+  即 nice 0 得 55.5%，nice +1 得 44.5%，差 11 个百分点</code></pre>
+
+<p><strong>base = 1024 的考量</strong>：</p>
+<ul>
+<li><strong>是 2 的幂</strong>（2<sup>10</sup>），配合 2<sup>32</sup> 倒数方案：<code>1024 × 4194304 = 2<sup>32</sup></code> 完美无余数</li>
+<li><strong>够大够精细</strong>：适合 0~1024 的归一化范围（SCHED_CAPACITY_SCALE），同时在 64 位乘法时不会溢出</li>
+<li><strong>历史上的巧合</strong>：1024 恰好让极端权重（88761 和 15）都是整数，且整个表 40 个值均为整数</li>
+</ul>
+
+<p><strong>手工微调，而非精确公式</strong>。表中的值并非精确的 1024 × 1.25^n，而是人为取整的：</p>
+
+<pre><code>理论值:  1024 × 1.25    = 1280.0  → 取 1277  （-0.2%）
+理论值:  1024 × 1.25^-1 =  819.2  → 取 820   （+0.1%）
+理论值:  1024 × 1.25^-2 =  655.4  → 取 655   （-0.06%）</code></pre>
+
+<p>微调的目的：让反向表 <code>wmult[k] = 2^32 ÷ weight[k]</code> 也算出尽量规整的值，减少<strong>两个方向</strong>（正权重和倒数）的累积舍入误差。</p>
+
+<h4>1.3.8 priority 与 nice 的本质区别</h4>
+
+<div class="warn-box"><strong>常见误解：</strong>"nice 高的任务优先级低"。这句话对 CFS 正确，但 <strong>nice 不等于 priority，</strong>nice 只影响 CFS 任务的 CPU 时间比例，完全不影响 RT 实时任务的优先级。</div>
+
+<h5>1.3.8.1 priority 的完整值域</h5>
+
+<p>内核用 <code>p->prio</code>（动态优先级）统一表示所有任务的优先级，但含义随调度策略不同而<strong>完全不同</strong>（<a href="include/linux/sched/prio.h">include/linux/sched/prio.h</a>）：</p>
+
+<pre><code>p->prio 值域 (0~139, 数值越小优先级越高):
+
+  0 ──────────────────────────────────── 99 ──────── 100 ─────────── 120 ─────────── 139
+  │←   RT 实时优先级  →│                │←            CFS 优先级 (nice → prio)        →│
+  │  SCHED_FIFO/SCHED_RR  │              │  SCHED_NORMAL / SCHED_BATCH / SCHED_IDLE      │
+  │  rt_priority=1..99    │              │  static_prio = 120 + nice                     │
+  │  (99=最高RT优先级)     │              │  nice=-20 → prio=100, nice=0 → prio=120       │
+  └────────────────────────┘              └──────────────────────────────────────────────┘
+
+  MAX_DL_PRIO = 0      MAX_RT_PRIO = 100        DEFAULT_PRIO = 120        MAX_PRIO = 140</code></pre>
+
+<h5>1.3.8.2 nice 只影响 CFS，不影响 RT</h5>
+
+<p>从上面的图可以看出：<strong>RT 任务的优先级是 0~99，CFS 任务的优先级是 100~139。</strong>这是完全不同的两个号段。核心代码（<a href="kernel/sched/core.c#L195">core.c</a>）：</p>
+
+<pre><code class="language-c">static inline int __normal_prio(int policy, int rt_prior, int nice_val)
+{
+    // RT 任务的 prio 直接从 rt_priority 计算，nice 根本不参与！
+    if (rt_policy(policy))
+        return MAX_RT_PRIO - 1 - rt_prior;  // [0, 99]
+
+    // CFS 任务的 prio 从 nice 换算，rt_priority 不参与
+    return NICE_TO_PRIO(nice_val);          // [100, 139] = 120 + nice
+}</code></pre>
+
+<p><strong>nice 改变一个 RT 任务不会有任何效果</strong>——RT 任务的 CPU 份额由 <code>rt_priority</code> 和调度策略（FIFO/RR）决定。代码里（<a href="kernel/sched/syscalls.c#L545">syscalls.c</a>）：</p>
+
+<pre><code class="language-c">// SCHED_FIFO/RR 的 "priority" 含义是 rt_priority (1~99)
+// SCHED_NORMAL/BATCH/IDLE 的 "priority" 固定为 0 (无意义)，靠 nice 区分</code></pre>
+
+<h5>1.3.8.3 nice、priority、weight 三者的关系</h5>
+
+<table>
+<thead><tr><th>调度策略</th><th>优先级由谁决定</th><th>权重由谁决定</th><th>nice 的作用</th></tr></thead>
+<tbody>
+<tr>
+    <td><strong>SCHED_FIFO / SCHED_RR</strong></td>
+    <td><code>rt_priority</code> (1~99)<br>映射到 <code>p->prio</code> = 0~98</td>
+    <td>不使用权重<br>（严格优先级抢占）</td>
+    <td><strong>无效</strong></td>
+</tr>
+<tr>
+    <td><strong>SCHED_DEADLINE</strong></td>
+    <td>由 EDF deadline 决定<br>（<code>sched_runtime/deadline/period</code>）</td>
+    <td>不使用权重</td>
+    <td><strong>无效</strong></td>
+</tr>
+<tr>
+    <td><strong>SCHED_NORMAL / SCHED_BATCH</strong></td>
+    <td><code>p->prio</code> = 120 + nice<br>（但 CFS 内部不看 prio，看 weight）</td>
+    <td><strong>由 nice 查表</strong><br><code>sched_prio_to_weight[nice+20]</code></td>
+    <td><strong>决定 weight</strong><br>weight → vruntime 增长率 → CPU 份额</td>
+</tr>
+<tr>
+    <td><strong>SCHED_IDLE</strong></td>
+    <td>视为 nice=20（比 +19 更低）</td>
+    <td>weight=3 (极低权重)</td>
+    <td>隐式 nice=20</td>
+</tr>
+</tbody>
+</table>
+
+<h5>1.3.8.4 一句话总结</h5>
+
+<div style="text-align:center;font-size:1.1em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>nice 决定 CFS 任务的 CPU 时间比例（通过 weight → vruntime 机制），<br>
+优先级决定哪个调度类先被服务（stop > dl > rt > fair > idle），<br>
+两者是完全正交的概念。</strong>
+</div>
+
+<p>打个比方：在餐厅里，<strong>priority</strong> 决定了你排哪队（VIP 通道 vs 普通通道），而 <strong>nice</strong> 决定了你在普通通道里每轮能吃几口饭。</p>
+
+<h4>1.3.9 nice → weight → vruntime → CPU 份额 完整代码证据链</h4>
+
+<p>所谓"nice 是唯一决定因素"，意思是对于 CFS 任务，除了 nice（及其派生值 weight），<strong>没有任何其他参数参与 CPU 份额的计算</strong>。下面用关键代码从头到尾证明。</p>
+
+<h5>链路总览</h5>
+
+<pre><code>nice ──[NICE_TO_PRIO]──> static_prio ──[查表]──> weight ──[calc_delta_fair]──> vruntime 增速 ──[rb-tree]──> pick 频率 ──> CPU 份额</code></pre>
+
+<h5>环节①：nice → static_prio（<a href="include/linux/sched/prio.h#L27">include/linux/sched/prio.h:27</a>）</h5>
+
+<pre><code class="language-c">#define NICE_TO_PRIO(nice)  ((nice) + DEFAULT_PRIO)
+// DEFAULT_PRIO = MAX_RT_PRIO + NICE_WIDTH/2 = 100 + 20 = 120</code></pre>
+
+<p>nice=-20 → static_prio=100, nice=0 → 120, nice=+19 → 139。这一步<strong>没有任何判断逻辑</strong>，就是加 120。</p>
+
+<h5>环节②：static_prio → weight（<a href="kernel/sched/core.c#L1432">core.c:1432</a> 的 <code>set_load_weight()</code>）</h5>
+
+<pre><code class="language-c">void set_load_weight(struct task_struct *p, bool update_load)
+{
+    int prio = p->static_prio - MAX_RT_PRIO;  // = nice + 20，范围 0~39
+
+    if (task_has_idle_policy(p)) {
+        lw.weight = scale_load(WEIGHT_IDLEPRIO);     // SCHED_IDLE → weight=3
+        lw.inv_weight = WMULT_IDLEPRIO;
+    } else {
+        lw.weight = scale_load(sched_prio_to_weight[prio]);   // ★ 查表: nice→weight
+        lw.inv_weight = sched_prio_to_wmult[prio];            // ★ 倒数表: 用于避免除法
+    }
+    // ...
+    p->se.load = lw;  // 写入 task_struct 的调度实体
+}</code></pre>
+
+<p><strong>证明</strong>：weight 完全由 <code>static_prio</code>（即 nice）查表得出。没有 if 分支根据"任务已经运行了多久"或"是否有 IO"来调整 weight。权重表是<strong>编译期常量</strong>（<a href="kernel/sched/core.c#L10342">core.c:10342</a>）。</p>
+
+<h5>环节③：weight → vruntime 增长速度（<a href="kernel/sched/fair.c#L1207">fair.c:1207</a> 的 <code>update_curr()</code>）</h5>
+
+<p>每次 tick（或 enqueue/dequeue 时）调用，更新当前运行任务的 vruntime：</p>
+
+<pre><code class="language-c">static void update_curr(struct cfs_rq *cfs_rq)
+{
+    struct sched_entity *curr = cfs_rq->curr;
+    u64 now = rq_clock_task(rq_of(cfs_rq));
+    u64 delta_exec;
+
+    delta_exec = now - curr->exec_start;                 // 1. 物理运行时间 (ns)
+    curr->sum_exec_runtime += delta_exec;
+
+    curr->vruntime += calc_delta_fair(delta_exec, curr); // 2. ★ 加权: 物理→虚拟
+    curr->exec_start = now;
+
+    update_deadline(cfs_rq, curr);                       // 3. EEVDF deadline
+    update_min_vruntime(cfs_rq);                         // 4. 全局 min_vruntime
+}</code></pre>
+
+<p><code>calc_delta_fair()</code>（<a href="kernel/sched/fair.c#L290">fair.c:290</a>）是核心变换：</p>
+
+<pre><code class="language-c">static inline u64 calc_delta_fair(u64 delta, struct sched_entity *se)
+{
+    if (unlikely(se->load.weight != NICE_0_LOAD))        // 1024
+        delta = __calc_delta(delta, NICE_0_LOAD, &se->load);
+    //        delta_exec * 1024 / weight  (用乘法+移位避免除法)
+    return delta;
+}</code></pre>
+
+<p><strong>证明</strong>：<code>update_curr()</code> 只看 <code>se->load.weight</code>，不看 <code>rt_priority</code>、不看 <code>policy</code>。同一个函数处理所有 CFS 任务，weight 是唯一的变速杠杆。代码里<strong>没有任何"任务老化"或"优先级动态调整"的补偿项</strong>。</p>
+
+<h5>环节④：vruntime → 红黑树位置 → pick 频率</h5>
+
+<p>入队时（<a href="kernel/sched/fair.c#L848">fair.c:848</a>）：</p>
+<pre><code class="language-c">rb_add_augmented_cached(&se->run_node, &cfs_rq->tasks_timeline,
+                        __entity_less,    // 比较函数: 按 vruntime 排序
+                        &min_vruntime_cb);
+</code></pre>
+
+<p><strong>证明</strong>：<code>__entity_less()</code>（<a href="kernel/sched/fair.c#L796">fair.c:796</a>）就是比较两个 se 的 vruntime。树中位置<strong>完全由 vruntime 决定</strong>，没有第二排序键。</p>
+
+<h5>环节⑤：长期运行 → CPU 份额收敛到权重比</h5>
+
+<p>两个 CFS 任务跑足够长时间后，CFS 保证 vruntime 增长率相等（否则一个永远在最左、另一个永远在最右，就没有"公平"可言）：</p>
+
+<pre><code>Δt_A × (1024 / weight_A) = Δt_B × (1024 / weight_B)
+             约去 1024:
+           Δt_A / Δt_B = weight_A / weight_B</code></pre>
+
+<p><strong>证明</strong>：收敛性来自红黑树的自校正——如果 A 的 vruntime 增长太快（拿多了 CPU），它就会从最左滑到右边，B 就变成最左被 pick。这个负反馈自动把 CPU 比例拉回权重比。全程<strong>不依赖优先级衰减、不依赖 heuristics、不需要 magic number</strong>。</p>
+
+<h5>结论</h5>
+
+<div style="text-align:center;font-size:1.1em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>对于 CFS 任务，从 nice 到最终 CPU 份额的整条链路中，<br>
+唯一的变量就是 <code>sched_prio_to_weight[nice+20]</code> 这张表。<br>
+不存在任何"动态优先级调整""CPU 使用率惩罚""IO 补偿"<br>
+等机制来改变权重——这就是 CFS 被称为"完全公平"的根本原因。</strong>
+</div>
 
 <h3>1.4 EEVDF: Earliest Eligible Virtual Deadline First</h3>
 
@@ -620,122 +1162,500 @@ static int vruntime_eligible(struct cfs_rq *cfs_rq, u64 vruntime)
 
 <p><strong>为什么不直接用 <code>avg_vruntime() >= se->vruntime</code>？</strong> 因为 <code>avg_vruntime()</code> 需要做一次 64 位除法（<code>div_s64</code>），而 <code>vruntime_eligible()</code> 通过交叉相乘避免了除法，在热路径上更快。</p>
 
+<div class="warn-box"><strong>关键追问：lag 公式里为什么乘以 w_i？只判断正负号的话 w_i 不是冗余的吗？</strong></div>
+
+<p><strong>你说得对，只看符号的话 w_i 确实可以约掉。</strong> 源码注释也直接承认这点（<a href="kernel/sched/fair.c#L711">fair.c:711</a>）：<code>lag_i >= 0  ->  V >= v_i</code>。但 w_i 留在公式里是因为 <strong>lag 的单位是真实纳秒，不是 vruntime</strong>。</p>
+
+<p>V 和 v_i 是虚拟时间。同一个 V-v_i 差值，对不同权重的任务含义完全不同：</p>
+
+<pre><code>任务A (nice=-20, w=88761):  V - v_A = 1ns  →  欠了 1ns × (88761/1024) ≈ 86.7ns 真实时间
+任务B (nice=+19, w=15):    V - v_B = 1ns  →  欠了 1ns × (15/1024)    ≈ 0.015ns 真实时间</code></pre>
+
+<p><strong>差 5917 倍。</strong> w_i 是把"虚拟时间差"翻译成"真实时间欠额"的换算系数，实质上是 vruntime 公式的<strong>逆运算</strong>：</p>
+
+<div style="text-align:center;font-size:1.1em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>正变换 (update_curr):  新vruntime = 旧vruntime + 物理时间 × (1024 ÷ 权重)<br>
+逆变换 (lag 定义):      lag_纳秒   = (V - vruntime) × (权重 ÷ 1024)</strong>
+</div>
+
+<p><strong>内核的实际做法：存 vlag，不存 lag。</strong> 因为每次乘 w_i 太麻烦，内核只在 <code>se->vlag</code> 里存 <strong>虚拟 lag</strong>（不带权重，<a href="kernel/sched/fair.c#L5161">fair.c:5161</a>）：</p>
+
+<pre><code>vl_i = V - v_i        // 虚拟 lag，单位是 vruntime，方便比较
+v_i  = V - vl_i       // 等价变形</code></pre>
+
+<p>w_i 只在做<strong>加权平均</strong>时才必须出现——最典型的是 <code>place_entity()</code> 中计算新任务加入后 V 的变化（<a href="kernel/sched/fair.c#L5172">fair.c:5172</a>）：</p>
+
+<div style="text-align:center;font-size:1.1em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>V' = V - (w_i × vl_i) / (W + w_i)</strong><br>
+<small>高权重任务的 vl_i 对全局 V 的扰动更大——w_i 决定了它"说话的分量"</small>
+</div>
+
+<p>总结 w_i 在 lag 相关代码中的三种角色：</p>
+
+<table>
+<thead><tr><th>场景</th><th>w_i 是否参与</th><th>原因</th></tr></thead>
+<tbody>
+<tr><td>eligibility 符号判断 (>=0)</td><td>❌ 不需要</td><td><code>V >= v_i</code> 就够了，w_i>0 可约掉</td></tr>
+<tr><td>lag 的单位意义（欠多少真实时间）</td><td>✅ 必须</td><td>lag 单位是纳秒，必须用权重换算 vruntime→纳秒</td></tr>
+<tr><td><code>se->vlag</code> 存储</td><td>❌ 不需要</td><td>存的是 <code>V - v_i</code>（虚拟 lag），省掉每次乘权重</td></tr>
+<tr><td><code>place_entity()</code> / <code>reweight_entity()</code></td><td>✅ 必须</td><td>加权平均需要 w_i 算 V 的扰动大小</td></tr>
+</tbody>
+</table>
+
+<h5>深入理解 1：什么是"正变换"和"逆变换"？</h5>
+
+<p>变换的方向取决于 <strong>"你站在哪边看"</strong>。</p>
+
+<p><strong>正变换（物理 → 虚拟）</strong>：每次 tick，<code>update_curr()</code> 把墙上时钟变成 CFS 的 vruntime。不同的 weight 导致不同的换算率：</p>
+
+<pre><code>墙上 1ms ──× (1024/3121)=0.328──→ vr 只涨 0.33ms   (A, nice=-5, w=3121)
+墙上 1ms ──× (1024/1024)=1.0 ───→ vr 涨 1ms        (B, nice= 0, w=1024)
+墙上 1ms ──× (1024/  15)=68.3──→ vr 涨 68.3ms      (C, nice=19, w=  15)</code></pre>
+
+<p>同一个 1ms 物理时间，三种任务在 CFS 眼里"过了"的时间完全不一样。这就是正变换——把物理时间翻译为 CFS 时钟。</p>
+
+<p><strong>逆变换（虚拟 → 物理）</strong>：当需要知道"欠了多少真实时间"时，就必须把 vruntime 差值翻译回纳秒。同一个 V - v = 2ms，对不同任务含义不同：</p>
+
+<pre><code>A (w=3121):  V - v_A = 2ms  →  A 欠了 2ms × (3121/1024) ≈ 6.10ms 真实 CPU
+C (w=  15):  V - v_C = 2ms  →  C 欠了 2ms × (  15/1024) ≈ 0.03ms 真实 CPU</code></pre>
+
+<p>如果不做逆变换，把"vruntime 差 2ms"当成"欠 2ms CPU"，对 A 就严重低估（实际欠 6.1ms），对 C 严重高估（实际只欠 0.03ms）。这个换算就是 vruntime 公式的逆运算，也是 lag 定义的本质。</p>
+
+<h5>深入理解 2：什么是"加权平均"？place_entity() 里 w_i 怎么用？</h5>
+
+<p><strong>普通平均 vs 加权平均。</strong> 三个小孩分苹果：</p>
+
+<pre><code>孩子   年龄   苹果数
+A      10岁    5个
+B       5岁    3个
+C       1岁    2个
+
+普通平均 = (5+3+2)÷3 = 3.33 个           —— 不管年龄，完全公平
+加权平均 = (10×5 + 5×3 + 1×2)÷(10+5+1)    —— 年龄大的孩子意见更重要
+        = 67÷16 = 4.19 个                 ← 更靠近 A 的 5 个</code></pre>
+
+<p><strong>CFS 中，V 是加权平均。</strong> 高权重任务对 V 的影响更大——V 会"偏向"高权重任务的 vruntime。</p>
+
+<p>三个任务同时在树上：</p>
+
+<pre><code>任务  权重w     v (vruntime)     w × v
+A     3121      100             312100     ← A 权重最大，乘积占主导
+B     1024      200             204800
+C      335      500             167500
+─────────────────────────────────────────
+W=4480                         Σ=684400
+
+V = Σ(w×v) ÷ W = 684400 ÷ 4480 ≈ 152.8
+  → V=152.8 明显偏向 A(v=100)，因为 A 的权重 3121 最大</code></pre>
+
+<p><strong>place_entity() 中 w_i 的作用。</strong> 新任务加入时，V 要更新：<code>V' = V - (w_i × vl_i) ÷ (W + w_i)</code>。</p>
+
+<p>接上面的例子。树上有 B 和 C，V=(204800+167500)÷1359≈274。A(w=3121, v=100) 加入，vl=274-100=174：</p>
+
+<pre><code>A 带来的扰动 = (3121 × 174) ÷ (1359 + 3121)
+             = 543054 ÷ 4480 = 121.2
+V' = 274 - 121.2 = 152.8</code></pre>
+
+<p>A 一加入，V 从 274 猛跌到 153——因为 A 权重极大（3121），它一个人拽动了全局 V。</p>
+
+<p>反过来，如果是一个低权重任务 D(w=15, v=100) 加入同样的树：</p>
+
+<pre><code>D 带来的扰动 = (15 × 174) ÷ (1359 + 15) = 2610 ÷ 1374 = 1.9
+V' = 274 - 1.9 ≈ 272     —— 几乎没动！</code></pre>
+
+<p>D 太轻了，没人在乎它什么意见。这就是<strong>加权平均</strong>的本质——谁的权重大，谁说了算。</p>
+
 <h4>1.4.2 <code>avg_vruntime</code> — 增量维护加权平均</h4>
 
-<pre><code class="language-c">// 加权平均的增量维护:
-// avg_vruntime = Σ (v_i - min_vruntime) * w_i
-// avg_load = Σ w_i
-// V = avg_vruntime / avg_load + min_vruntime
+<h5>问题：如果每次都从头算 V，代价是 O(n)</h5>
 
-static void avg_vruntime_add(struct cfs_rq *cfs_rq, struct sched_entity *se)
-{
-    unsigned long weight = scale_load_down(se-&gt;load.weight);
-    s64 key = entity_key(cfs_rq, se);  // = se-&gt;vruntime - cfs_rq-&gt;min_vruntime
-    cfs_rq-&gt;avg_vruntime += key * weight;
-    cfs_rq-&gt;avg_load += weight;
-}
+<p>V 的定义是加权平均 <code>V = Σ(w_i × v_i) / Σ w_i</code>。每次 enqueue/dequeue 都遍历整棵树重算一遍的话，代价 O(n)——n 是树上的任务数，可能几百上千。CFS 的做法是<strong>增量维护</strong>：只更新变动的部分，代价 O(1)。</p>
 
-// 当 min_vruntime 前进 delta 时，需要调整:
-// avg_vruntime&#x27; = Σ (v_i - (min_vruntime + delta)) * w_i
-//              = avg_vruntime - delta * avg_load
-static inline void avg_vruntime_update(struct cfs_rq *cfs_rq, s64 delta)
+<h5>核心技巧：减去 min_vruntime，让 min_vruntime 更新也变成 O(1)</h5>
+
+<p>这里有一个精妙的设计。V 的定义里用的是绝对 vruntime（v_i），但 CFS 存的是<strong>相对于 min_vruntime 的偏移</strong>：</p>
+
+<pre><code>cfs_rq->avg_vruntime = Σ (v_i - min_vruntime) × w_i       // 不是 Σ v_i × w_i！
+cfs_rq->avg_load     = Σ w_i
+
+要用 V 时：V = avg_vruntime / avg_load + min_vruntime</code></pre>
+
+<p>为什么多此一举？因为 <strong>min_vruntime 会频繁前进</strong>——每次 update_curr() 都可能把它往前推。如果不减 min_vruntime，每次 min_vruntime 变一次就要修正所有 v_i 的累积值（O(n)）。减去之后，只需要一行代码：</p>
+
+<pre><code class="language-c">// min_vruntime 前进 delta，所有 (v_i - min_vruntime) 同时减 delta
+// Σ (v_i - (min_vruntime_new)) × w_i
+//   = Σ (v_i - min_vruntime_old - delta) × w_i
+//   = avg_vruntime - delta × avg_load              ← O(1)！
+avg_vruntime -= delta * avg_load;</code></pre>
+
+<h5>入队：avg_vruntime_add()</h5>
+
+<p>新任务 se 入队时（<a href="kernel/sched/fair.c#L1212">fair.c:1212</a>）：</p>
+
+<pre><code class="language-c">static void avg_vruntime_add(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
-    cfs_rq-&gt;avg_vruntime -= cfs_rq-&gt;avg_load * delta;
+    unsigned long weight = scale_load_down(se->load.weight);
+    s64 key = entity_key(cfs_rq, se);  // = se->vruntime - cfs_rq->min_vruntime
+    cfs_rq->avg_vruntime += key * weight;   // 加上新任务的贡献
+    cfs_rq->avg_load     += weight;          // 总权重也增加
 }</code></pre>
+
+<p>具体数值举例。当前树上有两个任务：</p>
+
+<pre><code>B: vr=200, w=1024       key = 200 - 100 = 100
+C: vr=500, w= 335       key = 500 - 100 = 400
+min_vruntime = 100
+
+avg_vruntime = 100×1024 + 400×335 = 102400 + 134000 = 236400
+avg_load     = 1024 + 335 = 1359
+
+V = 236400/1359 + 100 = 174.0 + 100 = 274.0</code></pre>
+
+<p>现在 A(w=3121, vr=100) 入队：</p>
+
+<pre><code>key_A = 100 - 100 = 0
+
+avg_vruntime += 0 × 3121 = 0       // ← key=0，贡献为 0（A 的 vr 恰好等于 min_vruntime）
+avg_load     += 3121               // 总权重增加
+
+新 avg_vruntime = 236400
+新 avg_load     = 1359 + 3121 = 4480
+新 V = 236400/4480 + 100 = 52.8 + 100 = 152.8  ← V 从 274 跌到 153</code></pre>
+
+<h5>出队：avg_vruntime_sub()</h5>
+
+<p>任务离队时，扣掉它的贡献：</p>
+
+<pre><code class="language-c">static void avg_vruntime_sub(struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+    unsigned long weight = scale_load_down(se->load.weight);
+    s64 key = entity_key(cfs_rq, se);
+    cfs_rq->avg_vruntime -= key * weight;   // 扣掉
+    cfs_rq->avg_load     -= weight;
+}</code></pre>
+
+<h5>完整生命周期演示</h5>
+
+<p>跟踪一次 enqueue → tick → dequeue，看三个变量如何联动：</p>
+
+<pre><code>初始: avg_vruntime=236400, avg_load=1359, min_vr=100
+
+① A 入队 (w=3121, vr=100, key=0):
+   avg_vruntime += 0   → 236400
+   avg_load     += 3121 → 4480
+
+② 时钟 tick，A 跑了物理 2ms:
+   A.vr += 2ms × (1024/3121) ≈ 0.656ms
+   A.vr  = 100 → 100.656
+   min_vr 可能被 update_min_vruntime() 更新 → min_vr = 100.656
+   avg_vruntime -= (100.656 - 100) × 4480 = 0.656 × 4480 = 2939
+   avg_vruntime = 236400 - 2939 = 233461
+
+③ B 出队 (w=1024, vr=200, key=200-100.656=99.344):
+   avg_vruntime -= 99.344 × 1024 = 101730
+   avg_vruntime = 233461 - 101730 = 131731
+   avg_load     -= 1024 → 3456
+
+④ 验证 V 正确:
+   V = 131731 / 3456 + 100.656 = 38.1 + 100.656 = 138.8</code></pre>
+
+<p>整个过程没有一次 O(n) 遍历——每个操作都是 O(1) 的加减。</p>
 
 <h4>1.4.3 <code>__pick_eevdf()</code> — EEVDF 核心选择算法 (<a href="kernel/sched/fair.c#L944">fair.c</a>)</h4>
 
-<pre><code class="language-c">static struct sched_entity *__pick_eevdf(struct cfs_rq *cfs_rq, bool protect)
+<h5>算法直觉：为什么不能只取 leftmost？</h5>
+
+<p>纯 CFS 只取 vruntime 最小的任务（leftmost）——因为 vruntime 最小说明它"欠的 CPU 最多"。但 EEVDF 引入 eligibility 概念后，如果一个任务<strong>已经跑超了它的 fair share</strong>（lag < 0，即 V ⊆ v_i），它就"没资格"再被选了，否则它会把其他任务饿死。</p>
+
+<p>所以 EEVDF 的选择规则是：<strong>找 eligible（lag >= 0）且 deadline 最早的任务。</strong> deadline = vruntime + slice（虚拟时间片），deadline 越小说明越紧迫。</p>
+
+<h5>树中节点的关键信息</h5>
+
+<p>红黑树按 deadline 排序（其实是按 vruntime 排序，因为 EEVDF 中 deadline = vruntime + slice，slice 在公平组中类似）。但每个节点额外维护 <code>min_vruntime</code>——子树中所有节点的 vruntime 最小值。这棵增强树允许我们<strong>剪枝</strong>：如果左子树的 min_vruntime 已经比 V 大（即整个左子树都不 eligible），就不需要进左子树找了。</p>
+
+<h5>算法步骤（对着代码讲）</h5>
+
+<pre><code>1. 只有一个任务 → 直接返回它（curr 优先）
+2. curr 不 eligible → 排除 curr
+3. curr 被 protect（时间片没用完）→ 返回 curr，不换人
+4. leftmost 如果 eligible → 立即返回（它就是最优的！）        ← 最常见路径
+5. 否则，从根开始树搜索：
+   a. 左子树的 min_vruntime 满足 eligibility → 进左子树         ← 剪枝启发
+   b. 否则检查当前节点是否 eligible → 是就选它
+   c. 否则进右子树                                             ← 当前和左都不行
+6. 找到 best 后，和 curr 比较 → 谁的 deadline 更早选谁</code></pre>
+
+<h5>具体举例：4 个任务 + 树搜索过程</h5>
+
+<p>以下图中的树同时标注了 <strong>RB-tree 颜色</strong>（<span style="color:#2D2A26;font-weight:700;">●</span> 黑色节点 / <span style="color:#D44545;font-weight:700;">●</span> 红色节点）和增强数据 <code>min_vr</code>。假设 V=170（全局加权平均 vruntime），4 个任务按 vruntime 排列：</p>
+
+<div style="font-family:'JetBrains Mono','Fira Code','Cascadia Code','Consolas',monospace;font-size:0.88em;line-height:1.55;background:var(--bg-code-block);border:1px solid var(--border);border-radius:8px;padding:18px 20px;overflow-x:auto;margin:18px 0;">
+树结构（按 vruntime 排）:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2D2A26;font-weight:700;">●</span> C(vr=200, <strong>黑色根</strong>, min_vr=150)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2D2A26;font-weight:700;">●</span> B(vr=150,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#D44545;font-weight:700;">●</span> D(vr=280, <span style="color:#D44545;">红色</span>, min_vr=250)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;黑色,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;min_vr=150)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2D2A26;font-weight:700;">●</span> E(vr=250, 黑色, min_vr=250)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;/<br>
+<span style="color:#D44545;font-weight:700;">●</span> A(vr=120, <span style="color:#D44545;">红色</span>, min_vr=120)<br>
+<br>
+min_vr = min(自己的vr, 左子树的min_vr, 右子树的min_vr)<br>
+例: B.min_vr = min(150, 120, +∞) = 120<br>
+&nbsp;&nbsp;&nbsp;&nbsp;C.min_vr = min(200, 120, 250) = 150<br>
+&nbsp;&nbsp;&nbsp;&nbsp;D.min_vr = min(280, +∞, 250) = 250<br>
+<br>
+RB-tree 规则验证:<br>
+&nbsp;&nbsp;根 C <span style="color:#2D2A26;font-weight:700;">●</span> 黑色 ✓<br>
+&nbsp;&nbsp;红节点 A <span style="color:#D44545;font-weight:700;">●</span> 的父亲 B <span style="color:#2D2A26;font-weight:700;">●</span> 是黑色 ✓<br>
+&nbsp;&nbsp;红节点 D <span style="color:#D44545;font-weight:700;">●</span> 的父亲 C <span style="color:#2D2A26;font-weight:700;">●</span> 是黑色，孩子 E <span style="color:#2D2A26;font-weight:700;">●</span> 是黑色 ✓<br>
+&nbsp;&nbsp;每条到 NIL 的路径黑色数一致: C→B→A→NIL=3黑, C→D→E→NIL=3黑 ✓
+</div>
+
+<p><strong>常见情况（99%）：leftmost 直接 eligible → O(1)</strong></p>
+
+<div style="font-family:'JetBrains Mono','Fira Code','Cascadia Code','Consolas',monospace;font-size:0.88em;line-height:1.55;background:var(--bg-code-block);border:1px solid var(--border);border-radius:8px;padding:18px 20px;overflow-x:auto;margin:18px 0;">
+leftmost = A(vr=120)。V=170。<br>
+A.eligible? → 120 < 170 → eligible ✓<br>
+→ 直接返回 A！不进入树搜索。
+</div>
+
+<p><strong>少数情况：leftmost 不 eligible → 树搜索 + 剪枝</strong></p>
+
+<p>假设 A 之前跑太猛了，vr 增长到了 190（> V=170）。<code>__dequeue_entity</code> 后再 <code>__enqueue_entity</code>，A 被重新插入，树变为：</p>
+
+<div style="font-family:'JetBrains Mono','Fira Code','Cascadia Code','Consolas',monospace;font-size:0.88em;line-height:1.55;background:var(--bg-code-block);border:1px solid var(--border);border-radius:8px;padding:18px 20px;overflow-x:auto;margin:18px 0;">
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2D2A26;font-weight:700;">●</span> C(vr=200, 黑色根, min_vr=150)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2D2A26;font-weight:700;">●</span> B(vr=150,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#D44545;font-weight:700;">●</span> D(vr=280, 红色, min_vr=250)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;黑色,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;min_vr=150)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2D2A26;font-weight:700;">●</span> E(vr=250, 黑色, min_vr=250)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#D44545;font-weight:700;">●</span> A(vr=190, <span style="color:#D44545;">红色</span>, min_vr=190)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;← 跑超了，vr > V<br>
+<br>
+B.min_vr = min(150, +∞, 190) = 150<br>
+C.min_vr = min(200, 150, 250) = 150
+</div>
+
+<p>现在 A 是 leftmost 吗？不是——B(vr=150) 的 vr 更小。leftmost 变成了 B(vr=150)：</p>
+
+<div style="font-family:'JetBrains Mono','Fira Code','Cascadia Code','Consolas',monospace;font-size:0.88em;line-height:1.55;background:var(--bg-code-block);border:1px solid var(--border);border-radius:8px;padding:18px 20px;overflow-x:auto;margin:18px 0;">
+① leftmost = B(vr=150)。150 < V=170 → eligible ✓<br>
+&nbsp;&nbsp;&nbsp;→ 直接返回 B！A 不会干扰搜索。<br>
+<br>
+实际上 leftmost 永远 eligible（因为它 vruntime 最小）。<br>
+真正需要搜索的场景是 leftmost 不存在或运行中——但 CFS 的 leftmost<br>
+缓存保证了 O(1)。
+</div>
+
+<p><strong>真正需要树搜索的罕见情况：多个 eligible 候选 + curr 的 deadline 对比</strong></p>
+
+<div style="font-family:'JetBrains Mono','Fira Code','Cascadia Code','Consolas',monospace;font-size:0.88em;line-height:1.55;background:var(--bg-code-block);border:1px solid var(--border);border-radius:8px;padding:18px 20px;overflow-x:auto;margin:18px 0;">
+① leftmost B(vr=150) eligible → best = B<br>
+② goto found: entity_before(curr, B)?<br>
+&nbsp;&nbsp;&nbsp;curr 的 deadline = vr + slice。如果 curr 的 deadline 更早 → best = curr<br>
+③ 返回 curr（用了保护路径，避免不必要的上下文切换）
+</div>
+
+<p><strong>关键洞察</strong>：左子树节点的 <code>min_vruntime</code> 使得 <strong>O(1) 剪枝</strong> 成为可能——如果某个子树的 min_vr 比 V 大，整棵子树都不 eligible，直接跳过。但实际中 <strong>leftmost 几乎总是 eligible</strong>（vr 最小自然 V-vr 差值最大），所以绝大多数情况下 <code>__pick_eevdf</code> 走的是快速路径：先检查 leftmost → eligible → 直接返回，O(1)，和纯 CFS 一样快。</p>
+
+<h5>protect 机制：正在运行的任务有"惯性"</h5>
+
+<p>如果 <code>protect=true</code>（正常 tick 路径是 true，newidle balance 是 false），curr 的时间片没用完就不会被抢：</p>
+
+<pre><code class="language-c">if (curr && protect && protect_slice(curr))
+    return curr;    // 还没跑够，不换人</code></pre>
+
+<p>这个保护避免了频繁的上下文切换——curr 刚跑了很短时间就被新唤醒任务抢走。但新唤醒任务如果 deadline 比 curr 早太多，也会绕过 protect（通过 wakeup_preempt 路径）。</p>
+
+<h5>总结：EEVDF 三层筛选</h5>
+
+<table>
+<thead><tr><th>层</th><th>条件</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td>第1层</td><td>protect_slice(curr)</td><td>当前任务时间片没用完，不换人（减少切换）</td></tr>
+<tr><td>第2层</td><td>entity_eligible(se)</td><td>任务必须"欠了 CPU 时间"才有资格被选（防饿死）</td></tr>
+<tr><td>第3层</td><td>entity_before(a, b)</td><td>有资格的任务中，选 deadline 最早的（保证延迟）</td></tr>
+</tbody>
+</table>
+
+<div style="text-align:center;font-size:1.05em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>EEVDF = 先在 eligible 的任务里挑，挑 deadline 最早的</strong><br>
+<small>纯 CFS 只看 vruntime（O(1) leftmost）；EEVDF 加了 eligibility 检查，但大多数情况下 leftmost 直接 eligible → 还是 O(1)</small>
+</div>
+
+<h3>1.5 Red-Black Tree 调度 — CFS 的核心排序结构</h3>
+
+<h4>1.5.1 为什么用红黑树？</h4>
+
+<p>CFS 需要频繁做两类操作：<strong>找 vruntime 最小的任务</strong>（挑下一个运行）和<strong>按 vruntime 插入/删除任务</strong>（入队/出队）。红黑树恰好两者都擅长：</p>
+
+<table>
+<thead><tr><th>操作</th><th>红黑树</th><th>若用链表</th><th>若用数组/堆</th></tr></thead>
+<tbody>
+<tr><td>找最小值</td><td>O(1)（缓存最左节点）</td><td>O(n)</td><td>O(1)</td></tr>
+<tr><td>插入（按序）</td><td>O(log n)</td><td>O(n)</td><td>O(log n)</td></tr>
+<tr><td>删除任意节点</td><td>O(log n)</td><td>O(1) 已知位置</td><td>O(log n)</td></tr>
+<tr><td>按值查找</td><td>O(log n)</td><td>O(n)</td><td>O(n)</td></tr>
+</tbody>
+</table>
+
+<p>链表在已知节点位置时删除快，但查最小值需要遍历；堆查最小值快但不能按 vruntime 值做任意查找和删除。只有平衡 BST 能同时满足所有需求，而红黑树相比 AVL 树更适合写密集场景（旋转次数更少）。</p>
+
+<h4>1.5.2 排序键：<code>entity_before()</code> — 谁更"年轻"</h4>
+
+<p>红黑树的排序依据是 <strong>vruntime</strong>，但并非简单比较数值。完整的比较逻辑（<a href="kernel/sched/fair.c#L545">fair.c:545</a>）：</p>
+
+<pre><code class="language-c">static inline bool entity_before(const struct sched_entity *a,
+                                 const struct sched_entity *b)
 {
-    struct rb_node *node = cfs_rq-&gt;tasks_timeline.rb_root.rb_node;
-    struct sched_entity *se = __pick_first_entity(cfs_rq);  // leftmost = 最早deadline
-    struct sched_entity *curr = cfs_rq-&gt;curr;
-    struct sched_entity *best = NULL;
+    // 1. 首先比 vruntime，小的排左边（更"年轻"，优先被调度）
+    if ((s64)(a->vruntime - b->vruntime) < 0)
+        return true;
+    if ((s64)(a->vruntime - b->vruntime) > 0)
+        return false;
 
-    // 优化: 只有一个实体时直接返回
-    if (cfs_rq-&gt;nr_queued == 1)
-        return curr &amp;&amp; curr-&gt;on_rq ? curr : se;
-
-    // 当前运行的实体如果不 eligible，就不考虑
-    if (curr &amp;&amp; (!curr-&gt;on_rq || !entity_eligible(cfs_rq, curr)))
-        curr = NULL;
-
-    // 如果当前实体还在保护期(slice未用完)，继续运行
-    if (curr &amp;&amp; protect &amp;&amp; protect_slice(curr))
-        return curr;
-
-    // 快速路径: 最左节点(最早deadline)如果 eligible，就是最优选择
-    if (se &amp;&amp; entity_eligible(cfs_rq, se)) {
-        best = se;
-        goto found;
-    }
-
-    /*
-     * 堆搜索: 利用 augmented 数据 min_vruntime 剪枝
-     * 树按 deadline 排序，但每个节点维护子树中的 min_vruntime
-     *
-     * 算法: 找 eligible 且 deadline 最早的实体
-     */
-    while (node) {
-        struct rb_node *left = node-&gt;rb_left;
-
-        // 如果左子树中有 eligible 实体(min_vruntime够小)
-        // 左子树的 deadline 更早，所以优先搜索左边
-        if (left &amp;&amp; vruntime_eligible(cfs_rq,
-                    __node_2_se(left)-&gt;min_vruntime)) {
-            node = left;
-            continue;
-        }
-
-        se = __node_2_se(node);
-
-        // 左子树没有 eligible 的，检查当前节点
-        if (entity_eligible(cfs_rq, se)) {
-            best = se;
-            break;
-        }
-
-        // 当前不 eligible，试右子树
-        node = node-&gt;rb_right;
-    }
-found:
-    // 如果 curr 比 best 的 deadline 更早，选 curr
-    if (!best || (curr &amp;&amp; entity_before(curr, best)))
-        best = curr;
-
-    return best;
+    // 2. vruntime 相同？比 slice（EEVDF 的 deadline 在 EEVDF 代码路径处理）
+    //    确保即使 vruntime 撞车也有确定性的排序
+    return (s64)(a->vruntime - b->vruntime) < 0;
 }</code></pre>
 
-<p><strong>算法复杂度分析</strong>: 虽然是树搜索，但由于 augmented <code>min_vruntime</code> 的剪枝，通常只需访问 O(log n) 个节点。最坏情况下遍历整棵树，但这在实际工作负载中极为罕见。</p>
+<p>排序规则：<strong>vruntime 越小 → 越靠左 → 越早被 pick_next 选中。</strong></p>
 
-<p><strong>EEVDF vs 纯 CFS 的区别</strong>:</p>
-<ul>
-<li>纯 CFS: 始终选 vruntime 最小的实体（<code>rb_first_cached</code>，O(1)）</li>
-<li>EEVDF: 选 <strong>eligible 且 deadline 最早</strong> 的实体，提供了更好的延迟保证</li>
-<li><code>deadline = vruntime + calc_delta_fair(slice, se)</code> — slice 越小的实体 deadline 越紧迫</li>
-</ul>
+<h4>1.5.3 增强红黑树 (Augmented RB-tree) — 子树缓存</h4>
 
-<h3>1.5 Red-Black Tree 调度</h3>
+<p>普通的红黑树只有颜色和左右指针。CFS 在普通红黑树基础上加了<strong>子树元数据</strong>——每个节点额外维护两个字段（<a href="kernel/sched/fair.c#L822">fair.c:822</a>）：</p>
 
-<p><strong>关键数据结构</strong>: <code>cfs_rq->tasks_timeline</code> (augmented rb-tree, cached)</p>
+<pre><code class="language-c">// 每个节点维护的子树元数据：
+se->min_vruntime = min(se->vruntime,           // 自底向上计算：
+                       left->min_vruntime,      // min(自己的vruntime, 左子树min, 右子树min)
+                       right->min_vruntime)
 
-<p><strong><code>__enqueue_entity()</code></strong> (<a href="kernel/sched/fair.c#L848">fair.c</a>):</p>
+se->min_slice    = min(se->slice,
+                       left->min_slice,
+                       right->min_slice)</code></pre>
+
+<p>这两个值的<strong>增量更新</strong>发生在每次插入/删除后的回溯路径上（<a href="kernel/sched/fair.c#L824">fair.c:824</a> 的 <code>min_vruntime_update()</code>），而不是遍历整棵树。O(log n) 的插入删除保持不变，只多了沿回溯路径的几次比较。</p>
+
+<p>子树的 <code>min_vruntime</code> 缓存让 EEVDF 算法在选择 eligible 任务时可以快速剪枝——如果某棵子树的 <code>min_vruntime</code> 比全局 deadline 还大，整棵子树都可以跳过。</p>
+
+<h4>1.5.4 入队操作：<code>__enqueue_entity()</code></h4>
+
+<p>（<a href="kernel/sched/fair.c#L848">fair.c:848</a>）</p>
+
 <pre><code class="language-c">static void __enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
+    // 1. 更新全局加权平均 vruntime（avg_vruntime += (se->vruntime-min_vruntime)*weight）
     avg_vruntime_add(cfs_rq, se);
-    se-&gt;min_vruntime = se-&gt;vruntime;
-    se-&gt;min_slice = se-&gt;slice;
-    rb_add_augmented_cached(&amp;se-&gt;run_node, &amp;cfs_rq-&gt;tasks_timeline,
-                            __entity_less, &amp;min_vruntime_cb);
+
+    // 2. 初始化本节点的子树元数据（叶子节点：子树就是自己）
+    se->min_vruntime = se->vruntime;
+    se->min_slice    = se->slice;
+
+    // 3. 标准红黑树插入 + 回溯更新子树元数据 + 更新 leftmost 缓存
+    rb_add_augmented_cached(&se->run_node, &cfs_rq->tasks_timeline,
+                            __entity_less,     // 比较函数（vruntime 排序）
+                            &min_vruntime_cb); // 增强回调（回溯时更新 min_vruntime/min_slice）
 }</code></pre>
 
-<ul>
-<li>使用 <strong>augmented RB-tree</strong> — 每个节点维护子树中的 <code>min_vruntime</code> 和 <code>min_slice</code></li>
-<li><code>rb_leftmost</code> 缓存指向 vruntime 最小的实体，实现 O(1) 的 <code>pick_next</code> 访问</li>
-<li>入队/出队操作为 <strong>O(log n)</strong></li>
+<h4>1.5.5 出队操作：<code>__dequeue_entity()</code></h4>
+
+<p>（<a href="kernel/sched/fair.c#L857">fair.c:857</a>）</p>
+
+<pre><code class="language-c">static void __dequeue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+    rb_erase_augmented_cached(&se->run_node, &cfs_rq->tasks_timeline,
+                              &min_vruntime_cb);  // 删除 + 回溯更新 + 可能更新 leftmost
+    avg_vruntime_sub(cfs_rq, se);   // 从全局加权平均中扣掉
+}</code></pre>
+
+<h4>1.5.6 O(1) 取最左节点：<code>__pick_first_entity()</code></h4>
+
+<p>（<a href="kernel/sched/fair.c#L874">fair.c:874</a>）</p>
+
+<pre><code class="language-c">struct sched_entity *__pick_first_entity(struct cfs_rq *cfs_rq)
+{
+    struct rb_node *left = cfs_rq->tasks_timeline.rb_leftmost;  // 缓存的最左节点
+    if (!left)
+        return NULL;
+    return __node_2_se(left);  // container_of: rb_node → sched_entity
+}</code></pre>
+
+<p>CFS 的红黑树用 <strong><code>rb_leftmost</code> 缓存</strong> 维护树中最左节点指针，每次插入时检查新节点是否比当前最左更左，如果是就更新缓存。因此 <code>pick_next_entity()</code> 不需要 O(log n) 查找——直接 O(1) 拿到 vruntime 最小的实体。</p>
+
+<h4>1.5.7 完整示例：5 个任务入队/出队的红黑树演变</h4>
+
+<p><strong>初始状态：空树。</strong> 依次有 5 个任务入队：</p>
+
+<pre><code>任务 A: vruntime=150, slice=4ms  (nice=0)
+任务 B: vruntime=500, slice=2ms  (nice=+5)
+任务 C: vruntime=100, slice=8ms  (nice=-5)
+任务 D: vruntime=300, slice=4ms  (nice=0)
+任务 E: vruntime= 50, slice=6ms  (nice=-2)</code></pre>
+
+<p><strong>入队过程（按到达顺序 insert A→B→C→D→E）：</strong></p>
+
+<pre><code>插入A(vr=150):       插入B(vr=500):       插入C(vr=100):
+     [A]                  [A]                  [A]
+                           \                  / \
+                           [B]              [C] [B]
+                                               (rotate!)
+
+插入D(vr=300):        插入E(vr=50):  ← 最左! 缓存更新
+     [A]                  [A]
+    / \                  / \
+  [C] [B]             [C] [B]
+    \                 /
+    [D]             [D]
+                   /
+                 [E]  ← leftmost 缓存指向这里
+
+最终树结构（按 vruntime 排序）:
+         [A:150]
+        /       \
+   [C:100]     [B:500]
+    /    \
+[E:50]  [D:300]
+
+leftmost → [E:50]
+
+各节点子树 min_vruntime（自底向上）:
+  E(50):  min=50
+  D(300): min=300
+  C(100): min = min(100, 50, 300) = 50    ← 子树最小值是 E 的 50
+  B(500): min=500
+  A(150): min = min(150, 50, 500) = 50    ← 整棵树最小值 = 50 = leftmost</code></pre>
+
+<p><strong>pick_next_entity() → 取 leftmost=E(vr=50)。</strong> 把 E 从树上取下（<code>__dequeue_entity</code>），E 开始运行。leftmost 缓存更新为 C(vr=100)。</p>
+
+<pre><code>E 出队后:
+         [A:150]
+        /       \
+   [C:100]     [B:500]
+       \
+      [D:300]
+
+leftmost → [C:100]  ← O(1) 直接取到</code></pre>
+
+<p><strong>E 运行完一个时间片（物理运行 6ms，nice=-2, w=1991），vruntime 增长：</strong></p>
+
+<pre><code>E.vruntime += 6ms × (1024/1991) ≈ 6ms × 0.514 ≈ 3.08ms
+E.vruntime = 50 + 3.08 = 53.08ms</code></pre>
+
+<p><strong>E 重新入队</strong>（vruntime=53.08）→ 插到树的最后侧（viruntime 最小），仍然是 leftmost。</p>
+
+<p>整个过程总结：</p>
+
+<table>
+<thead><tr><th>操作</th><th>复杂度</th><th>示例耗时</th></tr></thead>
+<tbody>
+<tr><td>插入 (enqueue)</td><td>O(log n)</td><td>5 个任务约 3 次比较+可能的旋转</td></tr>
+<tr><td>删除 (dequeue)</td><td>O(log n)</td><td>类似插入，沿回溯路径更新子树缓存</td></tr>
+<tr><td>取最左 (pick)</td><td>O(1)</td><td>直接读 <code>rb_leftmost</code> 指针，无需遍历</td></tr>
+</tbody>
+</table>
 </ul>
 
-<h3>1.5 <code>enqueue_entity()</code> — 完整入队流程</h3>
+<h3>1.6 <code>enqueue_entity()</code> — 完整入队流程</h3>
 
 <p>(<a href="kernel/sched/fair.c#L5239">fair.c</a>):</p>
 <pre><code>enqueue_entity(cfs_rq, se, flags):
@@ -749,7 +1669,7 @@ found:
   8. __enqueue_entity(cfs_rq, se)      // 插入 rb-tree
   9. se-&gt;on_rq = 1</code></pre>
 
-<h3>1.6 <code>pick_next_task_fair()</code> — 选择下一个任务</h3>
+<h3>1.7 <code>pick_next_task_fair()</code> — 选择下一个任务</h3>
 
 <p>(<a href="kernel/sched/fair.c#L8869">fair.c</a>):</p>
 <pre><code>pick_next_task_fair(rq, prev, rf):
@@ -759,7 +1679,7 @@ found:
      只切换差异部分（减少 put_prev/set_next 的层次遍历）
   4. idle: sched_balance_newidle()   // 从其他CPU偷任务</code></pre>
 
-<h3>1.7 Load Balancing</h3>
+<h3>1.8 Load Balancing</h3>
 
 <ul>
 <li><strong>域层次</strong>: <code>sched_domain</code> 层次结构（SMT → MC → NUMA）</li>
@@ -768,7 +1688,7 @@ found:
 <li>PELT (Per-Entity Load Tracking): 每个实体的负载使用几何衰减序列追踪</li>
 </ul>
 
-<h3>1.8 复杂度</h3>
+<h3>1.9 复杂度</h3>
 
 <table>
 <thead><tr>
@@ -1150,8 +2070,8 @@ done_merging:
     __add_to_free_list(page, zone, order, migratetype, to_tail);
 }</code></pre>
 
-<p><strong>伙伴查找的数学原理</strong>:<br>
-$$buddy\_pfn = pfn \oplus (1 << order)$$</p>
+<p><strong>伙伴查找的数学原理</strong>: 把页框号 pfn 的第 order 位翻转（异或），就得到它的伙伴页框号。<br>
+<code>buddy_pfn = pfn XOR (1 << order)</code></p>
 
 <p>例如，order=2 (4页块):</p>
 <ul>
@@ -2220,8 +3140,8 @@ static inline u32 hash_ptr(const void *ptr, unsigned int bits)
 
 <h4>原理</h4>
 
-<p>使用 <strong>Knuth 乘法散列</strong>:<br>
-$$h(k) = \lfloor (k \cdot A \cdot 2^w) \gg (w - p) \rfloor$$</p>
+<p>使用 <strong>Knuth 乘法散列</strong>: 把 key 乘以黄金比例 A，取高 p 位作为 hash 值。<br>
+<code>hash(k) = (k × A × 2^w) 右移 (w-p) 位后取整</code></p>
 
 <p>其中 $A$ 是黄金比例的负数 $(1 - \phi) = \phi^2 = (3 - \sqrt{5})/2$。</p>
 
@@ -2354,6 +3274,46 @@ $$h(k) = \lfloor (k \cdot A \cdot 2^w) \gg (w - p) \rfloor$$</p>
 <script>
 (function() {
     'use strict';
+
+    // Auto-generate fragment IDs for all h2/h3/h4 headings so TOC links work
+    // Matches the convention used in TOC hrefs: number(no dot) + lowercase-title
+    function makeSlug(text) {
+        return text
+            .toLowerCase()
+            .replace(/<[^>]*>/g, '')           // strip HTML tags
+            .replace(/[．。\.·•]/g, '')         // strip dots (1.5 → 15)
+            .replace(/[()（）]/g, '')           // strip parentheses
+            .replace(/[\/]/g, '-')              // slashes → hyphens
+            .replace(/[—–-]/g, '-')             // em/en dashes → hyphens
+            .replace(/[^a-z0-9一-鿿\s_-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
+    }
+    document.querySelectorAll('h2, h3, h4').forEach(function(el) {
+        if (!el.id) { var s = makeSlug(el.textContent); if (s) el.id = s; }
+    });
+
+    // Fix up TOC links to match the auto-generated heading IDs.
+    // Strategy: try exact match first, then prefix match (heading text may
+    // have subtitles that TOC text omits, e.g. "1.5 Red-Black Tree 调度 — CFS核心")
+    var headings = document.querySelectorAll('h2, h3, h4');
+    document.querySelectorAll('.toc-tree a[href^="#"]').forEach(function(a) {
+        var targetId = a.getAttribute('href').slice(1);
+        if (document.getElementById(targetId)) return;  // already correct
+
+        var tocSlug = makeSlug(a.textContent);
+        for (var i = 0; i < headings.length; i++) {
+            var hId = headings[i].id;
+            if (!hId) continue;
+            // Exact match
+            if (tocSlug === hId) { a.setAttribute('href', '#' + hId); break; }
+            // Prefix match: heading text extends TOC text
+            if (hId.indexOf(tocSlug) === 0) { a.setAttribute('href', '#' + hId); break; }
+            // Suffix match: heading text is shorter / TOC text has extra chars
+            if (tocSlug.indexOf(hId) === 0) { a.setAttribute('href', '#' + hId); break; }
+        }
+    });
 
     var sidebar = document.getElementById('sidebar');
     var toggleBtn = document.getElementById('sidebar-toggle-btn');

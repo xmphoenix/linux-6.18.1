@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 内核调度子系统分层抽象</title>
+
+<style>
+/* ================================================================
+   Claude-style Design — warm, elegant, readable
+   ================================================================ */
+
+/* ========== Global ========== */
+:root {
+    --bg:            #FAF7F2;
+    --bg-card:       #F5F0E8;
+    --bg-code:       #F0EBE0;
+    --bg-code-block: #F5F0E8;
+    --text:          #2D2A26;
+    --text-muted:    #6B625A;
+    --border:        #E6DFD3;
+    --border-light:  #F0EBE3;
+    --accent:        #D9750A;
+    --accent-hover:  #B85D08;
+    --accent-soft:   #FDF0E0;
+    --heading:       #1E1B18;
+    --link:          #C2680A;
+    --link-hover:    #924D06;
+    --th-bg:         #F5F0E8;
+    --th-text:       #5C5144;
+    --quote-border:  #E8A84C;
+    --quote-bg:      #FDF8F0;
+}
+
+body {
+    font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
+    line-height: 1.8;
+    max-width: 860px;
+    margin: 0 auto 0 340px;
+    padding: 40px 24px;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Headings ========== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+h1 {
+    font-size: 2.1em;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+}
+h2 {
+    font-size: 1.65em;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: #3D3429;
+}
+h3 {
+    font-size: 1.35em;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #4A3F32;
+}
+h4 { font-size: 1.15em; margin-top: 24px; margin-bottom: 8px; color: #5C5144; }
+h5, h6 { font-size: 1em; margin-top: 20px; margin-bottom: 6px; color: #6B625A; }
+
+/* ========== Paragraphs ========== */
+p { margin: 0 0 16px 0; }
+
+/* ========== Links ========== */
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ========== Code (inline) ========== */
+code {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    color: #8B4513;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+}
+pre {
+    background: var(--bg-code-block);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+    margin: 18px 0;
+}
+pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: 0.85em;
+    color: #3D3429;
+}
+
+/* ========== Blockquotes ========== */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    margin: 18px 0;
+    padding: 12px 20px;
+    background: var(--quote-bg);
+    border-radius: 0 6px 6px 0;
+    color: #5C5144;
+}
+blockquote p { margin-bottom: 8px; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ========== Tables — Claude-style warm ========== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+}
+thead { border-bottom: 2px solid var(--border); }
+th {
+    background: var(--th-bg);
+    color: var(--th-text);
+    font-weight: 700;
+    padding: 10px 16px;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+td {
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border-light);
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(245, 240, 232, 0.4); }
+
+/* ========== Images — fully displayed ========== */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 20px auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* ========== Lists ========== */
+ul, ol { padding-left: 28px; margin: 12px 0; }
+li { margin: 5px 0; }
+li > p { margin: 0; }
+ul li::marker { color: var(--accent); }
+ol li::marker { color: var(--text-muted); font-weight: 600; }
+
+/* ========== Horizontal rule ========== */
+hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 36px 0;
+}
+
+/* ========== Selection ========== */
+::selection {
+    background: #FDE8C8;
+    color: #3D2B0F;
+}
+
+/* ========== Sidebar — PDF-style left navigation ========== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 100vh;
+    background: #F5F0E8;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 1000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+    font-size: 0.82em;
+    line-height: 1.5;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+    transition: transform 0.3s ease;
+}
+#sidebar.sidebar-hidden {
+    transform: translateX(-300px);
+}
+
+.sidebar-header {
+    position: sticky;
+    top: 0;
+    background: #EDE5D8;
+    padding: 14px 16px;
+    font-weight: 700;
+    font-size: 1.05em;
+    color: var(--heading);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+.sidebar-header a.sidebar-home {
+    color: var(--heading);
+    text-decoration: none;
+    border-bottom: none;
+    transition: color 0.15s;
+}
+.sidebar-header a.sidebar-home:hover {
+    color: var(--accent);
+}
+
+#sidebar-toggle-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+}
+#sidebar-toggle-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+/* Floating toggle button when sidebar is hidden */
+#sidebar-float-btn {
+    display: none;
+    position: fixed;
+    left: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+    align-items: center;
+    justify-content: center;
+}
+#sidebar-float-btn:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+}
+
+.toc-tree {
+    padding: 8px 0 40px 0;
+}
+.toc-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.toc-tree li {
+    margin: 0;
+}
+.toc-tree ul li::marker { display: none; }
+
+.toc-chapter {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toc-chapter-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #3D3429;
+    transition: background 0.12s;
+    user-select: none;
+}
+.toc-chapter-header:hover {
+    background: rgba(217, 117, 10, 0.06);
+}
+.toc-chapter-header .arrow {
+    font-size: 0.65em;
+    margin-right: 6px;
+    transition: transform 0.2s;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+.toc-chapter.expanded > .toc-chapter-header .arrow {
+    transform: rotate(90deg);
+}
+
+.toc-chapter-items {
+    display: none;
+    background: rgba(0,0,0,0.015);
+    padding: 2px 0 4px 0;
+}
+.toc-chapter.expanded > .toc-chapter-items {
+    display: block;
+}
+.toc-chapter-items a {
+    display: block;
+    padding: 5px 14px 5px 32px;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: none;
+    font-size: 0.95em;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+}
+.toc-chapter-items a:hover {
+    color: var(--accent);
+    background: rgba(217, 117, 10, 0.04);
+    border-left-color: var(--accent);
+}
+.toc-chapter-items a.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+    body {
+        margin-left: 0 !important;
+    }
+    #sidebar {
+        transform: translateX(-300px);
+    }
+    #sidebar.sidebar-visible {
+        transform: translateX(0);
+    }
+    #sidebar-float-btn {
+        display: flex;
+    }
+}
+
+/* Chapter header anchor link */
+.toc-chapter-header .toc-chapter-link {
+    flex: 1;
+    color: #3D3429;
+    text-decoration: none;
+    border-bottom: none;
+    transition: color 0.12s;
+}
+.toc-chapter-header .toc-chapter-link:hover {
+    color: var(--accent);
+}
+.toc-chapter.expanded > .toc-chapter-header .toc-chapter-link.active {
+    color: var(--accent);
+}
+
+/* Layer diagram box */
+.layer-diagram {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 20px 0;
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono",
+                 "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.82em;
+    line-height: 1.55;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+/* Layer summary cards */
+.layer-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 16px 0;
+    border-left: 4px solid var(--accent);
+}
+
+.layer-card h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+.layer-card .file-ref {
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+</style>
+
+</head>
+<body>
+<h1 id="top">ARM64 内核调度子系统分层抽象</h1>
+
+<blockquote><strong>📖 导读：</strong> Linux 内核调度器并非单一函数或模块，而是高度分层的体系。从 ARM64 的硬件拓扑（DT/ACPI）到 CFS/EEVDF 调度策略，每一层都承担不同职责，通过精确定义的数据结构和函数接口协作。本文在 Linux 6.18.1 源码基础上，逐层拆解 ARM64 内核调度子系统的六层抽象，涵盖各层核心数据结构、关键函数及 ARM64 特有的 Energy-Aware Scheduling 路径。</blockquote>
+
+<hr>
+
+<aside id="sidebar">
+  <div class="sidebar-header">
+    <a href="#top" class="sidebar-home" title="回到顶部">📑 目录</a>
+    <button id="sidebar-toggle-btn" title="隐藏目录">✕</button>
+  </div>
+  <nav class="toc-tree">
+    <ul>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> <a class="toc-chapter-link" href="#一整体架构总览">一、整体架构总览</a></div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> <a class="toc-chapter-link" href="#二layer-1-硬件拓扑描述">二、Layer 1: 硬件拓扑描述</a></div>
+        <ul class="toc-chapter-items">
+          <li><a href="#21-拓扑检测入口">2.1 拓扑检测入口</a></li>
+          <li><a href="#22-struct-cpu_topology">2.2 struct cpu_topology</a></li>
+          <li><a href="#22-1-四个层级的硬件含义">2.2.1 四个层级的硬件含义</a></li>
+          <li><a href="#22-2-arm64-芯片场景">2.2.2 ARM64 芯片实际场景</a></li>
+          <li><a href="#22-3-静态模板的运行时折叠">2.2.3 冗余层级的折叠</a></li>
+          <li><a href="#24-qemu-virt-拓扑初始化全流程">2.4 QEMU virt 拓扑初始化全流程</a></li>
+          <li><a href="#23-arm64-算力解析">2.3 ARM64 算力解析</a></li>
+          <li><a href="#24-关键函数汇总">2.4 关键函数汇总</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> <a class="toc-chapter-link" href="#三layer-2-per-cpu-运行队列">三、Layer 2: Per-CPU 运行队列</a></div>
+        <ul class="toc-chapter-items">
+          <li><a href="#31-struct-rq-核心字段">3.1 struct rq 核心字段</a></li>
+          <li><a href="#32-内嵌三层队列">3.2 内嵌三层队列</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> <a class="toc-chapter-link" href="#四layer-3-调度实体">四、Layer 3: 调度实体</a></div>
+        <ul class="toc-chapter-items">
+          <li><a href="#41-三类调度实体">4.1 三类调度实体</a></li>
+          <li><a href="#42-实体与-task_group-的关系">4.2 实体与 task_group 的关系</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> <a class="toc-chapter-link" href="#五layer-4-调度域与根域">五、Layer 4: 调度域与根域</a></div>
+        <ul class="toc-chapter-items">
+          <li><a href="#51-struct-sched_domain">5.1 struct sched_domain</a></li>
+          <li><a href="#52-struct-sched_group">5.2 struct sched_group</a></li>
+          <li><a href="#53-struct-root_domain">5.3 struct root_domain</a></li>
+          <li><a href="#54-arm64-默认拓扑层级表">5.4 ARM64 默认拓扑层级表</a></li>
+          <li><a href="#55-调度域构建核心函数">5.5 调度域构建核心函数</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> <a class="toc-chapter-link" href="#六layer-5-任务组与带宽控制">六、Layer 5: 任务组与带宽控制</a></div>
+        <ul class="toc-chapter-items">
+          <li><a href="#61-struct-task_group">6.1 struct task_group</a></li>
+          <li><a href="#62-cgroup-层级调度模型">6.2 cgroup 层级调度模型</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> <a class="toc-chapter-link" href="#七layer-6-调度类">七、Layer 6: 调度类</a></div>
+        <ul class="toc-chapter-items">
+          <li><a href="#71-struct-sched_class">7.1 struct sched_class</a></li>
+          <li><a href="#72-cfs-调度类实例">7.2 CFS 调度类实例</a></li>
+          <li><a href="#73-调度类的优先级顺序">7.3 调度类的优先级顺序</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> <a class="toc-chapter-link" href="#八arm64-特有关键路径">八、ARM64 特有关键路径</a></div>
+        <ul class="toc-chapter-items">
+          <li><a href="#81-select_task_rq_fair-任务放置">8.1 select_task_rq_fair 任务放置</a></li>
+          <li><a href="#82-find_energy_efficient_cpu">8.2 find_energy_efficient_cpu</a></li>
+          <li><a href="#83-perf_domain-与-energy-model">8.3 perf_domain 与 Energy Model</a></li>
+          <li><a href="#84-算力与频率不变性">8.4 算力与频率不变性</a></li>
+        </ul>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> <a class="toc-chapter-link" href="#九各层调用关系全景">九、各层调用关系全景</a></div>
+      </li>
+      <li class="toc-chapter">
+        <div class="toc-chapter-header"><span class="arrow">▶</span> <a class="toc-chapter-link" href="#十总结">十、总结</a></div>
+      </li>
+    </ul>
+  </nav>
+</aside>
+<button id="sidebar-float-btn" title="显示目录">☰</button>
+
+<hr>
+
+
+
+<h2 id="一整体架构总览">一、整体架构总览</h2>
+
+<p>ARM64 内核调度子系统分为六个抽象层，自底向上从硬件描述到调度策略逐层堆叠：</p>
+
+<div class="layer-diagram">┌─────────────────────────────────────────────────────────────────┐
+│  <strong>Layer 6</strong>: 调度类 (Scheduling Classes)                          │
+│  struct sched_class  — 策略层，定义"怎么调度"                     │
+│  stop / deadline / rt / fair(CFS/EEVDF) / idle                   │
+├─────────────────────────────────────────────────────────────────┤
+│  <strong>Layer 5</strong>: 任务组 & 带宽控制 (Task Groups & Bandwidth)           │
+│  struct task_group  — cgroup 层级，CFS/RT 带宽隔离                │
+├─────────────────────────────────────────────────────────────────┤
+│  <strong>Layer 4</strong>: 调度域 & 根域 (Scheduling Domains & Root Domain)      │
+│  struct sched_domain → struct sched_group                         │
+│  struct root_domain → struct perf_domain (EAS)                   │
+│  — 拓扑感知负载均衡 + 能耗感知调度                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  <strong>Layer 3</strong>: 调度实体 (Scheduling Entities)                         │
+│  struct sched_entity / sched_rt_entity / sched_dl_entity         │
+│  — 代表"可被调度的对象"（任务或任务组）                             │
+├─────────────────────────────────────────────────────────────────┤
+│  <strong>Layer 2</strong>: Per-CPU 运行队列 (Runqueue)                             │
+│  struct rq { .cfs, .rt, .dl }                                    │
+│  — CPU 上所有调度状态的集合点                                      │
+├─────────────────────────────────────────────────────────────────┤
+│  <strong>Layer 1</strong>: 硬件拓扑描述 (Hardware Topology)                         │
+│  struct cpu_topology  — DT/ACPI → thread/core/cluster/pkg        │
+│  capacity_freq_ref, arch_freq_scale — capacity & freq scaling     │
+│  Energy Model (struct em_perf_domain) — 功耗模型                  │
+└─────────────────────────────────────────────────────────────────┘</div>
+
+<p>ARM64 相对于 x86 的关键差异在于：<strong>Layer 1</strong>（拓扑通过 DT/ACPI 而非固有 CPUID 架构检测）和 <strong>Layer 4 的 EAS 路径</strong>（<code>find_energy_efficient_cpu</code> 替代纯负载驱动放置策略）。其余调度类框架是架构无关的。</p>
+
+
+
+<h2 id="二layer-1-硬件拓扑描述">二、Layer 1: 硬件拓扑描述</h2>
+
+<blockquote><strong>核心问题：</strong> "硬件长什么样？" — 将 ARM64 SoC 的物理拓扑（big.LITTLE、DynamIQ、多 cluster）转化为内核可查询的结构化数据。</blockquote>
+
+<h3 id="21-拓扑检测入口">2.1 拓扑检测入口</h3>
+
+<p>ARM64 的 CPU 拓扑检测在 <code>init_cpu_topology()</code> 中完成（位于 <code>drivers/base/arch_topology.c</code>），根据系统固件类型分两条路径：</p>
+
+<table>
+<thead><tr>
+<th>固件类型</th>
+<th>核心函数</th>
+<th>数据来源</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Device Tree</strong></td>
+<td><code>parse_dt_topology()</code></td>
+<td>DT <code>/cpus/cpu-map</code> 节点（cluster → core → thread）</td>
+</tr>
+<tr>
+<td><strong>ACPI</strong></td>
+<td><code>parse_acpi_topology()</code></td>
+<td>ACPI PPTT 表（Processor Properties Topology Table）</td>
+</tr>
+</tbody>
+</table>
+
+<p>解析完成后，通过 <code>store_cpu_topology(cpu)</code> 将结果写入 <code>cpu_topology[]</code> 数组，然后用 <code>update_siblings_masks(cpu)</code> 构建各层级 sibling cpumask。</p>
+
+<h3 id="22-struct-cpu_topology">2.2 struct cpu_topology</h3>
+
+<p>定义位于 <a href="include/linux/arch_topology.h#L62">include/linux/arch_topology.h:62</a>：</p>
+
+<pre><code>struct cpu_topology {
+    int thread_id;                    // SMT 线程 ID
+    int core_id;                      // 物理核 ID
+    int cluster_id;                   // 簇 ID (ARM DynamIQ 特有层级)
+    int package_id;                   // 封装/插座 ID
+    cpumask_t thread_sibling;         // 同一核的兄弟线程
+    cpumask_t core_sibling;           // 共享同一 cluster 的兄弟核
+    cpumask_t cluster_sibling;        // 同 cluster 的兄弟
+    cpumask_t llc_sibling;            // 共享末级缓存的兄弟
+};</code></pre>
+
+<div class="layer-card">
+<h4>ARM64 DynamIQ 典型拓扑映射</h4>
+<p>以 Cortex-X4/A720/A520 三簇 DynamIQ 为例（8 核）：</p>
+<pre><code>cpu0 (Cortex-X4):  thread_id=0  core_id=0  cluster_id=0  package_id=0
+cpu1 (Cortex-X4):  thread_id=0  core_id=1  cluster_id=0  package_id=0
+cpu2 (Cortex-A720):thread_id=0  core_id=2  cluster_id=1  package_id=0
+cpu3 (Cortex-A720):thread_id=0  core_id=3  cluster_id=1  package_id=0
+cpu4 (Cortex-A720):thread_id=0  core_id=4  cluster_id=1  package_id=0
+cpu5 (Cortex-A520):thread_id=0  core_id=5  cluster_id=2  package_id=0
+cpu6 (Cortex-A520):thread_id=0  core_id=6  cluster_id=2  package_id=0
+cpu7 (Cortex-A520):thread_id=0  core_id=7  cluster_id=2  package_id=0</code></pre>
+<p>各 CPU 的 <code>cluster_sibling</code> cpumask 分别对应 {0-1}、{2-4}、{5-7}，而 <code>llc_sibling</code> 取决于 SoC 是否配置了共享 L3。</p>
+</div>
+
+<h4 id="22-1-四个层级的硬件含义">2.2.1 thread / core / cluster / package 的硬件含义</h4>
+
+<p><code>cpu_topology</code> 的四个 ID 字段不是随意划分的——每个字段对应硬件中的一个<strong>资源共享层级</strong>：</p>
+
+<table>
+<thead><tr><th>字段</th><th>CONFIG</th><th>英文全称</th><th>中文</th><th>共享的硬件</th><th>典型形态</th><th>ARM64?</th></tr></thead>
+<tbody>
+<tr><td><code>thread_id</code></td><td>SCHED_SMT</td><td><strong>S</strong>imultaneous <strong>M</strong>ulti<strong>t</strong>hreading</td><td>同时多线程</td><td>同一物理核的全部：L1 cache、执行单元、寄存器堆</td><td>x86 HyperThreading（1核2线程）</td><td>❌</td></tr>
+<tr><td><code>cluster_id</code></td><td>SCHED_CLUSTER</td><td><strong>Cluster</strong></td><td>簇</td><td>L2 cache 或 mid-level cache、内部总线</td><td>ARM DynamIQ 大小核簇</td><td>✅</td></tr>
+<tr><td><code>core_id</code></td><td>SCHED_MC</td><td><strong>M</strong>ulti-<strong>C</strong>ore</td><td>多核</td><td>最后一级缓存 LLC（通常 L3）</td><td>chiplet/ring bus 上共享 L3 的所有核</td><td>✅</td></tr>
+<tr><td><code>package_id</code></td><td>（固定）</td><td><strong>P</strong>ac<strong>k</strong>a<strong>g</strong>e</td><td>封装/插槽</td><td>同一物理封装 / die / socket</td><td>整个 SoC 或 NUMA 节点</td><td>✅</td></tr>
+</tbody>
+</table>
+
+<p>这四层的包含关系是：<strong>SMT ⊂ CLS ⊂ MC ⊂ PKG</strong>。即在同一个 cluster 里的核一定在同一个 MC 域里，在同一个 MC 域里的核一定在同一个 package 里。</p>
+
+<h4 id="22-2-arm64-芯片场景">2.2.2 ARM64 芯片实际对应哪种硬件？</h4>
+
+<table>
+<thead><tr><th>芯片类型</th><th>SMT</th><th>CLUSTER</th><th>MC</th><th>NUMA</th><th>说明</th></tr></thead>
+<tbody>
+<tr>
+    <td><strong>手机 SoC</strong>（骁龙 8 Gen 3）<br>1×X4 + 3×A720 + 4×A520</td>
+    <td>❌</td><td>✅ 三层 cluster</td><td>✅ DSU 共享 L3</td><td>❌</td>
+    <td>DynamIQ 典型：三个 cluster 各具不同 capacity</td>
+</tr>
+<tr>
+    <td><strong>嵌入式 / QEMU virt</strong><br>（树莓派 4：4×A72）</td>
+    <td>❌</td><td>❌</td><td>✅ 四核共享 cache</td><td>❌</td>
+    <td>同构系统，cluster_id 全为 -1 或 0</td>
+</tr>
+<tr>
+    <td><strong>ARM 服务器</strong>（Graviton3、Ampere Altra）<br>64~128 核 Neoverse N1/V1</td>
+    <td>❌</td><td>❌</td><td>✅ mesh 共享 L3</td><td>✅ 多 socket</td>
+    <td>无 cluster，PCKG 对应 socket</td>
+</tr>
+<tr>
+    <td><strong>Apple Silicon</strong>（M1/M2/M3）<br>Firestorm + Icestorm</td>
+    <td>❌</td><td>✅ P+E cluster</td><td>✅ 共享 SLC</td><td>❌</td>
+    <td>两个 cluster，不同 capacity</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>核心结论</strong>：ARM64 的 cluster 层级是其相对于 x86 的最大独特性——x86 超线程 + P/E 核混合只有两档，而 ARM64 DynamIQ 可以有三四档不同微架构的簇，<code>cluster_id</code> 和 <code>cluster_sibling</code> 让调度器能精确感知这些边界。</p>
+</div>
+
+<h4 id="22-3-静态模板的运行时折叠">2.2.3 从 cpu_topology 到 sched_domain：冗余层级的自动折叠</h4>
+
+<p><code>default_topology[]</code>（见 <a href="#54-arm64-默认拓扑层级表">§5.4</a>）是静态模板——定义了 <strong>最大可能</strong> 的层级组合（SMT → CLS → MC → PKG）。但在运行时，<code>cpu_attach_domain()</code>（<a href="kernel/sched/topology.c#L716">kernel/sched/topology.c:716</a>）会根据实际的 <code>cpu_topology[]</code> 数据将冗余层级从链表里摘除。</p>
+
+<h5>什么叫 span？</h5>
+
+<p><strong>span = 调度域覆盖的 CPU 集合</strong>（<code>cpumask</code>）。例如 QEMU virt 的 MC 层 span = {0,1,2,3}——"这层域管这 4 个 CPU"。</p>
+
+<p><strong>"span 相同"</strong> 就是两个层级覆盖完全一样的 CPU。QEMU virt 中 MC 和 PKG 的 span 都是 {0,1,2,3}，"4 个核的负载均衡"这件事 MC 层已经做了，PKG 层没有任何额外的 CPU 需要协调 → PKG 就是冗余的。</p>
+
+<h5>折叠规则</h5>
+
+<p>折叠发生在 <code>cpu_attach_domain()</code> 中（<a href="kernel/sched/topology.c#L716">topology.c:716</a>），本质是 <strong>对 sd→parent→child 链表做剪枝</strong>：</p>
+
+<pre><code>自底向上遍历 (tmp = rq->sd; tmp; ):
+  parent = tmp->parent
+  if sd_parent_degenerate(tmp, parent):    // parent 冗余?
+      tmp->parent = parent->parent           // splice out parent
+      destroy parent</code></pre>
+
+<p>两个判断函数决定一个域是否被折叠：</p>
+
+<p><strong><code>sd_degenerate(sd)</code></strong>（<a href="kernel/sched/topology.c#L170">topology.c:170</a>）—— 这个域本身是否无用？</p>
+<pre><code>① span 只有 1 个 CPU → 退化（就一个核，不需要均衡）
+② 没有 SD_WAKE_AFFINE 等有意义 flag → 退化
+③ 否则 → 不退化</code></pre>
+
+<p><strong><code>sd_parent_degenerate(sd, parent)</code></strong>（<a href="kernel/sched/topology.c#L187">topology.c:187</a>）—— parent 相对于 sd 是否冗余？</p>
+<pre><code>① parent 自己退化 → 折叠
+② sd 和 parent 的 span 不同 → 不折叠（覆盖范围不同，parent 有额外 CPU 需要协调）
+③ parent 有 sd 没有的 flag → 不折叠（parent 有独特语义）
+④ 以上都不满足 → 折叠（span 相同 + 无额外 flag = 重复层级）</code></pre>
+
+<h5>三个场景走一遍</h5>
+
+<p><strong>① QEMU virt（同构 A57）</strong> — 最终只剩 MC 一层：</p>
+<pre><code>折叠前: rq->sd → MC(span=0-3, SD_SHARE_LLC) → PKG(span=0-3, 无flag) → NULL
+            MC vs PKG: span相同+PKG无额外flag → 折叠 PKG → MC->parent=NULL
+折叠后: rq->sd → MC(span=0-3, SD_SHARE_LLC) → NULL     ← 只剩一层</code></pre>
+
+<p><strong>② 大小核手机 SoC</strong> — 三层都保留：</p>
+<pre><code>折叠前: MC(span=0-7,SD_SHARE_LLC)→CLS(span=各cluster,SD_CLUSTER)→PKG(span=0-7)→NULL
+            CLS vs PKG: span不同(CLS各2-3个, PKG=0-7) → 不折叠
+            MC vs CLS: span不同(MC=0-7, CLS各2-3) → 不折叠
+折叠后: MC → CLS → PKG → NULL                             ← 三层都保留</code></pre>
+
+<p><strong>③ 双 socket 服务器</strong> — PKG 被保留：</p>
+<pre><code>折叠前: MC(span=0-7)→PKG(span=socket0=0-63)→NUMA(span=0-127)→NULL
+            MC vs PKG:  span不同(0-7≠0-63) → 不折叠
+            PKG vs NUMA: span不同(0-63≠0-127) → 不折叠
+折叠后: MC → PKG → NUMA → NULL                           ← 三层都保留</code></pre>
+
+<p>关键洞察：<strong><code>default_topology[]</code> 是最大可能集合的静态模板。运行时根据 <code>cpu_topology[]</code> 的实际数据自动折叠——span 相同且无额外 flags 的父子层就是冗余的。</strong></p>
+
+<h5>QEMU virt 的具体代码证据</h5>
+
+<p><strong>证据 ①：MC 和 PKG 的 span 为什么相同。</strong> 每个层级的 span 由 mask 函数决定，MC 和 PKG 调用不同的函数，但在 QEMU virt 同构单节点下返回了相同的 cpumask：</p>
+
+<p>MC 层 — <a href="kernel/sched/topology.c#L1757">topology.c:1757</a>：</p>
+<pre><code>const struct cpumask *tl_mc_mask(..., int cpu) {
+    return cpu_coregroup_mask(cpu);   // → cpu_topology[cpu].core_sibling
+}</code></pre>
+
+<p><code>cpu_coregroup_mask()</code> — <a href="drivers/base/arch_topology.c#L698">arch_topology.c:698</a>：</p>
+<pre><code>const struct cpumask *cpu_coregroup_mask(int cpu) {
+    const cpumask_t *core_mask = cpumask_of_node(cpu_to_node(cpu));
+    if (cpumask_subset(&cpu_topology[cpu].core_sibling, core_mask))
+        core_mask = &cpu_topology[cpu].core_sibling;  // ← 取 core_sibling={0-3}
+    return core_mask;
+}</code></pre>
+
+<p>PKG 层 — <a href="kernel/sched/topology.c#L1763">topology.c:1763</a>：</p>
+<pre><code>const struct cpumask *tl_pkg_mask(..., int cpu) {
+    return cpu_node_mask(cpu);        // → NUMA node 0 = {0-3}（单节点）
+}</code></pre>
+
+<p>QEMU virt DT 解析后 <code>core_sibling</code> = {0,1,2,3}，NUMA node 0 也是 {0,1,2,3} → <strong>两者 span 完全一致。</strong></p>
+
+<p><strong>证据 ②：折叠的发生位置。</strong> <a href="kernel/sched/topology.c#L716">topology.c:716</a> 的 <code>cpu_attach_domain()</code> 遍历 sd 链表：</p>
+<pre><code>for (tmp = sd; tmp; ) {
+    struct sched_domain *parent = tmp->parent;
+    if (!parent) break;
+    if (sd_parent_degenerate(tmp, parent)) {  // PKG 冗余?
+        tmp->parent = parent->parent;          // splice out PKG
+        destroy_sched_domain(parent);
+    } else
+        tmp = tmp->parent;
+}</code></pre>
+
+<p><strong>证据 ③：判定 PKG 冗余。</strong> <a href="kernel/sched/topology.c#L187">topology.c:187</a> 对着 MC(span=0-3, flags=SD_SHARE_LLC) 和 PKG(span=0-3, flags=0) 逐条判断：</p>
+<pre><code>sd_parent_degenerate(MC, PKG):
+  ① sd_degenerate(PKG)?     → span=4>1, 不触发
+  ② span不同?               → {0-3}=={0-3}, 不触发
+  ③ PKG有MC没有的flag?      → ~SD_SHARE_LLC & 0 = 0, 不触发
+  ④ 以上都不满足            → return 1  // PKG 冗余!</code></pre>
+
+<h3 id="24-qemu-virt-拓扑初始化全流程">2.4 QEMU virt 拓扑初始化全流程追踪</h3>
+
+<p>以项目 <code>launch.sh</code> 中的 <code>qemu-system-aarch64 -machine virt -cpu cortex-a57 -smp 4</code> 为基准，从头到尾追踪硬件拓扑数据是如何初始化的。</p>
+
+<h4 id="24-1-调用链总览">2.4.1 调用链总览</h4>
+
+<pre><code>start_kernel()                                   [init/main.c]
+  └─ smp_prepare_cpus()                          [arch/arm64/kernel/smp.c:772]
+       │  (此时仅 boot CPU 在线，secondary CPU 尚未拉起)
+       │
+       ├─ init_cpu_topology()                     [drivers/base/arch_topology.c:832]
+       │    ├─ reset_cpu_topology()               // ① 所有字段置 -1
+       │    ├─ parse_acpi_topology()              // ② QEMU 无 ACPI → return 0
+       │    ├─ parse_dt_topology()                // ③ 解析 QEMU 生成的 /cpus/cpu-map
+       │    │    └─ parse_socket("cpu-map")
+       │    │         └─ parse_cluster(socket, 0, -1, 0)
+       │    │              └─ parse_cluster(cluster0, 0, 0, 1)
+       │    │                   ├─ parse_core(core0, 0, 0, 0) → cpu0: pkg=0,cls=0,core=0,thr=-1
+       │    │                   ├─ parse_core(core1, 0, 0, 1) → cpu1: pkg=0,cls=0,core=1,thr=-1
+       │    │                   ├─ parse_core(core2, 0, 0, 2) → cpu2: pkg=0,cls=0,core=2,thr=-1
+       │    │                   └─ parse_core(core3, 0, 0, 3) → cpu3: pkg=0,cls=0,core=3,thr=-1
+       │    └─ fetch_cache_info()                 // ④ 每 CPU 检测 cache 层级
+       │
+       ├─ store_cpu_topology(boot_cpu)             [arch/arm64/kernel/smp.c:782]
+       │    └─ update_siblings_masks(boot_cpu)    // ⑤ 构建 sibling cpumask
+       │
+       └─ ... (secondary CPU 上线后也调用 store_cpu_topology)</code></pre>
+
+<h4 id="24-2-关键代码逐段追踪">2.4.2 关键代码逐段追踪</h4>
+
+<p><strong>第①步：reset_cpu_topology()</strong> — <a href="drivers/base/arch_topology.c#L794">arch_topology.c:794</a>，全部清零：</p>
+<pre><code>for_each_possible_cpu(cpu) {
+    cpu_topology[cpu].thread_id  = -1;
+    cpu_topology[cpu].core_id    = -1;
+    cpu_topology[cpu].cluster_id = -1;
+    cpu_topology[cpu].package_id = -1;
+    clear_cpu_topology(cpu);
+}</code></pre>
+
+<p><strong>第②步：parse_acpi_topology()</strong> — <a href="arch/arm64/kernel/topology.c#L60">arch/arm64/kernel/topology.c:60</a>，<code>if (acpi_disabled) return 0;</code> QEMU DT 启动，直接返回。</p>
+
+<p><strong>第③步：parse_dt_topology()</strong> — <a href="drivers/base/arch_topology.c#L651">arch_topology.c:651</a>，解析设备树中的 <code>/cpus/cpu-map</code>。QEMU DT 中 cpu-map 直接包含 cluster0，没有 socket0 子节点，因此 <code>parse_socket()</code>（<a href="drivers/base/arch_topology.c#L612">line 612</a>）的 <code>has_socket</code> 为 false，走 <code>parse_cluster(socket, 0, -1, 0)</code> 分支——把整个 map 当 cluster 处理，package_id 固定为 0。</p>
+
+<p><code>parse_cluster()</code> 递归两轮：depth=0 找到 cluster0 → depth=1 找到 core0~3 → 调用 <code>parse_core()</code>（<a href="drivers/base/arch_topology.c#L493">line 493</a>）：</p>
+<pre><code>cpu = get_cpu_for_node(core);   // cpu phandle → Linux cpu number (0~3)
+cpu_topology[cpu].package_id = 0;
+cpu_topology[cpu].cluster_id = 0;
+cpu_topology[cpu].core_id    = core_id;  // 0,1,2,3
+// thread_id 保持 -1（没有 thread0 子节点 → 无 SMT）</code></pre>
+
+<p><strong>第④步：fetch_cache_info()</strong> — <a href="drivers/base/arch_topology.c#L850">arch_topology.c:850</a>，为后续 llc_sibling 做准备。</p>
+
+<p><strong>第⑤步：store_cpu_topology() → update_siblings_masks()</strong> — <a href="drivers/base/arch_topology.c#L860">arch_topology.c:860</a>。DT 已填充 topology（package_id=0≠-1），跳到 <code>topology_populated</code> 标签，调用 <code>update_siblings_masks()</code>（<a href="drivers/base/arch_topology.c#L738">line 738</a>）：遍历所有 online CPU，根据 package_id/cluster_id/core_id 的相等关系填充各 sibling cpumask。</p>
+
+<h4 id="24-3-最终结构">2.4.3 最终 cpu_topology[] 结构</h4>
+
+<table>
+<thead><tr><th></th><th>thread</th><th>core</th><th>cluster</th><th>package</th><th>core_sibling</th><th>cluster_sibling</th><th>llc_sibling</th><th>thread_sibling</th></tr></thead>
+<tbody>
+<tr><td><strong>cpu0</strong></td><td>-1</td><td>0</td><td>0</td><td>0</td><td>{0,1,2,3}</td><td>{0,1,2,3}</td><td>{0,1,2,3}</td><td>{0}</td></tr>
+<tr><td><strong>cpu1</strong></td><td>-1</td><td>1</td><td>0</td><td>0</td><td>{0,1,2,3}</td><td>{0,1,2,3}</td><td>{0,1,2,3}</td><td>{1}</td></tr>
+<tr><td><strong>cpu2</strong></td><td>-1</td><td>2</td><td>0</td><td>0</td><td>{0,1,2,3}</td><td>{0,1,2,3}</td><td>{0,1,2,3}</td><td>{2}</td></tr>
+<tr><td><strong>cpu3</strong></td><td>-1</td><td>3</td><td>0</td><td>0</td><td>{0,1,2,3}</td><td>{0,1,2,3}</td><td>{0,1,2,3}</td><td>{3}</td></tr>
+</tbody>
+</table>
+
+<h4 id="24-4-验证结论">2.4.4 验证结论</h4>
+
+<p><strong>结论 1：QEMU virt + Cortex-A57 是纯同构系统。</strong> 所有 CPU 的 <code>core_sibling</code> = <code>cluster_sibling</code> = <code>llc_sibling</code> = {0,1,2,3}，四核完全等价。capacity 全为 1024（DT 中无 <code>capacity-dmips-mhz</code>，保持 <code>SCHED_CAPACITY_SCALE</code> 默认值）。</p>
+
+<p><strong>结论 2：cluster_id 虽为 0 而非 -1，但 cluster_sibling 等于 core_sibling。</strong> QEMU DT 中所有 4 个 core 都在同一个 cluster0 下，cluster 没有提供比 package 更细的划分。调度域构建时 CLS 层即使 <code>#ifdef CONFIG_SCHED_CLUSTER</code> 存在，其 mask 也等于 MC 的 mask → 被 §2.2.3 的折叠逻辑消除。</p>
+
+<p><strong>结论 3：thread_id 全为 -1。</strong> Cortex-A57 不支持 SMT，QEMU DT 中 cpu 节点没有 thread0 子节点，<code>parse_core()</code> 的 thread 遍历第一轮就 break。</p>
+
+<p><strong>结论 4：后续 <code>sched_init_smp() → sched_init_domains()</code> 构建调度域时，</strong><code>default_topology[]</code> 中的 SMT 和 CLS 层各自 mask 函数返回的 cpumask 要么只含单核（SMT: <code>cpu_smt_mask</code> 对无 SMT 核返回自身），要么与 MC 相同（CLS），最终经折叠后只剩 MC（span=0-3, flags=SD_SHARE_LLC）一层有效调度域。</p>
+
+<h4 id="24-5-运行时验证">2.4.5 运行时验证 — sysfs 直接读取拓扑数据</h4>
+
+<p>内核已将 <code>cpu_topology[]</code> 的所有字段导出到 sysfs，无需添加任何打印代码。在 QEMU 虚拟机内直接读文件即可验证上述所有结论：</p>
+
+<pre><code># 每个 CPU 的 topology ID
+for cpu in 0 1 2 3; do
+    echo "=== cpu$cpu ==="
+    cat /sys/devices/system/cpu/cpu$cpu/topology/core_id
+    cat /sys/devices/system/cpu/cpu$cpu/topology/cluster_id
+    cat /sys/devices/system/cpu/cpu$cpu/topology/physical_package_id
+done</code></pre>
+
+<p>预期输出：</p>
+<pre><code>cpu0: core_id=0  cluster_id=0  package_id=0
+cpu1: core_id=1  cluster_id=0  package_id=0
+cpu2: core_id=2  cluster_id=0  package_id=0
+cpu3: core_id=3  cluster_id=0  package_id=0</code></pre>
+
+<pre><code># 各层级 sibling cpumask
+cat /sys/devices/system/cpu/cpu0/topology/thread_siblings_list     # 预期: 0       (无 SMT)
+cat /sys/devices/system/cpu/cpu0/topology/core_siblings_list       # 预期: 0-3     (同 package)
+cat /sys/devices/system/cpu/cpu0/topology/cluster_cpus_list        # 预期: 0-3     (同 cluster)
+cat /sys/devices/system/cpu/cpu0/topology/package_cpus_list        # 预期: 0-3     (同 package)
+
+# 验证 capacity 全对称
+cat /sys/devices/system/cpu/cpu*/cpu_capacity                      # 预期: 1024 × 4</code></pre>
+
+<p>这些 sysfs 文件直接对应 <code>cpu_topology[]</code> 的字段——<code>core_siblings_list</code> 就是 <code>cpu_topology[cpu].core_sibling</code> 的字符串表示，<code>physical_package_id</code> 就是 <code>cpu_topology[cpu].package_id</code>。读出结果与 §2.4.3 表格完全一致即可验证。</p>
+
+<p>若想看到内核内部的日志，<code>store_cpu_topology()</code> 中已有 <code>pr_debug</code>（<a href="drivers/base/arch_topology.c#L871">arch_topology.c:871</a>），在启动参数中加 <code>loglevel=8</code> 或通过 dynamic_debug 启用即可：</p>
+<pre><code># 启动参数方式: --append "loglevel=8 ..."
+# 运行时方式:
+mount -t debugfs none /sys/kernel/debug
+echo 'file arch_topology.c +p' > /sys/kernel/debug/dynamic_debug/control
+dmesg | grep -E "CPU[0-9]"</code></pre>
+
+<h3 id="23-arm64-算力解析">2.3 ARM64 算力解析</h3>
+
+<p>ARM64 big.LITTLE/DynamIQ 体系的关键在于 <strong>CPU capacity（算力）</strong>——从 DT 的 <code>capacity-dmips-mhz</code> 属性解析并归一化：</p>
+
+<pre><code>// Device Tree 中每个 CPU 节点声明其 DMIPS/MHz 值：
+cpu@0 { capacity-dmips-mhz = <1024>; };  // 大核 (Cortex-X4)
+cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
+
+<p>解析函数 <code>topology_parse_cpu_capacity()</code>（位于 <code>drivers/base/arch_topology.c</code>）读取该值，经过 <code>topology_normalize_cpu_scale()</code> 归一化到 <code>SCHED_CAPACITY_SCALE</code>（1024）范围内：</p>
+
+<pre><code>// 归一化公式：
+// cpu_capacity = (raw_capacity * SCHED_CAPACITY_SCALE) / max_raw_capacity
+//
+// 结果：大核 capacity = 1024, 小核 capacity ≈ 386</code></pre>
+
+<p>这个 capacity 值被写入 <code>rq->cpu_capacity</code>（Layer 2），后续<strong>负载均衡</strong>和<strong>EAS 任务放置</strong>都依赖它来区分"大核够不够用"和"小核是否过载（misfit）"。</p>
+
+<h3 id="24-关键函数汇总">2.4 关键函数汇总</h3>
+
+<table>
+<thead><tr>
+<th>函数</th>
+<th>位置</th>
+<th>职责</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>parse_dt_topology()</code></td>
+<td><code>drivers/base/arch_topology.c</code></td>
+<td>从 DT cpu-map 解析层级拓扑</td>
+</tr>
+<tr>
+<td><code>parse_acpi_topology()</code></td>
+<td><a href="arch/arm64/kernel/topology.c#L52">arch/arm64/kernel/topology.c:52</a></td>
+<td>从 ACPI PPTT 解析层级拓扑</td>
+</tr>
+<tr>
+<td><code>topology_parse_cpu_capacity()</code></td>
+<td><code>drivers/base/arch_topology.c</code></td>
+<td>读取 DT <code>capacity-dmips-mhz</code></td>
+</tr>
+<tr>
+<td><code>topology_normalize_cpu_scale()</code></td>
+<td><code>drivers/base/arch_topology.c</code></td>
+<td>归一化算力到 <code>SCHED_CAPACITY_SCALE</code></td>
+</tr>
+<tr>
+<td><code>store_cpu_topology()</code></td>
+<td><code>drivers/base/arch_topology.c</code></td>
+<td>存入 <code>cpu_topology[]</code> 数组</td>
+</tr>
+<tr>
+<td><code>update_siblings_masks()</code></td>
+<td><code>drivers/base/arch_topology.c</code></td>
+<td>构建 thread/core/cluster/llc cpumask</td>
+</tr>
+</tbody>
+</table>
+
+
+
+<h2 id="三layer-2-per-cpu-运行队列">三、Layer 2: Per-CPU 运行队列</h2>
+
+<blockquote><strong>核心问题：</strong> "这个 CPU 上有什么？" — 每个 CPU 的一个 rq 实例是所有调度活动的"锚点"。</blockquote>
+
+<h3 id="31-struct-rq-核心字段">3.1 struct rq 核心字段</h3>
+
+<p>定义位于 <a href="kernel/sched/sched.h#L1119">kernel/sched/sched.h:1119</a>：</p>
+
+<pre><code>struct rq {
+    raw_spinlock_t    __lock;         // rq 自旋锁，所有调度操作都需持锁
+    unsigned int      nr_running;     // rq 上的可运行任务总数
+
+    struct cfs_rq     cfs;            // 内嵌的 CFS 就绪队列
+    struct rt_rq      rt;             // 内嵌的 RT 就绪队列
+    struct dl_rq      dl;             // 内嵌的 DL 就绪队列
+
+    struct task_struct *donor;        // 当前调度上下文 (donor)
+    struct task_struct *idle;         // idle 任务 (per-CPU)
+    struct task_struct *stop;         // stop 任务 (per-CPU, CPU 热插拔用)
+
+    struct root_domain    *rd;        // → 所属 root_domain (Layer 4)
+    struct sched_domain   *sd;        // → 所属调度域链表 (Layer 4)
+    unsigned long   cpu_capacity;     // CPU 算力值 (ARM64 big.LITTLE 关键)
+
+    int    cpu;                       // 所属 CPU 编号
+    int    online;                    // 是否在线
+
+    u64    clock;                     // rq 时钟
+    u64    clock_task;                // 任务运行时间时钟
+    u64    clock_pelt;                // PELT 负载跟踪时钟
+
+    unsigned long  nr_uninterruptible;// 不可中断睡眠任务数
+    atomic_t       nr_iowait;         // 等待 IO 的任务数
+
+    struct list_head leaf_cfs_rq_list; // 该 CPU 上所有叶子 cfs_rq 的链表
+};</code></pre>
+
+<div class="layer-card">
+<h4>rq → rd → sd 指针链</h4>
+<p>每个 rq 通过两个指针向上连接到 Layer 4 的拓扑抽象：</p>
+<ul>
+  <li><code>rq->rd</code>：指向 root_domain，决定了"这个 CPU 属于哪个调度隔离域"（cpuset 会创建独立的 rd）</li>
+  <li><code>rq->sd</code>：指向该 CPU 对应的最低层（最底层）调度域的链表头，通过 <code>sd->parent</code> 向上遍历可覆盖所有层级</li>
+</ul>
+</div>
+
+<h3 id="32-内嵌三层队列">3.2 内嵌三层队列</h3>
+
+<p><code>rq</code> 不存储指向各调度类队列的指针，而是直接内嵌它们：</p>
+
+<table>
+<thead><tr>
+<th>内嵌成员</th>
+<th>类型</th>
+<th>含义</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>rq->cfs</code></td>
+<td><code>struct cfs_rq</code></td>
+<td>根 CFS 就绪队列。内部包含 EEVDF 红黑树（<code>tasks_timeline</code>），存储按 vruntime 排序的 sched_entity</td>
+</tr>
+<tr>
+<td><code>rq->rt</code></td>
+<td><code>struct rt_rq</code></td>
+<td>根 RT 就绪队列。内部包含按优先级分组的 bitmap + 链表</td>
+</tr>
+<tr>
+<td><code>rq->dl</code></td>
+<td><code>struct dl_rq</code></td>
+<td>根 Deadline 就绪队列。内部包含红黑树（按 deadline 排序）</td>
+</tr>
+</tbody>
+</table>
+
+<p>这种"内嵌"而非"指针引用"的设计避免了额外的间接访问，cache 友好。在有 cgroup 的情况下（<code>CONFIG_FAIR_GROUP_SCHED</code>），task_group 还会额外分配 per-CPU 的 cfs_rq，形成层级树。</p>
+
+
+
+<h2 id="四layer-3-调度实体">四、Layer 3: 调度实体</h2>
+
+<blockquote><strong>核心问题：</strong> "谁可以被调度？" — 将"可调度性"从 <code>task_struct</code> 中抽离为独立结构。</blockquote>
+
+<h3 id="41-三类调度实体">4.1 三类调度实体</h3>
+
+<p>每个 <code>task_struct</code> 内嵌了全部三种调度实体，任务根据其调度策略使用对应的实体：</p>
+
+<table>
+<thead><tr>
+<th>实体类型</th>
+<th>task_struct 中的字段</th>
+<th>对应调度类</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>struct sched_entity</code></td>
+<td><code>task_struct.se</code></td>
+<td>CFS (SCHED_NORMAL, SCHED_BATCH, SCHED_IDLE)</td>
+</tr>
+<tr>
+<td><code>struct sched_rt_entity</code></td>
+<td><code>task_struct.rt</code></td>
+<td>RT (SCHED_FIFO, SCHED_RR)</td>
+</tr>
+<tr>
+<td><code>struct sched_dl_entity</code></td>
+<td><code>task_struct.dl</code></td>
+<td>Deadline (SCHED_DEADLINE)</td>
+</tr>
+</tbody>
+</table>
+
+<p><code>sched_entity</code> 的核心字段（定义在 <code>include/linux/sched.h</code>）：</p>
+
+<pre><code>struct sched_entity {
+    struct load_weight    load;          // 负载权重（决定时间片比例）
+    struct rb_node        run_node;      // EEVDF 红黑树节点
+    u64                   vruntime;      // 虚拟运行时间（红黑树 key）
+    u64                   deadline;      // EEVDF 期限
+    u64                   min_vruntime;  // EEVDF 最小虚拟截止时间
+    struct sched_avg      avg;           // PELT 负载跟踪（util_avg, load_avg）
+};</code></pre>
+
+<h3 id="42-实体与-task_group-的关系">4.2 实体与 task_group 的关系</h3>
+
+<p>实体的关键设计在于<strong>它不仅代表任务，也代表任务组</strong>：</p>
+
+<ul>
+  <li>每个 <code>task_group</code> 拥有 per-CPU 的 <code>struct sched_entity **se</code> 指针数组——该 se 是 task_group 在某个 CPU 上的"代理"，参与该 CPU 的 CFS 调度</li>
+  <li>task 的 se 入队到其所属 task_group 的 cfs_rq 中，而 task_group 的 se 入队到父 task_group 的 cfs_rq 中，形成层级嵌套</li>
+  <li>最终，所有可运行实体通过 <code>rq->cfs.tasks_timeline</code>（EEVDF 红黑树）统一排序</li>
+</ul>
+
+
+
+<h2 id="五layer-4-调度域与根域">五、Layer 4: 调度域与根域</h2>
+
+<blockquote><strong>核心问题：</strong> "CPU 之间如何组织？" — 为负载均衡和任务放置提供拓扑感知的 CPU 分组。</blockquote>
+
+<h3 id="51-struct-sched_domain">5.1 struct sched_domain</h3>
+
+<p>定义位于 <a href="include/linux/sched/topology.h#L73">include/linux/sched/topology.h:73</a>。每个调度域代表一个 CPU 集合，层叠形成父子层级：</p>
+
+<pre><code>struct sched_domain {
+    struct sched_domain *parent;      // 上级域（覆盖更大范围）
+    struct sched_domain *child;       // 下级域（覆盖更小范围）
+    struct sched_group *groups;       // 调度组循环链表（负载均衡的基本单位）
+    unsigned long span[];             // 本域覆盖的 CPU 位图（变长数组，紧邻结构体分配）
+    int flags;                        // SD_BALANCE_*, SD_SHARE_* 等标志位
+    int level;                        // 层级编号
+
+    unsigned long min_interval;       // 最小均衡间隔 (ms)
+    unsigned long max_interval;       // 最大均衡间隔 (ms)
+    unsigned int  imbalance_pct;      // 不平衡阈值 (默认 117，即 17% 差异)
+    unsigned int  busy_factor;        // 忙时均衡频率衰减因子
+    unsigned int  cache_nice_tries;   // 保留缓存热任务的尝试次数
+
+    unsigned long last_balance;       // 上次做均衡的时间戳 (jiffies)
+    unsigned int  nr_balance_failed;  // 连续均衡失败次数
+};</code></pre>
+
+<div class="layer-card">
+<h4>关键 sd_flags 释义</h4>
+<table>
+<thead><tr><th>标志</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><code>SD_BALANCE_NEWIDLE</code></td><td>CPU 进入 idle 时触发负载均衡</td></tr>
+<tr><td><code>SD_BALANCE_EXEC</code></td><td><code>exec()</code> 时触发负载均衡</td></tr>
+<tr><td><code>SD_BALANCE_FORK</code></td><td><code>fork()</code> 时触发负载均衡</td></tr>
+<tr><td><code>SD_BALANCE_WAKE</code></td><td>唤醒时触发负载均衡（通常仅在最高层设置）</td></tr>
+<tr><td><code>SD_WAKE_AFFINE</code></td><td>唤醒时优先尝试将任务放在唤醒者所在的 CPU</td></tr>
+<tr><td><code>SD_SHARE_CPUCAPACITY</code></td><td>域内 CPU 算力相同（同构）</td></tr>
+<tr><td><code>SD_SHARE_LLC</code></td><td>域内 CPU 共享末级缓存（LLC）</td></tr>
+<tr><td><code>SD_NUMA</code></td><td>跨 NUMA 节点的域</td></tr>
+<tr><td><code>SD_CLUSTER</code></td><td>ARM DynamIQ cluster 层级（CLS 域）</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="52-struct-sched_group">5.2 struct sched_group</h3>
+
+<p>定义位于 <a href="kernel/sched/sched.h#L2095">kernel/sched/sched.h:2095</a>。调度域内部由调度组环路组成——每个组是负载均衡中"迁移任务"的基本单位：</p>
+
+<pre><code>struct sched_group {
+    struct sched_group *next;              // 循环链表的下一个组
+    atomic_t   ref;                        // 引用计数
+    unsigned int   group_weight;           // 组内 CPU 数量
+    struct sched_group_capacity *sgc;      // → 组的算力描述
+    int        asym_prefer_cpu;            // 非对称算力下优先使用的 CPU
+    unsigned long  cpumask[];              // 组内 CPU 位图（变长数组）
+};</code></pre>
+
+<p><code>sched_group_capacity</code> 是附着在每个 group 上的辅助结构，记录该组的<strong>总算力</strong>和<strong>当前利用率</strong>，供 <code>find_busiest_group()</code> 判断哪个组需要"拉"任务。</p>
+
+<h3 id="53-struct-root_domain">5.3 struct root_domain</h3>
+
+<p>定义位于 <a href="kernel/sched/sched.h#L985">kernel/sched/sched.h:985</a>。root_domain 是调度域层级的"顶层容器"，也是 <strong>cpuset 隔离</strong>的边界：</p>
+
+<pre><code>struct root_domain {
+    atomic_t     refcount;                // 引用计数 (rq 引用 + 外部引用)
+    cpumask_var_t span;                   // 管辖的所有 CPU
+    cpumask_var_t online;                 // 其中在线的 CPU
+    bool overloaded;                      // 是否有 CPU 的 rq 上多于一个可运行任务
+    bool overutilized;                    // 是否有 CPU 利用率超过 tipping point (~80%)
+
+    cpumask_var_t dlo_mask;               // DL 过载 CPU
+    cpumask_var_t rto_mask;               // RT 过载 CPU
+    struct dl_bw  dl_bw;                  // DL 带宽管理（全局准入控制）
+    struct cpudl  cpudl;                  // DL 最早截止时间堆
+
+    struct perf_domain *pd;               // → 性能域链表 (EAS 关键，ARM64 上至关重要)
+};</code></pre>
+
+<div class="layer-card">
+<h4>rd->overutilized：EAS 的开关</h4>
+<p><code>overutilized</code> 是 ARM64 EAS 路径的关键标志位。当某个 CPU 的利用率超过 80% tipping point 时，rd 被标记为 overutilized，后续的任务唤醒路径将<strong>跳过 EAS</strong>（<code>find_energy_efficient_cpu()</code> 直接返回 -1），回退到传统的负载均衡放置策略。EAS 只在系统<strong>非过载</strong>时生效，因为能耗优化的边际收益在系统繁忙时不足以弥补算力优先的损失。</p>
+</div>
+
+<h3 id="54-arm64-默认拓扑层级表">5.4 ARM64 默认拓扑层级表</h3>
+
+<p>定义位于 <a href="kernel/sched/topology.c#L1771">kernel/sched/topology.c:1771</a>。通过 <code>SDTL_INIT</code> 宏将每层的 mask 函数和 flags 函数组织成表：</p>
+
+<pre><code>static struct sched_domain_topology_level default_topology[] = {
+#ifdef CONFIG_SCHED_SMT
+    SDTL_INIT(tl_smt_mask, cpu_smt_flags, SMT),    // SMT 层 (多线程)
+#endif
+#ifdef CONFIG_SCHED_CLUSTER
+    SDTL_INIT(tl_cls_mask, cpu_cluster_flags, CLS), // Cluster 层 (ARM DynamIQ 特有)
+#endif
+#ifdef CONFIG_SCHED_MC
+    SDTL_INIT(tl_mc_mask, cpu_core_flags, MC),      // 多核层
+#endif
+    SDTL_INIT(tl_pkg_mask, NULL, PKG),              // 封装层 (NUMA 节点边界)
+    { NULL, },
+};</code></pre>
+
+<p>其中 SMT / CLUSTER / MC 各层的硬件含义（共享什么硬件、ARM64 上哪些芯片启用）详见 <a href="#22-1-四个层级的硬件含义">Layer 1 §2.2.1~2.2.2</a>——这些本质上是硬件拓扑描述，不属于调度域构建逻辑本身。</p>
+
+<p>这里仅给出程序的 QEMU virt（-smp 4, -cpu cortex-a57）作为参考——同构系统，只有两层且 span 相同：</p>
+
+<pre><code>MC 层:  span={0,1,2,3}, flags=SD_SHARE_LLC
+PKG 层: span={0,1,2,3}
+(无 SMT、无 CLS、无 NUMA)</code></pre>
+
+<h3 id="55-调度域构建核心函数">5.5 调度域构建核心函数</h3>
+
+<table>
+<thead><tr>
+<th>函数</th>
+<th>位置</th>
+<th>职责</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>sched_init_domains()</code></td>
+<td><a href="kernel/sched/topology.c">kernel/sched/topology.c</a></td>
+<td>调度域初始化的顶层入口，由 <code>sched_init_smp()</code> 调用</td>
+</tr>
+<tr>
+<td><code>build_sched_domains()</code></td>
+<td><a href="kernel/sched/topology.c">kernel/sched/topology.c</a></td>
+<td>遍历 CPU map，逐层构造 sched_domain 和 sched_group</td>
+</tr>
+<tr>
+<td><code>sd_init()</code></td>
+<td><a href="kernel/sched/topology.c#L1625">kernel/sched/topology.c:1625</a></td>
+<td>初始化单个调度域实例（设置间隔、flags、span）</td>
+</tr>
+<tr>
+<td><code>cpu_attach_domain()</code></td>
+<td><a href="kernel/sched/topology.c">kernel/sched/topology.c</a></td>
+<td>将构造好的域链表挂载到 rq，内部调用 <code>rq_attach_root()</code></td>
+</tr>
+<tr>
+<td><code>build_perf_domains()</code></td>
+<td><a href="kernel/sched/topology.c#L409">kernel/sched/topology.c:409</a></td>
+<td>从 Energy Model 构建 perf_domain 链表，挂载到 root_domain</td>
+</tr>
+</tbody>
+</table>
+
+
+
+<h2 id="六layer-5-任务组与带宽控制">六、Layer 5: 任务组与带宽控制</h2>
+
+<blockquote><strong>核心问题：</strong> "如何在任务集合之间分配 CPU 时间？" — cgroup 接口的调度后端。</blockquote>
+
+<h3 id="61-struct-task_group">6.1 struct task_group</h3>
+
+<p>定义位于 <a href="kernel/sched/sched.h#L471">kernel/sched/sched.h:471</a>：</p>
+
+<pre><code>struct task_group {
+    struct cgroup_subsys_state css;           // cgroup 通用子系统状态
+
+    struct sched_entity  **se;                // per-CPU CFS 调度实体指针数组
+    struct cfs_rq        **cfs_rq;            // per-CPU CFS 运行队列指针数组
+    unsigned long         shares;             // CPU 相对份额 (默认 NICE_0_LOAD=1024)
+
+    struct sched_rt_entity **rt_se;           // per-CPU RT 调度实体指针数组
+    struct rt_rq           **rt_rq;           // per-CPU RT 运行队列指针数组
+
+    struct task_group     *parent;            // 父任务组
+    struct list_head       siblings;          // 兄弟任务组链表
+    struct list_head       children;          // 子任务组链表
+
+    struct cfs_bandwidth   cfs_bandwidth;     // CFS 带宽限制 (cpu.max)
+    struct rt_bandwidth    rt_bandwidth;      // RT 带宽限制
+};</code></pre>
+
+<h3 id="62-cgroup-层级调度模型">6.2 cgroup 层级调度模型</h3>
+
+<p>启用 <code>CONFIG_FAIR_GROUP_SCHED</code> 后，每个 cgroup cpu 子系统目录对应一个 task_group，形成树状层级。调度器按层级递归分配 CPU 时间：</p>
+
+<pre><code>                    root_task_group (shares=1024)
+                     │        se (per-CPU 代理实体)
+                     │
+            ┌────────┼────────┐
+            ▼                 ▼
+      tg:A (shares=512)  tg:B (shares=512)
+       │    se             │    se
+       │                   │
+   ┌───┴───┐           ┌───┴───┐
+   ▼       ▼           ▼       ▼
+ task1   task2       task3   task4
+ (se)    (se)        (se)    (se)</code></pre>
+
+<p>在 CPU x 上的调度流程：</p>
+<ol>
+  <li>EEVDF 从 <code>rq->cfs.tasks_timeline</code> 红黑树取出最左节点</li>
+  <li>如果该节点是 task_group 的 se（而非普通 task），则递归进入该 task_group 在 CPU x 上的 <code>cfs_rq[x]</code>，取出其内部红黑树的最左节点</li>
+  <li>重复直到遇到普通 task，完成 <code>pick_next_task_fair()</code></li>
+</ol>
+
+<p>带宽控制（<code>cfs_bandwidth</code>）以周期性定时器控制每个 task_group 的 CPU 时间配额（<code>cpu.max</code> = quota / period），超出配额的组被"节流（throttle）"——其所有 se 被移出红黑树，直到下一个周期刷新。</p>
+
+
+
+<h2 id="七layer-6-调度类">七、Layer 6: 调度类</h2>
+
+<blockquote><strong>核心问题：</strong> "按什么策略调度？" — 将调度策略封装为可插拔的类接口。</blockquote>
+
+<h3 id="71-struct-sched_class">7.1 struct sched_class</h3>
+
+<p>定义位于 <a href="kernel/sched/sched.h#L2398">kernel/sched/sched.h:2398</a>。这是整个调度子系统的策略抽象层，每个调度类实现一组函数指针：</p>
+
+<pre><code>struct sched_class {
+    // == 入队/出队 ==
+    void (*enqueue_task)(struct rq *rq, struct task_struct *p, int flags);
+    bool (*dequeue_task)(struct rq *rq, struct task_struct *p, int flags);
+    void (*yield_task)(struct rq *rq);
+
+    // == 选下一个任务 ==
+    struct task_struct *(*pick_next_task)(struct rq *rq);
+    void (*put_prev_task)(struct rq *rq, struct task_struct *p, ...);
+    void (*set_next_task)(struct rq *rq, struct task_struct *p, bool first);
+
+    // == 任务放置（ARM64 上为 EAS 关键路径）==
+    int  (*select_task_rq)(struct task_struct *p, int task_cpu, int flags);
+    void (*migrate_task_rq)(struct task_struct *p, int new_cpu);
+    void (*wakeup_preempt)(struct rq *rq, struct task_struct *p, int flags);
+
+    // == CPU 热插拔 ==
+    void (*rq_online)(struct rq *rq);
+    void (*rq_offline)(struct rq *rq);
+
+    // == 调度 tick ==
+    void (*task_tick)(struct rq *rq, struct task_struct *p, int queued);
+    void (*task_fork)(struct task_struct *p);
+    void (*task_dead)(struct task_struct *p);
+
+    // == 负载均衡 ==
+    int (*balance)(struct rq *rq, struct task_struct *prev, struct rq_flags *rf);
+
+    void (*update_curr)(struct rq *rq);   // 更新当前任务的 vruntime/runtime
+};</code></pre>
+
+<h3 id="72-cfs-调度类实例">7.2 CFS 调度类实例</h3>
+
+<p>CFS（Linux 6.6+ 已进化为 EEVDF，但从调度类的角度仍称为 fair_sched_class）的实例定义在 <a href="kernel/sched/fair.c#L13621">kernel/sched/fair.c:13621</a>：</p>
+
+<pre><code>DEFINE_SCHED_CLASS(fair) = {
+    .enqueue_task       = enqueue_task_fair,
+    .dequeue_task       = dequeue_task_fair,
+    .yield_task         = yield_task_fair,
+    .yield_to_task      = yield_to_task_fair,
+
+    .wakeup_preempt     = check_preempt_wakeup_fair,
+
+    .pick_task          = pick_task_fair,
+    .pick_next_task     = __pick_next_task_fair,
+    .put_prev_task      = put_prev_task_fair,
+    .set_next_task      = set_next_task_fair,
+
+    .balance            = balance_fair,
+    .select_task_rq     = select_task_rq_fair,     // ← ARM64 EAS 入口
+    .migrate_task_rq    = migrate_task_rq_fair,
+
+    .rq_online          = rq_online_fair,
+    .rq_offline         = rq_offline_fair,
+
+    .task_tick          = task_tick_fair,
+    .task_fork          = task_fork_fair,
+    .task_dead          = task_dead_fair,
+
+    .update_curr        = update_curr_fair,
+};</code></pre>
+
+<h3 id="73-调度类的优先级顺序">7.3 调度类的优先级顺序</h3>
+
+<p>调度类按严格优先级排列（通过链接脚本将各 <code>DEFINE_SCHED_CLASS</code> 实例放入独立 section 并排序——<strong>高优先级先被检查</strong>）：</p>
+
+<table>
+<thead><tr>
+<th>优先级</th>
+<th>调度类</th>
+<th>策略</th>
+<th>典型用途</th>
+</tr></thead>
+<tbody>
+<tr><td>0 (最高)</td><td><code>stop_sched_class</code></td><td>强制抢占一切</td><td>CPU 热插拔、RCU stall</td></tr>
+<tr><td>1</td><td><code>dl_sched_class</code></td><td>最早截止时间优先 (EDF)</td><td>实时音视频、硬实时工作负载</td></tr>
+<tr><td>2</td><td><code>rt_sched_class</code></td><td>固定优先级 + 时间片轮转</td><td>软实时应用</td></tr>
+<tr><td>3</td><td><code>fair_sched_class</code></td><td>EEVDF (完全公平)</td><td>所有普通任务</td></tr>
+<tr><td>4 (最低)</td><td><code>idle_sched_class</code></td><td>仅 CPU 空闲时运行</td><td>进入低功耗状态</td></tr>
+</tbody>
+</table>
+
+<p>每次 <code>__schedule()</code> → <code>pick_next_task()</code> 按此顺序遍历，<strong>第一个拥有可运行任务的类胜出</strong>。</p>
+
+
+
+<h2 id="八arm64-特有关键路径">八、ARM64 特有关键路径</h2>
+
+<blockquote><strong>核心问题：</strong> "ARM64 的调度与 x86 有什么不同？" — Energy-Aware Scheduling 和拓扑不对称性。</blockquote>
+
+<h3 id="81-select_task_rq_fair-任务放置">8.1 select_task_rq_fair 任务放置</h3>
+
+<p>定义位于 <a href="kernel/sched/fair.c#L8566">kernel/sched/fair.c:8566</a>。这是任务唤醒时选择目标 CPU 的核心函数，ARM64 上的关键差异在步骤①：</p>
+
+<pre><code>select_task_rq_fair(p, prev_cpu, wake_flags)
+  │
+  ├── ① rd->overutilized == false？
+  │       └── find_energy_efficient_cpu(p, prev_cpu)   ← EAS 路径 (ARM64 特有)
+  │            遍历 perf_domain 中各 CPU:
+  │            · 计算 如果把 p 放在此 CPU，总能耗增量
+  │            · 选能耗增量最小且不造成算力过载的 CPU
+  │            · 若找到 → 直接返回
+  │
+  ├── ② SD_WAKE_AFFINE 路径
+  │       └── wake_affine(): 比较唤醒者 CPU 和任务前次 CPU
+  │            通过负载和缓存热度权衡选哪个
+  │
+  └── ③ 快速路径：select_idle_sibling()
+          ├── select_idle_capacity()  // 非对称算力 (ARM64)：找有空闲算力的 CPU
+          ├── has_idle_core? → 优先选空闲核
+          └── select_idle_cpu(): 在 LLC 域内扫描空闲 CPU</code></pre>
+
+<h3 id="82-find_energy_efficient_cpu">8.2 find_energy_efficient_cpu</h3>
+
+<p>定义位于 <a href="kernel/sched/fair.c#L8368">kernel/sched/fair.c:8368</a>。EAS 的核心：</p>
+
+<pre><code>static int find_energy_efficient_cpu(struct task_struct *p, int prev_cpu)
+{
+    // 1. 遍历 rd->pd 链表上的每个性能域 (perf_domain)
+    // 2. 对每个候选 CPU:
+    //    a. 预测 p 放上后的 utilization (util + task_util(p))
+    //    b. 查 EM (Energy Model) 频率-功耗表：根据 utilization 确定 OPP
+    //    c. 计算 energy = power[OPP] * (util / capacity_of(OPP))
+    //    d. 累计该性能域内其他受影响 CPU 的能耗变化
+    // 3. 比较 prev_cpu 的能耗 vs 最佳候选 CPU 的能耗
+    // 4. 如果节能超过 ~6% (migration margin)且不造成 overutilized
+    //    → 返回最佳 CPU；否则返回 prev_cpu
+}</code></pre>
+
+<p>EAS 启用条件（全部满足）：</p>
+<ol>
+  <li><code>CONFIG_ENERGY_MODEL=y</code></li>
+  <li><code>CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y</code>（schedutil cpufreq 调速器）</li>
+  <li>系统为非对称算力（big.LITTLE/DynamIQ）<strong>或者</strong>用户通过 sysfs 显式启用</li>
+  <li>Energy Model 被成功注册并关联到 CPU</li>
+  <li>当前 root_domain 未被标记为 <code>overutilized</code></li>
+</ol>
+
+<h3 id="83-perf_domain-与-energy-model">8.3 perf_domain 与 Energy Model</h3>
+
+<p>性能域是 EAS 中将 CPU 分组为"共享同一性能级别"的最小单位：</p>
+
+<pre><code>root_domain
+  └── .pd → perf_domain → perf_domain → ...
+                 │
+                 └── .em_pd → struct em_perf_domain (EM 框架提供)
+                                 │
+                                 ├── nr_perf_states   // 支持的 OPP 数量
+                                 ├── table[]:           // 频率-功耗表
+                                 │     { frequency, power, cost }
+                                 └── cpus[]             // 该性能域内的 CPU 掩码</code></pre>
+
+<p><code>perf_domain</code> 定义在 <a href="kernel/sched/sched.h#L971">kernel/sched/sched.h:971</a>，通过 <code>pd_init()</code> </p>
+
+<p>（位于 <a href="kernel/sched/topology.c#L342">kernel/sched/topology.c:342</a>）从 EM 框架的 <code>em_cpu_get(cpu)</code> 获取 em_perf_domain 后构建。ARM64 平台通过 <code>em_dev_register_perf_domain()</code> 在 cpufreq 驱动初始化时注册 EM 数据。</p>
+
+<h3 id="84-算力与频率不变性">8.4 算力与频率不变性</h3>
+
+<p>ARM64 调度器依赖三个 per-CPU 变体实现<strong>负载跟踪的频率/算力不变性</strong>：</p>
+
+<table>
+<thead><tr>
+<th>Per-CPU 变量</th>
+<th>来源</th>
+<th>用途</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>rq->cpu_capacity</code></td>
+<td>DT <code>capacity-dmips-mhz</code>，归一化到 <code>SCHED_CAPACITY_SCALE</code></td>
+<td>负载均衡：判断 misfit，决定任务迁移方向（小核→大核）</td>
+</tr>
+<tr>
+<td><code>capacity_freq_ref</code></td>
+<td>架构/CPPC 提供</td>
+<td>频率不变性标度参考值（最大频率下的 capacity）</td>
+</tr>
+<tr>
+<td><code>arch_freq_scale</code></td>
+<td>cpufreq/CPPC 更新</td>
+<td>当前运行频率相对于最大频率的缩放因子</td>
+</tr>
+</tbody>
+</table>
+
+<p>通过 <code>arch_scale_cpu_capacity(cpu)</code> 返回归一化后的 CPU 最大算力。在 misfit 检测中，如果小核上的任务 util_avg 超过了小核的 capacity，该任务被标记为"misfit"，负载均衡器会将其主动迁移到大核。</p>
+
+
+
+<h2 id="九各层调用关系全景">九、各层调用关系全景</h2>
+
+<p>以下展示从定时器 tick、任务唤醒到负载均衡的三条关键路径，标注每一层参与的函数和数据流向：</p>
+
+<h3>路径一：定时器 Tick → 调度决策</h3>
+<pre><code>scheduler_tick()                            // kernel/sched/core.c
+  │  [Layer 2: 获取当前 rq]
+  └── fair_sched_class.task_tick()
+        └── task_tick_fair()                // [Layer 6: 策略 — fair.c]
+              └── update_curr_fair()         // 更新 curr->vruntime
+              └── check_preempt_tick()       // vruntime 差超过 granularity?
+                    └── resched_curr(rq)     // → 设置 TIF_NEED_RESCHED 标志
+                          │
+                          ▼
+__schedule()                                 // kernel/sched/core.c
+  └── pick_next_task(rq)
+        └── for_each_class(class)            // [Layer 6: 按优先级遍历]
+              └── fair_sched_class.pick_next_task()
+                    └── __pick_next_task_fair()  // [Layer 2-3: cfs_rq 红黑树]
+                          └── pick_eevdf()       // 取 vruntime 最小的 sched_entity
+  └── context_switch()                       // 架构相关的上下文切换</code></pre>
+
+<h3>路径二：任务唤醒 → 放置决策</h3>
+<pre><code>try_to_wake_up(p, ...)                       // kernel/sched/core.c
+  └── fair_sched_class.select_task_rq()
+        └── select_task_rq_fair(p, prev_cpu, WF_TTWU)  // [Layer 6: fair.c]
+              │
+              ├── [Layer 4·ARM64 特有]
+              │   find_energy_efficient_cpu(p, prev_cpu)
+              │   └── 遍历 root_domain → perf_domain → EM
+              │       基于 [Layer 1: capacity_freq_ref + arch_freq_scale]
+              │       选能耗最优 CPU
+              │
+              ├── [Layer 4: SD_WAKE_AFFINE]
+              │   wake_affine(sd, p, cpu, prev_cpu)
+              │
+              └── [Layer 4: 空闲 CPU 扫描]
+                  select_idle_sibling() → select_idle_cpu()
+                    └── 在 LLC 域 (struct sched_domain) span 内扫描</code></pre>
+
+<h3>路径三：周期性负载均衡</h3>
+<pre><code>rebalance_domains(rq)                        // kernel/sched/fair.c
+  └── for_each_domain(cpu, sd)               // [Layer 4: 逐层向上]
+        └── load_balance(cpu, sd, ...)
+              ├── find_busiest_group(sd)      // [Layer 4: 在 sched_group 环路中找]
+              │     └── 更新 sched_group_capacity → 比较各组利用率
+              ├── find_busiest_queue(group)   // [Layer 2: 组内找最忙 rq]
+              ├── detach_tasks(busiest_rq)    // [Layer 2-3: 从 cfs_rq 取任务]
+              ├── attach_tasks(this_rq)       // [Layer 2-3: 入队到目标 cfs_rq]
+              └── 若 busiest CPU 上有 misfit 任务 (ARM64)
+                    └── active_balance()      // 强制推送 misfit 到大核</code></pre>
+
+
+
+<h2 id="十总结">十、总结</h2>
+
+<div class="layer-card">
+<h4>六层抽象的职责划分</h4>
+<table>
+<thead><tr>
+<th>层</th><th>抽象结构</th><th>核心问题</th><th>ARM64 特质</th>
+</tr></thead>
+<tbody>
+<tr><td>6</td><td><code>struct sched_class</code></td><td>按什么策略调度？</td><td>架构无关</td></tr>
+<tr><td>5</td><td><code>struct task_group</code></td><td>如何在 cgroup 之间分配 CPU？</td><td>架构无关</td></tr>
+<tr><td>4</td><td><code>sched_domain</code> / <code>sched_group</code> / <code>root_domain</code></td><td>CPU 之间如何组织、均衡、放置？</td><td><strong>EAS 路径</strong>：<code>perf_domain</code> + Energy Model<br><strong>CLS 层级</strong>：DynamIQ cluster</td></tr>
+<tr><td>3</td><td><code>struct sched_entity</code></td><td>谁可以被调度？</td><td>架构无关</td></tr>
+<tr><td>2</td><td><code>struct rq</code></td><td>CPU 上有什么？</td><td><code>cpu_capacity</code> 体现非对称算力</td></tr>
+<tr><td>1</td><td><code>struct cpu_topology</code></td><td>硬件长什么样？</td><td><strong>DT/ACPI 拓扑检测</strong>（非 CPUID）<br><strong><code>capacity-dmips-mhz</code></strong> 算力解析<br><strong>Energy Model</strong> 频率-功耗表</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>ARM64 调度子系统的设计遵循一个原则：<strong>硬件相关的差异尽可能封装在 Layer 1（拓扑描述）和 Layer 4（EAS 扩展）中</strong>，Layer 2/3/5/6 保持架构无关。这使得 CFS/EEVDF 的核心算法可以跨架构复用，而 ARM64 在可感知能耗和非对称算力的前提下，通过 <code>find_energy_efficient_cpu</code> 和 misfit 迁移机制实现最优的任务放置。</p>
+
+<p>理解这个分层体系后，再去看具体的调度代码（如 <code>enqueue_task_fair</code>、<code>load_balance</code> 等），就能清晰地知道"这段代码操作的是哪一层的哪个数据结构"，从而快速定位问题。</p>
+
+<p><em>本文基于 Linux 6.18.1，源码路径 <code>kernel/sched/</code>、<code>arch/arm64/kernel/topology.c</code>、<code>drivers/base/arch_topology.c</code></em></p>
+
+
+<script>
+(function() {
+    'use strict';
+
+    var sidebar = document.getElementById('sidebar');
+    var toggleBtn = document.getElementById('sidebar-toggle-btn');
+    var floatBtn = document.getElementById('sidebar-float-btn');
+    var chapters = document.querySelectorAll('.toc-chapter');
+    var tocLinks = document.querySelectorAll('.toc-chapter-items a, .toc-chapter-link');
+
+    // ---- Toggle sidebar visibility ----
+    function hideSidebar() {
+        sidebar.classList.add('sidebar-hidden');
+        floatBtn.style.display = 'flex';
+        document.body.style.marginLeft = '0';
+    }
+    function showSidebar() {
+        sidebar.classList.remove('sidebar-hidden');
+        sidebar.classList.add('sidebar-visible');
+        floatBtn.style.display = 'none';
+        if (window.innerWidth > 900) {
+            document.body.style.marginLeft = '340px';
+        }
+    }
+
+    toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hideSidebar();
+    });
+
+    floatBtn.addEventListener('click', function() {
+        showSidebar();
+    });
+
+    // ---- Chapter expand/collapse ----
+    chapters.forEach(function(ch) {
+        var header = ch.querySelector('.toc-chapter-header');
+        header.addEventListener('click', function() {
+            ch.classList.toggle('expanded');
+        });
+    });
+
+    // ---- Scroll spy: highlight current section ----
+    var headingIds = [];
+    tocLinks.forEach(function(a) {
+        var href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+            headingIds.push(href.slice(1));
+        }
+    });
+
+    function updateActiveLink() {
+        var scrollY = window.scrollY + 120;
+        var activeId = null;
+
+        for (var i = headingIds.length - 1; i >= 0; i--) {
+            var el = document.getElementById(headingIds[i]);
+            if (el && el.offsetTop <= scrollY) {
+                activeId = headingIds[i];
+                break;
+            }
+        }
+
+        tocLinks.forEach(function(a) {
+            a.classList.remove('active');
+            if (activeId && a.getAttribute('href') === '#' + activeId) {
+                a.classList.add('active');
+                var chapter = a.closest('.toc-chapter');
+                if (chapter && !chapter.classList.contains('expanded')) {
+                    chapter.classList.add('expanded');
+                }
+                var sidebarRect = sidebar.getBoundingClientRect();
+                var linkRect = a.getBoundingClientRect();
+                if (linkRect.bottom > sidebarRect.bottom - 20) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else if (linkRect.top < sidebarRect.top + 60) {
+                    a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    var scrollTicking = false;
+    window.addEventListener('scroll', function() {
+        if (!scrollTicking) {
+            requestAnimationFrame(function() {
+                updateActiveLink();
+                scrollTicking = false;
+            });
+            scrollTicking = true;
+        }
+    });
+
+    updateActiveLink();
+
+    // ---- Keyboard shortcut: Ctrl+B to toggle sidebar ----
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'b') {
+            e.preventDefault();
+            if (sidebar.classList.contains('sidebar-hidden')) {
+                showSidebar();
+            } else {
+                hideSidebar();
+            }
+        }
+    });
+
+    // ---- Responsive: handle resize ----
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900) {
+            floatBtn.style.display = 'none';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                document.body.style.marginLeft = '340px';
+            }
+        } else {
+            document.body.style.marginLeft = '0';
+            if (!sidebar.classList.contains('sidebar-hidden')) {
+                floatBtn.style.display = 'flex';
+            }
+        }
+    });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" width="900" height="500">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1"/>
+      <stop offset="50%" style="stop-color:#16213e;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0f3460;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e94560;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#D9750A;stop-opacity:1"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="500" fill="url(#bg)"/>
+
+  <!-- Decorative grid lines -->
+  <g opacity="0.06" stroke="#fff" stroke-width="1">
+    <line x1="0" y1="100" x2="900" y2="100"/>
+    <line x1="0" y1="200" x2="900" y2="200"/>
+    <line x1="0" y1="300" x2="900" y2="300"/>
+    <line x1="0" y1="400" x2="900" y2="400"/>
+    <line x1="100" y1="0" x2="100" y2="500"/>
+    <line x1="200" y1="0" x2="200" y2="500"/>
+    <line x1="300" y1="0" x2="300" y2="500"/>
+    <line x1="400" y1="0" x2="400" y2="500"/>
+    <line x1="500" y1="0" x2="500" y2="500"/>
+    <line x1="600" y1="0" x2="600" y2="500"/>
+    <line x1="700" y1="0" x2="700" y2="500"/>
+    <line x1="800" y1="0" x2="800" y2="500"/>
+  </g>
+
+  <!-- Decorative circles -->
+  <circle cx="780" cy="100" r="120" fill="none" stroke="#e94560" stroke-width="1.5" opacity="0.15"/>
+  <circle cx="780" cy="100" r="80" fill="none" stroke="#e94560" stroke-width="1" opacity="0.1"/>
+  <circle cx="120" cy="420" r="90" fill="none" stroke="#D9750A" stroke-width="1" opacity="0.12"/>
+  <circle cx="120" cy="420" r="55" fill="none" stroke="#D9750A" stroke-width="0.8" opacity="0.08"/>
+
+  <!-- CPU/Architecture icon (simplified) -->
+  <g transform="translate(80, 70)" opacity="0.25">
+    <rect x="0" y="0" width="50" height="50" rx="4" fill="none" stroke="#fff" stroke-width="2"/>
+    <rect x="8" y="8" width="14" height="14" rx="2" fill="#e94560"/>
+    <rect x="28" y="8" width="14" height="14" rx="2" fill="#e94560"/>
+    <rect x="8" y="28" width="14" height="14" rx="2" fill="#e94560"/>
+    <rect x="28" y="28" width="14" height="14" rx="2" fill="#e94560"/>
+  </g>
+
+  <!-- ARM64 badge -->
+  <rect x="70" y="220" width="90" height="26" rx="13" fill="none" stroke="#e94560" stroke-width="1.5" opacity="0.7"/>
+  <text x="115" y="238" font-family="SF Mono, Consolas, monospace" font-size="12" fill="#e94560" text-anchor="middle" opacity="0.9">ARM64</text>
+
+  <!-- Accent line -->
+  <rect x="70" y="275" width="60" height="3" rx="1.5" fill="url(#accent)"/>
+
+  <!-- Main title -->
+  <text x="70" y="325" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="38" font-weight="700" fill="#ffffff" filter="url(#glow)">
+    ARM64 Linux 内核启动
+  </text>
+
+  <!-- Subtitle -->
+  <text x="70" y="378" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="22" font-weight="400" fill="#8899aa">
+    五个页表目录及其生命周期
+  </text>
+
+  <!-- Bottom info bar -->
+  <rect x="0" y="450" width="900" height="50" fill="rgba(0,0,0,0.3)"/>
+  <text x="70" y="480" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#667788">
+    Linux 6.18.1  ·  ARM64 架构  ·  VA_BITS=52  ·  PGTABLE_LEVELS=5
+  </text>
+  <text x="830" y="480" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#667788" text-anchor="end">
+    深海的小鱼儿
+  </text>
+
+  <!-- Page table icon (simplified 5-level) -->
+  <g transform="translate(780, 310)" opacity="0.2">
+    <rect x="0" y="0" width="50" height="6" rx="2" fill="#D9750A"/>
+    <rect x="5" y="12" width="40" height="6" rx="2" fill="#D9750A"/>
+    <rect x="10" y="24" width="30" height="6" rx="2" fill="#D9750A"/>
+    <rect x="15" y="36" width="20" height="6" rx="2" fill="#D9750A"/>
+    <rect x="20" y="48" width="10" height="6" rx="2" fill="#e94560"/>
+  </g>
+</svg>
