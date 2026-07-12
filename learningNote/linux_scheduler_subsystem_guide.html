@@ -1694,6 +1694,75 @@ se-&gt;deadline = se-&gt;vruntime + calc_delta_fair(se-&gt;slice, se);</code></p
 
 <blockquote>注意：<code>SCHED_IDLE</code> <strong>策略</strong>在 fair 类中执行（用极低权重），和 <strong>idle 调度类</strong>完全不同。</blockquote>
 
+<h4 id="nice-weight-priority">nice / weight / priority 三者关系</h4>
+
+<p>这三个概念常被混淆，但它们不是平面并列关系，而是<strong>两层分流</strong>：<code>p->prio</code> 决定走哪个调度类，进入 CFS 之后 <code>nice</code> 和 <code>weight</code> 才起作用。</p>
+
+<h5>总枢纽：<code>__normal_prio()</code></h5>
+
+<p><a href="kernel/sched/syscalls.c#L19">kernel/sched/syscalls.c:19</a> 是三者交汇点：</p>
+
+<pre><code class="language-c">static inline int __normal_prio(int policy, int rt_prio, int nice)
+{
+    if (dl_policy(policy))
+        return MAX_DL_PRIO - 1;                    // DEADLINE: 固定 -1
+    if (rt_policy(policy))
+        return MAX_RT_PRIO - 1 - rt_prio;           // RT: 由 rt_priority 决定
+    return NICE_TO_PRIO(nice);                      // CFS: 由 nice 决定
+}</code></pre>
+
+<p>关键：<strong>任何一种调度策略，nice 和 rt_priority 互斥——只看其中一个，绝不同时生效。</strong></p>
+
+<h5>直观理解</h5>
+
+<pre><code>
+            p->prio (0~139)  ← ★ 决定走哪个调度类
+            │
+   ┌────────┼────────┐
+   ▼        ▼        ▼
+  DEADLINE  RT(0-99) CFS(100-139)
+  (固定)  严格抢占     │
+                      ▼
+                nice → weight → vruntime 增速 → CPU 份额
+                ★ 决定"在 CFS 队里吃几口"
+</code></pre>
+
+<h5>对照表</h5>
+
+<table>
+<thead><tr><th></th><th>priority (p->prio)</th><th>nice</th><th>weight</th></tr></thead>
+<tbody>
+<tr><td><strong>值域</strong></td><td>-1 ~ 139</td><td>-20 ~ +19</td><td>15 ~ 88761</td></tr>
+<tr><td><strong>用户可设？</strong></td><td>RT 策略通过 <code>sched_priority</code> 间接设<br>CFS 不可直接设</td><td><code>nice</code> / <code>renice</code> 命令</td><td>❌ 不可直接设</td></tr>
+<tr><td><strong>面向谁</strong></td><td><strong>调度类选择器</strong>：决定走 stop/dl/rt/fair/ext/idle 哪个类</td><td><strong>用户</strong>：表达"重要程度"</td><td><strong>CFS 内部</strong>：数学计算</td></tr>
+<tr><td><strong>对 CFS 任务</strong></td><td>= 120 + nice</td><td>✅ 唯一决定 CPU 份额</td><td>= <code>sched_prio_to_weight[nice+20]</code></td></tr>
+<tr><td><strong>对 RT 任务</strong></td><td>由 <code>rt_priority</code> 计算 (0~98)</td><td>❌ 无效</td><td>❌ 无效</td></tr>
+<tr><td><strong>对 DL 任务</strong></td><td>固定 -1</td><td>❌ 无效</td><td>❌ 无效</td></tr>
+<tr><td><strong>决定什么</strong></td><td>① 走哪个调度类<br>② RT 内部的优先级顺序</td><td>CFS 的 CPU 时间比例</td><td>vruntime 计算公式</td></tr>
+</tbody>
+</table>
+
+<h5>CFS 任务的完整转换链</h5>
+
+<pre><code>nice = -5
+  │
+  ├──→ static_prio = NICE_TO_PRIO(-5) = 120 + (-5) = 115
+  │       │
+  │       └──→ p->prio = 115 (> MAX_RT_PRIO=100) → fair_sched_class
+  │
+  └──→ weight = sched_prio_to_weight[-5+20] = sched_prio_to_weight[15] = 3121
+          │
+          └──→ vruntime 增量 = 物理时间 × (1024 / 3121) ≈ 物理时间 × 0.328
+                  │
+                  └──→ vr 涨得慢 → 红黑树左边 → 多拿 CPU</code></pre>
+
+<h5>一句话总结</h5>
+
+<div style="text-align:center;font-size:1.1em;margin:14px 0;padding:10px;background:var(--accent-soft);border-radius:6px;">
+<strong>priority 是"你排哪条队"，nice 是"你在普通队里的权重"，weight 是内核为 nice 算出的数学参数。<br>
+priority 决定调度类层级，nice/weight 只在 CFS 内部生效。</strong>
+</div>
+
 <p><strong>能量感知调度（EAS）— 大小核异构系统的功耗优化</strong>：</p>
 
 <pre><code class="language-c">/* find_energy_efficient_cpu() — 在 big.LITTLE / P-core+E-core 系统中 */
@@ -3494,6 +3563,304 @@ static DEFINE_PER_CPU_SHARED_ALIGNED(struct sched_clock_data, sched_clock_data);
 <li>因此 ARM64 通常 <code>!CONFIG_HAVE_UNSTABLE_SCHED_CLOCK</code></li>
 <li><code>sched_clock_local()</code> 的大部分稳定化逻辑被跳过（arch_timer 已稳定）</li>
 </ul>
+
+<h4 id="arm-timer-arch">补充：ARM Arch Timer 硬件架构 — 一个计数器 + 每核比较器</h4>
+
+<p>前面说的"所有 CPU 看到同一个时间"和"每核有自己的 tick 定时器"并不矛盾——ARM 把两样东西做在了同一套硬件里，分别承担<strong>读时间</strong>和<strong>发中断</strong>两种职责：</p>
+
+<pre><code>                    ┌── 系统级公共计数器 (1个) ──┐
+                    │                            │
+                    │  CNTVCT_EL0                 │  ← 只读，所有核看到同一个值
+                    │  "现在几点了？"             │     固定频率，不受 DVFS 影响
+                    │                            │
+                    └──────────┬─────────────────┘
+                               │  值通过 SoC 总线分发到所有核心
+            ┌──────────────────┼──────────────────┐
+            │                  │                  │
+      ┌─────▼─────┐     ┌─────▼─────┐     ┌─────▼─────┐
+      │  CPU0     │     │  CPU1     │     │  CPU2     │
+      │           │     │           │     │           │
+      │ CNTV_CVAL │     │ CNTV_CVAL │     │ CNTV_CVAL │
+      │ (比较器)   │     │ (比较器)   │     │ (比较器)   │
+      │ 可读可写   │     │ 可读可写   │     │ 可读可写   │
+      └───────────┘     └───────────┘     └───────────┘
+        PPI 中断            PPI 中断            PPI 中断
+        只发给 CPU0         只发给 CPU1         只发给 CPU2</code></pre>
+
+<table>
+<thead><tr><th></th><th>CNTVCT_EL0<br>（Virtual Counter）</th><th>CNTV_CVAL / CNTV_TVAL<br>（Comparator / Timer）</th></tr></thead>
+<tbody>
+<tr><td><strong>数量</strong></td><td><strong>1 个</strong>（系统级）</td><td><strong>每核心 1 个</strong></td></tr>
+<tr><td><strong>读/写</strong></td><td>只读</td><td>可读可写</td></tr>
+<tr><td><strong>用途</strong></td><td><code>sched_clock()</code> — "现在几点"<br>update_curr() 算 delta_exec<br>PELT 衰减、rq->clock 更新</td><td><code>arch_timer_set_next_event()</code> — "N ns 后叫醒我"<br>写 CVAL = CNTVCT + N → N ns 后触发 PPI<br>→ interrupt → scheduler_tick()</td></tr>
+<tr><td><strong>中断</strong></td><td>不产生中断</td><td>到期产生 PPI（私有外设中断），只发给本核心</td></tr>
+</tbody>
+</table>
+
+<p><strong>生活类比</strong>：CNTVCT_EL0 = 墙上的钟（抬眼一看，"3 点了"）；CNTV_CVAL = 厨房计时器（拧到 15 分钟，"叮！"）。所有人看同一面钟，但每人可以设自己的计时器。</p>
+
+<h5>补充 1：计数器永不溢出</h5>
+
+<p>CNTVCT_EL0 是 64 位，典型频率 1~50 MHz。以 50 MHz 计算：<code>2^64 / 50,000,000 ≈ 11,700 年</code>。即使 CNTFRQ_EL0 设到 1 GHz，也要 584 年才溢出一次——实际上 <strong>永不溢出</strong>。内核用 <strong>有符号差值</strong> 而非绝对值做比较（<a href="kernel/sched/clock.c#L250">clock.c:250</a> 的 <code>wrap_min / wrap_max</code>），只要两次读的间隔不超过 <code>2^63 / 频率</code>（50 MHz 下 ≈5850 年），<code>(s64)(a - b)</code> 就是正确的有符号差值。实际两次读间隔最多几毫秒 → 绝对安全。</p>
+
+<h5>补充 2：计数器无惧关中断</h5>
+
+<p>CNTVCT_EL0 是 <strong>被动只读硬件计数器</strong>，不是"定时器"。它在硬件层面一直递增——关中断、关抢占甚至 CPU 执行 WFI 睡眠时都在走，<strong>完全不受任何软件控制</strong>。定时器功能由每核的 CNTV_CVAL 承担。</p>
+
+<h5>补充 3：CNTFRQ_EL0 频率寄存器</h5>
+
+<p>CNTFRQ_EL0 存储计数器的固定频率。它在 EL1 及以上 <strong>只读</strong>——只有最高异常级别 EL3（ATF / ARM Trusted Firmware）在上电初期有权写入：</p>
+
+<pre><code>
+EL3 (ATF)     ── 可写 CNTFRQ_EL0  ← 系统上电时设定，之后硬件锁死
+EL2 (Hypervisor) ── 只读
+EL1 (OS Kernel)  ── 只读             ← 内核调用 read_sysreg(cntfrq_el0)
+EL0 (User space) ── 默认被 trap
+</code></pre>
+
+<p>内核通过 <code>arch_timer_get_cntfrq()</code>（<a href="arch/arm64/include/asm/arch_timer.h#L154">arch_timer.h:154</a>）读取：</p>
+
+<pre><code class="language-c">static inline u32 arch_timer_get_cntfrq(void) {
+    return read_sysreg(cntfrq_el0);    // 只读，不能写
+}</code></pre>
+
+<p>不同平台的频率由 SoC 设计决定：</p>
+
+<table>
+<thead><tr><th>平台</th><th>CNTFRQ_EL0</th></tr></thead>
+<tbody>
+<tr><td>QEMU virt（默认）</td><td><strong>62.5 MHz</strong></td></tr>
+<tr><td>树莓派 4</td><td>54 MHz</td></tr>
+<tr><td>NXP i.MX8M</td><td>8 MHz</td></tr>
+<tr><td>骁龙 / 麒麟（移动 SoC）</td><td>19.2 MHz</td></tr>
+</tbody>
+</table>
+
+<p>QEMU 可指定：<code>-machine virt -global cntfrq=100000000</code> 将计数器设为 100 MHz。内核日志验证：<code>dmesg | grep arch_timer</code> 会打印 <code>cp15 timer(s) running at 62.50MHz (virt)</code>。</p>
+
+<p>频率获取优先级（<a href="drivers/clocksource/arm_arch_timer.c#L863">arm_arch_timer.c:863</a>）：① DT 的 <code>clock-frequency</code> 属性 → ② CNTFRQ_EL0 硬件寄存器 → ③ 内核拒绝启动（频率 < 1MHz 会 <code>WARN_ON</code>）。</p>
+
+<h3 id="86-arm64-四个问题的具体解法">8.6 ARM64 四个问题的具体解法</h3>
+
+<p>以下详细讨论 ARM64 架构下调度器时钟层如何解决 §8.1 中列出的四个硬件问题。</p>
+
+<h4>问题 1：跨 CPU 不同步 — ARM64 硬件天生解决</h4>
+
+<p><strong>x86 的痛</strong>：TSC 是 per-core 的，不同核上电时间不同 → TSC 值不同步 → 需要 synchronization watchdog。</p>
+
+<p><strong>ARM64 的解法</strong>：<code>CNTVCT_EL0</code> 是<strong>架构强制要求的全局统一计数器</strong>，所有核心看到同一个物理计数器。内核直接用一个全局函数指针指向它（<a href="drivers/clocksource/arm_arch_timer.c#L137">arm_arch_timer.c:137</a>）：</p>
+
+<pre><code class="language-c">u64 (*arch_timer_read_counter)(void) = arch_counter_get_cntvct;</code></pre>
+
+<p>所有 CPU 都调同一个函数读同一个硬件计数器 → <strong>天生同步，不存在漂移问题。</strong>读取只需两条指令（<a href="arch/arm64/include/asm/arch_timer.h#L200">arch_timer.h:200</a>）：</p>
+
+<pre><code class="language-c">static __always_inline u64 __arch_counter_get_cntvct(void)
+{
+    u64 cnt;
+    asm volatile(ALTERNATIVE("isb\n mrs %0, cntvct_el0",
+                              "nop\n" __mrs_s("%0", SYS_CNTVCTSS_EL0),
+                              ARM64_HAS_ECV)
+                 : "=r" (cnt));
+    return cnt;
+}</code></pre>
+
+<p><code>isb</code>（指令同步屏障）保证计数器读不会被流水线重排，<code>mrs cntvct_el0</code> 读虚拟计数器寄存器。如果硬件支持 ECV（Enhanced Counter Virtualization），会用 <code>CNTVCTSS_EL0</code> 替代，在虚拟化场景下也能读到正确值。</p>
+
+<h4>问题 2：频率变化 — CNTVCT_EL0 不受 DVFS 影响</h4>
+
+<p><strong>x86 的痛</strong>：没有 constant TSC 之前，CPU 调频会改变 TSC 计数速率 → 时钟不准。</p>
+
+<p><strong>ARM64 的解法</strong>：CNTVCT_EL0 以<strong>固定频率</strong>计数，与 CPU 核心频率无关。频率在启动时从 DT/ACPI 读出并存入 <code>arch_timer_rate</code>，永远不变。clocksource 标记为 <code>CLOCK_SOURCE_IS_CONTINUOUS</code>（<a href="drivers/clocksource/arm_arch_timer.c#L155">arm_arch_timer.c:155</a>）："这个计数器不会停，不会变速"。</p>
+
+<h4>问题 3：CPU 深睡眠 — 以 GTOD 为锚点的窗口滤波</h4>
+
+<p>有的 ARM SoC 深度睡眠时会关掉 arch timer。内核的做法是<strong>以 GTOD（ktime）为锚点，在 tick 时校准，用 clamp 窗口滤波</strong>。</p>
+
+<p>这是 <code>local_clock_noinstr()</code> 的分支逻辑（<a href="kernel/sched/clock.c#L299">clock.c:299</a>）：</p>
+
+<pre><code class="language-c">noinstr u64 local_clock_noinstr(void)
+{
+    if (static_branch_likely(&__sched_clock_stable))
+        return sched_clock_noinstr() + __sched_clock_offset;  // ★ 快速路径
+
+    clock = sched_clock_local(this_scd());  // 慢速路径：GTOD 做窗口滤波
+    return clock;
+}</code></pre>
+
+<p>快速路径走 <code>__sched_clock_stable</code> 分支——ARM64 arch timer 正常情况下一直走这条，直接读硬件 + offset，零开销。只有 arch timer 被标记为 unstable 时才走慢速路径。</p>
+
+<p>慢速路径 <code>sched_clock_local()</code>（<a href="kernel/sched/clock.c#L266">clock.c:266</a>）有三层保护：</p>
+
+<pre><code class="language-c">static u64 sched_clock_local(struct sched_clock_data *scd)
+{
+    now = sched_clock_noinstr();           // 读硬件计数器
+    delta = now - scd->tick_raw;
+    if (delta < 0) delta = 0;              // 过滤器①：不能倒退
+
+    gtod = scd->tick_gtod + __gtod_offset; // ktime 为锚
+    clock = gtod + delta;                   // GTOD 基准 + 高精度增量
+
+    min_clock = max(gtod, old_clock);       // 过滤器②：下界（不回退）
+    max_clock = gtod + TICK_NSEC;           // 过滤器③：上界（不超前超过 1 tick）
+
+    clock = clamp(clock, min_clock, max_clock);
+}</code></pre>
+
+<p><strong>设计思想</strong>：每次 tick 用 <code>__scd_stamp()</code> 同时记录 GTOD 和硬件计数器值。下次读时钟时，<code>delta = 硬件计数器增量</code> 提供纳秒级插值精度，GTOD 提供单调性和上下界保证。如果计数器停了又恢复，delta 会异常大，但被 clamp 在 <code>[gtod, gtod+TICK_NSEC]</code> 之间——不会产生跳变。</p>
+
+<p><strong>ARM64 下的实际意义</strong>：如果你的 QEMU virt + cortex-a57 环境（arch timer 稳定），这条慢速路径<strong>永远不会被触发</strong>。它只存在于某些关闭 arch timer 的深度睡眠 SoC 上。</p>
+
+<h4>问题 4：虚拟化 steal time — 从任务运行时间中扣掉</h4>
+
+<p>ARM64 的 <code>para_steal_clock()</code>（<a href="arch/arm64/kernel/paravirt.c#L53">paravirt.c:53</a>）从 hypervisor 共享内存中读取 vCPU 被暂停的总时间：</p>
+
+<pre><code class="language-c">static u64 para_steal_clock(int cpu)
+{
+    kaddr = rcu_dereference(reg->kaddr);          // hypervisor 映射的共享页
+    ret = le64_to_cpu(READ_ONCE(kaddr->stolen_time)); // 累计偷取时间 (ns)
+    return ret;
+}</code></pre>
+
+<p>在 <code>update_rq_clock()</code>（<a href="kernel/sched/core.c#L807">core.c:807</a>）中，steal time 的增量被从物理时间中扣掉：</p>
+
+<pre><code class="language-c">if (static_key_false(&paravirt_steal_rq_enabled)) {
+    steal = paravirt_steal_clock(cpu);
+    steal -= rq->prev_steal_time_rq;   // 增量（自上次更新以来被偷了多少）
+    delta -= steal;                     // ★ 从墙上时间中扣除
+}</code></pre>
+
+<p><strong>设计思想</strong>：调度器只关心"这个任务在 CPU 上实际跑了多久"。vCPU 被暂停期间的墙上时间不属于这个任务 → 从 <code>delta</code> 中扣除，不计入 vruntime，也不计入 PELT。</p>
+
+<h4>总结：ARM64 四个问题的解决层级</h4>
+
+<table>
+<thead><tr><th>问题</th><th>x86</th><th>ARM64</th><th>解决层</th></tr></thead>
+<tbody>
+<tr><td><strong>跨 CPU 不同步</strong></td><td>per-core TSC → 需 watchdog</td><td>CNTVCT_EL0 全局统一 → <strong>天生同步</strong></td><td>硬件</td></tr>
+<tr><td><strong>频率变化</strong></td><td>constant/invariant TSC</td><td>CNTVCT_EL0 固定频率 → <strong>不受 DVFS 影响</strong></td><td>硬件</td></tr>
+<tr><td><strong>深睡眠</strong></td><td>TSC 停止 → <code>sched_clock_local</code> 窗口滤波</td><td>同 x86: GTOD 做锚点 clamp</td><td><code>clock.c</code> 软件层</td></tr>
+<tr><td><strong>虚拟化</strong></td><td>steal time 扣除</td><td>同 x86: <code>paravirt.c</code> + <code>core.c</code></td><td>软件层</td></tr>
+</tbody>
+</table>
+
+<h3 id="87-jiffies-与-cntvct-el0-的关系">8.7 jiffies 与 CNTVCT_EL0 的关系</h3>
+
+<h4>jiffies 如何产生</h4>
+
+<p>jiffies 是 64 位全局变量 <code>jiffies_64</code> 的别名（<a href="include/linux/jiffies.h#L86">jiffies.h:86</a>）。<strong>整个内核只有一个地方写它</strong>——<code>do_timer()</code>（<a href="kernel/time/timekeeping.c#L2528">timekeeping.c:2528</a>）：</p>
+
+<pre><code class="language-c">void do_timer(unsigned long ticks) {
+    jiffies_64 += ticks;             // 唯一写入口
+    calc_global_load();
+}</code></pre>
+
+<p>调用链：</p>
+
+<pre><code>CNTV_CVAL 到期 → PPI 中断 → arch_timer_handler_virt()
+  → tick_nohz_handler() → tick_sched_do_timer()
+    → tick_do_update_jiffies64(now)         // 补偿模式: ticks = 251
+       或
+    → do_timer(1)                           // 正常模式: ticks = 1
+</code></pre>
+
+<p>由 <code>tick_do_timer_cpu</code> 控制权限（<a href="kernel/time/tick-common.c#L88">tick-common.c:88</a>）：四个 CPU 的 arch timer 都有中断，但<strong>只有被指定的那一个 CPU</strong>（typically CPU0）负责推 jiffies。其余三个只执行 <code>scheduler_tick()</code>。</p>
+
+<h4>为什么需要修正？</h4>
+
+<p>jiffies 不是连续派生的，是<strong>离散累积</strong>的——只有在 tick handler 执行时才 +1。关中断期间没有 handler 执行 → jiffies 不增长。修正逻辑（<a href="kernel/time/tick-sched.c#L103">tick-sched.c:103</a>）：</p>
+
+<pre><code class="language-c">delta = ktime_sub(now, tick_next_period);    // ktime_get() → CNTVCT_EL0 直接读
+ticks = 1 + ktime_divns(delta, TICK_NSEC);  // 差了多少个 tick
+jiffies_64 += ticks;                         // 一步到位</code></pre>
+
+<p>CNTVCT_EL0 是连续的时间线，jiffies 是这条线上的离散采样点。采样中断被屏蔽期间点缺失了，开中断后用时间线长度一次性换算回来。</p>
+
+<h4>jiffies ≠ 调度器的时钟</h4>
+
+<p>调度器<strong>完全不依赖 jiffies</strong>。它直接读硬件：</p>
+
+<table>
+<thead><tr><th>用途</th><th>时钟源</th><th>精度</th></tr></thead>
+<tbody>
+<tr><td>vruntime（任务账本）</td><td><code>sched_clock()</code> → CNTVCT_EL0 直接读</td><td>~10 ns</td></tr>
+<tr><td>PELT 负载衰减</td><td><code>rq->clock_pelt</code> → 同上</td><td>~10 ns</td></tr>
+<tr><td>hrtimer / sleep / ktime</td><td><code>ktime_get()</code> → CNTVCT_EL0 直接读</td><td>~20 ns</td></tr>
+<tr><td>jiffies / timer wheel / /proc/stat</td><td>中断驱动的离散计数</td><td><strong>4 ms</strong> (HZ=250)</td></tr>
+</tbody>
+</table>
+
+<p>jiffies 的 4ms 精度比 sched_clock() 粗了 400,000 倍。SSD I/O (~100µs) 和网络数据包（微秒级）早就切到了 hrtimer（直接读硬件计数器）。</p>
+
+<h4>为什么存在？</h4>
+
+<p><strong>历史惯性。</strong> jiffies 源于 1980 年代 Unix——当时没有 CNTVCT_EL0 这种奢侈品，只有一个可编程定时器，只会周期性地发中断，唯一的计时方法就是数中断次数。40 年后，这个名字和 <code>HZ</code> 常量已嵌入内核每个角落：</p>
+
+<pre><code>/proc/stat                 // 用户态依赖 jiffies 格式
+msecs_to_jiffies(100)      // 成千上万个调用点
+jiffies + HZ               // 1 秒后的超时
+timer wheel 低精度定时器    // 全程用 jiffies
+calc_global_load()         // 基于 jiffies 的采样</code></pre>
+
+<p>把这些全部改成直接读 CNTVCT_EL0，需要改几百个文件、几千个调用点，而收益为零——jiffies 就是一个内存读，1 个 CPU 周期。<strong>不值得大动干戈。</strong>ARM64 上 jiffies 早就可以退休了，只是没人愿意改 40 年的遗产。</p>
+
+<h3 id="88-调度时钟全景总结">8.8 调度时钟全景总结</h3>
+
+<p>调度子系统涉及的所有时钟，按三层组织：</p>
+
+<pre><code>
+═══════════════════════════════════════════════════════════════
+第 0 层：硬件时钟
+═══════════════════════════════════════════════════════════════
+CNTVCT_EL0 (ARM64)          固定频率全局计数器，只读
+  → sched_clock()           硬件计数器 → ns，每核独立读取
+  → ktime_get()             clocksource.read() → 全局单调 ns
+
+═══════════════════════════════════════════════════════════════
+第 1 层：rq 时钟 (per-CPU，持 rq_lock 时由 update_rq_clock() 更新)
+═══════════════════════════════════════════════════════════════
+
+  rq->clock          墙上钟     = sched_clock_cpu() 直接读
+  rq->clock_task     任务钟     = clock - IRQ时间 - steal时间
+  rq->clock_pelt     PELT钟     = clock_task × capacity/1024 × freq/1024
+
+  大小关系: clock_pelt ≤ clock_task ≤ clock
+  同构满频时三者相等
+
+═══════════════════════════════════════════════════════════════
+第 2 层：特殊用途时钟
+═══════════════════════════════════════════════════════════════
+  rq->clock_idle       idle 墙上累积
+  rq->clock_pelt_idle  idle 的 PELT 等效时间
+  rq->lost_idle_time   本应 idle 但被占用的时间补偿
+  jiffies              全局 tick 计数 (仅 tick_do_timer_cpu 更新)
+</code></pre>
+
+<h4>各时钟更新公式</h4>
+
+<table>
+<thead><tr><th>时钟</th><th>更新公式</th><th>更新时机</th></tr></thead>
+<tbody>
+<tr><td><code>rq->clock</code></td><td><code>+= sched_clock_cpu() - rq->clock</code></td><td><code>update_rq_clock()</code> 读硬件直接更新</td></tr>
+<tr><td><code>rq->clock_task</code></td><td><code>+= 墙上增量 - IRQ增量 - steal增量</code></td><td><code>update_rq_clock_task()</code> 扣减中断和偷取</td></tr>
+<tr><td><code>rq->clock_pelt</code></td><td><code>+= 任务增量 × capacity/1024 × freq/1024</code></td><td><code>update_rq_clock_pelt()</code> 容量+频率缩放</td></tr>
+<tr><td><code>se->vruntime</code></td><td><code>+= (rq_clock_task - exec_start) × 1024/weight</code></td><td><code>update_curr()</code> tick 或 enqueue/dequeue 时</td></tr>
+<tr><td><code>jiffies</code></td><td><code>+= ticks</code>（正常 +1，补偿批量跳）</td><td><code>do_timer()</code> 在 tick handler 中</td></tr>
+</tbody>
+</table>
+
+<h4>谁用哪个钟</h4>
+
+<table>
+<thead><tr><th>用途</th><th>时钟</th><th>原因</th></tr></thead>
+<tbody>
+<tr><td>vruntime 计算</td><td><code>rq->clock_task</code></td><td>不能用中断时间冤枉任务</td></tr>
+<tr><td>PELT 负载衰减</td><td><code>rq->clock_pelt</code></td><td>小核跑 10ms ≠ 大核跑 10ms，需容量缩放</td></tr>
+<tr><td>deadline / slice 检查</td><td><code>rq->clock_task</code></td><td>看任务实际执行了多久</td></tr>
+<tr><td>负载均衡周期</td><td><code>rq->clock</code></td><td>看墙上过了多久决定是否 rebalance</td></tr>
+<tr><td><code>sleep 5</code> / 超时</td><td>hrtimer → <code>ktime_get()</code></td><td>独立于调度器的高精度定时</td></tr>
+<tr><td><code>/proc/stat</code> / timer wheel</td><td><code>jiffies</code></td><td>老式接口，HZ 精度</td></tr>
+</tbody>
+</table>
 
 <hr>
 
@@ -6130,40 +6497,60 @@ schedule_idle()
 
 <h3 id="172-唤醒路径-try_to_wake_up-分析">17.2 唤醒路径 try_to_wake_up() 分析</h3>
 
-<p><strong>源码</strong>: <code>kernel/sched/core.c:4143</code></p>
+<p><strong>源码</strong>: <code>kernel/sched/core.c:4143</code>，约 160 行。</p>
 
-<p><strong>完整流程</strong>:</p>
+<p><code>try_to_wake_up()</code> 做三件事：<strong>① 把 p 的状态改成 TASK_RUNNING ② 把 p 放回运行队列（activate_task → 插入红黑树）③ 检查 p 是否应当抢占当前 CPU</strong>。因为有跨 CPU 与 <code>__schedule()</code> 并发 deactivate 的竞态，代码里有三层检查和一组内存屏障。</p>
+
+<h4>完整执行流</h4>
 
 <pre><code>try_to_wake_up(p, state, wake_flags):
-    ┌─────────────────────────────────────────────────┐
-    │ 1. 快速路径：唤醒自己                           │
-    │    if (p == current) → ttwu_do_wakeup()         │
-    ├─────────────────────────────────────────────────┤
-    │ 2. 获取 p-&gt;pi_lock                             │
-    │    检查状态匹配: p-&gt;state &amp; state               │
-    ├─────────────────────────────────────────────────┤
-    │ 3. 如果 p-&gt;on_rq: 已在就绪队列                  │
-    │    → ttwu_runnable(): 直接唤醒                  │
-    ├─────────────────────────────────────────────────┤
-    │ 4. 选择目标 CPU                                 │
-    │    cpu = select_task_rq(p, p-&gt;wake_cpu, flags)  │
-    │    调用对应调度类的 select_task_rq()             │
-    ├─────────────────────────────────────────────────┤
-    │ 5. 入队到目标 rq                                │
-    │    ttwu_queue(p, cpu, wake_flags)               │
-    │      → enqueue_task() + wakeup_preempt()        │
-    ├─────────────────────────────────────────────────┤
-    │ 6. 如果需要抢占目标 CPU                         │
-    │    → resched_curr(rq): 设置 TIF_NEED_RESCHED    │
-    │    如果是远程 CPU → 发送 IPI                    │
-    └─────────────────────────────────────────────────┘</code></pre>
+  ┌────────────────────────────────────────────────────────────────┐
+  │ 分支 0: p == current → 直接 ttwu_do_wakeup()，不加任何锁       │
+  ├────────────────────────────────────────────────────────────────┤
+  │ 持 p->pi_lock:                                                 │
+  │                                                                │
+  │ 检查 1: ttwu_state_match(p, state)                             │
+  │   → p->state 是否与调用者期望的状态匹配？不匹配 → 放弃          │
+  │                                                                │
+  │ 屏障: smp_rmb()                                                │
+  │ 检查 2: p->on_rq && ttwu_runnable(p)                           │
+  │   → p 已经在运行队列上了，只需标记 runnable，不做 enqueue       │
+  │                                                                │
+  │ 屏障: smp_acquire__after_ctrl_dep()                            │
+  │ 设瞬态: p->state = TASK_WAKING                                 │
+  │                                                                │
+  │ 检查 3: p->on_cpu && ttwu_queue_wakelist(p, ...)              │
+  │   → p 正在远程 CPU 被 __schedule 切走                           │
+  │   → 挂到远程 CPU 的唤醒链，不等锁，直接返回                     │
+  │                                                                │
+  │ 否则: smp_cond_load_acquire(&p->on_cpu, !VAL)                  │
+  │   → 等远程 CPU 释放 p                                          │
+  │                                                                │
+  │ 选 CPU: cpu = select_task_rq(p, p->wake_cpu, &wake_flags)     │
+  │   → 若跨 CPU 迁移: 清理旧 CPU 的 nr_iowait，set_task_cpu       │
+  │                                                                │
+  │ 入队: ttwu_queue(p, cpu, wake_flags)                          │
+  │   → 拿目标 CPU 的 rq_lock                                      │
+  │   → ttwu_do_activate: activate_task + check_preempt_curr       │
+  ├────────────────────────────────────────────────────────────────┤
+  │ ttwu_stat(p): 统计                                             │
+  └────────────────────────────────────────────────────────────────┘</code></pre>
 
-<p><strong>CFS 的 <code>select_task_rq_fair()</code> 策略</strong>:</p>
-<ol>
-<li>优先选择与唤醒者共享缓存的 CPU（affine wakeup）</li>
-<li>如果目标 CPU 过载 → 寻找同域内最空闲的 CPU</li>
-<li>考虑 EAS（能效感知）：在满足性能的前提下选低能耗 CPU</li>
-</ol>
+<h4>关键：TASK_WAKING 瞬态</h4>
+
+<p><code>WRITE_ONCE(p->__state, TASK_WAKING)</code>（<a href="kernel/sched/core.c#L4245">core.c:4245</a>）是持 <code>pi_lock</code> 期间的瞬态。它的目的：<strong>推迟 enqueue 到 pi_lock 释放之后</strong>。因为 enqueue 需要拿 rq_lock，而 p 原来那个 CPU 的 <code>__schedule</code> 可能正持有那个 rq_lock。设 TASK_WAKING → 放 pi_lock → 此时再去拿 rq_lock 做 enqueue 就不会死锁了。</p>
+
+<h4>关键：wakelist 延迟入队</h4>
+
+<p><code>if (p->on_cpu && ttwu_queue_wakelist(...)) break</code>（<a href="kernel/sched/core.c#L4266">core.c:4266</a>）：p 还在远程 CPU 上挂着（on_cpu==1），说明那个 CPU 正在 <code>__schedule()</code> 里处理 p。这时直接拿 rq 锁会阻塞当前 CPU。wakelist 把 p 挂到远程 CPU 的唤醒链表上，远程 CPU 在 <code>finish_task()</code> 时遍历链表帮 p 入队——ttwu 不等锁直接返回。</p>
+
+<h4>关键：select_task_rq 跨 CPU 迁移</h4>
+
+<p><code>cpu = select_task_rq(p, p->wake_cpu, &wake_flags)</code>（<a href="kernel/sched/core.c#L4281">core.c:4281</a>）：CFS 走 <code>select_task_rq_fair()</code>——如果 p 上次跑的旧 CPU 还空闲就放回去（cache 热），否则找最空闲的核。如果选出的 cpu 和 p 原来的 CPU 不同，旧 CPU 的 <code>nr_iowait</code> 减 1、设 <code>WF_MIGRATED</code>、<code>set_task_cpu(p, cpu)</code> 迁移。</p>
+
+<h4>入队最后一步：ttwu_queue → ttwu_do_activate</h4>
+
+<p>拿目标 CPU 的 rq_lock → <code>activate_task(p)</code>（CFS: enqueue_task_fair → enqueue_entity → 插入红黑树）→ <code>check_preempt_curr(rq, p)</code>——若 p 优先级高于 current → <code>resched_curr(rq)</code> 设 NEED_RESCHED，跨 CPU 时附加 IPI。</p>
 
 <h3 id="173-上下文切换-context_switch-机制">17.3 上下文切换 context_switch() 机制</h3>
 
@@ -8089,5 +8476,447 @@ cyclictest -a 6 -t1 -p 90 -n -i 100 -l 100000
     });
 })();
 </script>
+<h2 id="19-调度执行流深度解析">19. 调度执行流深度解析（2025-07 讨论总结）</h2>
+
+<blockquote>以下内容来自对 <code>__schedule()</code> 及其周边函数的逐行讨论，覆盖从"谁触发调度"到"任务怎么被切走"的完整链路。</blockquote>
+
+<h3>19.1 TIF_NEED_RESCHED — 调度标志的设置</h3>
+
+<p><strong>统一入口：<code>resched_curr(rq)</code></strong>（<a href="kernel/sched/core.c#L1098">core.c:1098</a>）— 设 <code>TIF_NEED_RESCHED</code>，跨 CPU 时还发 IPI。</p>
+
+<p><strong>4 类触发场景</strong>：</p>
+<ul>
+<li><strong>高优先级任务唤醒</strong>：<code>try_to_wake_up() → check_preempt_curr() → resched_curr()</code></li>
+<li><strong>时间片耗尽（tick）</strong>：<code>scheduler_tick() → entity_tick() → resched_curr_lazy()</code></li>
+<li><strong>RT/DL 抢占</strong>：<code>wakeup_preempt_rt/dl() → resched_curr()</code></li>
+<li><strong>手动 yield</strong>：<code>yield_task_fair() → resched_curr()</code></li>
+</ul>
+
+<h3>19.2 __schedule_loop — 不是等待，是循环执行调度</h3>
+
+<p>（<a href="kernel/sched/core.c#L7007">core.c:7007</a>）</p>
+<pre><code>do {
+    preempt_disable();
+    __schedule(sched_mode);
+    sched_preempt_enable_no_resched();
+} while (need_resched());</code></pre>
+<p>每条迭代都 <strong>立刻执行一次调度</strong>。循环是为了防止竞态：刚完成切换还没返回用户态，另一个 CPU 又设了 <code>TIF_NEED_RESCHED</code>。——不是"等时间到"，而是"已经处理完了上一个，检查有没有新来的"。</p>
+
+<h3>19.3 谁让正在跑的程序停下来？— 硬件定时器中断</h3>
+
+<p>正在 CPU 上运行的程序 <strong>完全没有"主动让出 CPU"的代码</strong>。整条链路是硬件 + 内核强制完成：</p>
+<pre><code>CNTV_CVAL 到期 → PPI 中断 → CPU 强行暂停任务 → arch_timer_handler_virt()
+  → scheduler_tick() → entity_tick() → update_curr() → 设 TIF_NEED_RESCHED
+  → 中断返回路径检查 flag → schedule() → context_switch() → 换人</code></pre>
+
+<p><strong>scheduler_tick() 只检查 rq->curr（当前这一个任务），不遍历树上所有任务。</strong>其他任务的 vruntime 只在进出队时更新，tick 里不碰。公平性靠红黑树的自排序保证——当前任务的 vruntime 涨着涨着就超过了最左节点，下次 pick 自然换人。</p>
+
+<h3>19.4 各 CPU tick 不同步</h3>
+
+<p>PPI 保证每个 CPU 独立响应自己的 timer 中断，不会广播。各 CPU 读 CNTVCT 设置 CNTV_CVAL 的时间不同，自然错开——避免四核同时在 tick 里遍历 rq 造成 cache 竞争。</p>
+
+<h3>19.5 HRTICK — 精确到微秒的抢占定时器</h3>
+
+<p>（<a href="kernel/sched/core.c#L856">core.c:856</a>）通过 hrtimer 在任务时间片精确耗尽时立即触发抢占，而非等下一次周期 tick。默认关闭（<code>features.h:66 SCHED_FEAT(HRTICK, false)</code>）。底层和周期 tick 共用同一个 CNTV_CVAL，只是写入的到期值不同。</p>
+
+<h3>19.6 __schedule() 关键步骤拆解</h3>
+
+<table>
+<thead><tr><th>步骤</th><th>代码位置</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td>关中断</td><td>core.c:6813</td><td><code>local_irq_disable()</code></td></tr>
+<tr><td>通知 RCU</td><td>core.c:6814</td><td><code>rcu_note_context_switch(preempt)</code> — 报告 QS 或标记 blocked</td></tr>
+<tr><td>获取 rq 锁 + 屏障</td><td>core.c:6833-6834</td><td><code>rq_lock + smp_mb__after_spinlock</code> — 防止信号丢失的经典竞态保护</td></tr>
+<tr><td>更新 rq 时钟</td><td>core.c:6837-6839</td><td><code>update_rq_clock(rq)</code> — 读硬件，更新 <code>rq->clock/clock_task/clock_pelt</code></td></tr>
+<tr><td>尝试 deactivate prev</td><td>core.c:6850-6867</td><td>非抢占 + 睡眠 → <code>try_to_block_task()</code>：有信号则改 RUNNING 不睡，无信号则 deactivate</td></tr>
+<tr><td>选 next</td><td>core.c:6870</td><td><code>pick_next_task(rq)</code> — 遍历 sched_class 层级</td></tr>
+<tr><td>切任务</td><td>—</td><td><code>context_switch(prev, next)</code></td></tr>
+</tbody>
+</table>
+
+<h3>19.7 rq 时钟三层结构</h3>
+
+<pre><code>rq->clock       = sched_clock_cpu()          墙上钟（含中断、含偷取）
+rq->clock_task  = clock - IRQ时间 - steal时间  任务钟（调度器用）
+rq->clock_pelt  = clock_task × capacity/1024 × freq/1024  PELT钟（容量+频率缩放）</code></pre>
+
+<p><strong>大小关系</strong>：<code>clock_pelt ≤ clock_task ≤ clock</code>。同构满频时三者相等。<strong>vruntime 用 <code>clock_task</code></strong> 避免中断多的 CPU 惩罚任务，<strong>PELT 用 <code>clock_pelt</code></strong> 避免小核高估负载。</p>
+
+<p><strong>中断时间记账</strong>（<a href="kernel/sched/cputime.c#L56">cputime.c:56</a>）：<code>irq_enter() → account_hardirq_enter() → irqtime_account_irq(tsk, HARDIRQ_OFFSET)</code> 和 <code>irq_exit() → account_hardirq_exit() → irqtime_account_irq(tsk, 0)</code>。入和出调同一函数，用 <code>offset</code> 参数区分关旧账和计新账。</p>
+
+<h3>19.8 信号与调度：signal_pending_state</h3>
+
+<p>（<a href="kernel/sched/core.c#L6518">core.c:6518</a>）<code>try_to_block_task()</code> 在 deactivate 之前检查 <code>signal_pending_state()</code>。如果有信号待处理（如 Ctrl+C），把状态从 <code>TASK_INTERRUPTIBLE</code> 改回 <code>TASK_RUNNING</code>，不 deactivate——任务不睡，立刻回去处理信号。这保证了 Ctrl+C 能立刻杀死正在睡眠的进程。</p>
+
+<h3>19.9 RCU 与调度：rcu_note_context_switch</h3>
+
+<p>（<a href="kernel/rcu/tree_plugin.h#L324">tree_plugin.h:324</a>）上下文切换时通知 RCU：如果 prev 正持有 <code>rcu_read_lock()</code> 且被抢占 → 标记为 blocked → RCU 跟踪它；如果不在临界区 → 报告 quiescent state → 帮助推进 grace period。抢占式阻塞不会立即结束 GP，必须等任务回来释放 RCU 锁。</p>
+
+<h3>19.10 内存屏障：rq_lock + smp_mb__after_spinlock</h3>
+
+<p>（<a href="kernel/sched/core.c#L6817">core.c:6817</a>）解决 <code>__schedule()</code>（设 state + 检查信号）和 <code>try_to_wake_up()</code>（设 flag + 检查 state）之间的经典竞态。两边都有屏障 → 至少一方看到对方的修改 → 信号不丢。</p>
+
+<h3>19.11 prev_state 判断：三段分支</h3>
+
+<p>（<a href="kernel/sched/core.c#L6850-6867">core.c:6850</a>）</p>
+<ul>
+<li><strong>SM_IDLE + rq 空</strong> → idle 继续跑，什么都不做</li>
+<li><strong>非抢占 + 睡眠态</strong> → <code>try_to_block_task()</code>：有信号则改 RUNNING 不睡，无信号则 deactivate</li>
+<li><strong>抢占</strong> → 不 deactivate，任务还在 rq 上，放回红黑树</li>
+</ul>
+
+<h3>19.12 ASID 与 CID — TLB 标记的两层优化</h3>
+
+<h4>ASID：硬件层的地址空间标记</h4>
+
+<p>ARM64 的 <strong>ASID（Address Space Identifier）</strong> 是硬件功能。切换进程时不刷掉 TLB，而是在每个 TLB entry 贴上 ASID 标签：</p>
+
+<pre><code>TTBR0_EL1 = 页表基址 | ASID
+
+TLB entry = virtual_addr + ASID → physical_addr</code></pre>
+
+<p>无 ASID 时每切进程必须全刷 TLB。有了 ASID，只需写 TTBR0_EL1 换掉 ASID 值，旧的 TLB entry 留在 cache 里但 ASID 不匹配→永远不会 hit。<strong>切进程不需要刷 TLB。</strong></p>
+
+<p>但 ARM64 硬件 ASID 只有 <strong>8 位（256 个）或 16 位（65536 个）</strong>，系统可以有上万个进程。用完了必须全局回收：向所有 CPU 发 IPI，刷掉旧 ASID 的所有 TLB entry。</p>
+
+<h4>实例：ASID 不够用时</h4>
+
+<pre><code>4 个 CPU，256 个 ASID 全部分配出去了。第 257 个进程创建：
+
+  内核: 选最久没用过的 ASID=42
+        → IPI 广播到 CPU0/1/2/3
+        → 每个 CPU 停下手里的事，全刷 ASID=42 的 TLB entry
+        → 把 ASID=42 分给新进程
+
+  代价：4 个 CPU 全部被中断。</code></pre>
+
+<h4>CID：软件层知道"哪些 CPU 真正在用这个 ASID"</h4>
+
+<p><strong>CID（Context ID）</strong> 是 Linux 在 ASID 之上加的 per-mm, per-CPU 软件编号。每次上下文切换时 <code>mm_cid_get()</code> 为 <code>next->mm</code> 分配一个 CID（<a href="kernel/sched/sched.h#L3763">sched.h:3763</a>）。<code>mm->pcpu_cid[cpu]</code> 位图精确记录每个 mm 的 ASID 被哪些 CPU 活跃使用。回收时只需通知活跃的 CPU：</p>
+
+<pre><code>mm_A 活跃于：CPU0 (CID=3) + CPU1 (CID=7)。CPU2/CPU3 没用过。
+
+回收 ASID 时：只发 IPI 到 CPU0 和 CPU1，CPU2/CPU3 不打扰。</code></pre>
+
+<h4>switch_mm_cid() 内部：prev 交还、next 获取</h4>
+
+<pre><code>prev 切出时：
+  mm_cid_snapshot_time()   // 记录最后使用时间戳
+  mm_cid_put_lazy(prev)    // 标记"懒清除"——不立即释放
+  prev->mm_cid = -1        // prev 不再持有
+
+next 切入时：
+  next->mm_cid = mm_cid_get(rq, next, next->mm)
+    → mm->pcpu_cid[cpu] 位图找空 slot → 写入硬件 ASID</code></pre>
+
+<p><strong>懒清除</strong>：同一个 mm 的两个线程在同一个 CPU 上先后跑，不需要分配新 CID——直接复用上一个。只有其他 CPU 需要回收 ASID 时才通过 lock-free 远程清除安全回收。</p>
+
+<pre><code>CPU0: thread_A(mm_A,CID=3) → thread_B(mm_A,CID=3) ← 直接复用！
+
+其他 CPU 需回收 mm_A 的 ASID → 远程标记 CPU0 的 slot 为"待清除"
+→ CPU0 下次 switch_mm_cid 看见标记 → 清除 → 归还</code></pre>
+
+<h4>QEMU virt 现状</h4>
+
+<p>默认 8 位 ASID（256 个）。小系统进程数远小于 256，ASID 从不满——CID 默默运行但感知不到。进程数几百上千时（CI、容器），CID 开始显著减少 TLB 刷新和 IPI。</p>
+
+<h3>19.13 schedule() vs preempt_schedule() — 两种调度入口</h3>
+
+<p>同样是"被抢走"，走 <code>schedule()</code> 还是 <code>preempt_schedule()</code> 取决于<strong>谁设的 flag，flag 有多急</strong>：</p>
+
+<pre><code>
+触发场景                        flag                             入口
+─────────────────────────────────────────────────────────────────────
+RT/DEADLINE 唤醒抢占        resched_curr() → TIF_NEED_RESCHED      preempt_schedule()
+CFS 时间片耗尽 (tick)        resched_curr_lazy() → NEED_RESCHED_LAZY   schedule()
+CFS 唤醒抢占 (wakeup)        resched_curr_lazy() → NEED_RESCHED_LAZY   schedule()
+</code></pre>
+
+<p>RT/DL 的 <code>resched_curr</code> 设的是 <strong>TIF_NEED_RESCHED</strong>——急迫标记，当前 CPU 在内核态且 preempt 可用时立即调 <code>preempt_schedule()</code>。CFS 的 <code>resched_curr_lazy</code> 设的是 <strong>TIF_NEED_RESCHED_LAZY</strong>——懒标记，延迟到 return to user 或 preempt_enable 再处理。</p>
+
+<h4>例1：RT 抢占 CFS → preempt_schedule()</h4>
+<pre><code>CPU0 跑 CFS 任务 A（内核态，preempt_count=0）
+CPU1 上的 RT 任务 B 被唤醒
+  → try_to_wake_up(B) → check_preempt_curr → B 是 RT，A 是 CFS
+  → resched_curr(CPU0_rq)          // TIF_NEED_RESCHED + IPI
+CPU0 收到 IPI → preempt_schedule() // ★ 内核抢占！A 立刻让位给 B</code></pre>
+
+<h4>例2：CFS 唤醒抢占 CFS → schedule()</h4>
+<pre><code>CPU0 跑 CFS 任务 A (vr=500)
+CPU1 上 CFS 任务 C (vr=100) 被 I/O 唤醒
+  → wakeup_preempt_fair → C 的 vr 远小于 A
+  → resched_curr_lazy(CPU0_rq)     // NEED_RESCHED_LAZY，不立即抢
+CPU0 在 return to user 时 → schedule()  // ★ 不是 preempt_schedule！</code></pre>
+
+<h4>例3：CFS 时间片耗尽 → schedule()</h4>
+<pre><code>CPU0 跑 CFS 任务 A，4ms tick 到期
+  → scheduler_tick() → entity_tick() → 时间片超了
+  → resched_curr_lazy(rq)          // 懒标记
+中断返回 → schedule()              // ★ 也是 schedule()，不是 preempt_schedule()</code></pre>
+
+<p><strong>结论</strong>：<code>preempt_schedule()</code> 专用于 RT/DL 抢占——内核态立即响应，低优先级不多跑一个指令。CFS 内部（tick 超时或唤醒）只用懒标记走 <code>schedule()</code> 路径，允许内核把当前事做完再切。<strong>时间片耗尽走 <code>schedule()</code>，不是 <code>preempt_schedule()</code>。</strong></p>
+
+<h3>19.14 ARM64 中断返回路径：ret_to_user → schedule → eret</h3>
+
+<p><code>schedule()</code> 不是在 <code>entry.S</code> 汇编里直接 <code>bl schedule()</code> 调用的——它在 C 代码的异常返回路径里。完整链路如下：</p>
+
+<h4>入口：entry_handler 宏</h4>
+
+<p><a href="arch/arm64/kernel/entry.S#L570">entry.S:570</a> 的 <code>entry_handler</code> 宏定义了所有中断/异常的基本框架：</p>
+
+<pre><code>.macro entry_handler el:req, ht:req, regsize:req, label:req
+    kernel_entry \el, \regsize              // ① 保存 x0-x29 到内核栈 pt_regs
+    mov    x0, sp
+    bl     el\el\ht\()_\regsize\()_\label\()_handler  // ② 调 C handler
+    .if \el == 0
+    b      ret_to_user                      // ③ el0: 从用户态进来的 → 用户态返回
+    .else
+    b      ret_to_kernel                    // ④ el1: 从内核态进来的 → 直接恢复返回
+    .endif
+.endm</code></pre>
+
+<p>关键判断：<strong>el0 走 ret_to_user（要检查调度/信号），el1 走 ret_to_kernel（直接 kernel_exit，调度由 preempt_schedule 处理）</strong>。</p>
+
+<h4>完整调用链（以 tick 超时为例）</h4>
+
+<pre><code>entry.S: kernel_entry 0                         // ① 保存 x0-x29 到 pt_regs
+  bl el0t_64_irq_handler                        // ② 调 C handler
+          │
+          ▼
+  el0t_64_irq_handler()              [entry-common.c:849]
+    → el0_interrupt(regs)            [entry-common.c:827]
+        irq_enter_rcu()
+        do_interrupt_handler()                 // ★ 处理硬件中断
+          → scheduler_tick() → 设 TIF_NEED_RESCHED
+        irq_exit_rcu()
+        arm64_exit_to_user_mode(regs)          [entry-common.c:100]
+          │
+          ▼
+  arm64_exit_to_user_mode()                     [entry-common.c:100-107]
+    exit_to_user_mode_prepare(regs)             [irq-entry-common.h:214]
+      ti_work = read_thread_flags()
+      if (ti_work & EXIT_TO_USER_MODE_WORK)
+        exit_to_user_mode_loop(regs, ti_work)  [common.c:19]
+          while (ti_work & EXIT_TO_USER_MODE_WORK):
+            if (ti_work & _TIF_NEED_RESCHED)
+              schedule()                       // ★★★ C 代码里调用！
+    exit_to_user_mode()                         [irq-entry-common.h:253]
+      arch_exit_to_user_mode()                 // 架构收尾
+
+          │ ← C handler 返回
+          ▼
+  entry.S: b ret_to_user                        // ③ 汇编标签
+    kernel_exit 0                               // ④ 恢复 x0-x29
+    eret                                        // ⑤ 回到用户空间</code></pre>
+
+<h4>el0 vs el1 的区别</h4>
+
+<pre><code>ret_to_kernel (line 606):               ret_to_user (line 610):
+                                        │
+  kernel_exit 1                         │ 在 C handler 里已通过
+    → ldp x0-x29 [sp]                   │ arm64_exit_to_user_mode()
+    → eret                              │ 调了 exit_to_user_mode_loop()
+                                        │   → schedule() 已在这里完成！
+  直接恢复，不检查 NEED_RESCHED              │
+  为什么？                                  │ kernel_exit 0
+  内核态抢占已由 preempt_schedule()         │   → ldp x0-x29 [sp]
+  处理了；NMI/临界区也走这条路，             │   → eret
+  不能阻塞                                  │</code></pre>
+
+<p><strong>关键理解</strong>：<code>schedule()</code> 由 C 函数 <code>exit_to_user_mode_loop()</code> 调用——在 <code>el0_interrupt()</code> 的 C handler 返回之前，不是在 entry.S 汇编层。entry.S 只管最外层的寄存器保存/恢复和 eret——调度决策全部是 C 代码完成的。</p>
+
+<h4>两层保存 / 两层恢复</h4>
+
+<p>被调度的进程经历两层状态的保存和恢复：</p>
+
+<pre><code>切走:
+  ① entry.S: kernel_entry → stp x0-x29 到内核栈（第一层，保存业务被打断位置）
+  ② C handler → schedule() → context_switch → cpu_switch_to
+     stp x19-x28,fp,sp,lr 到 prev->thread.cpu_context（第二层，保存 schedule 内部状态）
+     ret ← 停在这里
+
+切回:
+  ③ cpu_switch_to: ret → ldp x19-x28...（第二层恢复，继续 schedule 内部）
+     → finish_task_switch → __schedule 返回 → schedule() 返回
+  ④ entry.S: kernel_exit → ldp x0-x29（第一层恢复）
+     → eret → 回到被打断的业务代码</code></pre>
+
+<h3>19.15 三种调度场景完整流程对比</h3>
+
+<h4>场景 1：进程主动 sleep 让出 CPU</h4>
+
+<p>触发：进程 A 等 I/O，调 <code>schedule()</code> 主动交出 CPU。</p>
+
+<pre><code>
+A 在用户态 → read() 系统调用 → ... → pipe_read() → 数据未就绪
+  → prepare_to_wait()                         // 把自己挂到等待队列
+  → set_current_state(TASK_INTERRUPTIBLE)     // ★ 状态改为可中断睡眠
+  → schedule()                                // 主动调度
+      __schedule_loop(SM_NONE)
+        __schedule(SM_NONE)
+          prev_state = TASK_INTERRUPTIBLE
+          !preempt && prev_state → true       // ★ 自愿阻塞，触发 deactivate 路径
+          → try_to_block_task(rq, A, ...)     //   没有信号 → deactivate_task(A)
+                                               //   A 从 rq 移除，进入睡眠
+          → pick_next_task(rq)                //   选 B
+          → context_switch(A, B)
+            → switch_mm_irqs_off(mm_A, mm_B)  // 换页表
+            → switch_to(A, B, A)              // 换寄存器
+              → cpu_switch_to(A, B)
+                保存 A 的 x19-x28,fp,sp,lr 到 A->thread.cpu_context
+                恢复 B 的 x19-x28,fp,sp,lr
+                ret ← A 停在这里，B 开始跑
+
+══════════ B 在跑，A 在睡眠 ══════════
+
+A 等待的 I/O 就绪 → wake_up() → try_to_wake_up(A)
+  → ttwu_do_wakeup(A) → 设 TASK_RUNNING
+  → activate_task(A)    // A 重新入队（enqueue_entity → 插入红黑树）
+  → check_preempt_curr  // 若 A 优先级高 → resched_curr
+
+A 被 pick_next_task 选中 → context_switch(X, A)
+  → cpu_switch_to(X, A): 恢复 A 上次保存的 x19-x28,fp,sp,lr
+    ret  ← A 从这里醒来！
+  → barrier() → finish_task_switch(X)         // A 帮 X 善后
+  → __schedule() 返回 → __schedule_loop() 返回
+  → sched_update_worker(A)
+  → schedule() 返回                           // ★ 回到 pipe_read() 里 schedule() 的下一行
+  → 检查数据是否就绪 → 是 → copy_to_user()
+  → syscall 返回 → 用户态继续
+</code></pre>
+
+<p>睡眠与抢占的关键区别：<code>try_to_block_task()</code> 执行了 <code>deactivate_task</code>，A 从 rq 移除。</p>
+
+
+<h4>场景 2：timer 中断调度走当前进程</h4>
+
+<p>触发：4ms tick 到期，A 时间片耗完。</p>
+
+<pre><code>
+A 在用户态跑 mmap 循环
+  CNTV_CVAL 到期 → PPI 硬件中断
+  entry.S: kernel_entry 0                      // ① 硬件保存 PC+PSTATE，汇编保存 x0-x29
+  el0t_64_irq_handler → el0_interrupt(regs)
+    irq_enter_rcu()
+    do_interrupt_handler()
+      → arch_timer_handler_virt()
+        → tick_nohz_handler()
+          → tick_sched_do_timer()              // jiffies 更新（仅 CPU0）
+          → tick_sched_handle() → update_process_times()
+            → scheduler_tick()
+              → task_tick_fair() → entity_tick()
+                → update_curr(A)               // A->vruntime += delta * 1024/weight
+                → A 的 vruntime 超了理想值
+                → resched_curr_lazy(rq)        // ★ 设 TIF_NEED_RESCHED_LAZY
+    irq_exit_rcu()
+    arm64_exit_to_user_mode(regs)              // 返回用户态之前
+      → exit_to_user_mode_prepare(regs)
+        → read_thread_flags() → NEED_RESCHED_LAZY!
+        → exit_to_user_mode_loop(regs, ti_work)
+          → schedule()                         // ★ 在 C handler 里调用！
+            __schedule_loop(SM_NONE)
+              __schedule(SM_NONE)
+                prev_state = TASK_RUNNING      // A 还在跑
+                !preempt && prev_state → 0 → false  // prev_state==0，跳过 try_to_block_task
+                // ★ A 不被 deactivate！只是被抢，还在 rq 上
+                pick_next_task(rq)
+                  → put_prev_task(A)           // A 放回红黑树
+                  → pick_task_fair() → pick EEVD entity
+                  → set_next_task(B)           // ★ 选 B
+                context_switch(A, B)
+                  → switch_mm_irqs_off         // 换页表
+                  → switch_to → cpu_switch_to
+                    保存 A, 恢复 B
+                    ret ← A 停，B 跑
+
+══════════ B 在跑 ══════════
+
+B:  barrier → finish_task_switch → __schedule 返回
+  → __schedule_loop 返回 → sched_update_worker(B)
+  → schedule() 返回
+  → exit_to_user_mode_loop() → 循环结束
+  → arm64_exit_to_user_mode 返回
+  → entry.S: ret_to_user → kernel_exit 0 → eret
+  → B 开始跑用户态业务代码
+
+A 未来某个时刻被 resume:
+  cpu_switch_to: 恢复 A 的寄存器 → ret
+  → barrier → finish_task_switch → ... → schedule() 返回
+  → exit_to_user_mode_loop 返回
+  → entry.S: kernel_exit 0 → eret
+  → A 回到用户态（mmap 循环里被打断那条指令的下一条）
+</code></pre>
+
+<p>关键点：timer 中断触发 <code>schedule()</code> 不走 <code>try_to_block_task</code>——A 不被 deactivate，只是放回红黑树等下次 pick。</p>
+
+
+<h4>场景 3：RT 抢占 CFS 进程</h4>
+
+<p>触发：CFS 任务 A 在内核态，RT 任务 B 被唤醒。</p>
+
+<pre><code>
+CPU0: CFS 任务 A 在内核态（syscall 中，preempt_count=0）
+CPU1: RT 任务 B 被 timer 唤醒
+  → try_to_wake_up(B, TASK_NORMAL, CPU0)
+    → ttwu_do_activate(B)
+      → activate_task(B)                       // B 入队
+      → ttwu_do_wakeup(B)
+        → check_preempt_curr(rq, B)
+          → B 是 RT (prio=50)，A 是 CFS (prio=120)
+          → resched_curr(rq)                   // ★ TIF_NEED_RESCHED + IPI
+
+CPU0: 收到 IPI 中断
+  entry.S: kernel_entry 1                      // 从内核态被打断（el1）
+  el1t_64_irq_handler → ...
+    do_interrupt_handler() → handle_IPI        // 知道这是 reschedule IPI
+      → scheduler_ipi()                        // 空函数，flag 已设
+    irq_exit_rcu()
+    // el1 路径走 ret_to_kernel
+  entry.S: b ret_to_kernel → kernel_exit 1 → eret
+
+  CPU0 回到 A 被中断的内核代码
+  如果 preempt_count==0 && TIF_NEED_RESCHED:
+    preempt_schedule()                         // ★ SM_PREEMPT 模式！
+      __schedule_loop(SM_PREEMPT)
+        __schedule(SM_PREEMPT)
+          preempt = true
+          prev_state = TASK_RUNNING
+          !preempt → false                     // ★ 跳过 try_to_block_task
+          // A 不 deactivate！A 还在 rq 上
+          pick_next_task(rq)
+            → put_prev_task(A)                 // A 放回红黑树
+            → pick B (RT, prio=50)             // ★ RT 优先级压倒一切
+          context_switch(A, B)
+            switch_to → cpu_switch_to
+              保存 A, 恢复 B
+              ret ← A 被抢，B 开跑
+
+══════════ B 在跑 ══════════
+
+B:  barrier → finish_task_switch → __schedule 返回
+  → __schedule_loop 返回 → preempt_schedule() 返回
+  → 继续内核路径（可能是从 schedule() 返回）
+  → 用户态业务代码
+
+A 未来某时刻: B 阻塞或被抢 → A 被 pick_next_task 选中
+  → context_switch → cpu_switch_to 恢复
+  → finish_task_switch → ... → preempt_schedule() 返回
+  → A 从被中断的内核代码继续执行
+</code></pre>
+
+<p>三种场景的核心差异：<strong>睡眠走 deactivate + nvcsw，tick 超时走 schedule()（不 deactivate + nivcsw），RT 抢占走 preempt_schedule()（不 deactivate + nivcsw + 可能跨 CPU IPI）</strong>。</p>
+
+<table>
+<thead><tr><th></th><th>场景1: 主动睡眠</th><th>场景2: timer tick</th><th>场景3: RT 抢占</th></tr></thead>
+<tbody>
+<tr><td><strong>触发</strong></td><td>A 调 schedule()</td><td>硬件 tick → scheduler_tick()</td><td>RT wakeup + IPI</td></tr>
+<tr><td><strong>入口</strong></td><td>schedule() (直接)</td><td>exit_to_user_mode_loop()</td><td>preempt_schedule()</td></tr>
+<tr><td><strong>sched_mode</strong></td><td>SM_NONE</td><td>SM_NONE</td><td>SM_PREEMPT</td></tr>
+<tr><td><strong>deactivate?</strong></td><td>✅ deactivate_task</td><td>❌ put_prev_task 放回树</td><td>❌ put_prev_task 放回树</td></tr>
+<tr><td><strong>切换计数</strong></td><td>nvcsw（自愿）</td><td>nivcsw（非自愿）</td><td>nivcsw（非自愿）</td></tr>
+<tr><td><strong>跨 CPU</strong></td><td>无</td><td>无</td><td>有（IPI）</td></tr>
+</tbody>
+</table>
+
 </body>
 </html>
