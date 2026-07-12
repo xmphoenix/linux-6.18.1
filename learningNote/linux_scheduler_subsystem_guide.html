@@ -7440,6 +7440,8 @@ deadline:     vruntime + slice×1024/weight  ← 基于 vr 外推
 
 <h3 id="176-pelt-负载追踪算法原理">17.6 PELT 负载追踪算法原理</h3>
 
+<p><strong>全称</strong>: <strong>P</strong>er-<strong>E</strong>ntity <strong>L</strong>oad <strong>T</strong>racking（逐实体负载追踪）。"Entity" 指 <code>struct sched_entity</code>——每个任务或任务组都有自己独立的 PELT 负载信号，而不是只追踪整个 CPU 的聚合负载。这是它区别于更早的全局负载追踪（LKML 旧版 Load 统计、<code>/proc/loadavg</code> 等）的关键点。</p>
+
 <p><strong>源码</strong>: <code>kernel/sched/pelt.c:103</code> — <code>accumulate_sum()</code></p>
 
 <h4>核心公式</h4>
@@ -7455,31 +7457,184 @@ $$load\_avg = u_0 + u_1 \cdot y + u_2 \cdot y^2 + u_3 \cdot y^3 + \ldots$$</p>
 
 <p>其中 $u_i$ 是第 $i$ 个周期的贡献系数（0 或 1 取决于是否在运行/就绪）。</p>
 
-<h4>三个信号维度</h4>
+<h4>三个信号维度——三个入参的精确推导</h4>
+
+<p><strong>struct sched_avg</strong> 保存三个独立的 PELT 信号（<a href="include/linux/sched.h#L505">include/linux/sched.h:505</a>）：</p>
+
+<pre><code class="language-c">struct sched_avg {
+    u64                load_sum;
+    u64                runnable_sum;
+    u32                util_sum;
+    unsigned long      load_avg;
+    unsigned long      runnable_avg;
+    unsigned long      util_avg;
+    // ...
+};</code></pre>
+
+<p>三个信号的根本差异在于 <strong>累加时使用的入参不同</strong>。下面是精确的<strong>代码推导</strong>：</p>
+
+<h5>Step 1：调用方传入三个不同的入参</h5>
+
+<p><strong>sched_entity（单个任务）</strong>（<a href="kernel/sched/pelt.c#L307">pelt.c:307</a>）：</p>
+
+<pre><code class="language-c">int __update_load_avg_se(u64 now, struct cfs_rq *cfs_rq, struct sched_entity *se)
+{
+    if (___update_load_sum(now, &amp;se->avg,
+            !!se->on_rq,          /* ← load 参数：BOOL，0 或 1 */
+            se_runnable(se),      /* ← runnable 参数：BOOL，0 或 1 */
+            cfs_rq->curr == se))  /* ← running 参数：BOOL，0 或 1 */
+        ___update_load_avg(&amp;se->avg, se_weight(se));
+    //                                   ↑ load_avg 要乘以 weight！
+}</code></pre>
+
+<p><strong>cfs_rq（CPU 的就绪队列）</strong>（<a href="kernel/sched/pelt.c#L321">pelt.c:321</a>）：</p>
+
+<pre><code class="language-c">int __update_load_avg_cfs_rq(u64 now, struct cfs_rq *cfs_rq)
+{
+    if (___update_load_sum(now, &amp;cfs_rq->avg,
+            scale_load_down(cfs_rq->load.weight),  /* ← 组权重（非 BOOL） */
+            cfs_rq->h_nr_runnable,                 /* ← 任务数（非 BOOL） */
+            cfs_rq->curr != NULL))                 /* ← BOOL */
+        ___update_load_avg(&amp;cfs_rq->avg, 1);
+    //                                   ↑ load=1，cfs_rq 不再乘 weight
+}</code></pre>
+
+<h5>Step 2：accumulate_sum() 的三种累加</h5>
+
+<pre><code class="language-c">/* 三个入参进入 accumulate_sum(delta, sa, load, runnable, running) */
+
+/* 首先：如果 load=0，则 runnable 和 running 也被清零 */
+if (!load) runnable = running = 0;
+
+/* 跨周期计算 contrib（含衰减） */
+contrib = __accumulate_pelt_segments(periods, 1024 - sa->period_contrib, delta);
+
+/* 然后三个维度分别累加 ↓↓↓↓↓↓↓↓ */
+if (load)
+    sa->load_sum     += load     * contrib;              /* ① load_sum */
+if (runnable)
+    sa->runnable_sum += runnable * contrib &lt;&lt; SCHED_CAPACITY_SHIFT;  /* ② */
+if (running)
+    sa->util_sum     +=           contrib &lt;&lt; SCHED_CAPACITY_SHIFT;  /* ③ */</code></pre>
+
+<h5>Step 3：___update_load_avg() 归一化为 _avg</h5>
+
+<pre><code class="language-c">void ___update_load_avg(struct sched_avg *sa, unsigned long load)
+{
+    u32 divider = get_pelt_divider(sa);  // = PELT_MIN_DIVIDER(47742-1024) + period_contrib
+
+    sa->load_avg     = div_u64(load       * sa->load_sum,     divider);  /* ← 乘 weight！ */
+    sa->runnable_avg = div_u64(             sa->runnable_sum, divider);
+    sa->util_avg     =             sa->util_sum              / divider;
+}</code></pre>
+
+<h5>整合：三个信号在 entity 层面的完整计算公式</h5>
 
 <table>
 <thead><tr>
 <th>信号</th>
-<th>含义</th>
-<th>计算条件</th>
+<th>sum 累加方式</th>
+<th>avg 计算公式</th>
+<th>取值范围</th>
 </tr></thead>
 <tbody>
 <tr>
-<td><code>load_sum</code> / <code>load_avg</code></td>
-<td>负载</td>
-<td>任务在就绪队列时 (weight × 占比)</td>
+<td><strong>load_sum / load_avg</strong></td>
+<td>累加 <code>load × contrib</code><br>load 为 <strong>BOOL（0/1）</strong></td>
+<td><code>load_avg = weight × load_sum / divider</code></td>
+<td>$[0, weight]$<br>nice=-20: [0, 88761]<br>nice=0: [0, 1024]<br>nice=19: [0, 15]</td>
 </tr>
 <tr>
-<td><code>runnable_sum</code> / <code>runnable_avg</code></td>
-<td>可运行性</td>
-<td>任务 on_rq 时</td>
+<td><strong>runnable_sum / runnable_avg</strong></td>
+<td>累加 <code>runnable × contrib << SHIFT</code><br>runnable 为 <strong>BOOL（0/1）</strong></td>
+<td><code>runnable_avg = runnable_sum / divider</code></td>
+<td>$[0, 1024]$<br>所有任务相同</td>
 </tr>
 <tr>
-<td><code>util_sum</code> / <code>util_avg</code></td>
-<td>利用率</td>
-<td>任务实际 running 时</td>
+<td><strong>util_sum / util_avg</strong></td>
+<td>累加 <code>contrib << SHIFT</code><br>running 为 <strong>BOOL（0/1）</strong></td>
+<td><code>util_avg = util_sum / divider</code></td>
+<td>$[0, 1024]$<br>所有任务相同</td>
 </tr>
-</tbody></table>
+</tbody>
+</table>
+
+<p><strong>关键结论</strong>：在 entity 层面，load_sum 和 runnable_sum 的<strong>累加模式完全相同</strong>（on_rq → 加 contrib，off_rq → 不加），唯一的区别是 <strong>load_avg 在归一化时乘以了 se_weight(se)</strong>。所以 load_avg 是带 nice 权重的 runnable_avg。</p>
+
+<h4>举例说明</h4>
+
+<h5>例 1：相同 util_avg，不同 load_avg（nice 的量化效应）</h5>
+
+<p>两个任务都在 CPU 上跑了足够长的时间，各占用 50% CPU：</p>
+
+<table>
+<thead><tr><th>任务</th><th>nice</th><th>weight</th><th>util_avg</th><th>runnable_avg</th><th>load_avg</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><strong>A</strong></td><td>0</td><td>1024</td><td>512</td><td>512</td><td><strong>512</strong></td><td>基线</td></tr>
+<tr><td><strong>B</strong></td><td>-10</td><td>9548</td><td>512</td><td>512</td><td><strong>4774</strong></td><td>load_avg 是 A 的 9.3 倍！</td></tr>
+<tr><td><strong>C</strong></td><td>+10</td><td>110</td><td>512</td><td>512</td><td><strong>55</strong></td><td>load_avg 是 A 的 1/9</td></tr>
+</tbody>
+</table>
+
+<p>三者的 util_avg 和 runnable_avg 完全相等——CPU 占用率相同。但 load_avg 差了两个数量级，因为 <strong>load_avg = weight × load_sum / divider</strong>，weight 直接放大了 B 的负载信号。这就是负载均衡时 B 会被判定为"更重"的原因——它不是 CPU 跑得多，而是它的调度权重高。</p>
+
+<h5>例 2：I/O 密集型 vs CPU 密集型（runnable_avg vs util_avg 的差异）</h5>
+
+<table>
+<thead><tr><th>任务</th><th>状态</th><th>runnable_avg</th><th>util_avg</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><strong>D（CPU 密集）</strong></td><td>一直在跑</td><td><strong>1024</strong></td><td><strong>1024</strong></td><td>满负载，实际占满 CPU</td></tr>
+<tr><td><strong>E（I/O 密集）</strong></td><td>大部分时间在等待 I/O，但 on_rq</td><td><strong>800</strong></td><td><strong>50</strong></td><td>经常被唤醒（runnable 高），但几乎不占 CPU（util 低）</td></tr>
+<tr><td><strong>F（短期休眠）</strong></td><td>跑 10ms 睡 90ms</td><td><strong>100</strong></td><td><strong>100</strong></td><td>run 和 sleep 交替，二者一致</td></tr>
+</tbody>
+</table>
+
+<p>I/O 密集任务 E 的 util_avg 很低（几乎不耗 CPU），但 runnable_avg 很高（频繁被 I/O 唤醒、等待 CPU）。这说明 <strong>runnable_avg 捕捉的是"排队压力"（调度延迟的来源），而 util_avg 捕捉的是"CPU 消耗"（调频的依据）</strong>。load_balance() 对 overloaded 的判定同时参考 runnable（过量的任务数）和 util（过量的 CPU 利用率）。</p>
+
+<h5>例 3：睡眠任务的自然衰减</h5>
+
+<table>
+<thead><tr><th>时间点</th><th>事件</th><th>load_avg</th><th>衰减说明</th></tr></thead>
+<tbody>
+<tr><td>t=0</td><td>跑满 10ms</td><td>1024</td><td>满负载</td></tr>
+<tr><td>t=32ms</td><td>已睡 32ms</td><td>≈512</td><td>半衰期：y³²=0.5</td></tr>
+<tr><td>t=64ms</td><td>已睡 64ms</td><td>≈256</td><td>两个半衰期</td></tr>
+<tr><td>t=128ms</td><td>已睡 128ms</td><td>≈64</td><td>衰减到 6.25%</td></tr>
+<tr><td>t=320ms</td><td>已睡 320ms</td><td>≈0</td><td>几乎被遗忘</td></tr>
+</tbody>
+</table>
+
+<p>task_h_load() 在 PELT 中的指数衰减使负载均衡<strong>不需要额外逻辑就能"遗忘"历史</strong>——睡眠越久的任务 load_avg 越低，不会被当作重负载迁移。</p>
+
+<h5>cfs_rq 层面的聚合</h5>
+
+<p>cfs_rq 的 PELT 不等于简单累加 entity 的 PELT。它是<strong>两个路径共同维护</strong>的：</p>
+
+<pre><code class="language-c">/* 路径 1：同步更新——attach/detach 时从 entity 往 cfs_rq 聚合 */
+// fair.c:3755
+cfs_rq->avg.load_sum += se_weight(se) * se->avg.load_sum;
+//      ↑ 注意：cfs_rq 的 load_sum 按 se_weight 缩放后累加
+
+/* 路径 2：独立 decay——cfs_rq 自己的 __update_load_avg_cfs_rq() */
+// 入参：load = scale_load_down(cfs_rq->load.weight)（总组权重）
+//       runnable = cfs_rq->h_nr_runnable（任务数）
+//       running = !!cfs_rq->curr（是否有任务在跑）
+// → 最终 cfs_rq->avg.load_avg = ∑ se->avg.load_avg（entity 的累加）</code></pre>
+
+<p>因此 <strong>cfs_rq 的 load_avg 就是所有 CFS 任务 load_avg 的总和</strong>，但 runnable_sum/util_sum 则基于 cfs_rq 的聚合入参独立计算。</p>
+
+<h4>三个信号的应用场景</h4>
+
+<table>
+<thead><tr><th>场景</th><th>使用的信号</th><th>为什么</th></tr></thead>
+<tbody>
+<tr><td>负载均衡 find_busiest_group</td><td><strong>load_avg</strong></td><td>按加权负载比大小，保证比例公平</td></tr>
+<tr><td>overloaded 判定</td><td><strong>runnable_avg</strong> / group_runnable</td><td>检测 CPU 是否有超额任务排队</td></tr>
+<tr><td>cpufreq 调频（schedutil）</td><td><strong>util_avg</strong></td><td>反映真实 CPU 占用，用来算频率</td></tr>
+<tr><td>misfit 检测</td><td><strong>util_avg</strong></td><td>任务 util > CPU capacity → 迁到大核</td></tr>
+<tr><td>task_h_load()</td><td><strong>load_avg</strong></td><td>detach_tasks 时按 load 递减 imbalance</td></tr>
+</tbody>
+</table>
 
 <h4>跨周期计算</h4>
 
@@ -7487,22 +7642,22 @@ $$load\_avg = u_0 + u_1 \cdot y + u_2 \cdot y^2 + u_3 \cdot y^3 + \ldots$$</p>
 periods = delta / 1024;      /* 跨越了多少个周期 */
 
 /* Step 1: 衰减旧值 */
-sa-&gt;load_sum = decay_load(sa-&gt;load_sum, periods);
+sa->load_sum = decay_load(sa->load_sum, periods);
 
 /* Step 2: 计算跨周期贡献 */
 contrib = __accumulate_pelt_segments(periods, d1, d3);
 
 /* Step 3: 累加新贡献 */
-sa-&gt;load_sum += load * contrib;
-sa-&gt;util_sum += contrib &lt;&lt; SCHED_CAPACITY_SHIFT;</code></pre>
+sa->load_sum += load * contrib;
+sa->util_sum += contrib << SCHED_CAPACITY_SHIFT;</code></pre>
 
 <h4>load_avg 最终计算</h4>
 
 <pre><code class="language-c">/* ___update_load_avg() */
-sa-&gt;load_avg = div_u64(sa-&gt;load_sum, divider);
-sa-&gt;util_avg = sa-&gt;util_sum / divider;
-/* divider ≈ PELT maximum value (~47742) */</code></pre>
-
+sa->load_avg = div_u64(load * sa->load_sum, divider);
+sa->runnable_avg = div_u64(sa->runnable_sum, divider);
+sa->util_avg = sa->util_sum / divider;
+/* divider = PELT_MIN_DIVIDER(46718) + period_contrib */</code></pre>
 <h3 id="177-rt-调度与带宽限流">17.7 RT 调度与带宽限流</h3>
 
 <p><strong>源码</strong>: <code>kernel/sched/rt.c</code></p>
@@ -8014,24 +8169,230 @@ poll(&amp;fds, 1, -1);  /* 阻塞等待触发 */</code></pre>
 
 <h3 id="187-常见调度异常诊断方法">18.7 常见调度异常诊断方法</h3>
 
-<h4>问题一：调度延迟抖动</h4>
+<h4>问题一：调度延迟抖动 —— 如何观察</h4>
 
 <p><strong>现象</strong>: 任务偶发性延迟数毫秒</p>
 
-<p><strong>诊断步骤</strong>:</p>
-<pre><code class="language-bash"># 1. 用 perf sched 定位延迟来源
-perf sched record -a -- sleep 30
-perf sched latency --sort max
+<p>Linux 内核提供了多层次的观测手段来定位调度延迟。以下是逐层递进的方法，从简单到深入：</p>
 
-# 2. 检查是否有 RT 任务抢占
-cat /proc/sched_debug | grep rt_nr_running
+<!-- ===== 方法1: ftrace ===== -->
+<h5>方法1: ftrace + sched tracepoint（最直接）</h5>
 
-# 3. 检查 CFS 带宽限流
-cat /sys/fs/cgroup/*/cpu.stat | grep throttled
+<p>这是观察调度延迟最常用的手段。内核在 <a href="https://elixir.bootlin.com/linux/v6.18.1/source/include/trace/events/sched.h" target="_blank"><code>include/trace/events/sched.h</code></a> 中定义了专用的 tracepoint：</p>
 
-# 4. 检查中断/softirq 占用
-cat /proc/interrupts
-perf top -e irq:*</code></pre>
+<table>
+<thead><tr>
+<th style="width:140px">tracepoint</th>
+<th>含义</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>sched_waking</code></td>
+<td>任务被唤醒的瞬间（<code>p-&gt;state == TASK_RUNNING</code>），保证在唤醒上下文中调用</td>
+</tr>
+<tr>
+<td><code>sched_switch</code></td>
+<td>发生任务切换，记录 prev/next 的 comm、pid、prio、prev_state</td>
+</tr>
+<tr>
+<td><strong><code>sched_stat_wait</code></strong></td>
+<td><strong>任务在 runqueue 上的等待时间</strong>（runnable 但没拿到 CPU）—— 这直接衡量调度延迟</td>
+</tr>
+<tr>
+<td><code>sched_stat_sleep</code></td>
+<td>睡眠时间（不可运行状态）</td>
+</tr>
+<tr>
+<td><code>sched_stat_iowait</code></td>
+<td>IO 等待时间</td>
+</tr>
+<tr>
+<td><code>sched_stat_blocked</code></td>
+<td>处于 D 状态（不可中断睡眠）的时间</td>
+</tr>
+<tr>
+<td><code>sched_stat_runtime</code></td>
+<td>实际拿到 CPU 的执行时间</td>
+</tr>
+</tbody></table>
+
+<div class="sched-trace-source">
+<p><strong>源码参考</strong>（<code>include/trace/events/sched.h</code>）：</p>
+<ul>
+<li><code>sched_waking</code> / <code>sched_wakeup</code>: 基于 <code>sched_wakeup_template</code>（<a href="https://elixir.bootlin.com/linux/v6.18.1/source/include/trace/events/sched.h#L141" target="_blank">L141-L172</a>），记录 comm、pid、prio、target_cpu</li>
+<li><code>sched_switch</code>: <a href="https://elixir.bootlin.com/linux/v6.18.1/source/include/trace/events/sched.h#L220" target="_blank">L220-L267</a>，记录 prev_comm/prev_pid/prev_prio/prev_state → next_comm/next_pid/next_prio</li>
+<li><code>sched_stat_wait</code> / <code>sched_stat_sleep</code> / <code>sched_stat_iowait</code> / <code>sched_stat_blocked</code>: 基于 <code>sched_stat_template</code>（<a href="https://elixir.bootlin.com/linux/v6.18.1/source/include/trace/events/sched.h#L495" target="_blank">L495-L547</a>），记录 comm、pid、<strong>delay [ns]</strong></li>
+<li><code>sched_stat_runtime</code>: <a href="https://elixir.bootlin.com/linux/v6.18.1/source/include/trace/events/sched.h#L553" target="_blank">L553-L578</a>，记录 runtime [ns]</li>
+</ul>
+</div>
+
+<p><strong>实际操作</strong>：</p>
+<pre><code class="language-bash"># 挂载 debugfs（如果尚未挂载）
+mount -t debugfs none /sys/kernel/debug
+
+# ----- 方法 A: 直接操作 tracefs -----
+cd /sys/kernel/debug/tracing
+echo 1 &gt; events/sched/sched_switch/enable
+echo 1 &gt; events/sched/sched_waking/enable
+echo 1 &gt; events/sched/sched_stat_wait/enable
+
+# 实时查看（Ctrl-C 停止）
+cat trace_pipe
+
+# 查看 trace 报告
+cat trace
+
+# ----- 方法 B: trace-cmd（推荐，更方便）-----
+trace-cmd record -e sched_switch -e sched_waking -e sched_stat_wait
+trace-cmd report
+
+# 带时间戳，限定 CPU
+trace-cmd record -e sched_switch -e sched_stat_wait -C 0-3 sleep 10
+trace-cmd report --time-format delta</code></pre>
+
+<p><strong>判断延迟的方法</strong>：比较 <code>sched_waking</code> 到 <code>sched_switch</code> 的时间差 —— 这就是调度延迟（任务被唤醒到真正拿到 CPU 的时间）。<code>sched_stat_wait</code> 直接记录了 runqueue 上的等待时间，单位是纳秒。</p>
+
+<!-- ===== 方法2: perf sched ===== -->
+<h5>方法2: perf sched（专门分析调度行为）</h5>
+
+<pre><code class="language-bash"># 录制一段时间的调度行为
+perf sched record -- sleep 10
+
+# 查看延迟分析
+perf sched latency        # 显示每个任务的调度延迟统计
+perf sched latency -s     # 按任务排序</code></pre>
+
+<p>输出示例：</p>
+<pre><code>-----------------------------------------------------------------------------------------------------------------
+Task                  |   Runtime ms  |  Switches  |  Avg delay ms  |  Max delay ms  | Max delay at     ...
+-----------------------------------------------------------------------------------------------------------------
+kworker/0:1           |      0.045 ms |          1 |   avg:  3.217  |  max:   3.217  | max at: 5.102345 ...
+myapp:worker-1        |     12.456 ms |       234  |   avg:  0.123  |  max:   7.890  | max at: 8.234567 ...</code></pre>
+
+<p><code>Max delay</code> 列直接回答了核心问题 —— 某个任务经历的最大调度延迟是多少毫秒。</p>
+
+<!-- ===== 方法3: /proc/schedstat ===== -->
+<h5>方法3: /proc/schedstat —— 无需工具的运行时统计</h5>
+
+<pre><code class="language-bash"># 系统级调度统计
+cat /proc/schedstat
+# 输出格式: cpu0 &lt;yield&gt; &lt;schedule&gt; &lt;wait_time&gt; ...
+# 每个 CPU 行包含 sched_yield 统计、schedule 调用次数、等待时间等
+
+# 查看具体进程的调度统计（需要 CONFIG_SCHEDSTATS=y）
+cat /proc/&lt;pid&gt;/sched</code></pre>
+
+<p><code>/proc/&lt;pid&gt;/sched</code> 输出关键字段：</p>
+<pre><code>se.sum_exec_runtime          :     12345.678901    # 累积执行时间 (μs)
+se.nr_switches               :          12345     # 上下文切换次数
+se.statistics.wait_sum       :      9876543210    # 累积等待时间 (ns)
+se.statistics.wait_max       :         3456789    # ★ 最大等待时间 (ns) — 这就是偶发延迟</code></pre>
+
+<!-- ===== 方法4: eBPF/bpftrace ===== -->
+<h5>方法4: eBPF/bpftrace 动态追踪（最精细）</h5>
+
+<p><strong>脚本1: 测量 wakeup → 实际执行的延迟</strong></p>
+<pre><code class="language-bash">#!/usr/bin/env bpftrace
+/* 精确测量每个任务的唤醒到运行延迟 */
+
+kprobe:ttwu_do_activate
+{
+    @wakeup[arg0] = nsecs;
+}
+
+tracepoint:sched:sched_switch
+{
+    $next = args-&gt;next_pid;
+    if (@wakeup[$next]) {
+        $delay = nsecs - @wakeup[$next];
+        /* 只关注超过 1ms 的延迟 */
+        if ($delay &gt; 1000000) {
+            @delay_us = hist($delay / 1000);
+            @max_delay = max($delay);
+            printf("TASK %s (pid=%d) delay: %d us\n",
+                   args-&gt;next_comm, $next, $delay / 1000);
+        }
+        delete(@wakeup[$next]);
+    }
+}
+
+END
+{
+    clear(@wakeup);
+}</code></pre>
+
+<p><strong>使用 bcc 的 runqlat 工具</strong>（开箱即用）：</p>
+<pre><code class="language-bash"># 监控某个进程 10s 的调度延迟直方图
+/usr/share/bcc/tools/runqlat -p &lt;pid&gt; 10
+
+# 系统级，每 10 秒输出一次直方图
+/usr/share/bcc/tools/runqlat 10 1</code></pre>
+
+<!-- ===== 其他辅助 ===== -->
+<h5>方法5: 其他辅助工具</h5>
+
+<table>
+<thead><tr>
+<th style="width:180px">工具</th>
+<th>用途</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>cyclictest</code> (rt-tests)</td>
+<td>测量关中断/关抢占导致的延迟，区分是调度延迟还是硬实时延迟</td>
+</tr>
+<tr>
+<td><code>latencytop</code></td>
+<td>交互式查看系统各类延迟来源及占比</td>
+</tr>
+<tr>
+<td><code>/proc/sched_debug</code></td>
+<td>查看每个 CPU runqueue 的详细状态（<code>nr_running</code>, <code>rt_nr_running</code>, <code>h_nr_running</code> 等），确认 runqueue 是否过长</td>
+</tr>
+<tr>
+<td><code>CONFIG_PREEMPTIRQ_DELAY_TEST</code></td>
+<td>人为注入延迟以测试系统是否配置了正确的抢占模型</td>
+</tr>
+</tbody></table>
+
+<pre><code class="language-bash"># cyclictest 示例：测量最坏情况调度延迟
+cyclictest --smp -p95 -m -D 60
+
+# 检查每个 CPU runqueue 的负载
+cat /proc/sched_debug | grep -E "cpu#|nr_running|rt_nr_running|h_nr_running"
+
+# latencytop（需要 CONFIG_LATENCYTOP=y）
+mount -t debugfs none /sys/kernel/debug
+cat /sys/kernel/debug/latencytop</code></pre>
+
+<!-- ===== 排查路径 ===== -->
+<h5>推荐排查路径</h5>
+
+<p>当怀疑存在偶发性毫秒级调度延迟时，按以下路径逐层深入：</p>
+
+<pre><code>怀疑偶发延迟
+    │
+    ├─① perf sched record + perf sched latency
+    │      → 快速确认是否存在延迟，定位延迟最大的任务
+    │
+    ├─② trace-cmd record -e sched_waking -e sched_switch
+    │      → 分析 waking→switch 时间差，精确到纳秒
+    │
+    ├─③ bpftrace 脚本 / bcc runqlat
+    │      → 获得延迟分布直方图，发现离群值
+    │
+    ├─④ /proc/&lt;pid&gt;/sched 查看 wait_max
+    │      → 确认历史最大等待时间
+    │   /proc/sched_debug 查看 runqueue 长度
+    │      → 确认调度队列是否拥塞
+    │
+    └─⑤ 进一步定位根因
+           → 检查 RT 任务抢占: cat /proc/sched_debug | grep rt_nr_running
+           → 检查 CFS 带宽限流: cat /sys/fs/cgroup/*/cpu.stat | grep throttled
+           → 检查中断/softirq: cat /proc/interrupts; perf top -e irq:*
+           → 检查关中断时长: trace-cmd record -e irq:irq_handler_entry -e irq:irq_handler_exit</code></pre>
+
+<p><strong>关键判断标准</strong>：<code>sched_stat_wait</code> 记录的延迟单位是纳秒。如果某个任务频繁出现数微秒到数毫秒的等待，且 <code>wait_max</code> 超过预期（对于普通非实时任务，毫秒级在 CFS 高负载下是正常的；对于实时任务则不可接受），就需要进一步分析是 CPU 竞争、关中断、还是锁争用等原因。</p>
 
 <h4>问题二：CPU 负载不均衡</h4>
 
