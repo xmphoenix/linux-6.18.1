@@ -445,7 +445,15 @@ hr {
       <li class="toc-chapter">
         <div class="toc-chapter-header"><span class="arrow">▶</span> 8. 调度器时钟</div>
         <ul class="toc-chapter-items">
-          <li><a href="#8-调度器时钟">调度器时钟</a></li>
+          <li><a href="#81-问题背景">8.1 问题背景</a></li>
+          <li><a href="#82-核心数据结构">8.2 核心数据结构</a></li>
+          <li><a href="#83-稳定化算法">8.3 稳定化算法</a></li>
+          <li><a href="#84-rq-时钟层次">8.4 rq 时钟层次</a></li>
+          <li><a href="#85-api-层次">8.5 API 层次</a></li>
+          <li><a href="#86-arm64-四个问题的具体解法">8.6 ARM64 四个问题的解法</a></li>
+          <li><a href="#87-jiffies-与-cntvct-el0-的关系">8.7 jiffies 与 CNTVCT</a></li>
+          <li><a href="#88-调度时钟全景总结">8.8 调度时钟全景总结</a></li>
+          <li><a href="#89-调度时间变量全参考">8.9 调度时间变量全参考</a></li>
         </ul>
       </li>
       <li class="toc-chapter">
@@ -3432,7 +3440,7 @@ struct cpudl {
 
 <p>调度器时钟是所有调度时间计算的基础 — vruntime、PELT 衰减、均衡间隔都依赖它。</p>
 
-<h3>8.1 问题背景</h3>
+<h3 id="81-问题背景">8.1 问题背景</h3>
 
 <p>硬件时钟（如 x86 TSC、ARM arch_timer）存在以下问题：</p>
 <ul>
@@ -3444,7 +3452,7 @@ struct cpudl {
 
 <p>调度器时钟层负责<strong>屏蔽</strong>这些硬件差异，提供稳定、单调递增、高精度的纳秒时钟。</p>
 
-<h3>8.2 核心数据结构</h3>
+<h3 id="82-核心数据结构">8.2 核心数据结构</h3>
 
 <pre><code class="language-c">/* Per-CPU 时钟数据 (kernel/sched/clock.c:91) */
 struct sched_clock_data {
@@ -3454,7 +3462,7 @@ struct sched_clock_data {
 };
 static DEFINE_PER_CPU_SHARED_ALIGNED(struct sched_clock_data, sched_clock_data);</code></pre>
 
-<h3>8.3 稳定化算法</h3>
+<h3 id="83-稳定化算法">8.3 稳定化算法</h3>
 
 <p><code>sched_clock_local()</code> 的核心逻辑：用 GTOD（可靠但慢）校正 sched_clock（快但不稳）:</p>
 
@@ -3485,7 +3493,7 @@ static DEFINE_PER_CPU_SHARED_ALIGNED(struct sched_clock_data, sched_clock_data);
 <li><code>wrap_max/wrap_min</code> 保证<strong>单调递增</strong>（不回退）且不超前超过一个 tick</li>
 </ul>
 
-<h3>8.4 rq 时钟层次</h3>
+<h3 id="84-rq-时钟层次">8.4 rq 时钟层次</h3>
 
 <p><code>struct rq</code> 中有多个时钟字段，各有用途：</p>
 
@@ -3515,7 +3523,7 @@ static DEFINE_PER_CPU_SHARED_ALIGNED(struct sched_clock_data, sched_clock_data);
 <li>通过 <code>lost_idle_time</code> 字段跟踪 idle 期间错过的时间</li>
 </ul>
 
-<h3>8.5 API 层次</h3>
+<h3 id="85-api-层次">8.5 API 层次</h3>
 
 <table>
 <thead><tr>
@@ -3861,6 +3869,79 @@ CNTVCT_EL0 (ARM64)          固定频率全局计数器，只读
 <tr><td><code>/proc/stat</code> / timer wheel</td><td><code>jiffies</code></td><td>老式接口，HZ 精度</td></tr>
 </tbody>
 </table>
+
+<h3 id="89-调度时间变量全参考">8.9 调度时间变量全参考</h3>
+
+<h4>第一层：硬件</h4>
+
+<table>
+<thead><tr><th>变量 / 寄存器</th><th>获取方式</th><th>定义</th><th>精度</th></tr></thead>
+<tbody>
+<tr><td><code>CNTVCT_EL0</code></td><td><code>read_sysreg(cntvct_el0)</code></td><td>ARM64 全局固定频率计数器，不受 DVFS 影响</td><td>~10 ns</td></tr>
+<tr><td><code>CNTFRQ_EL0</code></td><td><code>read_sysreg(cntfrq_el0)</code></td><td>计数器频率。EL3(ATF) 上电时写入，之后只读。QEMU virt 默认 62.5 MHz</td><td>只读</td></tr>
+</tbody>
+</table>
+
+<h4>第二层：内核全局钟</h4>
+
+<table>
+<thead><tr><th>变量</th><th>获取方式</th><th>定义</th><th>谁用</th></tr></thead>
+<tbody>
+<tr><td><code>sched_clock()</code></td><td>直接调用</td><td>CNTVCT_EL0 → 纳秒。单调递增，无锁，NMI safe</td><td>调度器内全部时间</td></tr>
+<tr><td><code>sched_clock_cpu(cpu)</code></td><td>直接调用</td><td>指定 CPU 的 <code>sched_clock()</code></td><td><code>update_rq_clock()</code></td></tr>
+<tr><td><code>ktime_get()</code></td><td>直接调用</td><td>clocksource 全局单调时间</td><td>hrtimer、sleep、超时</td></tr>
+<tr><td><code>jiffies</code> / <code>jiffies_64</code></td><td>直接读</td><td>系统启动以来 tick 总数</td><td>/proc/stat、timer wheel、系统负载</td></tr>
+<tr><td><code>TICK_NSEC</code></td><td>宏</td><td><code>NSEC_PER_SEC / HZ</code>（HZ=250 时 = 4ms）</td><td>tick 周期</td></tr>
+</tbody>
+</table>
+
+<h4>第三层：每 CPU 运行队列 <code>struct rq</code></h4>
+
+<p>定义在 <a href="kernel/sched/sched.h#L1185">sched.h:1185</a>：</p>
+
+<table>
+<thead><tr><th>字段</th><th>获取方式</th><th>公式</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><code>rq->clock</code></td><td><code>rq_clock(rq)</code></td><td><code>sched_clock_cpu()</code></td><td>墙上钟（含中断、含 steal）</td></tr>
+<tr><td><code>rq->clock_task</code></td><td><code>rq_clock_task(rq)</code></td><td><code>clock - IRQ时间 - steal时间</code></td><td>任务净执行时间</td></tr>
+<tr><td><code>rq->clock_pelt</code></td><td>直接读</td><td><code>clock_task × capacity/1024 × freq/1024</code></td><td>PELT 工作量时钟</td></tr>
+<tr><td><code>rq->clock_idle</code></td><td>直接读</td><td>idle 时累积的 <code>clock</code> 增量</td><td>idle 统计</td></tr>
+<tr><td><code>rq->clock_pelt_idle</code></td><td>直接读</td><td>idle 时累积的 <code>clock_pelt</code> 增量</td><td>PELT idle 统计</td></tr>
+<tr><td><code>rq->prev_irq_time</code></td><td>直接读</td><td>上次 <code>update_rq_clock_task</code> 时的 <code>irq_time_read()</code></td><td>算 IRQ delta 用</td></tr>
+<tr><td><code>rq->prev_steal_time_rq</code></td><td>直接读</td><td>上次的 <code>paravirt_steal_clock()</code></td><td>算 steal delta 用</td></tr>
+</tbody>
+</table>
+
+<h4>第四层：CFS 调度实体 <code>struct sched_entity</code></h4>
+
+<p>定义在 <a href="include/linux/sched.h#L570">sched.h:570</a>：</p>
+
+<table>
+<thead><tr><th>字段</th><th>含义</th><th>公式 / 更新时机</th></tr></thead>
+<tbody>
+<tr><td><code>se->vruntime</code></td><td>虚拟运行时间，红黑树排序键</td><td><code>+= Δt × 1024 / weight</code>，<code>update_curr()</code></td></tr>
+<tr><td><code>se->sum_exec_runtime</code></td><td>累计物理运行时间（ns）</td><td><code>+= Δt</code>，<code>update_curr()</code></td></tr>
+<tr><td><code>se->exec_start</code></td><td>本次执行开始时间戳</td><td><code>= rq_clock_task(rq)</code>，<code>set_next_entity()</code></td></tr>
+<tr><td><code>se->prev_sum_exec_runtime</code></td><td>上次入队时的累计时间</td><td><code>enqueue_entity()</code> 时记录，HRTICK 算剩余用</td></tr>
+<tr><td><code>se->slice</code></td><td>EEVDF 时间片（ns）</td><td>默认 0.7ms，<code>place_entity()</code> 中设置</td></tr>
+<tr><td><code>se->deadline</code></td><td>EEVDF 虚拟截止时间</td><td><code>= vruntime + slice / weight</code>，<code>update_deadline()</code></td></tr>
+<tr><td><code>se->statistics.wait_start</code></td><td>开始等待 CPU 的时间戳</td><td>入队时记录，出队时算 wait_max</td></tr>
+<tr><td><code>se->statistics.sum_sleep_runtime</code></td><td>累计睡眠时间</td><td>睡眠唤醒时累加</td></tr>
+<tr><td><code>se->vlag</code></td><td>虚拟 lag（需 ×weight 才得物理 lag）</td><td><code>= V - vruntime</code></td></tr>
+</tbody>
+</table>
+
+<h4>sysfs / ftrace 可查</h4>
+
+<pre><code># 全系统快照
+cat /proc/sched_debug         // 所有 rq、cfs_rq、每个任务的 vruntime/exec_start/slice
+
+# 单个进程
+cat /proc/PID/sched           // vruntime、sum_exec_runtime、slice、延迟统计
+
+# ftrace 实时
+echo 1 > /sys/kernel/tracing/events/sched/sched_switch/enable
+cat /sys/kernel/tracing/trace_pipe  // prev_pid → next_pid, prev_state</code></pre>
 
 <hr>
 
@@ -6589,48 +6670,414 @@ schedule_idle()
 
 <h3 id="174-cfseevdf-vruntime-与公平性算法">17.4 CFS/EEVDF vruntime 与公平性算法</h3>
 
-<p><strong>源码</strong>: <code>kernel/sched/fair.c:1207</code> — <code>update_curr()</code></p>
+<h4>1. vruntime 的定义</h4>
 
-<h4>vruntime 更新公式</h4>
+<p><strong>vruntime（虚拟运行时间）是 CFS 红黑树的排序键</strong>——vruntime 越小的任务越靠左，越优先被 pick。它不是"墙上时间"，而是<strong>经过权重缩放的物理运行时间</strong>。</p>
 
-<pre><code>delta_exec = now - curr-&gt;exec_start         (实际运行纳秒数)
+<p><strong>物理含义</strong>：如果所有任务的 weight 都相同，每个任务拿到的 CPU 时间相等，且所有任务的 vruntime 增速相同 → vruntime 相等 → 公平。如果某个任务 weight 很大（nice 低），它的 vruntime 增长慢 → 在树上停留在左边的时间更长 → 拿更多 CPU。这正是 nice→weight 的机制：<strong>vruntime 是比例公平的记账单位</strong>。</p>
 
-vruntime += delta_exec * NICE_0_LOAD / se-&gt;load.weight
+<h4>2. vruntime 计算公式</h4>
 
-等价于: vruntime += delta_exec / relative_weight</code></pre>
+<p><strong>核心公式</strong>（<a href="kernel/sched/fair.c#L1227">fair.c:1227</a> 的 <code>update_curr()</code>）：</p>
 
-<ul>
-<li><code>NICE_0_LOAD = 1024</code>（nice 0 的权重）</li>
-<li>nice 每降 1 级，权重 × 1.25；nice 每升 1 级，权重 / 1.25</li>
-<li>效果：高权重任务 vruntime 增长慢 → 被调度频率高</li>
-</ul>
+<pre><code>delta_exec  = rq_clock_task(rq) - curr->exec_start      // 物理运行时间 (ns)
 
-<h4>EEVDF 虚拟截止时间</h4>
+vruntime  += delta_exec × 1024 / weight                  // 加权缩放</code></pre>
 
-<pre><code class="language-c">/* update_deadline() in fair.c */
-se-&gt;deadline = se-&gt;vruntime + calc_delta_fair(se-&gt;slice, se);</code></pre>
+<p><strong>调节系数表</strong>：</p>
 
-<ul>
-<li><code>se->slice</code> 默认 = <code>sysctl_sched_base_slice</code> = 700000ns (0.7ms)</li>
-<li><code>deadline = vruntime + slice * NICE_0_LOAD / weight</code></li>
-<li>高权重任务 deadline 更近 → 更容易被选中</li>
-</ul>
+<table>
+<thead><tr><th>nice</th><th>weight</th><th>1024/weight</th><th>跑 1ms 物理时间 → vr 涨多少</th></tr></thead>
+<tbody>
+<tr><td>-20</td><td>88761</td><td>0.0115</td><td><strong>11.5 µs</strong>（几乎不涨）</td></tr>
+<tr><td>-5</td><td>3121</td><td>0.328</td><td><strong>0.33 ms</strong></td></tr>
+<tr><td>0</td><td>1024</td><td>1.0</td><td><strong>1 ms</strong>（等速）</td></tr>
+<tr><td>+5</td><td>335</td><td>3.06</td><td><strong>3.06 ms</strong></td></tr>
+<tr><td>+19</td><td>15</td><td>68.3</td><td><strong>68.3 ms</strong>（暴涨）</td></tr>
+</tbody>
+</table>
 
-<h4>合格性判定 (Eligibility)</h4>
+<p><strong>整数实现</strong>：内核用预计算的倒数表 <code>sched_prio_to_wmult[40]</code>（<a href="kernel/sched/core.c#L10356">core.c:10356</a>），<code>wmult = 2^32 / weight</code>，将除法变为乘法+移位：<code>delta × 1024 / weight ≈ (delta × wmult) >> 32</code>。</p>
 
-<pre><code>entity eligible ⟺ V ≥ v_i ⟺ lag_i ≥ 0
+<h4>3. vruntime 何时更新</h4>
 
-V = avg_vruntime(cfs_rq) = min_vruntime + Σ((v_i - v0) * w_i) / Σ(w_i)</code></pre>
+<p>三种触发（只有当前运行的任务才更新）：</p>
 
-<h4>EEVDF 选择算法</h4>
+<table>
+<thead><tr><th>触发时机</th><th>调用路径</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><strong>tick</strong></td><td><code>scheduler_tick() → task_tick_fair() → entity_tick() → update_curr()</code></td><td>每 4ms 或 HRTICK 时检查一次</td></tr>
+<tr><td><strong>入队</strong></td><td><code>enqueue_task_fair() → enqueue_entity() → update_curr()</code></td><td>新任务/唤醒任务入队前，先给 curr 结账</td></tr>
+<tr><td><strong>出队</strong></td><td><code>dequeue_task_fair() → dequeue_entity() → update_curr()</code></td><td>任务睡眠/阻塞前，把 curr 的账结清</td></tr>
+</tbody>
+</table>
+
+<p><strong>核心原则</strong>：只有 <code>rq->curr</code> 的 vruntime 在 tick 时更新。树上其他任务的 vruntime 保持冻结——它们在各自上次成为 curr 时被更新过，入队后就不再变，直到下次成为 curr。</p>
+
+<h4>4. EEVDF 算法定义</h4>
+
+<p>Linux 6.6+ 将 CFS 升级为 <strong>EEVDF（Earliest Eligible Virtual Deadline First）</strong>。传统 CFS 只看 vruntime 最小；EEVDF 要求先满足 <strong>Eligible（合格）</strong>，再选 <strong>Deadline 最早</strong>。</p>
+
+<h5>四个关键概念</h5>
+
+<table>
+<thead><tr><th>概念</th><th>公式</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><strong>V</strong>（全局虚拟时间）</td><td><code>avg_vruntime + min_vruntime</code></td><td>加权平均 vruntime，所有任务 vr 的"重心"</td></tr>
+<tr><td><strong>lag</strong>（滞后量）</td><td><code>lag = w × (V - vruntime)</code></td><td>任务"欠"了多少 CPU 时间（纳秒）。lag≥0 说明该跑了</td></tr>
+<tr><td><strong>eligible</strong>（合格）</td><td><code>V >= vruntime</code> 即 <code>lag >= 0</code></td><td>任务"欠 CPU"了，有资格被选。lag<0 说明已经跑超了</td></tr>
+<tr><td><strong>deadline</strong>（虚拟截止时间）</td><td><code>vruntime + slice × 1024 / weight</code></td><td>下一个时间片到期时刻。EEVDF 在 eligible 中选 deadline 最早的</td></tr>
+</tbody>
+</table>
+
+<p><strong>V 只包含 runnable 任务，不含睡眠任务。</strong>睡眠任务的 vruntime 在出队时从 <code>avg_vruntime</code> 中扣掉了（<a href="kernel/sched/fair.c#L857">fair.c:857</a>），唤醒时才重新加回来。V 是"当前所有 <strong>on_rq</strong> 任务的加权平均 vr"——正在跑的 curr（on_rq=1 但不在树上）会由 <code>avg_vruntime()</code> 手工补进计算。</p>
+
+<h5>Eligibility 判断（代码）</h5>
+
+<p><a href="kernel/sched/fair.c#L722">fair.c:722</a> 的 <code>vruntime_eligible()</code> 用交叉相乘避免除法：</p>
+
+<pre><code>// V >= v_i  ⇔  avg_vruntime >= (v_i - min_vruntime) × avg_load
+static int vruntime_eligible(struct cfs_rq *cfs_rq, u64 vruntime) {
+    s64 avg = cfs_rq->avg_vruntime;
+    long load = cfs_rq->avg_load;
+    return avg >= (s64)(vruntime - cfs_rq->min_vruntime) * load;
+}</code></pre>
+
+<h5>lag 详解：为什么乘 weight</h5>
+
+<p><strong>lag 的单位是真实纳秒，不是 vruntime。</strong>V 和 vruntime 都是虚拟时间——同一个差值（V-v=2ms）对 nice=-20(weight=88761) 和 nice=+19(weight=15) 含义完全不同：前者欠了 <code>2ms × 88761/1024 ≈ 173ms</code> 真实 CPU，后者只欠 <code>2ms × 15/1024 ≈ 0.03ms</code>。</p>
+
+<p>weight 是 vruntime→真实时间的换算系数——它就是 vruntime 公式的逆：</p>
+<pre><code>正变换: Δvruntime = Δt_real × 1024 / weight     (update_curr)
+逆变换: lag_real  = (V - vruntime) × weight / 1024   (lag 定义)</code></pre>
+
+<p><strong>eligibility 只看符号不看 magnitude。</strong> <code>V >= vruntime ⇔ lag >= 0</code>。因为 weight>0，符号判断不需要 weight——内核直接用 cross-multiply 检查 <code>avg_vruntime >= (vr - min_vr) × avg_load</code>。</p>
+
+<p>内核存储的是 <strong>虚拟 lag</strong> = <code>se->vlag = V - vruntime</code>（<a href="kernel/sched/fair.c#L699">fair.c:699</a>），不带 weight。只在需要换算真实时间的少数路径（<code>place_entity</code>、<code>reweight_entity</code>）才乘 weight。</p>
+
+<h5>eligible 详解：为什么需要这层过滤</h5>
+
+<p>如果只看 vruntime 最小（纯 CFS），一个刚跑完、vr 已经超过 V 的任务依然可能被选——因为它的 vr 可能仍然比其他睡眠任务小。eligible 保证 <strong>只有"欠了 CPU"的任务才有资格被选</strong>，防止已经跑超的 hog 型任务饿死其他任务。</p>
+
+<p>99% 情况下 leftmost 直接 eligible（因为 vr 最小自然最可能 < V），eligible 只过滤少数已经跑超的任务。</p>
+
+<h5>deadline 详解：为什么高 weight 任务 deadline 更紧</h5>
+
+<p><strong>定义</strong>：<code>deadline = vruntime + slice × 1024 / weight</code>。高 weight 任务 <code>1024/weight < 1</code> → slice 被缩小 → deadline 更靠近 vruntime → 即使刚被抢也能更快再次 eligible → 低延迟。</p>
+
+<p><strong>实例</strong>：两个任务都跑完 0.7ms 后被抢——nice=-5(weight=3121) 的 deadline 比 vr 多 <code>0.7×1024/3121≈0.23ms</code>，nice=+5(weight=335) 的 deadline 多 <code>0.7×1024/335≈2.14ms</code>。nice=-5 比 nice=+5 快 9 倍再次 eligible。</p>
+
+<h5>slice 详解：定义、赋值与更新</h5>
+
+<p><strong>slice 是 EEVDF 的"请求运行时间"（request time r_i），单位纳秒。</strong></p>
+
+<p>定义在 <a href="kernel/sched/fair.c#L79">fair.c:79</a>：</p>
+
+<pre><code>unsigned int sysctl_sched_base_slice = 700000ULL;  // 默认 0.7ms</code></pre>
+
+<p>赋值在 <a href="kernel/sched/fair.c#L1045-1057">fair.c:1051-1057</a> 的 <code>update_deadline()</code> 里：</p>
+
+<pre><code>/* For EEVDF the virtual time slope is determined by w_i (nice)
+   while the request time r_i is determined by sysctl_sched_base_slice. */
+if (!se->custom_slice)
+    se->slice = sysctl_sched_base_slice;             // ← 默认 0.7ms
+
+/* EEVDF: vd_i = ve_i + r_i / w_i */
+se->deadline = se->vruntime + calc_delta_fair(se->slice, se);
+//                            ↑ 0.7ms × 1024 / weight → 虚拟时间</code></pre>
+
+<p><strong>何时更新</strong>：每次任务成为 curr 时调 <code>set_next_entity() → update_deadline()</code>，slice 重置为默认值。tick 中 <code>entity_tick()</code> 检查 deadline 到了没有——到了就设 <code>NEED_RESCHED</code>。普通 CFS 任务 <strong>每次运行都从满 slice 开始</strong>。只有 sched_ext BPF 调度器才会通过 <code>custom_slice = 1</code> 设非默认值。</p>
+
+<p><strong>最小值保护</strong>：<a href="kernel/sched/fair.c#L781">fair.c:781</a> 的 <code>cfs_rq_min_slice()</code> 取树上所有 entity 的最小 slice 作为下限——防止任务数极多时 slice 被均分过细导致调度开销爆炸。</p>
+
+<h5>Deadline 更新</h5>
+
+<p>完整代码（<a href="kernel/sched/fair.c#L1041">fair.c:1041</a>）：</p>
+
+<pre><code>se->deadline = se->vruntime + calc_delta_fair(se->slice, se);
+//             vruntime     +  slice × 1024 / weight
+//                              ↑ slice 默认 0.7ms (sysctl_sched_base_slice)</code></pre>
+
+<p>高 weight 任务：<code>slice × 1024 / weight</code> 很小 → deadline 很紧密 → 即使被抢了也能很快再次 eligible → 调度延迟低。</p>
+
+<h5>大白话：什么叫"不 eligible"，EEVDF 怎么选任务</h5>
+
+<p><strong>"不 eligible"就是"你已经吃够了，不能再吃了"。</strong> 每个任务有一个"公平份额"的基准线 V（全局平均 vruntime）。如果你的 vruntime 比 V 小，说明你跑得比别人少——"CPU 欠你的"，eligible。如果你的 vruntime 比 V 大了，说明你已经跑超了——"你多吃了"，不 eligible，先让别人吃。</p>
+
+<p><strong>EEVDF 选任务 = 食堂打饭规则</strong>：先看谁还没吃饱（eligible），然后在没吃饱的人里选"下一顿时间最紧的"（deadline 最早）。如果没吃饱的人里最紧的就是你，你就被选。</p>
+
+<h5>具体例子：三个任务，V = 200</h5>
+
+<pre><code>红黑树上（按 vruntime 排）:
+  A: vr=100, weight=1024 (nice=0), deadline=100+0.7=100.7  ← 最左
+  B: vr=180, weight=335  (nice=+5), deadline=180+2.14=182.14
+  C: vr=250, weight=1024 (nice=0), deadline=250+0.7=250.7
+
+V = 200（全局加权平均）</code></pre>
+
+<p><strong>第一步：过滤 eligible。</strong> V=200，谁 <= V？ A(vr=100) ✅ B(vr=180) ✅ C(vr=250) ❌ 不 eligible！<br>
+C 已经被判定"吃多了"——它的 vr=250 > V=200，跑超了 fair share。EEVDF 不给它机会，直接排除。</p>
+
+<p><strong>第二步：在 eligible 里选 deadline 最早的。</strong> A deadline=100.7，B deadline=182.14。A 更早 → <strong>pick A。</strong></p>
+
+<p><strong>第三步：A 跑完 0.7ms。</strong></p>
+<pre><code>update_curr(A): vr = 100 + 0.7ms × 1024/1024 = 100.7
+重新入队: A 的 vr=100.7，还是 < V=200 → 依然 eligible！
+重新设 deadline: 100.7 + 0.7 = 101.4
+→ A 又是最左 + eligible → 又被 pick</code></pre>
+
+<p>A 连续被 pick 直到它的 vr 追上 V（大约要跑 (200-100)/1.0 ≈ 100ms 物理时间）。之后 A 的 vr > V 变成不 eligible → B 才有机会。</p>
+
+<p><strong>如果 A 是低 weight 任务（nice=+5, weight=335）</strong>：</p>
+<pre><code>update_curr(A): vr = 100 + 0.7ms × 1024/335 ≈ 100 + 2.14 = 102.14
+跑了 0.7ms，vr 涨了 2.14ms！
+→ 只需要跑 (200-100)/3.06 ≈ 33ms 物理时间，A 就不 eligible 了
+→ B 比在高 weight 情况下快得多得到 CPU</code></pre>
+
+<p><strong>对比结论</strong>：高 weight 任务（nice=-5）eligible 窗口极长，可以连跑很久；低 weight 任务（nice=+19）vr 涨得快，eligible 窗口很短，跑几下就让给别人。EEVDF 三层筛选（eligible → deadline → 树序）保证高低 weight 任务最终都拿到应有份额。</p>
+
+<h5>__pick_eevdf 算法</h5>
+
+<p><a href="kernel/sched/fair.c#L944">fair.c:944</a> 四步选择 eligible 且 deadline 最早的任务：</p>
 
 <pre><code>__pick_eevdf(cfs_rq):
-    1. 如果 leftmost 节点 eligible → 返回它 (deadline 最小)
-    2. 否则: 增广红黑树堆搜索
-       - 左子树有 eligible 节点 (min_vruntime ≤ V) → 递归左
-       - 当前节点 eligible → 返回 (最早 deadline)
-       - 否则 → 递归右
-    复杂度: O(log n)</code></pre>
+  ① 只有一个任务 → 直接返回
+  ② curr 不 eligible → 排除 curr
+  ③ leftmost 节点 eligible？→ 直接返回（它就是 deadline 最早的！）    ← 99% 情况
+  ④ 否则: 从根开始，利用增广 min_vruntime 剪枝的树搜索
+     - 左子树 min_vr ≤ V → 进左子树（eligible 存在）
+     - 否则检查当前节点 → eligible？返回
+     - 否则 → 进右子树
+  ⑤ 比较 best 和 curr，选 deadline 更早的</code></pre>
+
+<p><strong>复杂度</strong>：通常 O(1)（leftmost 直接 eligible），最坏 O(log n)。</p>
+	
+	<h5>EEVDF vs CFS 红黑树：同一个树，不同的排序键</h5>
+
+	<p><strong>CFS 和 EEVDF 都使用同一个 <code>cfs_rq->tasks_timeline</code> 红黑树，但排序的键完全不同。</strong>这不是实现细节——它从根本上改变了调度行为。</p>
+
+	<h6>排序键对比</h6>
+
+	<table>
+	<thead><tr><th></th><th>CFS（Linux 2.6 ~ 6.5）</th><th>EEVDF（Linux 6.6+）</th></tr></thead>
+	<tbody>
+	<tr><td><strong>排序键</strong></td><td><code>vruntime</code>（<code>entity_key()</code>）</td><td><code>deadline</code>（<code>entity_before()</code>）</td></tr>
+	<tr><td><strong>比较函数</strong></td><td><code>se->vruntime - cfs_rq->min_vruntime</code></td><td><code>a->deadline &lt; b->deadline</code>（<a href="kernel/sched/fair.c#L545">fair.c:545</a>）</td></tr>
+	<tr><td><strong>键的变化性</strong></td><td>每个 tick 都变化</td><td>入队时冻结，时间片用完才更新</td></tr>
+	<tr><td><strong>树节点位置</strong></td><td>随 vruntime 增长持续右移</td><td>固定不动，直到 <code>update_deadline()</code> 重新入队</td></tr>
+	</tbody>
+	</table>
+
+	<h6>代码证据</h6>
+
+	<p><strong>① 树插入时使用的比较函数</strong>（<a href="kernel/sched/fair.c#L848">fair.c:848</a>）：</p>
+
+	<pre><code>static void __enqueue_entity(struct cfs_rq *cfs_rq, struct sched_entity *se)
+	{
+	    avg_vruntime_add(cfs_rq, se);
+	    se->min_vruntime = se->vruntime;
+	    se->min_slice = se->slice;
+	    rb_add_augmented_cached(&se->run_node, &cfs_rq->tasks_timeline,
+	                            __entity_less, &min_vruntime_cb);
+	    //                      ^^^^^^^^^^^^^^
+	    //                      树排序用的比较函数
+	}
+
+	// __entity_less → entity_before（fair.c:796-798）
+	static inline bool __entity_less(struct rb_node *a, const struct rb_node *b)
+	{
+	    return entity_before(__node_2_se(a), __node_2_se(b));
+	}
+
+	// entity_before 比较的是 deadline，不是 vruntime（fair.c:545-553）
+	static inline bool entity_before(const struct sched_entity *a,
+	                                 const struct sched_entity *b)
+	{
+	    return (s64)(a->deadline - b->deadline) &lt; 0;  // ← 按 deadline 排序！
+	}</code></pre>
+
+	<p><strong>② deadline 在 tick 中冻结不变</strong>（<a href="kernel/sched/fair.c#L1227">fair.c:1227-1228</a>）：</p>
+
+	<pre><code>// update_curr() — 每个 tick 调用
+	curr->vruntime += calc_delta_fair(delta_exec, curr);   // vruntime 每 tick 都涨
+	resched = update_deadline(cfs_rq, curr);               // deadline 呢？
+
+	// update_deadline()（fair.c:1041-1044）
+	static bool update_deadline(struct cfs_rq *cfs_rq, struct sched_entity *se)
+	{
+	    if ((s64)(se->vruntime - se->deadline) &lt; 0)
+	        return false;   // ← vruntime 还没追上 deadline，直接返回！
+	                         //   deadline 不变，树位置不变
+	    se->deadline = se->vruntime + calc_delta_fair(se->slice, se);
+	    return true;         // 只有 vruntime >= deadline 时才更新+重调度
+	}</code></pre>
+
+	<p><strong>③ 增广信息：min_vruntime_cb 用于 eligibility 剪枝</strong>（<a href="kernel/sched/fair.c#L821">fair.c:821-843</a>）：</p>
+
+	<pre><code>// 每个树节点维护子树的最小 vruntime
+	static inline bool min_vruntime_update(struct sched_entity *se, bool exit)
+	{
+	    se->min_vruntime = se->vruntime;                    // 自己的 vr
+	    __min_vruntime_update(se, node->rb_right);          // min(自己, 右子树 min)
+	    __min_vruntime_update(se, node->rb_left);           // min(自己, 左子树 min)
+	    // ...
+	}
+
+	// 注册为增广回调
+	RB_DECLARE_CALLBACKS(static, min_vruntime_cb, struct sched_entity,
+	                     run_node, min_vruntime, min_vruntime_update);</code></pre>
+
+	<p>增广信息的用途：<code>__pick_eevdf()</code> 从根遍历时，看左子树的 <code>min_vruntime</code>——如果它 <= V（eligible），说明左子树里有 eligible 结点，进去找；否则左子树全部不 eligible，直接剪枝跳到右子树。正是因为树按 deadline 排 + 每个结点带 min_vruntime，才能在 O(log n) 内找到"最早 deadline 且 eligible"的结点。</p>
+
+	<h6>直观对比：同一棵树，完全不同的行为</h6>
+
+	<p>假设两个相同 weight 的任务 A(vr=1000) 和 B(vr=1100)：</p>
+
+	<pre><code>CFS 时代（树按 vruntime 排）：
+	  Tick 0: A(vr=1000) 最左 → A 运行
+	  Tick 1: A(vr=1200) → A 滑到 B 右边，B(vr=1100) 变最左 → 抢占！B 运行
+	  Tick 2: B(vr=1300) → B 滑到 A 右边，A(vr=1200) 变最左 → 抢占！A 运行
+	  → 每次 tick 任务在树中位置漂移，频繁 ping-pong 抢占
+
+	EEVDF（树按 deadline 排）：
+	  入队: A deadline=1700, B deadline=1800 → A 最左
+	  Tick 1: A vr=1200，deadline 仍是 1700 → A 仍在最左
+	  Tick 2: A vr=1400，deadline 仍是 1700 → A 仍在最左
+	  ...
+	  Tick N: A vr 涨到 1700 → update_deadline() 返回 true → 重调度
+	  → A 在树中位置纹丝不动，持有 CPU 直到时间片用完</code></pre>
+
+	<p><strong>关键洞察</strong>：<code>deadline = vruntime + slice×1024/weight</code> 看起来只是 vruntime 加了个常数，但 deadline 是<strong>入队时刻的快照</strong>——一旦设置就冻结，直到 vruntime 追上它为止。这使得 EEVDF 调度从 CFS 的"连续比较即时 vruntime"变成了<strong>"请求-完成"模型</strong>：任务发起请求（入队），获得 deadline 承诺，在承诺兑现前（vruntime 追上 deadline），谁也不能把它从 CPU 上踢下去。</p>
+
+	<p><strong>为什么 CFS 会 ping-pong</strong>：CFS 的树按 vruntime 排，而 vruntime 每个 tick 都在涨。任务 A 跑一个 tick，vr 涨了，在树中右移；如果 B 的 vr 比 A 小一点，B 就变成最左 → 立即抢占 A。下一个 tick B 涨了又右移，A 又变成最左。上下文切换开销大、cache 抖动严重。</p>
+
+	<p><strong>为什么 EEVDF 不会</strong>：EEVDF 的树按 deadline 排，而 deadline 冻结。A 入队时占住最左位置，整个时间片内不移动。B 即使 vr 更小，B 的 deadline（入队时设的）也比 A 的大（因为 A 先入队），所以 B 在 A 右边。加上 <code>protect_slice()</code>（vprot 保护），即使有新的 eligible 任务来了也不能抢。</p>
+
+	<h6>不同权重时的排序差异</h6>
+
+	<p>相同 weight 的任务，deadline 只是 vruntime 平移一个常量，排序结果 ≈ vruntime 排序。但<strong>不同 weight 时，deadline 偏移量完全不同</strong>：</p>
+
+	<pre><code>Task A: nice=-5, weight=3121, vr=100 → deadline = 100 + 700×1024/3121 = 100+230 = 330
+	Task B: nice=+5, weight=335,  vr=120 → deadline = 120 + 700×1024/335  = 120+2140 = 2260
+
+	CFS 排序（按 vr）：A(100) &lt; B(120) → A 先跑  ← 与 EEVDF 一致
+	但如果有 Task C: nice=+5, weight=335, vr=80：
+	CFS：C(80) &lt; A(100) → C 先跑               ← 低权重任务抢在高权重前面！
+	EEVDF：C deadline=80+2140=2220 > A(330) → A 先跑  ← 高权重任务优先</code></pre>
+
+	<p>EEVDF 通过 weight 影响 deadline 偏移量，确保高权重任务的 deadline 更紧密，在排序中获得优先。这在 CFS 中需要额外的启发式逻辑（WAKEUP_PREEMPT 等）来处理。</p>
+
+	<h5>三个调度类的数据结构对比</h5>
+
+	<p><strong>CFS/EEVDF、RT、Deadline 三个调度类各自维护自己的就绪队列，数据结构完全不同——不是因为喜好，而是因为各自的排序键性质决定了最优结构。</strong></p>
+
+	<h6>结构定义一览</h6>
+
+	<pre><code>// CFS/EEVDF — RB tree，按虚拟 deadline 排序 (sched.h:691)
+struct cfs_rq {
+    struct rb_root_cached  tasks_timeline;  // 增广 RB tree
+    // ...
+};
+
+// RT (SCHED_FIFO / SCHED_RR) — bitmap + 100 个链表头 (sched.h:308-311)
+struct rt_prio_array {
+    DECLARE_BITMAP(bitmap, MAX_RT_PRIO+1);  // 101 位的 bitmap
+    struct list_head queue[MAX_RT_PRIO];     // 每个优先级一个链表
+};
+struct rt_rq {
+    struct rt_prio_array  active;
+    // ...
+};
+
+// Deadline — RB tree，按墙上时间 deadline 排序 (sched.h:861-863)
+struct dl_rq {
+    /* runqueue is an rbtree, ordered by deadline */
+    struct rb_root_cached  root;
+    // ...
+};</code></pre>
+
+	<h6>对比总结</h6>
+
+	<table>
+	<thead><tr><th></th><th>CFS/EEVDF</th><th>RT (FIFO/RR)</th><th>Deadline</th></tr></thead>
+	<tbody>
+	<tr><td><strong>数据结构</strong></td><td>增广 RB tree <code>rb_root_cached</code></td><td><strong>Bitmap + 100 链表头</strong></td><td><code>rb_root_cached</code></td></tr>
+	<tr><td><strong>排序键</strong></td><td><code>deadline</code>（虚拟时间，64位）</td><td><strong>RT 优先级 0~99</strong></td><td>绝对 <code>deadline</code>（ns，64位）</td></tr>
+	<tr><td><strong>选取</strong></td><td>O(log n) eligibility 搜索</td><td><strong>O(1) bitmap find-first</strong></td><td>O(1) cached leftmost</td></tr>
+	<tr><td><strong>增广信息</strong></td><td><code>min_vruntime</code>（eligibility 剪枝）</td><td>无</td><td>无（不需要）</td></tr>
+	<tr><td><strong>FIFO vs RR</strong></td><td>EEVDF 统一处理</td><td>同一链表内：FIFO 永远在头，RR 用完片移到尾</td><td>EDF+CBS 统一处理</td></tr>
+	</tbody>
+	</table>
+
+	<h6>为什么 RT 不需要树</h6>
+
+	<p>RT 的排序键是 0~99 的整数优先级——bitmap 是最优结构，没有之一：</p>
+
+	<pre><code>// rt.c:1665-1681 — O(1) 选取
+static struct sched_rt_entity *pick_next_rt_entity(struct rt_rq *rt_rq)
+{
+    struct rt_prio_array *array = &rt_rq->active;
+    int idx;
+
+    idx = sched_find_first_bit(array->bitmap);  // 单条 CPU 指令 (ffs/fls)
+    //     ^^^^^^^^^^^^^^^^^^ 找到最高优先级的第一个非空队列
+
+    queue = array->queue + idx;                   // 拿到对应链表
+    next = list_entry(queue->next, ...);         // 取链表头
+    return next;
+}</code></pre>
+
+	<p><strong>为什么 bitmap 比树更快</strong>：101 位刚好放进两个 64 位字（或一个 SSE 寄存器），<code>sched_find_first_bit</code> 编译成 <code>bsf</code>/<code>ffs</code>/<code>fls</code> 等单条 CPU 指令，1 个 cycle。而 RB tree 的 O(log n) 操作需要多次指针追踪和缓存未命中。键空间是 100 个离散值，让 O(1) bitmap 成为可能。</p>
+
+	<h6>同一个优先级：FIFO vs RR 怎么分</h6>
+
+	<p>同一个 <code>queue[prio]</code> 链表里混着 FIFO 和 RR 任务，不分树：</p>
+
+	<pre><code>queue[prio=50]:  [FIFO_A] → [RR_B] → [FIFO_C]
+	                    ↑                
+	              每次 pick 都从链表头取
+
+	FIFO_A: 运行到主动 yield/睡眠 → 永远不会被移到尾部
+	RR_B:   用完 100ms 时间片 → requeue_task_rt() 把它移到链表尾
+	        [FIFO_A] → [FIFO_C] → [RR_B]
+	
+	→ RR 在同一优先级的 FIFO 任务之后轮流执行</code></pre>
+
+	<p>这是"FIFO 优先于 RR"规则的自然实现——FIFO 任务一直在链表头，RR 任务在尾部循环。</p>
+
+	<h6>三个调度类的 pick 路径</h6>
+
+	<pre><code>schedule() → __schedule() → pick_next_task():
+  // 按优先级从高到低尝试
+  pick_next_task_dl(rq)     → dl_rq->root           RB tree, 选最早墙上 deadline, O(1)
+  pick_next_task_rt(rq)     → rt_rq->active         bitmap + 链表, 选最高优先级, O(1)  
+  pick_next_task_fair(rq)   → cfs_rq->tasks_timeline RB tree, 选最早虚拟 deadline, O(log n)</code></pre>
+
+	<p><strong>为什么 EEVDF 和 Deadline 必须用树，RT 可以用 bitmap</strong>：排序键的基数决定了数据结构。RT 优先级是 0~99（100 个值），bitmap 直接映射。EEVDF 的虚拟 deadline 和 Deadline 的墙上 deadline 是 64 位整数，值域 2^64——bitmap 至少要 2^64 位 = 2 EB 内存，不可能。必须上 RB tree。</p>
+
+
+
+<h4>5. vruntime 与 EEVDF 的关系</h4>
+
+<p><strong>vruntime 是钟，EEVDF 是用这个钟做决策的规则。</strong></p>
+
+<table>
+<thead><tr><th></th><th>vruntime</th><th>EEVDF</th></tr></thead>
+<tbody>
+<tr><td><strong>本质</strong></td><td>一个变量，存在 <code>se->vruntime</code></td><td>一套算法，存在 <code>__pick_eevdf()</code> 里</td></tr>
+<tr><td><strong>更新时机</strong></td><td>每次 tick / enqueue / dequeue</td><td>每次 <code>schedule()</code> 调用</td></tr>
+<tr><td><strong>更新对象</strong></td><td>只更新 <code>rq->curr</code></td><td>检查树上所有 eligible 任务</td></tr>
+<tr><td><strong>做什么</strong></td><td>"任务跑了多久"</td><td>"该选谁跑"</td></tr>
+</tbody>
+</table>
+
+<p>EEVDF 的每个决策都完全依赖 vruntime：</p>
+<pre><code>eligibility:  V >= vruntime ?     ← 两者都是 vruntime（V 是加权平均）
+deadline:     vruntime + slice×1024/weight  ← 基于 vr 外推
+红黑树排序:   按 deadline 排列（<code>entity_before()</code>），不是 vruntime</code></pre>
+
+<p>EEVDF 没有自己的"钟"——它寄生在 vruntime 上。纯 CFS 只比 "谁的 vr 最小就选谁"；EEVDF 加了两层过滤：<strong>先看 eligible（vr 是否 ≤ V），再看 deadline 谁最紧</strong>。钟还是原来那个钟，用钟的方式更精细了。</p>
+	<p><strong>关键区别</strong>：tree 的排序键从 CFS 的 vruntime 换成了 deadline，而 deadline 是<strong>入队时的快照，在时间片内冻结不变</strong>。这使 EEVDF 从连续比较模型变成了请求-完成模型——详见上文"EEVDF vs CFS 红黑树"小节。</p>
 
 <h3 id="175-负载均衡与任务迁移机制">17.5 负载均衡与任务迁移机制</h3>
 
@@ -6713,6 +7160,255 @@ V = avg_vruntime(cfs_rq) = min_vruntime + Σ((v_i - v0) * w_i) / Σ(w_i)</code><
 <td>迁到大核</td>
 </tr>
 </tbody></table>
+
+	<h4>量化机制：负载均衡管道的五个量化步骤</h4>
+
+	<p>负载均衡的核心问题就是三个"怎么量化"：怎么量化一个组的"忙"、怎么量化一个 CPU 的"忙"、怎么量化"该迁移谁"。下面按管道顺序逐一拆解。</p>
+
+	<h5>第一步：量化指标定义——三个基础度量</h5>
+
+	<p>所有"比较谁更忙"的判断都基于以下三个指标：</p>
+
+	<table>
+	<thead><tr><th>指标</th><th>来源</th><th>含义</th></tr></thead>
+	<tbody>
+	<tr><td><strong>任务负载 task_h_load(p)</strong></td><td><code>p->se.avg.load_avg</code>（PELT，<a href="kernel/sched/fair.c#L9887">fair.c:9887</a>）</td><td>单任务的 PELT load_avg，反映该任务的"计算需求"，不是重量</td></tr>
+	<tr><td><strong>CPU 负载 cpu_load(rq)</strong></td><td><code>rq->cpu_load[0]</code>（指数加权历史）</td><td>该 CPU 上的累积负载（含历史平滑），用于负载比较</td></tr>
+	<tr><td><strong>CPU 容量 capacity_of(cpu)</strong></td><td><code>rq->cpu_capacity</code>（IRQ/RT/DL 缩放后）</td><td>CPU 可用于 CFS 的能力——大核 > 小核，被 RT/DL 占用就变小</td></tr>
+	<tr><td><strong>CPU 利用率 cpu_util_cfs(rq)</strong></td><td><code>rq->cfs.avg.util_avg</code>（PELT）</td><td>CFS 任务在该 CPU 上的即时利用率</td></tr>
+	<tr><td><strong>CPU 可运行数 cpu_runnable(rq)</strong></td><td><code>rq->cfs.avg.runnable_avg</code>（PELT）</td><td>该 CPU 上 CFS 任务可运行的时间占比（含等待）</td></tr>
+	</tbody>
+	</table>
+
+	<p><strong>关键公式</strong>——task_h_load() 在无 cgroup 时就是 PELT load_avg：</p>
+
+	<pre><code>// fair.c:9887 — 无 group scheduling 时
+	static unsigned long task_h_load(struct task_struct *p)
+	{
+	    return p->se.avg.load_avg;   // PELT 几何级数衰减的负载
+	}
+
+	// fair.c:9866 — 有 group scheduling 时，按 hierarchy 缩放
+	static unsigned long task_h_load(struct task_struct *p)
+	{
+	    struct cfs_rq *cfs_rq = task_cfs_rq(p);
+	    update_cfs_rq_h_load(cfs_rq);
+	    return div64_ul(p->se.avg.load_avg * cfs_rq->h_load,
+	                    cfs_rq_load_avg(cfs_rq) + 1);
+	    // p 的负载 × (分组层级权重比例)
+	}</code></pre>
+
+	<h5>第二步：量化最繁忙组——group_classify + update_sd_pick_busiest</h5>
+
+	<p><strong>每个 sched_group 先累加其成员 CPU 的统计量</strong>（<a href="kernel/sched/fair.c#L10330">fair.c:10330</a> 开始），得到 <code>sg_lb_stats</code>：</p>
+
+	<pre><code>struct sg_lb_stats {
+	    unsigned long avg_load;              // 组内平均 CPU 负载
+	    unsigned long group_load;            // 组内 CPU 负载总和
+	    unsigned long group_capacity;        // 组内 CPU 容量总和
+	    unsigned long group_util;            // 组内 CPU 利用率总和
+	    unsigned long group_runnable;        // 组内可运行时间总和
+	    unsigned int  sum_nr_running;        // 组内所有运行中的任务数
+	    unsigned int  sum_h_nr_running;      // 组内 CFS 运行中的任务数
+	    unsigned int  idle_cpus;             // 组内空闲 CPU 数
+	    unsigned int  group_weight;          // 组中 CPU 个数
+	    enum group_type group_type;          // ← 组分类结果（关键！）
+	    // ...
+	};</code></pre>
+
+	<p><strong>然后 group_classify() 给每个组打标签</strong>（<a href="kernel/sched/fair.c#L10177">fair.c:10177</a>），这是选择最繁忙组的核心算法：</p>
+
+	<pre><code>// group_type 枚举，数值越大优先级越高（fair.c:9165-9198）
+	enum group_type {
+	    group_has_spare  = 0,   // 有空闲容量——"最不忙"
+	    group_fully_busy,       // 刚好满——"正常"
+	    group_misfit_task,      // 有任务不 fit CPU 容量——"大小核异构"
+	    group_smt_balance,      // SMT 兄弟忙——"超线程相关"
+	    group_asym_packing,     // 需要迁到高优先级 CPU——"非对称"
+	    group_imbalanced,       // affinity 导致的已确认不均衡
+	    group_overloaded,       // 过载——"最忙"
+	};
+
+	// group_classify()（fair.c:10177-10201）——量化决策树
+	group_classify(imbalance_pct, group, sgs):
+	    if (group_is_overloaded(imbalance_pct, sgs))
+	        return group_overloaded;     // ① util 或 runnable 超限
+	    if (sg_imbalanced(group))
+	        return group_imbalanced;     // ② affinity 不均衡
+	    if (sgs->group_asym_packing)
+	        return group_asym_packing;   // ③ 非对称 packing
+	    if (sgs->group_smt_balance)
+	        return group_smt_balance;    // ④ SMT 平衡需求
+	    if (sgs->group_misfit_task_load)
+	        return group_misfit_task;    // ⑤ misfit 任务
+	    if (!group_has_capacity(imbalance_pct, sgs))
+	        return group_fully_busy;     // ⑥ 刚好满
+	    return group_has_spare;          // ⑦ 有余量</code></pre>
+
+	<p><strong>判定 overloaded 的条件</strong>（<a href="kernel/sched/fair.c#L10160">fair.c:10160</a>）：</p>
+
+	<pre><code>group_is_overloaded(imbalance_pct, sgs):
+	    ① sum_nr_running <= group_weight  → 不是 overloaded（任务数没超 CPU 数）
+	    ② group_capacity * 100 < group_util * imbalance_pct  → overloaded（利用率超标）
+	    ③ group_capacity * imbalance_pct < group_runnable * 100 → overloaded（可运行时间超标）</code></pre>
+
+	<p><strong>update_sd_pick_busiest() 选出最忙的组</strong>（<a href="kernel/sched/fair.c#L10447">fair.c:10447</a>）：</p>
+
+	<pre><code>update_sd_pick_busiest(env, sds, sg, sgs):
+	    // ① 先看 group_type 枚举值——数值越大越忙
+	    if (sgs->group_type > busiest->group_type)
+	        return true;   // sg 更忙
+	    if (sgs->group_type < busiest->group_type)
+	        return false;  // sg 不更忙
+
+	    // ② 同类型，按类型的量化指标比较：
+	    switch (sgs->group_type) {
+	    case group_overloaded:
+	        return sgs->avg_load > busiest->avg_load;          // 负载高的更忙
+	    case group_misfit_task:
+	        return sgs->group_misfit_task_load >
+	               busiest->group_misfit_task_load;             // misfit 负载大的更忙
+	    case group_fully_busy:
+	        return sgs->avg_load > busiest->avg_load;          // 负载高的更忙
+	    case group_has_spare:
+	        return sgs->avg_load > busiest->avg_load;          // 同上
+	    }</code></pre>
+
+	<p><strong>一句话</strong>：先按 group_type 排序（7 级），同类型再按 avg_load / misfit_task_load 比大小。</p>
+
+	<h5>第三步：量化最繁忙 CPU——sched_balance_find_src_rq</h5>
+
+	<p>选定最忙 group 后，<strong>在组内所有 CPU 中找最忙的那个</strong>（<a href="kernel/sched/fair.c#L11433">fair.c:11433</a>），策略取决于 migration_type：</p>
+
+	<pre><code>sched_balance_find_src_rq(env, group):          // 在组内遍历每个 CPU
+	    for_each_cpu_and(i, sched_group_span(group), env->cpus):
+	        rq = cpu_rq(i);
+	        nr_running = rq->cfs.h_nr_runnable;
+
+	        switch (env->migration_type) {
+	        case migrate_load:
+	            // ★ 量化标准: 负载密度 = load / capacity ——找密度最大的
+	            load = cpu_load(rq);
+	            if (load * busiest_capacity > busiest_load * capacity)
+	                busiest = rq;   // 交叉相乘避免除法
+
+	        case migrate_util:
+	            // ★ 量化标准: 利用率 / 容量 —— 找利用率压力最大的
+	            util = cpu_util_cfs(i);
+	            if (util * busiest_capacity > busiest_util * capacity)
+	                busiest = rq;
+
+	        case migrate_task:
+	            // ★ 量化标准: 运行任务数 —— 找任务最多的
+	            if (nr_running > busiest_nr)
+	                busiest = rq;
+
+	        case migrate_misfit:
+	            // ★ 量化标准: misfit 任务负载 —— 找 misfit 负载最大的
+	            if (rq->misfit_task_load > busiest_load)
+	                busiest = rq;
+	        }</code></pre>
+
+	<p><strong>关键：</strong>migrate_load 情况下用交叉相乘 <code>load_i × capacity_j > load_j × capacity_i</code>，等价于找 <code>max(load_i / capacity_i)</code>——选负载密度最高的 CPU，而不是绝对负载最高的。这防止把任务从小核迁到大核后反而更糟（小核容量小所以负载密度高）。</p>
+
+	<h5>第四步：量化迁移的量——calculate_imbalance</h5>
+
+	<p>找到 busiest group + busiest CPU 后，<strong>计算需要迁移多少</strong>（<a href="kernel/sched/fair.c#L11093">fair.c:11093</a>）：</p>
+
+	<pre><code>calculate_imbalance(env, sds):
+	    switch (busiest->group_type) {
+	    case group_misfit_task:
+	        env->imbalance = 1;                       // 迁 1 个 misfit 任务
+
+	    case group_asym_packing:
+	        env->imbalance = busiest->sum_h_nr_running; // 迁全部
+
+	    case group_smt_balance:
+	        env->imbalance = 1;                       // 迁 1 个缓解 SMT 竞争
+
+	    case group_imbalanced:
+	        env->imbalance = 1;                       // 迁 1 个破局
+
+	    // overloaded / fully_busy 时的核心计算:
+	    case group_overloaded: case group_fully_busy:
+	        if (local->group_type == group_has_spare):
+	            env->imbalance = max(local->group_capacity, local->group_util)
+	                           - local->group_util;     // 填满本地空闲容量
+	        else:
+	            env->imbalance = (busiest->avg_load -
+	                              sds->avg_load) * busiest->group_capacity
+	                           / SCHED_CAPACITY_SCALE;  // 把 busiest 的负载压到平均线</code></pre>
+
+	<h5>第五步：量化迁移哪个任务——detach_tasks + can_migrate_task</h5>
+
+	<p><strong>选定了 busiest CPU 和 imbalance 量后，从该 CPU 的任务链表尾部开始摘任务</strong>（<a href="kernel/sched/fair.c#L9537">fair.c:9537</a>）：</p>
+
+	<pre><code>detach_tasks(env):
+	    while (!list_empty(busiest_rq->cfs_tasks)) {
+	        // 从链表尾部取（公平性：尾部任务通常更 "new"、run 得少）
+	        p = list_last_entry(tasks, struct task_struct, se.group_node);
+
+	        // ① 先过 can_migrate_task() 过滤器
+	        if (!can_migrate_task(p, env))
+	            goto next;
+
+	        // ② 根据 migration_type 量化该任务的迁移价值
+	        switch (env->migration_type) {
+	        case migrate_load:
+	            load = task_h_load(p);         // ← PELT load_avg
+	            if (load > env->imbalance)     // 单个任务负载超过剩余 imbalance
+	                goto next;                 // 跳过——不迁移太大的任务
+	            env->imbalance -= load;        // 核减 imbalance
+	            break;
+
+	        case migrate_util:
+	            util = task_util_est(p);       // ← estimated utilization
+	            if (util > env->imbalance)
+	                goto next;
+	            env->imbalance -= util;
+	            break;
+
+	        case migrate_task:
+	            env->imbalance--;              // 按任务个数减
+	            break;
+	        }
+
+	        detach_task(p, env);               // 从 src_rq 摘下
+	        detached++;
+	    }
+
+	can_migrate_task(p, env) 过滤条件（fair.c:9373）:
+	    ① delayed dequeued          → 不迁（除非 migrate_load 模式）
+	    ② dst_rq throttled          → 不迁
+	    ③ dst_cpu 不在 cpus_ptr 中  → 不迁，记 LBF_SOME_PINNED
+	    ④ ENQUEUE_INITIAL + dst 不 eligible → 软限制（nr_balance_failed=0 时不迁）
+	    ⑤ per-CPU kthread            → 不迁
+	    ⑥ task_is_blocked            → 不迁
+	    ⑦ cache-hot（迁移会丢 cache） → 降级判断（idle CPU 才迁 hot task）
+	    → 全部通过 → 可以迁移</code></pre>
+
+	<p><strong>为什么从链表尾部取任务</strong>：链表尾部是最近入队的任务（新唤醒/新创建的），它们的 cache 通常还没热起来（cache-cold），迁移代价小。头部的任务 run 得久，cache 热，迁移不划算。</p>
+
+	<h4>完整管道一图流</h4>
+
+	<pre><code>load_balance()
+	  │
+	  ├─ ① sched_balance_find_src_group()
+	  │     update_sd_lb_stats()                      ← 遍历 domain 内所有 group
+	  │       └─ update_sg_lb_stats()                 ← 累加每个 CPU 的 load/util/capacity
+	  │            └─ group_classify(sgs)             ← 给每个 group 打标签
+	  │     update_sd_pick_busiest()                  ← 按 group_type > avg_load 选最忙 group
+	  │     calculate_imbalance()                     ← 计算要迁多少
+	  │
+	  ├─ ② sched_balance_find_src_rq()                ← 在 busiest group 内找最忙 CPU
+	  │     按 load/capacity 或 util/capacity 或 nr_running 密度比较
+	  │
+	  ├─ ③ detach_tasks(env)                          ← 从 busiest CPU 摘任务
+	  │     can_migrate_task() × N                    ← 每个任务过 7 道过滤
+	  │     按 task_h_load / task_util_est 核减 imbalance
+	  │
+	  └─ ④ attach_tasks(env)                          ← 把摘下的任务挂到 dst_rq</code></pre>
+
 
 <h3 id="176-pelt-负载追踪算法原理">17.6 PELT 负载追踪算法原理</h3>
 
@@ -8474,9 +9170,57 @@ cyclictest -a 6 -t1 -p 90 -n -i 100 -l 100000
             }
         }
     });
+
+    // Auto-build TOC from actual h2/h3 headings
+    (function() {
+        // Ensure all headings have IDs
+        document.querySelectorAll('h2, h3, h4').forEach(function(el) {
+            if (!el.id) { var s = makeSlug(el.textContent); if (s) el.id = s; }
+        });
+        var tocTree = document.querySelector('.toc-tree');
+        if (!tocTree) return;
+        tocTree.innerHTML = '';
+        var ul = document.createElement('ul');
+        var headings = document.querySelectorAll('h2, h3');
+        var currentChapter = null;
+        headings.forEach(function(h) {
+            if (!h.id) return;
+            if (h.tagName === 'H2') {
+                var li = document.createElement('li');
+                li.className = 'toc-chapter expanded';
+                var a = document.createElement('a');
+                a.href = '#' + h.id;
+                a.textContent = h.textContent;
+                a.style.cssText = 'display:block;padding:5px 14px;color:#3D3429;text-decoration:none;font-weight:600;';
+                li.innerHTML = '<div class="toc-chapter-header"><span class="arrow">▶</span></div>';
+                li.querySelector('.toc-chapter-header').appendChild(a);
+                var sub = document.createElement('ul');
+                sub.className = 'toc-chapter-items';
+                sub.style.display = 'block';
+                li.appendChild(sub);
+                li.querySelector('.toc-chapter-header').addEventListener('click', function(e) {
+                    li.classList.toggle('expanded');
+                });
+                ul.appendChild(li);
+                currentChapter = sub;
+            } else if (h.tagName === 'H3' && currentChapter) {
+                var a3 = document.createElement('a');
+                a3.href = '#' + h.id;
+                a3.textContent = h.textContent;
+                currentChapter.appendChild(a3);
+            }
+        });
+        tocTree.appendChild(ul);
+        // Re-collect for scroll-spy
+        tocLinks = document.querySelectorAll('.toc-tree a[href^="#"]');
+        chapters = document.querySelectorAll('.toc-chapter');
+        var newHeadingIds = [];
+        tocLinks.forEach(function(a) { var h = a.getAttribute('href'); if (h) newHeadingIds.push(h.slice(1)); });
+        headingIds = newHeadingIds;
+    })();
 })();
 </script>
-<h2 id="19-调度执行流深度解析">19. 调度执行流深度解析（2025-07 讨论总结）</h2>
+<h2 id="a-调度执行流深度解析">附录A. 调度执行流深度解析（讨论总结）</h2>
 
 <blockquote>以下内容来自对 <code>__schedule()</code> 及其周边函数的逐行讨论，覆盖从"谁触发调度"到"任务怎么被切走"的完整链路。</blockquote>
 
