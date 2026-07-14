@@ -9304,6 +9304,413 @@ cat /proc/pressure/cpu</code></pre>
 <li>调整: <code>echo 300000 > /sys/kernel/debug/sched/base_slice_ns</code></li>
 </ul>
 
+<h3 id="215a-调度延迟深度诊断判断标准与实战分析">21.5+ 补充：调度延迟深度诊断 —— 判断标准与实战分析</h3>
+
+<p>前面的 Q13 覆盖了测量工具和优化手段，但一个更根本的问题经常被忽略：<strong>什么数据才算"有调度延迟问题"？</strong>调度延迟（scheduling delay）是指任务从<strong>被唤醒进入就绪态</strong>到<strong>真正获得 CPU 开始执行</strong>之间的等待时间。这个延迟在多任务系统中<strong>必然存在</strong>——除非每个任务都有自己独占的 CPU 且该 CPU 始终空闲。</p>
+
+<h4>为什么调度延迟必然存在</h4>
+
+<p>以单核为例，当任务 B 被中断唤醒时，CPU 上任务 A 正在运行：</p>
+
+<pre><code>
+时刻 T+0.000:  任务 A 正在跑 ──────────────────────────────┐
+时刻 T+0.050:  任务 B 被中断唤醒，进入 runqueue 就绪态       │
+时刻 T+0.050~  ┌─ 任务 B 等待 ─┐                            │
+时刻 T+0.100:    内核 tick 中断，判断是否该切换               │ 这 ~0.077ms
+时刻 T+0.127:    上下文切换 A→B，B 开始跑 ─┘                 │ 就是 B 的调度延迟
+</code></pre>
+
+<p>B 等的那段时间 <strong>不是 bug</strong>——A 的时间片还没用完，内核不忍心立刻把 A 踢下去（这会破坏缓存局部性和吞吐量）。零延迟的世界只存在于"任务数 ≤ CPU 数且无人关中断"的假设中。</p>
+
+<h4>延迟的三个来源，只有最后一种是不正常的</h4>
+
+<table>
+<thead><tr><th>来源</th><th>机制</th><th>正常？</th><th>典型表现</th></tr></thead>
+<tbody>
+<tr><td><strong>时间片竞争</strong></td><td>另一个 CFS 任务正在运行，还没用完它的时间片</td><td>✅ 完全正常</td><td>max &lt; 5ms，通常 &lt; 1ms</td></tr>
+<tr><td><strong>优先级抢占</strong></td><td>RT/DL 任务还在跑，CFS 任务不能抢占</td><td>✅ 符合设计</td><td>CFS 任务等 RT 任务让出 CPU</td></tr>
+<tr><td><strong>异常阻塞</strong></td><td>长时间关中断、关抢占、持有自旋锁、cgroup 限流、NUMA 均衡 bug</td><td>❌ 需要排查</td><td>max 突然飙到几十甚至上百 ms，avg 和 max 差 2~3 个数量级</td></tr>
+</tbody>
+</table>
+
+<h4>判断"有调度延迟问题"的四个维度</h4>
+
+<h5>维度一：avg vs max 的比值——延迟的"健康度"</h5>
+
+<p>这是最直观的指标：</p>
+
+<table>
+<thead><tr><th>判断</th><th>avg</th><th>max</th><th>max/avg</th><th>解读</th></tr></thead>
+<tbody>
+<tr style="background:#e8f5e9"><td>✅ 健康</td><td>0.05ms</td><td>0.8ms</td><td>~16x</td><td>偶发正常抖动</td></tr>
+<tr style="background:#fff3e0"><td>⚠️ 可疑</td><td>0.05ms</td><td>50ms</td><td>~1000x</td><td>有偶发性长时间阻塞</td></tr>
+<tr style="background:#ffebee"><td>❌ 异常</td><td>0.05ms</td><td>800ms</td><td>~16000x</td><td>严重问题，需立即排查</td></tr>
+</tbody>
+</table>
+
+<p><strong>核心法则</strong>：如果某个任务的 max 比 avg 大几百倍以上，说明存在偶发性长时间阻塞，值得深入排查。</p>
+
+<h5>维度二：按任务类型设定经验阈值</h5>
+
+<table>
+<thead><tr><th>任务类型</th><th>正常 avg</th><th>正常 max</th><th>报警阈值</th></tr></thead>
+<tbody>
+<tr><td>交互式用户态进程（shell / editor / browser UI 线程）</td><td>&lt; 0.5ms</td><td>&lt; 10ms</td><td>max &gt; 20ms 用户可感知卡顿</td></tr>
+<tr><td>音频/视频实时线程</td><td>&lt; 0.1ms</td><td>&lt; 3ms</td><td>max &gt; 5ms 会出现爆音/掉帧</td></tr>
+<tr><td>普通后台守护进程</td><td>&lt; 1ms</td><td>&lt; 10ms</td><td>avg &gt; 2ms 说明系统整体负载偏高</td></tr>
+<tr><td>kworker（内核工作队列）</td><td>&lt; 0.1ms</td><td>&lt; 5ms</td><td>max &gt; 20ms 可能有驱动关中断问题</td></tr>
+<tr><td>RT 任务 (SCHED_FIFO/SCHED_RR)</td><td>&lt; 0.05ms</td><td>&lt; 1ms</td><td>max &gt; 2ms 说明有更高优先级 RT 任务或关中断</td></tr>
+</tbody>
+</table>
+
+<h5>维度三：同一个 CPU 上所有任务都慢——过载信号</h5>
+
+<p>如果某个 CPU 上的任务延迟集体偏高，说明<strong>负载均衡没有把任务搬走</strong>，该 CPU 过载了：</p>
+
+<pre><code>
+CPU0:  avg 0.04ms  ✅
+CPU1:  avg 0.03ms  ✅
+CPU2:  avg 2.10ms  ❌  ← 这个 CPU 上所有任务都很慢
+CPU3:  avg 0.05ms  ✅
+</code></pre>
+
+<p>验证命令：</p>
+<pre><code class="language-bash"># 看每个 CPU 上 runqueue 的深度
+cat /proc/sched_debug | grep -A 5 'cpu#'
+
+# 用 bpftrace 看 runqueue 入队分布
+sudo bpftrace -e 'kprobe:enqueue_task { @depth[args->rq->cpu] = count(); }'</code></pre>
+
+<h5>维度四：具体异常案例识别</h5>
+
+<p><strong>案例 1：关中断导致的尖刺</strong></p>
+
+<pre><code>
+kworker/0:2   | 0.7ms | 42切换 | avg:0.05ms | max:83.000ms  ← ❌
+kworker/0:0   | 1.2ms | 30切换 | avg:0.06ms | max:78.000ms  ← ❌ 同一个CPU
+其他任务       | ..... | ...... | avg:0.04ms | max: 1.500ms  ← ✅
+</code></pre>
+
+<p>→ CPU0 上 kworker 间歇性被卡 80ms，大概率是某个驱动在 CPU0 上关了中断做耗时操作（如 SPI flash 擦写、大段 memcpy while holding spin_lock_irqsave）。</p>
+
+<p><strong>案例 2：RT throttle</strong></p>
+
+<pre><code>
+audio_thread:1234 | 5.0ms | 500切换 | avg:2.30ms | max:48.000ms  ← ❌
+</code></pre>
+
+<p>→ audio 线程延迟异常，可能是 RT throttle 限制让它被强制让出 CPU。检查 <code>/proc/sys/kernel/sched_rt_runtime_us</code>。</p>
+
+<p><strong>案例 3：cgroup cpu.max 限制导致的人造延迟</strong></p>
+
+<pre><code>
+container_app:5678| 10.0ms| 200切换 | avg:15.00ms| max:100.000ms  ← ❌
+其他任务          | ..... | ......   | avg:0.04ms | max:  1.200ms  ← ✅
+</code></pre>
+
+<p>→ 同一个系统的其他任务正常，就这个任务延迟高——典型 cgroup <code>cpu.max</code> 限制过紧，任务被 CFS bandwidth control 强制 throttled。</p>
+
+<p><strong>案例 4：NUMA 负载均衡异常</strong></p>
+
+<pre><code class="language-bash">cat /proc/schedstat
+# CPU0 domain0 ... lb_count:5000 lb_failed:3000 ...  ← 60% 均衡失败
+# CPU0 domain1 ... lb_count:200  lb_failed:180  ...   ← 90% 均衡失败！</code></pre>
+
+<p>→ 跨 NUMA 域均衡大量失败，可能是所有任务都被 pin 在特定 CPU 上（taskset/cpuset），调度器反复尝试搬任务但搬不动，额外消耗 CPU 并恶化延迟。</p>
+
+<h4>perf sched latency 输出解读示例</h4>
+
+<p>一份健康系统的典型输出：</p>
+
+<pre><code>Task                  |   Runtime ms  | Switches | Avg delay ms    | Max delay ms    |
+----------------------------------------------------------------------------
+kworker/0:2-mm_:77450 |      0.755 ms |       42 | avg:   0.054 ms | max:   1.181 ms |
+claude:(2)            |     46.569 ms |      225 | avg:   0.025 ms | max:   0.058 ms |
+HeapHelper:(3)        |     14.854 ms |      224 | avg:   0.029 ms | max:   0.062 ms |
+rcu_preempt:17        |      2.421 ms |      116 | avg:   0.024 ms | max:   0.062 ms |</code></pre>
+
+<p>解读要点：</p>
+<ul>
+<li><strong>kworker max=1.18ms</strong>：最大延迟出现在工作队列线程上，这是<strong>合理的</strong>——kworker 优先级低于交互式任务，等 1ms 完全正常</li>
+<li><strong>claude 切换225次但延迟极低</strong>：典型 IO 密集型进程，频繁主动阻塞等待 stdin/网络，不是被抢占</li>
+<li><strong>max/avg 比值</strong>：普遍在 10~30x，没有任何异常尖刺</li>
+<li><strong>没有任何任务的 max 超过 2ms</strong>：教科书级别的健康系统</li>
+</ul>
+
+<p>对比——如果出现这样的数据就是问题：</p>
+
+<pre><code>claude:201229   | 46.5ms | 225切换 | avg:0.025ms | max:487.000ms  ← ❌ max 是 avg 的 20000 倍！
+audio:1234      |  5.0ms | 500切换 | avg:2.30ms  | max:48.000ms   ← ❌ avg 本身就已经偏高</code></pre>
+
+<h4>快速自查脚本</h4>
+
+<p>录制 10 秒数据并自动标记异常：</p>
+
+<pre><code class="language-bash">sudo perf sched record -- sleep 10
+sudo perf sched latency -s max 2>/dev/null | awk '
+NR <= 2 { print; next }
+{
+    if ($0 ~ /max:.*ms/) {
+        match($0, /max:[[:space:]]*([0-9.]+) ms/, m)
+        max_val = m[1]
+        if (max_val > 10) {
+            print "⚠️  " $0 "  ← max > 10ms"
+        } else if (max_val > 5) {
+            print "👀 " $0 "  ← max > 5ms"
+        }
+    }
+}'</code></pre>
+
+<h4>三条黄金法则总结</h4>
+
+<table>
+<thead><tr><th>#</th><th>法则</th><th>触发条件</th><th>排查方向</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>max/avg &gt; 500x</td><td>有偶发性长时间阻塞</td><td>关中断、自旋锁、cgroup throttle</td></tr>
+<tr><td>2</td><td>avg &gt; 1ms 且是用户交互任务</td><td>系统整体负载偏高</td><td>CPU 过载、负载均衡失效、任务 pin 错</td></tr>
+<tr><td>3</td><td>同类任务某 CPU 上延迟集体高</td><td>负载不均 / affinity 问题</td><td>检查 cpuset、isolcpus、load_balance 统计</td></tr>
+</tbody>
+</table>
+
+<p>调度延迟不是问题，调度延迟的<strong>异常尖刺</strong>才是问题。一台健康的机器，max 通常在 1~5ms，avg 在 0.01~0.1ms。如果所有指标都在这些阈值以内，调度器就在正常工作——不需要优化。</p>
+
+
+<h3 id="215b-抢占调度机制深度解析">21.5++ 补充：抢占调度机制深度解析 —— 从 TIF_NEED_RESCHED 到 context_switch</h3>
+
+<p>前面讨论了调度延迟的判断标准，本节回到最根本的问题：<strong>调度到底是怎么被触发的？</strong>一个正在 CPU 上跑的任务，凭什么被换下来？本节用大白话和源码两条线讲清楚。</p>
+
+<h4>大白话版：一句话理解抢占</h4>
+
+<p><strong>CPU 正在跑任务 A，内核觉得 B 更应该跑，就给 A 贴个"你该让位了"的标签。A 不会立刻停——它继续跑，直到要返回用户态的时候才检查标签、主动走进 schedule() 把 CPU 让给 B。如果 B 在另一个 CPU 上，还要额外发一个 IPI 中断通知对面。</strong></p>
+
+<h4>日常类比</h4>
+
+<pre><code>
+你在便利店排队结账（CPU 上运行的当前任务）
+VIP 客户进来了（高优先级任务被唤醒）
+
+店员不能一巴掌把你拍开，而是：
+  1. 在你推车上贴个"让 VIP 先走"的便签  ← set_ti_thread_flag(TIF_NEED_RESCHED)
+  2. 你结完当前这件商品                     ← 跑完当前时间片
+  3. 你到了收银台刷卡的时候                 ← 返回用户态的检查点
+  4. 看到便签，主动让到一边                 ← schedule() → 上下文切换到 VIP
+
+如果店员直接把你推开                       ← 这就是 PREEMPT_RT 的抢占
+（普通 Linux 不会这么做，PREEMPT_RT 会）
+</code></pre>
+
+<h4>核心哲学：不硬抢，协商式让位</h4>
+
+<p>抢占 = "你下来，我上去"。A 下来、B 上去，这个结果没变。但 Linux 把"抢"变成了<strong>"被通知后自己主动让"</strong>——<code>TIF_NEED_RESCHED</code> 是协商机制，不是强制打断。贴标签的人只负责贴，被贴的人在自己方便的时候（返回用户态 / 抢占点）主动让。唯一的强制手段来自远程 IPI——但 IPI 也只是告诉对方"该看一眼标签了"，不是直接抢走 CPU。</p>
+
+<h4>抢占的完整链条：不是赶人，是替换</h4>
+
+<p><code>resched_curr</code> 只管标"A 该下来了"，不指定"谁上去"。但"谁上去"在贴标签之前就已经决定了——B 已经被 <code>activate_task</code> 放进了 runqueue。A 走进 <code>schedule()</code> 之后，<code>pick_next_task</code> 按优先级从高到低遍历调度类（DL → RT → CFS），B 必然被选中。抢占的本质是<strong>替换</strong>，不是单纯赶人。</p>
+
+<h4>两段式设计：立牌子 vs 看牌子</h4>
+
+<p>整个抢占机制分成<strong>异步协作</strong>的两段：</p>
+
+<table>
+<thead><tr><th>阶段</th><th>谁执行</th><th>做什么</th><th>核心函数</th></tr></thead>
+<tbody>
+<tr><td><strong>立牌子</strong></td><td>触发者（可能在另一个 CPU 上）</td><td>给当前任务 A 的 <code>thread_info.flags</code> 设 <code>TIF_NEED_RESCHED</code> 位</td><td><code>resched_curr()</code></td></tr>
+<tr><td><strong>看牌子</strong></td><td>被贴标签的任务 A 自己</td><td>在从中断/异常/系统调用返回时检查 flag，自己走进 <code>schedule()</code></td><td><code>exit_to_user_mode_loop()</code> / <code>irqentry_exit_cond_resched()</code></td></tr>
+</tbody>
+</table>
+
+<h5>第一段：立牌子 — resched_curr()</h5>
+
+<p>实现在 <code>kernel/sched/core.c</code>：</p>
+
+<pre><code>
+// core.c:1098-1132
+static void __resched_curr(struct rq *rq, int tif)
+{
+    struct task_struct *curr = rq->curr;
+    struct thread_info *cti = task_thread_info(curr);  // 当前任务的 thread_info
+    int cpu = cpu_of(rq);
+
+    if (cpu == smp_processor_id()) {
+        // ★ 本地CPU：直接写当前任务的 thread_info->flags
+        set_ti_thread_flag(cti, tif);       // cti->flags |= (1 &lt;&lt; TIF_NEED_RESCHED)
+        if (tif == TIF_NEED_RESCHED)
+            set_preempt_need_resched();
+    } else {
+        // ★ 远程CPU：原子操作 + 必要时发送 IPI 打断目标CPU
+        if (set_nr_and_not_polling(cti, tif)) {
+            smp_send_reschedule(cpu);       // 发送 SGI 核间中断
+        }
+    }
+}
+</code></pre>
+
+<p><strong>谁在调用 resched_curr()？</strong></p>
+
+<table>
+<thead><tr><th>场景</th><th>调用路径</th><th>原因</th></tr></thead>
+<tbody>
+<tr><td>高优先级任务被唤醒</td><td><code>try_to_wake_up()</code> → <code>check_preempt_curr()</code> → <code>resched_curr()</code></td><td>刚醒的 RT 任务比当前 CFS 任务优先级高</td></tr>
+<tr><td>CFS tick 时间片到</td><td><code>scheduler_tick()</code> → <code>resched_curr_lazy()</code></td><td>当前任务 vruntime 已超过阈值</td></tr>
+<tr><td>负载均衡</td><td><code>pull_rt_task()</code> 等</td><td>把高优任务拉到本 CPU</td></tr>
+</tbody>
+</table>
+
+<p><strong>关键数据结构</strong>：</p>
+
+<pre><code>
+// thread_info.h:61-62
+#define TIF_NEED_RESCHED      1    // bit 1: 需要立即重新调度
+#define TIF_NEED_RESCHED_LAZY 2    // bit 2: 懒惰重调度（可以等到下次调度点）
+</code></pre>
+
+<p><code>TIF_NEED_RESCHED</code> 存在 <code>task_struct.thread_info.flags</code> 里——<strong>每个任务自己的 thread_info，不是全局变量</strong>。语义是："当前在 CPU 上跑的这个任务<strong>应该被调度走</strong>"。</p>
+
+<h5>第二段：看牌子 — 两条返回路径</h5>
+
+<p>flag 设好了，但 CPU 不会轮询它。真正检查发生在<strong>从中断/异常/系统调用返回的时刻</strong>。ARM64 上分两条路径：</p>
+
+<pre><code>
+                    ┌── 返回到 EL0 (用户态)  → exit_to_user_mode_loop()
+中断/异常返回 ──────┤
+                    └── 返回到 EL1 (内核态)  → irqentry_exit_cond_resched()
+</code></pre>
+
+<p><strong>路径 A：返回用户态</strong></p>
+
+<p>来自任何中断/异常/系统调用，目标是把 CPU 还给用户态代码。此时调用 <code>exit_to_user_mode_loop()</code>（见 <code>kernel/entry/common.c:19</code>），在一个 while 循环中检查所有待处理的工作：</p>
+
+<table>
+<thead><tr><th>检查项</th><th>动作</th></tr></thead>
+<tbody>
+<tr><td><code>TIF_NEED_RESCHED</code></td><td><code>schedule()</code> ← 直接切走！</td></tr>
+<tr><td><code>TIF_UPROBE</code></td><td>uprobe 通知</td></tr>
+<tr><td><code>TIF_SIGPENDING</code></td><td>处理 pending 信号</td></tr>
+<tr><td><code>TIF_NOTIFY_RESUME</code></td><td>resume 用户态 work</td></tr>
+</tbody>
+</table>
+
+<p><strong>路径 B：返回内核态</strong></p>
+
+<p>如果中断打断的是正在执行系统调用的内核代码，返回时走 <code>ret_to_kernel</code>。此时检查方式不同——只在 <code>CONFIG_PREEMPTION=y</code> 时才会立即抢占：</p>
+
+<pre><code>
+// common.c:160-170
+void raw_irqentry_exit_cond_resched(void)
+{
+    if (!preempt_count()) {           // ★ preempt_count == 0 才能抢占
+        if (need_resched()            // ← 等价于 TIF_NEED_RESCHED 被置位
+            && arch_irqentry_exit_need_resched())
+            preempt_schedule_irq();   // ★ 抢占式调度
+    }
+}
+</code></pre>
+
+<p><strong>注意</strong>：如果没开 <code>CONFIG_PREEMPTION</code>，即使中断返回内核态时 <code>TIF_NEED_RESCHED</code> 被置位，也不会立即切走——要等到当前内核代码执行完毕、准备返回用户态的时候才换。</p>
+
+<p><strong>两个 TIF 位的区别</strong>：</p>
+
+<table>
+<thead><tr><th>标志位</th><th>值</th><th>返回用户态检查？</th><th>返回内核态检查？</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>TIF_NEED_RESCHED</code></td><td>1</td><td>✅ 立刻 schedule()</td><td>✅ 触发抢占</td><td>必须尽快重调度</td></tr>
+<tr><td><code>TIF_NEED_RESCHED_LAZY</code></td><td>2</td><td>✅ 立刻 schedule()</td><td>❌ 不触发抢占</td><td>EEVDF 延迟抢占——可以等到下一个天然调度点再切</td></tr>
+</tbody>
+</table>
+
+<h4>ARM64 完整调用链（以高优任务跨 CPU 抢占为例）</h4>
+
+<p>场景：CPU0 上 CFS 任务 A 正在跑，CPU1 上 RT 任务 B 被唤醒，B 应该抢占 A。</p>
+
+<pre><code>
+═══════════ CPU1（唤醒者）═══════════
+try_to_wake_up(B)
+  → ttwu_do_activate(B)
+    → activate_task(B, CPU0)              // B 被放到 CPU0 的 runqueue
+      → enqueue_task(B)                   // B 进入 CPU0 的就绪队列
+  → ttwu_do_wakeup(B)
+    → check_preempt_curr(CPU0, B)
+      → B 是 RT (prio=50)，A 是 CFS (prio=120)
+      → resched_curr(CPU0)                // ★ 给 A 贴标签
+        → set_nr_and_not_polling(cti, TIF_NEED_RESCHED)
+        → smp_send_reschedule(CPU0)       // ★ 发 IPI 打断 CPU0
+
+═══════════ CPU0（被抢占者）═══════════
+收到 IPI 中断
+  entry.S: kernel_entry 1                 // 从内核态被打断（el1）
+  → C handler 处理 IPI
+  → irqentry_exit(regs, state)
+    → if (user_mode(regs)):  NO（在内核态被中断）
+    → else if (!regs_irqs_disabled):
+        irqentry_exit_cond_resched()
+          → raw_irqentry_exit_cond_resched()
+            → need_resched() == true!     // ★ A 的 TIF_NEED_RESCHED 被置位了
+            → preempt_schedule_irq()
+              → __schedule(SM_PREEMPT)
+                → put_prev_task(A)        // A 放回就绪队列
+                → pick_next_task(rq)
+                  // 按优先级遍历: DL → RT → CFS
+                  // RT runqueue 里有 B（prio=50）
+                  → 选中 B！
+                → context_switch(A, B)    // ★ A 下来，B 上去
+</code></pre>
+
+<p><strong>关键点</strong>：<code>resched_curr</code> 不指定"谁来接替"——它只管标 A。但 B 已经在 <code>activate_task</code> 时被放进了同一个 runqueue。<code>pick_next_task</code> 从高到低遍历调度类，优先级更高的 B 必然被选中。所以：</p>
+
+<blockquote>
+<p><strong>抢占 = A 被标记 → A 走进 schedule() → schedule() 把 A 放回去、从队列里挑出 B → A 下来，B 取而代之。结果是替换，不是单纯赶人。</strong></p>
+</blockquote>
+
+<h4>全局流程图</h4>
+
+<pre><code>
+                            ┌──────────────────────────────────────┐
+                            │          立牌子（设标志）              │
+                            │                                      │
+   scheduler_tick() ────────┤→ resched_curr(rq)                    │
+   check_preempt_curr() ────┤    │                                 │
+   load_balance pull ───────┤    ├─ 本CPU: set_ti_thread_flag(     │
+                            │    │     TIF_NEED_RESCHED)           │
+                            │    └─ 远程: set_nr_and_not_polling    │
+                            │            + smp_send_reschedule(IPI)│
+                            └──────────────────┬───────────────────┘
+                                               │
+                            ┌──────────────────▼───────────────────┐
+                            │        看牌子（返回时检查）            │
+                            │                                      │
+   异常/中断/系统调用返回 ───┤                                      │
+                            │                                      │
+     ┌─ EL0 → ret_to_user ──┤→ exit_to_user_mode_loop()           │
+     │    (回到用户态)       │    while (flags & WORK_MASK):        │
+     │                      │      if (NEED_RESCHED):              │
+     │                      │        schedule()     ← 直接切走     │
+     │                      │                                      │
+     └─ EL1 → ret_to_kernel─┤→ irqentry_exit()                    │
+          (回到内核态)       │    if (CONFIG_PREEMPTION):           │
+                            │      if (need_resched()):            │
+                            │        preempt_schedule_irq()         │
+                            │    else:                              │
+                            │      继续执行被中断的内核代码          │
+                            │      （等到 cond_resched() 或返回到   │
+                            │       用户态时才切）                  │
+                            └──────────────────────────────────────┘
+</code></pre>
+
+<h4>核心总结</h4>
+
+<table>
+<thead><tr><th>#</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>抢占 = "<strong>你下来，我上去</strong>"，是替换，不是单纯赶人</td></tr>
+<tr><td>2</td><td>Linux 用<strong>协商式</strong>：贴标签 + 自己检查，不是暴力挂起</td></tr>
+<tr><td>3</td><td>两段异步：<strong>立牌子</strong>（<code>resched_curr</code> 设 flag）→ <strong>看牌子</strong>（返回路径上 <code>schedule()</code>）</td></tr>
+<tr><td>4</td><td>跨 CPU 时 <strong>IPI</strong> 强制目标 CPU 进入检查点</td></tr>
+<tr><td>5</td><td>返回<strong>用户态</strong>：一定检查 → 一定切。<strong>内核态</strong>：看 <code>CONFIG_PREEMPTION</code> 配置</td></tr>
+<tr><td>6</td><td><code>TIF_NEED_RESCHED_LAZY</code> 用于 EEVDF 延迟抢占——在内核态返回路径中不触发，只在返回用户态时切</td></tr>
+</tbody>
+</table>
+
+
 <h3 id="216-调度器数据结构与实现细节问题">21.6 调度器数据结构与实现细节问题</h3>
 
 <p><strong>Q15: 为什么调度器使用红黑树而不是堆/跳表？</strong></p>
