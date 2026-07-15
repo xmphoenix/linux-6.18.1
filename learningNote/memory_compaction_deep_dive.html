@@ -427,13 +427,13 @@ hr {
 
 <hr>
 
-<h2>一句话先说清</h2>
+<h2 id="一句话先说清" >一句话先说清</h2>
 
 <p><strong>内存规整 = 把散落在 zone 低地址区的可移动页迁移到高地址区的空闲位置，从而在低地址区腾出连续空闲块，满足高阶分配请求。</strong> 它的核心是"双扫描器 + 页迁移"：迁移扫描器从低到高找可移动页，空闲扫描器从高到低找空闲页，两者配合完成搬移。</p>
 
 <hr>
 
-<h2>为什么需要内存规整</h2>
+<h2 id="为什么需要内存规整" >为什么需要内存规整</h2>
 
 <table>
 <thead><tr>
@@ -469,7 +469,7 @@ hr {
 
 <hr>
 
-<h2>核心心智模型</h2>
+<h2 id="核心心智模型" >核心心智模型</h2>
 
 <pre><code>┌─────────────────────────────────────────────────────────┐
 │                    ZONE (e.g. ZONE_NORMAL)              │
@@ -502,7 +502,7 @@ M = 已占用可移动页    F = 空闲页    空格 = 空闲页</code></pre>
 
 <hr>
 
-<h2>关键数据结构</h2>
+<h2 id="关键数据结构" >关键数据结构</h2>
 
 <h3><code>struct compact_control</code> — 规整总控 (<code>mm/internal.h:875</code>)</h3>
 
@@ -567,7 +567,7 @@ MIGRATE_SYNC        // 完全同步阻塞</code></pre>
 
 <hr>
 
-<h2>规整核心流程：双扫描器算法</h2>
+<h2 id="规整核心流程双扫描器算法">规整核心流程：双扫描器算法</h2>
 
 <p><code>compact_zone()</code> (<code>mm/compaction.c:2511</code>) 是核心函数，流程如下：</p>
 
@@ -620,9 +620,9 @@ static inline bool compact_scanners_met(struct compact_control *cc)
 
 <hr>
 
-<h2>规整触发路径</h2>
+<h2 id="规整触发路径" >规整触发路径</h2>
 
-<h3>路径 1：直接规整 (Direct Compaction)</h3>
+<h3 id="路径-1直接规整-direct-compaction">路径 1：直接规整 (Direct Compaction)</h3>
 
 <p>分配路径中高阶分配失败时触发：</p>
 
@@ -643,7 +643,7 @@ static inline bool compact_scanners_met(struct compact_control *cc)
 <li><strong>二次尝试</strong> (<code>page_alloc.c:4817</code>)：直接回收之后，如果回收有进展</li>
 </ul>
 
-<h3>路径 2：kcompactd 后台规整</h3>
+<h3 id="路径-2kcompactd-后台规整">路径 2：kcompactd 后台规整</h3>
 
 <p>内核守护线程，在后台定期执行规整：</p>
 
@@ -668,7 +668,7 @@ static inline bool compact_scanners_met(struct compact_control *cc)
 <li><strong>sysctl 写入</strong>：修改 <code>compaction_proactiveness</code> 时唤醒所有 kcompactd</li>
 </ol>
 
-<h3>路径 3：主动规整 (Proactive Compaction)</h3>
+<h3 id="路径-3主动规整-proactive-compaction">路径 3：主动规整 (Proactive Compaction)</h3>
 
 <p>kcompactd 在无显式唤醒时，每 500ms (<code>HPAGE_FRAG_CHECK_INTERVAL_MSEC</code>) 检查碎片评分：</p>
 
@@ -678,7 +678,7 @@ static inline bool compact_scanners_met(struct compact_control *cc)
          / (node_present_pages + 1)
   → wmark_high = 100 - sysctl_compaction_proactiveness + leeway</code></pre>
 
-<h3>路径 4：用户空间手动触发</h3>
+<h3 id="路径-4用户空间手动触发">路径 4：用户空间手动触发</h3>
 
 <table>
 <thead><tr>
@@ -701,7 +701,7 @@ static inline bool compact_scanners_met(struct compact_control *cc)
 
 <hr>
 
-<h2>延迟与跳过机制</h2>
+<h2 id="延迟与跳过机制" >延迟与跳过机制</h2>
 
 <p>规整失败后有指数退避机制，避免反复尝试无效规整：</p>
 
@@ -750,7 +750,7 @@ static void __reset_isolation_suitable(struct zone *zone)
 
 <hr>
 
-<h2>规整与页迁移的关系</h2>
+<h2 id="规整与页迁移的关系" >规整与页迁移的关系</h2>
 
 <p>规整本身不做搬移，它只做扫描和隔离，实际搬移委托给 <code>migrate_pages()</code>：</p>
 
@@ -782,9 +782,9 @@ err = migrate_pages(&amp;cc-&gt;migratepages, compaction_alloc,
 
 <hr>
 
-<h2>ARM64 特有机制</h2>
+<h2 id="arm64-特有机制" >ARM64 特有机制</h2>
 
-<h3>CMA 预留与规整</h3>
+<h3 id="cma-预留与规整" >CMA 预留与规整</h3>
 
 <p>ARM64 在 <code>bootmem_init()</code> 中预留两类 CMA 区域：</p>
 
@@ -803,7 +803,7 @@ bootmem_init()
   ├─ migrate_pages()               ← 迁移到其他位置
   └─ isolate_freepages_range()     ← 隔离范围内空闲页</code></pre>
 
-<h3>Contiguous PTE 与规整效率</h3>
+<h3 id="contiguous-pte-与规整效率" >Contiguous PTE 与规整效率</h3>
 
 <p>ARM64 的 <code>PTE_CONT</code> (bit 52) 允许连续的 PTE 共享一个 TLB entry：</p>
 
@@ -840,7 +840,7 @@ bootmem_init()
 
 <p><strong>对规整的影响</strong>：规整迁移页后，新的映射可能触发 contpte fold/unfold，需要额外的 TLB 维护操作。BBML2 硬件支持可以减少 TLB flush。</p>
 
-<h3>MTE 标签在迁移中的处理</h3>
+<h3 id="mte-标签在迁移中的处理" >MTE 标签在迁移中的处理</h3>
 
 <p>ARM64 的 Memory Tagging Extension (MTE) 为每个页附加标签。<code>copy_highpage()</code> (<code>arch/arm64/mm/copypage.c:17</code>) 在迁移过程中确保标签正确复制：</p>
 
@@ -863,7 +863,7 @@ bootmem_init()
 
 <p><strong>关键注意</strong>：迁移可能复用同一物理页（源页和目标页相同），此时必须正确管理标签状态。</p>
 
-<h3>大页迁移支持</h3>
+<h3 id="大页迁移支持" >大页迁移支持</h3>
 
 <p>ARM64 支持所有合法大页尺寸的迁移 (<code>arch/arm64/mm/hugetlbpage.c:69</code>)：</p>
 
@@ -876,7 +876,7 @@ bootmem_init()
 <pre><code>select ARCH_ENABLE_HUGEPAGE_MIGRATION if HUGETLB_PAGE &amp;&amp; MIGRATION
 select ARCH_ENABLE_THP_MIGRATION if TRANSPARENT_HUGEPAGE</code></pre>
 
-<h3>线性映射粒度与 set_direct_map</h3>
+<h3 id="线性映射粒度与-set_direct_map" >线性映射粒度与 set_direct_map</h3>
 
 <p><code>can_set_direct_map()</code> (<code>arch/arm64/mm/pageattr.c</code>) 决定是否可以逐页控制线性映射：</p>
 
@@ -896,7 +896,7 @@ select ARCH_ENABLE_THP_MIGRATION if TRANSPARENT_HUGEPAGE</code></pre>
 
 <hr>
 
-<h2>碎片评分与主动规整决策</h2>
+<h2 id="碎片评分与主动规整决策" >碎片评分与主动规整决策</h2>
 
 <pre><code class="language-c">// mm/compaction.c:2167
 static unsigned int fragmentation_score_zone(struct zone *zone)
@@ -936,7 +936,7 @@ static bool should_proactive_compact_node(pg_data_t *pgdat)
 
 <hr>
 
-<h2>调试与统计接口</h2>
+<h2 id="调试与统计接口" >调试与统计接口</h2>
 
 <h3>/proc/vmstat 规整计数器</h3>
 
@@ -1114,9 +1114,9 @@ static bool should_proactive_compact_node(pg_data_t *pgdat)
 
 <hr>
 
-<h2>QEMU 实验</h2>
+<h2 id="qemu-实验" >QEMU 实验</h2>
 
-<h3>实验 1：构建 ARM64 内核与基础启动</h3>
+<h3 id="实验-1构建-arm64-内核与基础启动">实验 1：构建 ARM64 内核与基础启动</h3>
 
 <p><strong>目标</strong>：构建可在 QEMU 上启动的 ARM64 内核，验证规整代码编译和基础运行。</p>
 
@@ -1186,7 +1186,7 @@ qemu-system-aarch64 \
 <li>THP 相关配置：<code>always</code> 或 <code>madvise</code></li>
 </ul>
 
-<h3>实验 2：观察内存碎片与规整触发</h3>
+<h3 id="实验-2观察内存碎片与规整触发">实验 2：观察内存碎片与规整触发</h3>
 
 <p><strong>目标</strong>：人为制造碎片，观察直接规整的触发。</p>
 
@@ -1270,7 +1270,7 @@ cat /proc/buddyinfo</code></pre>
 <li>buddyinfo 中高阶块数量变化</li>
 </ul>
 
-<h3>实验 3：手动触发规整并观察结果</h3>
+<h3 id="实验-3手动触发规整并观察结果">实验 3：手动触发规整并观察结果</h3>
 
 <p><strong>目标</strong>：通过 sysctl 手动触发规整，观察前后碎片变化。</p>
 
@@ -1299,7 +1299,7 @@ cat /sys/kernel/debug/extfrag/unusable_index
 # - unusable_index 应该下降
 # - compact_success 应该增长</code></pre>
 
-<h3>实验 4：追踪规整过程的 Tracepoint</h3>
+<h3 id="实验-4追踪规整过程的-tracepoint">实验 4：追踪规整过程的 Tracepoint</h3>
 
 <p><strong>目标</strong>：使用 ftrace 追踪规整的详细过程。</p>
 
@@ -1331,7 +1331,7 @@ echo &gt; /sys/kernel/debug/tracing/trace</code></pre>
 &lt;...&gt;-123  [001] d... 100.1: mm_compaction_migratepages: nr_migrated=32 nr_failed=0
 &lt;...&gt;-123  [001] d... 100.2: mm_compaction_end: status=success</code></pre>
 
-<h3>实验 5：主动规整与碎片评分验证</h3>
+<h3 id="实验-5主动规整与碎片评分验证">实验 5：主动规整与碎片评分验证</h3>
 
 <p><strong>目标</strong>：验证主动规整的碎片评分机制。</p>
 
@@ -1356,7 +1356,7 @@ grep compact_daemon /proc/vmstat
 echo 0 &gt; /proc/sys/vm/compaction_proactiveness
 # 此时只有显式唤醒才会触发 kcompactd</code></pre>
 
-<h3>实验 6：CMA 与 alloc_contig_range 验证</h3>
+<h3 id="实验-6cma-与-alloc_contig_range-验证">实验 6：CMA 与 alloc_contig_range 验证</h3>
 
 <p><strong>目标</strong>：验证 CMA 区域和 alloc_contig_range 行为。</p>
 
@@ -1400,7 +1400,7 @@ EOF
 # 4. 查看规整统计变化
 grep compact /proc/vmstat</code></pre>
 
-<h3>实验 7：THP 分配与规整联动验证</h3>
+<h3 id="实验-7thp-分配与规整联动验证">实验 7：THP 分配与规整联动验证</h3>
 
 <p><strong>目标</strong>：验证 THP 分配失败时触发规整的完整路径。</p>
 
@@ -1471,7 +1471,7 @@ grep thp /proc/vmstat</code></pre>
 
 <hr>
 
-<h2>源码阅读路线图</h2>
+<h2 id="源码阅读路线图" >源码阅读路线图</h2>
 
 <p>建议按以下顺序阅读，每步都有明确的阅读目标：</p>
 
@@ -1549,7 +1549,7 @@ grep thp /proc/vmstat</code></pre>
 
 <hr>
 
-<h2>关键源码索引</h2>
+<h2 id="关键源码索引" >关键源码索引</h2>
 
 <table>
 <thead><tr>

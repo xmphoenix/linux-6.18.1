@@ -265,9 +265,9 @@ hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec1">一、架构全景</h2>
+<h2 id="sec1" >一、架构全景</h2>
 
-<h3 id="sec1-1">1.1 调度器在系统中的位置</h3>
+<h3 id="sec1-1" >1.1 调度器在系统中的位置</h3>
 
 <p>调度器是内核中连接<strong>进程管理</strong>与<strong>CPU 硬件</strong>的桥梁。每当需要选择"下一个要运行的任务"时，调度器就被触发。</p>
 
@@ -310,7 +310,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
    └──────────────────────────────────────────────────────┘
 </div>
 
-<h3 id="sec1-2">1.2 核心概念速览</h3>
+<h3 id="sec1-2" >1.2 核心概念速览</h3>
 
 <table>
 <thead><tr><th>概念</th><th>一句话解释</th><th>定义位置</th></tr></thead>
@@ -326,7 +326,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
 </tbody>
 </table>
 
-<h3 id="sec1-3">1.3 触发时机与数据流</h3>
+<h3 id="sec1-3" >1.3 触发时机与数据流</h3>
 
 <p>调度触发时机：<strong>主动阻塞</strong>（任务调用 <code>schedule()</code>）、<strong>TIF_NEED_RESCHED</strong>（时钟中断发现时间片耗尽，或唤醒更高优先级任务）、<strong>抢占</strong>（内核态 <code>preempt_schedule()</code>）。</p>
 
@@ -361,9 +361,9 @@ hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec2">二、源码文件地图</h2>
+<h2 id="sec2" >二、源码文件地图</h2>
 
-<h3 id="sec2-1">2.1 文件总览与职责</h3>
+<h3 id="sec2-1" >2.1 文件总览与职责</h3>
 
 <table>
 <thead><tr><th>行数</th><th>文件</th><th>核心职责</th><th>重要度</th></tr></thead>
@@ -386,7 +386,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
 </tbody>
 </table>
 
-<h3 id="sec2-2">2.2 构建体系</h3>
+<h3 id="sec2-2" >2.2 构建体系</h3>
 
 <p>调度器文件分为两组编译：</p>
 <ul>
@@ -397,9 +397,9 @@ hr { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec3">三、核心数据结构</h2>
+<h2 id="sec3" >三、核心数据结构</h2>
 
-<h3 id="sec3-1">3.1 task_struct — 调度相关字段</h3>
+<h3 id="sec3-1" >3.1 task_struct — 调度相关字段</h3>
 
 <p>定义在 <a href="../../include/linux/sched.h#L748">include/linux/sched.h:748</a>，这里只列调度核心字段：</p>
 
@@ -430,7 +430,7 @@ struct task_struct {
 };
 </div>
 
-<h3 id="sec3-2">3.2 struct rq — 每 CPU 运行队列</h3>
+<h3 id="sec3-2" >3.2 struct rq — 每 CPU 运行队列</h3>
 
 <p>定义在 <a href="../../kernel/sched/sched.h#L1119">kernel/sched/sched.h:1119</a>：</p>
 
@@ -465,7 +465,7 @@ struct rq {
 };
 </div>
 
-<h3 id="sec3-3">3.3 struct sched_class — 调度类虚函数表</h3>
+<h3 id="sec3-3" >3.3 struct sched_class — 调度类虚函数表</h3>
 
 <p>定义在 <a href="../../kernel/sched/sched.h#L2398">kernel/sched/sched.h:2398</a>。这是整个调度器最核心的抽象：</p>
 
@@ -509,7 +509,7 @@ struct sched_class {
 <strong>学习提示：</strong>从 <code>stop_task.c</code> 和 <code>idle.c</code> 开始看 sched_class 的实现——它们最短（分别117行、541行），能最快理解虚函数表模式。然后再看 fair.c 的 13727 行巨无霸。
 </div>
 
-<h3 id="sec3-4">3.4 struct sched_entity — CFS 调度实体</h3>
+<h3 id="sec3-4" >3.4 struct sched_entity — CFS 调度实体</h3>
 
 <p>定义在 <a href="../../include/linux/sched.h#L570">include/linux/sched.h:570</a>：</p>
 
@@ -530,7 +530,7 @@ struct sched_entity {
 };
 </div>
 
-<h3 id="sec3-5">3.5 RT / DL 实体</h3>
+<h3 id="sec3-5" >3.5 RT / DL 实体</h3>
 
 <table>
 <thead><tr><th>结构体</th><th>位置</th><th>使用策略</th><th>关键字段</th></tr></thead>
@@ -540,7 +540,7 @@ struct sched_entity {
 </tbody>
 </table>
 
-<h3 id="sec3-6">3.6 数据结构关系全景图</h3>
+<h3 id="sec3-6" >3.6 数据结构关系全景图</h3>
 
 <div style="max-width:100%;margin:20px 0;border:1px solid var(--border);border-radius:8px;background:#fff;padding:10px;">
 
@@ -816,9 +816,9 @@ struct sched_entity {
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec4">四、调度类层级</h2>
+<h2 id="sec4" >四、调度类层级</h2>
 
-<h3 id="sec4-1">4.1 链接脚本定序</h3>
+<h3 id="sec4-1" >4.1 链接脚本定序</h3>
 
 <p>调度类的优先级<strong>不是运行时判断的</strong>，而是由<strong>链接顺序</strong>静态决定的。在 <a href="../../include/asm-generic/vmlinux.lds.h#L136">vmlinux.lds.h:136</a>：</p>
 
@@ -844,7 +844,7 @@ struct sched_entity {
 <span class="prio-idle">    idle_sched_class   idle.c:500         空闲</span>
 </div>
 
-<h3 id="sec4-2">4.2 各类注册位置</h3>
+<h3 id="sec4-2" >4.2 各类注册位置</h3>
 
 <table>
 <thead><tr><th>调度类</th><th>DEFINE_SCHED_CLASS</th><th>文件行数</th></tr></thead>
@@ -858,7 +858,7 @@ struct sched_entity {
 </tbody>
 </table>
 
-<h3 id="sec4-3">4.3 pick_next_task 遍历逻辑</h3>
+<h3 id="sec4-3" >4.3 pick_next_task 遍历逻辑</h3>
 
 <p><a href="../../kernel/sched/core.c#L5950">core.c:5950</a> — 按优先级从高到低尝试每个调度类：</p>
 
@@ -873,9 +873,9 @@ struct sched_entity {
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec5">五、核心调度流程</h2>
+<h2 id="sec5" >五、核心调度流程</h2>
 
-<h3 id="sec5-1">5.1 schedule() 入口</h3>
+<h3 id="sec5-1" >5.1 schedule() 入口</h3>
 
 <p><a href="../../kernel/sched/core.c#L7016">core.c:7016</a>：</p>
 
@@ -888,7 +888,7 @@ struct sched_entity {
     } while (need_resched());          // 如果又被设 NEED_RESCHED，重来
 }</code></pre>
 
-<h3 id="sec5-2">5.2 __schedule() 主逻辑</h3>
+<h3 id="sec5-2" >5.2 __schedule() 主逻辑</h3>
 
 <p><a href="../../kernel/sched/core.c#L6784">core.c:6784</a> — 约150行的调度决策核心：</p>
 
@@ -917,11 +917,11 @@ struct sched_entity {
     }
 }</code></pre>
 
-<h3 id="sec5-3">5.3 pick_next_task()</h3>
+<h3 id="sec5-3" >5.3 pick_next_task()</h3>
 
 <p><a href="../../kernel/sched/core.c#L6042">core.c:6042</a>。CFS 优化路径：当 prev 是 CFS 任务且所有更高优先级类无任务时，直接调用 <code>pick_next_task_fair()</code> 跳过遍历——因为系统里绝大多数任务都是 CFS 的。</p>
 
-<h3 id="sec5-4">5.4 context_switch()</h3>
+<h3 id="sec5-4" >5.4 context_switch()</h3>
 
 <p><a href="../../kernel/sched/core.c#L5269">core.c:5269</a>：</p>
 
@@ -942,9 +942,9 @@ struct sched_entity {
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec6">六、CFS 完全公平调度</h2>
+<h2 id="sec6" >六、CFS 完全公平调度</h2>
 
-<h3 id="sec6-1">6.1 vruntime — 虚拟运行时间</h3>
+<h3 id="sec6-1" >6.1 vruntime — 虚拟运行时间</h3>
 
 <p>CFS 核心思想：<strong>让每个任务获得等比例的 CPU 时间</strong>。但如何比较不同 nice 值的任务？</p>
 
@@ -967,7 +967,7 @@ struct sched_entity {
     //                    └→ delta * NICE_0_LOAD / curr->load.weight
     cfs_rq->min_vruntime = max(min_vruntime, curr->vruntime);</code></pre>
 
-<h3 id="sec6-2">6.2 红黑树组织</h3>
+<h3 id="sec6-2" >6.2 红黑树组织</h3>
 
 <p>每个 CPU 的 <code>cfs_rq.tasks_timeline</code> 是一棵以 <code>vruntime</code> 为 key 的红黑树：</p>
 
@@ -983,7 +983,7 @@ struct sched_entity {
     └─ curr → se[A]               ← 当前正在运行的
 </div>
 
-<h3 id="sec6-3">6.3 enqueue / dequeue / pick</h3>
+<h3 id="sec6-3" >6.3 enqueue / dequeue / pick</h3>
 
 <table>
 <thead><tr><th>操作</th><th>函数调用链</th><th>做了什么</th></tr></thead>
@@ -995,7 +995,7 @@ struct sched_entity {
 </tbody>
 </table>
 
-<h3 id="sec6-4">6.4 调度周期与时间片</h3>
+<h3 id="sec6-4" >6.4 调度周期与时间片</h3>
 
 <p>CFS 不分配固定时间片。它维护一个<strong>目标调度延迟</strong> <code>sysctl_sched_latency</code> (默认 6ms)，在此周期内所有 runnable 任务都至少运行一次。时间片 = latency × (task_weight / total_weight)。</p>
 
@@ -1011,9 +1011,9 @@ struct sched_entity {
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec7">七、初始化流程</h2>
+<h2 id="sec7" >七、初始化流程</h2>
 
-<h3 id="sec7-1">7.1 sched_init() — 早期 UP 初始化</h3>
+<h3 id="sec7-1" >7.1 sched_init() — 早期 UP 初始化</h3>
 
 <p><a href="../../kernel/sched/core.c#L8643">core.c:8643</a>。在 <code>start_kernel()</code> 早期调用：</p>
 
@@ -1051,7 +1051,7 @@ struct sched_entity {
     scheduler_running = 1;   // ★ 调度器已就绪
 }</code></pre>
 
-<h3 id="sec7-2">7.2 sched_init_smp() — SMP 拓扑就绪</h3>
+<h3 id="sec7-2" >7.2 sched_init_smp() — SMP 拓扑就绪</h3>
 
 <p><a href="../../kernel/sched/core.c#L8590">core.c:8590</a>。此时所有 secondary CPU 已上线：</p>
 
@@ -1067,7 +1067,7 @@ struct sched_entity {
     sched_smp_initialized = true;
 }</code></pre>
 
-<h3 id="sec7-3">7.3 拓扑解析——DT 与 ACPI 两条路径</h3>
+<h3 id="sec7-3" >7.3 拓扑解析——DT 与 ACPI 两条路径</h3>
 
 <p><a href="../../arch/arm64/kernel/topology.c">arch/arm64/kernel/topology.c</a>：</p>
 
@@ -1084,9 +1084,9 @@ struct sched_entity {
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec8">八、负载均衡</h2>
+<h2 id="sec8" >八、负载均衡</h2>
 
-<h3 id="sec8-1">8.1 sched_domain — 调度域层级</h3>
+<h3 id="sec8-1" >8.1 sched_domain — 调度域层级</h3>
 
 <p>描述 CPU 间的拓扑关系。QEMU virt <code>-smp 4</code> 的典型层级：</p>
 
@@ -1097,7 +1097,7 @@ struct sched_entity {
              └─ NUMA ──────── (未使用, 单 NUMA 节点)
 </div>
 
-<h3 id="sec8-2">8.2 负载均衡触发路径</h3>
+<h3 id="sec8-2" >8.2 负载均衡触发路径</h3>
 
 <ul>
     <li><strong>周期均衡</strong>：<code>scheduler_tick() → trigger_load_balance()</code> → 软中断 <code>SCHED_SOFTIRQ → run_rebalance_domains()</code></li>
@@ -1105,16 +1105,16 @@ struct sched_entity {
     <li><strong>空闲均衡</strong>：CPU 进入 idle 时 <code>newidle_balance()</code> 从忙 CPU "拉取"任务</li>
 </ul>
 
-<h3 id="sec8-3">8.3 PELT — 负载追踪</h3>
+<h3 id="sec8-3" >8.3 PELT — 负载追踪</h3>
 
 <p><a href="../../kernel/sched/pelt.c">pelt.c</a>。用指数衰减平均计算每个 sched_entity 的 CPU 使用率，是负载均衡的决策依据。衰减因子 y ≈ 0.97857206（每 32ms 衰减一半）。公式：L = L0 + L1×y^32 + L2×y^64 + ...</p>
 
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec9">九、调试与可观察性</h2>
+<h2 id="sec9" >九、调试与可观察性</h2>
 
-<h3 id="sec9-1">9.1 /proc/sched_debug</h3>
+<h3 id="sec9-1" >9.1 /proc/sched_debug</h3>
 
 <p>最全面的运行时调度信息 (<a href="../../kernel/sched/debug.c">debug.c</a>)：</p>
 <pre><code>cat /proc/sched_debug
@@ -1123,7 +1123,7 @@ struct sched_entity {
 #       sched_domain 详细信息
 #       每个任务的 vruntime/sum_exec_runtime/nice</code></pre>
 
-<h3 id="sec9-2">9.2 ftrace 调度事件</h3>
+<h3 id="sec9-2" >9.2 ftrace 调度事件</h3>
 
 <pre><code># 需要 CONFIG_FUNCTION_TRACER=y, CONFIG_SCHED_TRACER=y
 mount -t tracefs none /sys/kernel/tracing
@@ -1136,7 +1136,7 @@ cat /sys/kernel/tracing/trace_pipe
 # sched_migrate_task — 跨 CPU 迁移
 # sched_process_fork / exec / exit</code></pre>
 
-<h3 id="sec9-3">9.3 sched_feat 特性开关</h3>
+<h3 id="sec9-3" >9.3 sched_feat 特性开关</h3>
 
 <p><a href="../../kernel/sched/features.h">features.h</a> 定义可运行时开关的调度特性：</p>
 <pre><code>mount -t debugfs none /sys/kernel/debug
@@ -1146,11 +1146,11 @@ echo NO_HRTICK > /sys/kernel/debug/sched/features  # 关闭 HRTICK</code></pre>
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec10">十、QEMU 实践实验</h2>
+<h2 id="sec10" >十、QEMU 实践实验</h2>
 
 <p>环境：<code>qemu-system-aarch64 -machine virt -cpu cortex-a57 -m 1024 -smp 4 -kernel arch/arm64/boot/Image --append "rdinit=/linuxrc console=ttyAMA0" -nographic</code></p>
 
-<h3 id="sec10-1">实验1: 观察调度器启动</h3>
+<h3 id="sec10-1" >实验1: 观察调度器启动</h3>
 
 <div class="exp-box"><strong>目标：</strong>在内核启动日志中观察 <code>sched_init()</code> 的输出。</div>
 <br>
@@ -1169,7 +1169,7 @@ CPU3: rq=ffff80008000d800 capacity=1024</code></pre>
 
 <p><strong>学到：</strong>四个 CPU rq 静态分配(capacity=1024 全对称)、<code>sched_init()</code> 在 <code>start_kernel()</code> 早期(~L984)调用。</p>
 
-<h3 id="sec10-2">实验2: ftrace 追踪调度事件</h3>
+<h3 id="sec10-2" >实验2: ftrace 追踪调度事件</h3>
 
 <div class="exp-box"><strong>目标：</strong>使用 ftrace 观察 <code>sched_switch</code> 事件，理解任务切换模式。</div>
 <br>
@@ -1186,7 +1186,7 @@ linuxrc-1     [000] d... 100.234: sched_switch: prev_comm=linuxrc prev_pid=1 pre
 
 <p><strong>学到：</strong> idle (swapper)始终存在、<code>prev_state=R</code>=被抢占 <code>prev_state=S</code>=主动睡眠、每CPU独立调度。</p>
 
-<h3 id="sec10-3">实验3: 观察 CPU 拓扑</h3>
+<h3 id="sec10-3" >实验3: 观察 CPU 拓扑</h3>
 
 <div class="exp-box"><strong>目标：</strong>查看内核解析出的 CPU 拓扑和调度域信息。</div>
 <br>
@@ -1205,7 +1205,7 @@ core_siblings: 0-3  (全在同一 package)</code></pre>
 
 <p><strong>学到：</strong>QEMU virt 四核全在同一 cluster/package，capacity 对称。对比大小核 SoC 会看到不同 cluster_id 和不对称 capacity。</p>
 
-<h3 id="sec10-4">实验4: 观察 CFS vruntime</h3>
+<h3 id="sec10-4" >实验4: 观察 CFS vruntime</h3>
 
 <div class="exp-box"><strong>目标：</strong>创建不同 nice 值的 CPU 密集任务，观察 vruntime 增长速度差异。</div>
 <br>
@@ -1231,9 +1231,9 @@ cat /proc/$PID_B/sched</code></pre>
 <hr>
 
 <!-- ================================================================ -->
-<h2 id="sec11">十一、学习路线图</h2>
+<h2 id="sec11" >十一、学习路线图</h2>
 
-<h3 id="sec11-1">11.1 四阶段学习计划</h3>
+<h3 id="sec11-1" >11.1 四阶段学习计划</h3>
 
 <table>
 <thead><tr><th>阶段</th><th>目标</th><th>时间</th><th>核心文件</th></tr></thead>
@@ -1265,7 +1265,7 @@ cat /proc/$PID_B/sched</code></pre>
 </tbody>
 </table>
 
-<h3 id="sec11-2">11.2 推荐阅读顺序</h3>
+<h3 id="sec11-2" >11.2 推荐阅读顺序</h3>
 
 <ol>
     <li><strong>第1天</strong>：读 <a href="../../kernel/sched/sched.h">sched.h</a> 的 struct sched_class、struct rq、DEFINE_SCHED_CLASS 宏</li>

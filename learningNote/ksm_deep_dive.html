@@ -432,13 +432,13 @@ hr {
 
 <hr>
 
-<h2>一句话先说清</h2>
+<h2 id="一句话先说清" >一句话先说清</h2>
 
 <p><strong>KSM = 找出不同进程虚拟地址空间中内容完全相同的匿名页，通过写保护 + 页替换让它们共享同一个物理页，从而节省内存。</strong> 当进程写入该共享页时触发 COW，复制出私有页恢复独立性。核心算法是"双红黑树 + checksum 过滤 + memcmp 逐字节比对"。</p>
 
 <hr>
 
-<h2>为什么需要 KSM</h2>
+<h2 id="为什么需要-ksm" >为什么需要 KSM</h2>
 
 <table>
 <thead><tr>
@@ -502,7 +502,7 @@ hr {
 
 <hr>
 
-<h2>核心智模型</h2>
+<h2 id="核心心智模型">核心心智模型</h2>
 
 <pre><code>┌──────────┐    ┌──────────┐    ┌──────────┐
 │ 进程 A   │    │ 进程 B   │    │ 进程 C   │
@@ -543,9 +543,9 @@ hr {
 
 <hr>
 
-<h2>关键数据结构</h2>
+<h2 id="关键数据结构" >关键数据结构</h2>
 
-<h3><code>struct ksm_stable_node</code> (<code>mm/ksm.c:159-185</code>)</h3>
+<h3 ><code>struct ksm_stable_node</code> (<code>mm/ksm.c:159-185</code>)</h3>
 
 <p>稳定树节点，代表一个独一无二的已合并页内容：</p>
 
@@ -663,7 +663,7 @@ static inline void folio_set_stable_node(struct folio *folio,
 
 <hr>
 
-<h2>KSM 核心算法：cmp_and_merge_page</h2>
+<h2 id="ksm-核心算法cmp_and_merge_page">KSM 核心算法：cmp_and_merge_page</h2>
 
 <p><code>cmp_and_merge_page()</code> (<code>mm/ksm.c:2221</code>) 是 KSM 的心脏。对每个扫描到的页，执行以下决策流程：</p>
 
@@ -710,7 +710,7 @@ static inline void folio_set_stable_node(struct folio *folio,
 
 <hr>
 
-<h2>写保护机制</h2>
+<h2 id="写保护机制" >写保护机制</h2>
 
 <p><code>write_protect_page()</code> (<code>mm/ksm.c:1245-1334</code>) 是 KSM 合并的前提——只有写保护的页才能被信任内容不变：</p>
 
@@ -752,7 +752,7 @@ static inline void folio_set_stable_node(struct folio *folio,
 
 <hr>
 
-<h2>页替换与合并流程</h2>
+<h2 id="页替换与合并流程" >页替换与合并流程</h2>
 
 <p><code>replace_page()</code> (<code>mm/ksm.c:1345-1437</code>) 将进程的私有页替换为共享的 KSM 页：</p>
 
@@ -805,7 +805,7 @@ static inline void folio_set_stable_node(struct folio *folio,
 
 <hr>
 
-<h2>COW 断裂与写缺页处理</h2>
+<h2 id="cow-断裂与写缺页处理" >COW 断裂与写缺页处理</h2>
 
 <p>当进程写入 KSM 合并页时，ARM64 硬件触发 permission fault → 软件走 COW 路径：</p>
 
@@ -854,7 +854,7 @@ wp_page_copy() (mm/memory.c:3658):
 
 <hr>
 
-<h2>零页优化</h2>
+<h2 id="零页优化" >零页优化</h2>
 
 <p>KSM 可将全零的匿名页合并到系统零页，节省物理内存分配 (<code>mm/ksm.c:1512-1544</code>)：</p>
 
@@ -881,7 +881,7 @@ dec_mm_counter(mm, MM_ANONPAGES);  // 零页不算匿名页</code></pre>
 
 <hr>
 
-<h2>稳定树与非稳定树</h2>
+<h2 id="稳定树与非稳定树" >稳定树与非稳定树</h2>
 
 <h3>稳定树</h3>
 
@@ -924,7 +924,7 @@ dec_mm_counter(mm, MM_ANONPAGES);  // 零页不算匿名页</code></pre>
 
 <hr>
 
-<h2>NUMA 与 merge_across_nodes</h2>
+<h2 id="numa-与-merge_across_nodes" >NUMA 与 merge_across_nodes</h2>
 
 <pre><code class="language-c">// mm/ksm.c:471-476
 #ifdef CONFIG_NUMA
@@ -964,7 +964,7 @@ static unsigned int ksm_merge_across_nodes = 1;  // 默认：跨 NUMA 合并
 
 <hr>
 
-<h2>rmap 反向映射集成</h2>
+<h2 id="rmap-反向映射集成" >rmap 反向映射集成</h2>
 
 <p><code>rmap_walk_ksm()</code> (<code>mm/ksm.c:3111-3183</code>) — 从 KSM 页找到所有虚拟映射，用于页迁移、hwpoison、unmap：</p>
 
@@ -985,7 +985,7 @@ static unsigned int ksm_merge_across_nodes = 1;  // 默认：跨 NUMA 合并
 
 <hr>
 
-<h2>ksmd 内核线程与扫描流程</h2>
+<h2 id="ksmd-内核线程与扫描流程" >ksmd 内核线程与扫描流程</h2>
 
 <h3>ksmd 线程 (<code>mm/ksm.c:2768-2793</code>)</h3>
 
@@ -1038,7 +1038,7 @@ static unsigned int ksm_merge_across_nodes = 1;  // 默认：跨 NUMA 合并
 
 <hr>
 
-<h2>madvise 与 prctl 入口</h2>
+<h2 id="madvise-与-prctl-入口" >madvise 与 prctl 入口</h2>
 
 <h3><code>ksm_madvise()</code> (<code>mm/ksm.c:2934-2971</code>)</h3>
 
@@ -1092,9 +1092,9 @@ case MADV_UNMERGEABLE:
 
 <hr>
 
-<h2>ARM64 特有机制</h2>
+<h2 id="arm64-特有机制" >ARM64 特有机制</h2>
 
-<h3>MTE 标签与 memcmp_pages</h3>
+<h3 id="mte-标签与-memcmp_pages" >MTE 标签与 memcmp_pages</h3>
 
 <p><strong>这是 ARM64 与 KSM 最关键的交互点</strong>。<code>arch/arm64/kernel/mte.c:72-94</code> 覆写了通用 <code>memcmp_pages()</code>：</p>
 
@@ -1116,7 +1116,7 @@ case MADV_UNMERGEABLE:
 
 <p><strong>原因</strong>：如果 KSM 合并有 MTE 标签的页，<code>__set_ptes()</code> → <code>mte_sync_tags()</code> 可能清零或修改另一页的标签，破坏内存安全。因此 ARM64 <strong>禁止 KSM 合并带 MTE 标签的页</strong>。</p>
 
-<h3>PTE 写保护与 DBM 协议</h3>
+<h3 id="pte-写保护与-dbm-协议" >PTE 写保护与 DBM 协议</h3>
 
 <p>ARM64 的 <code>PTE_WRITE</code> 和 <code>PTE_DBM</code> 共享 bit 51。写保护时必须遵守硬件脏/写协议 (<code>arch/arm64/include/asm/pgtable.h:426-439</code>)：</p>
 
@@ -1139,7 +1139,7 @@ case MADV_UNMERGEABLE:
 if (pte_sw_dirty(pte))
     pte = clear_pte_bit(pte, __pgprot(PTE_RDONLY));</code></pre>
 
-<h3>Contiguous PTE 与写保护冲突</h3>
+<h3 id="contiguous-pte-与写保护冲突" >Contiguous PTE 与写保护冲突</h3>
 
 <p>ARM64 的 <code>PTE_CONT</code> (bit 52) 让连续 16 个 PTE (4K 页) 共享一个 TLB entry。<strong>KSM 写保护单个页时可能与 contig 映射冲突</strong>。</p>
 
@@ -1179,7 +1179,7 @@ if (pte_sw_dirty(pte))
 <li><code>__set_ptes()</code> 重写为非 contig 的 PTE</li>
 </ol>
 
-<h3>BBM 与 COW 断裂 TLB 维护</h3>
+<h3 id="bbm-与-cow-断裂-tlb-维护" >BBM 与 COW 断裂 TLB 维护</h3>
 
 <p><code>wp_page_copy()</code> 中的 BBM 序列：</p>
 
@@ -1200,7 +1200,7 @@ set_pte_at(mm, addr, ptep, newpte)
 <li><strong>PFN 变更</strong> → <strong>不安全，必须 BBM</strong>（COW 断裂必须走 ptep_clear_flush + set_pte_at）</li>
 </ul>
 
-<h3>MTE 标签在 COW 复制中的传播</h3>
+<h3 id="mte-标签在-cow-复制中的传播" >MTE 标签在 COW 复制中的传播</h3>
 
 <p><code>copy_highpage()</code> (<code>arch/arm64/mm/copypage.c:17-66</code>) 确保 COW 断裂时 MTE 标签正确复制：</p>
 
@@ -1219,7 +1219,7 @@ set_pte_at(mm, addr, ptep, newpte)
 
 <p><strong>COW 断裂完整流程</strong>：KSM 共享页有 MTE 标签 → 写缺页 → <code>wp_page_copy()</code> → <code>copy_user_highpage()</code> → <code>copy_page()</code> 复制数据 + <code>mte_copy_page_tags()</code> 复制标签 → 新私有页数据+标签完整。</p>
 
-<h3>Errata #2645198 与权限变更</h3>
+<h3 id="errata-2645198-与权限变更">Errata #2645198 与权限变更</h3>
 
 <p><code>modify_prot_start_ptes()</code> (<code>arch/arm64/mm/mmu.c:2084-2101</code>)：受 errata #2645198 影响的 CPU，从 executable 变为 non-executable 的权限变更必须走 BBM。</p>
 
@@ -1227,7 +1227,7 @@ set_pte_at(mm, addr, ptep, newpte)
 
 <hr>
 
-<h2>延迟与跳过机制</h2>
+<h2 id="延迟与跳过机制" >延迟与跳过机制</h2>
 
 <h3>Page Volatility（checksum 变化）</h3>
 
@@ -1255,7 +1255,7 @@ if (rmap_item-&gt;oldchecksum != checksum) {
 
 <hr>
 
-<h2>sysfs 接口与调优参数</h2>
+<h2 id="sysfs-接口与调优参数" >sysfs 接口与调优参数</h2>
 
 <p><code>/sys/kernel/mm/ksm/</code> 下的所有参数 (<code>mm/ksm.c:3899-3932</code>)：</p>
 
@@ -1421,7 +1421,7 @@ if (rmap_item-&gt;oldchecksum != checksum) {
 
 <hr>
 
-<h2>vmstat 与 Tracepoint</h2>
+<h2 id="vmstat-与-tracepoint" >vmstat 与 Tracepoint</h2>
 
 <h3>vmstat 计数器</h3>
 
@@ -1499,9 +1499,9 @@ if (rmap_item-&gt;oldchecksum != checksum) {
 
 <hr>
 
-<h2>QEMU 实验</h2>
+<h2 id="qemu-实验" >QEMU 实验</h2>
 
-<h3>实验 1：构建 ARM64 内核与 KSM 启动验证</h3>
+<h3 id="实验-1构建-arm64-内核与-ksm-启动验证">实验 1：构建 ARM64 内核与 KSM 启动验证</h3>
 
 <p><strong>目标</strong>：构建支持 KSM 的 ARM64 内核，验证 ksmd 线程和 sysfs 接口可用。</p>
 
@@ -1566,7 +1566,7 @@ qemu-system-aarch64 \
 <li><code>pages_shared</code> 和 <code>pages_sharing</code> 为 0</li>
 </ul>
 
-<h3>实验 2：madvise 触发 KSM 合并观察</h3>
+<h3 id="实验-2madvise-触发-ksm-合并观察">实验 2：madvise 触发 KSM 合并观察</h3>
 
 <p><strong>目标</strong>：编写测试程序，通过 <code>madvise(MADV_MERGEABLE)</code> 注册页到 KSM，观察合并过程。</p>
 
@@ -1679,7 +1679,7 @@ aarch64-linux-gnu-gcc -static ksm_test.c -o rootfs/ksm_test
 <li>UNMERGE 后 <code>pages_shared</code> 回到 0</li>
 </ul>
 
-<h3>实验 3：手动控制 ksmd 运行与合并统计</h3>
+<h3 id="实验-3手动控制-ksmd-运行与合并统计">实验 3：手动控制 ksmd 运行与合并统计</h3>
 
 <p><strong>目标</strong>：通过 sysfs 控制 ksmd，观察不同参数下的合并效率。</p>
 
@@ -1711,7 +1711,7 @@ echo scan-time &gt; /sys/kernel/mm/ksm/advisor_mode
 # 6. 停止 ksmd
 echo 0 &gt; /sys/kernel/mm/ksm/run</code></pre>
 
-<h3>实验 4：COW 断裂验证</h3>
+<h3 id="实验-4cow-断裂验证">实验 4：COW 断裂验证</h3>
 
 <p><strong>目标</strong>：验证写入 KSM 合并页时 COW 断裂的正确性和 vmstat 统计。</p>
 
@@ -1760,7 +1760,7 @@ EOF
 # 交叉编译运行后
 grep cow_ksm /proc/vmstat</code></pre>
 
-<h3>实验 5：零页合并验证</h3>
+<h3 id="实验-5零页合并验证">实验 5：零页合并验证</h3>
 
 <p><strong>目标</strong>：验证 KSM 零页优化：全零页合并到系统零页而非分配新物理页。</p>
 
@@ -1809,7 +1809,7 @@ EOF
 echo 0 &gt; /sys/kernel/mm/ksm/use_zero_pages
 # 重复测试，观察 pages_shared vs ksm_zero_pages 的差异</code></pre>
 
-<h3>实验 6：ftrace 追踪 KSM 合并过程</h3>
+<h3 id="实验-6ftrace-追踪-ksm-合并过程">实验 6：ftrace 追踪 KSM 合并过程</h3>
 
 <p><strong>目标</strong>：使用 tracepoint 观察合并的详细过程。</p>
 
@@ -1840,7 +1840,7 @@ ksmd-XX  [001] ... 100.1: ksm_merge_one_page: pfn=0x1234 err=0
 ksmd-XX  [001] ... 100.2: ksm_merge_with_ksm_page: ksm_page=0x5678 err=0
 ksmd-XX  [001] ... 100.5: ksm_stop_scan: seqnr=1 rmap_entries=100</code></pre>
 
-<h3>实验 7：NUMA 环境下 merge_across_nodes 对比</h3>
+<h3 id="实验-7numa-环境下-merge_across_nodes-对比">实验 7：NUMA 环境下 merge_across_nodes 对比</h3>
 
 <p><strong>目标</strong>：在模拟 NUMA 环境下对比跨节点合并与同节点合并的差异。</p>
 
@@ -1874,7 +1874,7 @@ echo 1 &gt; /sys/kernel/mm/ksm/run  # 重新开始
 cat /sys/kernel/mm/ksm/pages_shared
 # 跨节点页无法合并，pages_shared 应更少</code></pre>
 
-<h3>实验 8：MTE 环境下 KSM 行为验证</h3>
+<h3 id="实验-8mte-环境下-ksm-行为验证">实验 8：MTE 环境下 KSM 行为验证</h3>
 
 <p><strong>目标</strong>：验证 MTE 标签阻止 KSM 合并的行为。</p>
 
@@ -1953,7 +1953,7 @@ EOF
 
 <hr>
 
-<h2>源码阅读路线图</h2>
+<h2 id="源码阅读路线图" >源码阅读路线图</h2>
 
 <p>建议按以下顺序阅读：</p>
 
@@ -2035,7 +2035,7 @@ EOF
 
 <hr>
 
-<h2>关键源码索引</h2>
+<h2 id="关键源码索引" >关键源码索引</h2>
 
 <table>
 <thead><tr>

@@ -110,7 +110,7 @@
 </div>
 
 <!-- ============ 一、KSM 实现的目标 ============ -->
-<h2 id="sec1">一、KSM 实现的目标</h2>
+<h2 >一、KSM 实现的目标</h2>
 
 <div class="card">
   <div class="card-title">核心设计目标</div>
@@ -157,7 +157,7 @@ process_profit ≈ (ksm_merging_pages + ksm_zero_pages) × PAGE_SIZE
 </div>
 
 <!-- ============ 二、内核配置选项 ============ -->
-<h2 id="sec2">二、内核配置选项</h2>
+<h2 >二、内核配置选项</h2>
 
 <div class="card">
   <div class="card-title">Kconfig 定义 <code>mm/Kconfig</code></div>
@@ -193,7 +193,7 @@ process_profit ≈ (ksm_merging_pages + ksm_zero_pages) × PAGE_SIZE
 </div>
 
 <!-- ============ 三、核心数据结构 ============ -->
-<h2 id="sec3">三、核心数据结构</h2>
+<h2 >三、核心数据结构</h2>
 
 <div class="grid2">
   <div class="card">
@@ -527,7 +527,7 @@ again:
 </div>
 
 <!-- ============ 四、触发 KSM 的逻辑 ============ -->
-<h2 id="sec4">四、触发 KSM 的逻辑</h2>
+<h2 >四、触发 KSM 的逻辑</h2>
 
 <div class="card">
   <div class="card-title">三种启用方式</div>
@@ -609,7 +609,7 @@ if (MMF_VM_MERGE_ANY)
 </div>
 
 <!-- ============ 五、页面合并核心流程 ============ -->
-<h2 id="sec5">五、页面合并核心流程</h2>
+<h2 >五、页面合并核心流程</h2>
 
 <div class="card">
   <div class="card-title">cmp_and_merge_page() 决策流程</div>
@@ -669,7 +669,7 @@ static int break_ksm(vma, addr) {
 </div>
 
 <!-- ============ 六、ARM64 架构特殊处理 ============ -->
-<h2 id="sec6">六、ARM64 架构特殊处理</h2>
+<h2 >六、ARM64 架构特殊处理</h2>
 
 <div class="card">
   <div class="card-title">MTE 感知页面比较 <code>arch/arm64/kernel/mte.c</code></div>
@@ -703,7 +703,7 @@ static int break_ksm(vma, addr) {
 </div>
 
 <!-- ============ 七、嵌入式设备为何不开启 KSM ============ -->
-<h2 id="sec7">七、嵌入式设备为何不开启 KSM</h2>
+<h2 id="sec7" >七、嵌入式设备为何不开启 KSM</h2>
 
 <div class="card">
   <div class="card-title">问题的提出</div>
@@ -836,7 +836,7 @@ if (PAGE_SIZE >= 16384 &amp;&amp; get_num_physpages() &lt;= 128) {
 </div>
 
 <!-- ============ 八、QEMU 实践指南 ============ -->
-<h2 id="sec8">八、QEMU 实践指南</h2>
+<h2 id="sec8" >八、QEMU 实践指南</h2>
 
 <p>以下实验可在 QEMU 模拟的 ARM64 虚拟机中完成，无需物理开发板。</p>
 
@@ -857,14 +857,14 @@ if (PAGE_SIZE >= 16384 &amp;&amp; get_num_physpages() &lt;= 128) {
 <div class="exp-card">
   <div class="exp-title">环境搭建：QEMU ARM64 虚拟机 <span class="badge badge-basic">基础</span></div>
   <div class="exp-goal">目标：创建一个可运行 Linux 的 ARM64 虚拟机，用于 KSM 实验</div>
-  <h4>1. 安装 QEMU</h4>
+  <h4 id="sec1">1. 安装 QEMU</h4>
   <pre><code># Ubuntu / Debian
 sudo apt install qemu-system-arm gcc-aarch64-linux-gnu
 
 # Fedora
 sudo dnf install qemu-system-aarch64</code></pre>
 
-  <h4>2. 创建磁盘镜像并安装系统</h4>
+  <h4 id="sec2">2. 创建磁盘镜像并安装系统</h4>
   <pre><code># 创建 8GB 虚拟磁盘
 qemu-img create -f qcow2 arm64-ksm.qcow2 8G
 
@@ -875,7 +875,7 @@ wget https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-24.04-live-server-
 sudo apt install qemu-efi-aarch64
 cp /usr/share/qemu-efi-aarch64/QEMU_EFI.fd ./</code></pre>
 
-  <h4>3. 启动虚拟机</h4>
+  <h4 id="sec3">3. 启动虚拟机</h4>
   <pre><code>qemu-system-aarch64 \
   -machine virt \
   -cpu cortex-a76 \
@@ -889,7 +889,7 @@ cp /usr/share/qemu-efi-aarch64/QEMU_EFI.fd ./</code></pre>
   -cdrom ubuntu-24.04-live-server-arm64.iso \
   -nographic</code></pre>
 
-  <h4>4. 内核编译（启用 KSM）</h4>
+  <h4 id="sec4">4. 内核编译（启用 KSM）</h4>
   <pre><code># 在宿主机上编译内核
 cd /path/to/linux-6.18.1
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
@@ -902,7 +902,7 @@ scripts/config --enable CONFIG_TRACING
 
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc) Image.gz</code></pre>
 
-  <h4>5. 使用自编译内核启动</h4>
+  <h4 id="sec5">5. 使用自编译内核启动</h4>
   <pre><code>qemu-system-aarch64 \
   -machine virt \
   -cpu cortex-a76 \
@@ -916,7 +916,7 @@ make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc) Image.gz</code></pre
   -device virtio-net-device,netdev=net0 \
   -nographic</code></pre>
 
-  <h4>6. 验证 KSM 可用</h4>
+  <h4 id="sec6">6. 验证 KSM 可用</h4>
   <pre><code># 登录虚拟机后
 zcat /proc/config.gz | grep CONFIG_KSM
 # 预期: CONFIG_KSM=y
@@ -1154,7 +1154,7 @@ kill $(pgrep ksm_basic) 2>/dev/null</code></pre>
 </div>
 
 <!-- ============ 九、源码文件索引 ============ -->
-<h2 id="sec9">九、源码文件索引</h2>
+<h2 id="sec9" >九、源码文件索引</h2>
 
 <div class="card">
   <table>

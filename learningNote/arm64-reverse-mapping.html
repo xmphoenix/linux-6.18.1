@@ -143,9 +143,9 @@
 </div>
 
 <!-- ====== 第1章: 目标与设计动机 ====== -->
-<h2 id="ch1">1. 反向映射的目标与设计动机</h2>
+<h2 id="ch1" >1. 反向映射的目标与设计动机</h2>
 
-<h3 id="ch1.1">1.1 为什么需要反向映射？</h3>
+<h3 id="ch1.1" >1.1 为什么需要反向映射？</h3>
 
 <div class="box info">
   <strong>核心问题：</strong>给定一个物理页框 (page frame)，如何找出所有映射了它的进程页表项 (PTE)？
@@ -200,7 +200,7 @@
   <strong>设计哲学：</strong>反向映射是"先有物理页，再找虚拟地址"的能力，它使得内核可以在不遍历所有进程页表的情况下，精确地找到并修改某个物理页的所有映射。这是实现高效页面回收、迁移和内存管理的基石。
 </blockquote>
 
-<h3 id="ch1.2">1.2 多进程相同虚拟地址如何区分？</h3>
+<h3 id="ch1.2" >1.2 多进程相同虚拟地址如何区分？</h3>
 
 <p>
 这是理解反向映射最关键的认知跃迁：<b>反向映射找到的不是"裸虚拟地址"，而是 <code>(VMA, 虚拟地址)</code> 二元组</b>——其中 VMA 隐式包含了进程身份。
@@ -521,7 +521,7 @@ anon_vma 也是同一个，但因为 vm_mm 不同，pgd 不同 → 修改到不�
   ③ <b>这就是为什么 interval tree 中必须存 VMA 指针而非裸地址：</b>如果只存虚拟地址 0x7f000000，fork 之后到底去改父进程还是子进程的 PTE？无法决定。存 VMA 就天然解决了这个问题。
 </div>
 
-<h3 id="ch1.3">1.3 核心数据结构全景</h3>
+<h3 id="ch1.3" >1.3 核心数据结构全景</h3>
 
 <div class="diagram">
 <pre style="font-size:0.82em;line-height:1.4;">
@@ -614,7 +614,7 @@ anon_vma 也是同一个，但因为 vm_mm 不同，pgd 不同 → 修改到不�
 </tr>
 </table>
 
-<h3 id="ch1.4">1.4 匿名页 vs 文件页的映射路径</h3>
+<h3 id="ch1.4" >1.4 匿名页 vs 文件页的映射路径</h3>
 
 <div class="diagram">
 <pre style="font-size:0.82em;line-height:1.4;">
@@ -650,9 +650,9 @@ anon_vma 也是同一个，但因为 vm_mm 不同，pgd 不同 → 修改到不�
 </div>
 
 <!-- ====== 第2章: 内核配置项 ====== -->
-<h2 id="ch2">2. 内核配置项全景</h2>
+<h2 id="ch2" >2. 内核配置项全景</h2>
 
-<h3 id="ch2.1">2.1 ARM64 架构级配置</h3>
+<h3 id="ch2.1" >2.1 ARM64 架构级配置</h3>
 
 <p>ARM64 架构通过 <code>arch/arm64/Kconfig</code> 反向选择 (select) 了大量与反向映射相关的通用内核特性：</p>
 
@@ -705,7 +705,7 @@ anon_vma 也是同一个，但因为 vm_mm 不同，pgd 不同 → 修改到不�
 </tr>
 </table>
 
-<h3 id="ch2.2">2.2 内存管理核心配置</h3>
+<h3 id="ch2.2" >2.2 内存管理核心配置</h3>
 
 <table>
 <tr><th>配置项</th><th>Kconfig 位置</th><th>描述</th></tr>
@@ -756,7 +756,7 @@ anon_vma 也是同一个，但因为 vm_mm 不同，pgd 不同 → 修改到不�
 </tr>
 </table>
 
-<h3 id="ch2.3">2.3 相关特性配置矩阵</h3>
+<h3 id="ch2.3" >2.3 相关特性配置矩阵</h3>
 
 <div class="box">
 <pre><code><span class="c"># ARM64 推荐的反向映射相关 .config 最小集合</span>
@@ -779,9 +779,9 @@ anon_vma 也是同一个，但因为 vm_mm 不同，pgd 不同 → 修改到不�
 </div>
 
 <!-- ====== 第3章: 触发反向映射的逻辑 ====== -->
-<h2 id="ch3">3. 触发反向映射的逻辑路径</h2>
+<h2 id="ch3" >3. 触发反向映射的逻辑路径</h2>
 
-<h3 id="ch3.1">3.1 页面回收 — vmscan (最核心路径)</h3>
+<h3 id="ch3.1" >3.1 页面回收 — vmscan (最核心路径)</h3>
 
 <div class="diagram">
 <pre style="font-size:0.8em;line-height:1.4;">
@@ -836,7 +836,7 @@ shrink_folio_list()                          <span class="c">// mm/vmscan.c</spa
 }
 </code></pre>
 
-<h3 id="ch3.2">3.2 页面迁移 — migrate</h3>
+<h3 id="ch3.2" >3.2 页面迁移 — migrate</h3>
 
 <div class="box info">
   <strong>触发场景：</strong>NUMA 自动平衡 (<code>CONFIG_NUMA_BALANCING</code>)、内存规整 (<code>compaction</code>)、内存热插拔 (<code>memory hotplug</code>)、手动迁移 (<code>migrate_pages</code> 系统调用)。
@@ -850,7 +850,7 @@ shrink_folio_list()                          <span class="c">// mm/vmscan.c</spa
             └─ 迁移完成后，migration entry 替换为新页的 PTE
 </code></pre>
 
-<h3 id="ch3.3">3.3 内存失败处理 — memory-failure</h3>
+<h3 id="ch3.3" >3.3 内存失败处理 — memory-failure</h3>
 
 <pre><code><span class="c">// mm/memory-failure.c: hwpoison_user_mappings()</span>
 <span class="k">if</span> (!folio_test_hugetlb(folio))
@@ -862,7 +862,7 @@ shrink_folio_list()                          <span class="c">// mm/vmscan.c</spa
        └─ 向映射进程发送 SIGBUS
 </code></pre>
 
-<h3 id="ch3.4">3.4 THP 拆分/压缩 — khugepaged</h3>
+<h3 id="ch3.4" >3.4 THP 拆分/压缩 — khugepaged</h3>
 
 <pre><code><span class="c">// mm/khugepaged.c:2020 附近</span>
 <span class="f">try_to_unmap</span>(folio, TTU_IGNORE_MLOCK | ...);   <span class="c">// 拆分前先解除映射</span>
@@ -871,13 +871,13 @@ shrink_folio_list()                          <span class="c">// mm/vmscan.c</spa
 <span class="f">try_to_unmap</span>(folio, ttu_flags | TTU_IGNORE_MLOCK);
 </code></pre>
 
-<h3 id="ch3.5">3.5 文件截断 — truncate</h3>
+<h3 id="ch3.5" >3.5 文件截断 — truncate</h3>
 
 <pre><code><span class="c">// mm/truncate.c:199 附近 (truncate_cleanup_folio)</span>
 <span class="f">try_to_unmap</span>(folio, ttu_flags);   <span class="c">// 强制解除所有文件映射</span>
 </code></pre>
 
-<h3 id="ch3.6">3.6 folio_referenced — 页面引用检测</h3>
+<h3 id="ch3.6" >3.6 folio_referenced — 页面引用检测</h3>
 
 <div class="box warn">
   <strong>用途：</strong>这是 <code>page reclaim</code> 的辅助决策函数，在回收前判断页面是否仍被活跃使用。
@@ -898,7 +898,7 @@ shrink_folio_list()                          <span class="c">// mm/vmscan.c</spa
 <span class="c">// 2. shrink_folio_list() — 非活跃链表回收前的引用检查 (mm/vmscan.c:912)</span>
 </code></pre>
 
-<h3 id="ch3.7">3.7 完整调用链汇总</h3>
+<h3 id="ch3.7" >3.7 完整调用链汇总</h3>
 
 <table>
 <tr><th>触发源</th><th>调用入口</th><th>核心 rmap 函数</th><th>源文件</th></tr>
@@ -959,7 +959,7 @@ shrink_folio_list()                          <span class="c">// mm/vmscan.c</spa
 </table>
 
 <!-- ====== 第4章: 实验 ====== -->
-<h2 id="ch4">4. 实验设计与实践</h2>
+<h2 id="ch4" >4. 实验设计与实践</h2>
 
 <p>以下实验均基于 ARM64 Linux 6.18.1 环境，使用 ftrace/tracepoint 观察反向映射的行为。</p>
 
@@ -1451,7 +1451,7 @@ stress-ng --vm 2 --vm-bytes 90% --timeout 20s
 </div>
 
 <!-- ====== 附录 ====== -->
-<h2 id="appendix">附录：关键函数速查表</h2>
+<h2 >附录：关键函数速查表</h2>
 
 <table>
 <tr><th>函数</th><th>文件:行号</th><th>作用</th></tr>

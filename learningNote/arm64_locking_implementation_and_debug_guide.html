@@ -473,7 +473,7 @@ hr {
         <div class="toc-chapter-header"><span class="arrow">▶</span> 5.6 semaphore 关键源码逐行解释</div>
         <ul class="toc-chapter-items">
           <li><a href="#561-down-快路径逐行解释">5.6.1 down() 快路径逐行解释</a></li>
-          <li><a href="#562-<strong><em>down_common-慢路径逐行解释">5.6.2 down_common() 慢路径逐行解释</a></li>
+          <li><a href="#562-down_common-慢路径逐行解释">5.6.2 down_common() 慢路径逐行解释</a></li>
         </ul>
       </li>
       <li class="toc-chapter">
@@ -502,8 +502,8 @@ hr {
         <ul class="toc-chapter-items">
           <li><a href="#671-mutex_lock-fastpath-逐行解释">6.7.1 mutex_lock() fastpath 逐行解释</a></li>
           <li><a href="#672-mutex_optimistic_spin-逐行解释">6.7.2 mutex_optimistic_spin() 逐行解释</a></li>
-          <li><a href="#673-<strong>mutex_lock_common-慢路径逐行解释">6.7.3 mutex_lock_common() 慢路径逐行解释</a></li>
-          <li><a href="#674-<strong>mutex_unlock_slowpath-逐行解释">6.7.4 mutex_unlock_slowpath() 逐行解释</a></li>
+          <li><a href="#673-mutex_lock_common-慢路径逐行解释">6.7.3 mutex_lock_common() 慢路径逐行解释</a></li>
+          <li><a href="#674-mutex_unlock_slowpath-逐行解释">6.7.4 mutex_unlock_slowpath() 逐行解释</a></li>
         </ul>
       </li>
       <li class="toc-chapter">
@@ -651,7 +651,7 @@ hr {
 
 <p>理解锁实现时，建议按下面顺序读源码：</p>
 
-<h3>2.1 spinlock 相关</h3>
+<h3 id="21-spinlock-相关" >2.1 spinlock 相关</h3>
 
 <ul>
 <li><code>arch/arm64/include/asm/spinlock.h</code></li>
@@ -665,14 +665,14 @@ hr {
 <li><code>arch/arm64/include/asm/rqspinlock.h</code></li>
 </ul>
 
-<h3>2.2 semaphore 相关</h3>
+<h3 id="22-semaphore-相关" >2.2 semaphore 相关</h3>
 
 <ul>
 <li><code>include/linux/semaphore.h</code></li>
 <li><code>kernel/locking/semaphore.c</code></li>
 </ul>
 
-<h3>2.3 mutex 相关</h3>
+<h3 id="23-mutex-相关" >2.3 mutex 相关</h3>
 
 <ul>
 <li><code>include/linux/mutex_types.h</code></li>
@@ -681,7 +681,7 @@ hr {
 <li><code>kernel/locking/mutex-debug.c</code></li>
 </ul>
 
-<h3>2.4 锁调试相关</h3>
+<h3 id="24-锁调试相关" >2.4 锁调试相关</h3>
 
 <ul>
 <li><code>kernel/locking/spinlock_debug.c</code></li>
@@ -695,7 +695,7 @@ hr {
 <li><code>tools/perf/Documentation/perf-lock.txt</code></li>
 </ul>
 
-<h3>2.5 SLUB 实战延伸</h3>
+<h3 id="25-slub-实战延伸" >2.5 SLUB 实战延伸</h3>
 
 <ul>
 <li><code>mm/slub.c</code></li>
@@ -708,7 +708,7 @@ hr {
 
 <p>先不谈具体锁类型，先看 ARM64 给锁子系统提供了什么。</p>
 
-<h3>3.1 Acquire / Release 是整个锁实现的根</h3>
+<h3 id="31-acquire--release-是整个锁实现的根" >3.1 Acquire / Release 是整个锁实现的根</h3>
 
 <p>在 ARM64 上，锁正确性不能依赖 x86 式的“默认强序”直觉，而必须显式依赖：</p>
 
@@ -730,7 +730,7 @@ hr {
 
 <p>这些接口最终会落到 arm64 的 <code>ldar/stlr</code> 或对应的原子序列上。</p>
 
-<h3>3.2 ARM64 的条件等待不是忙等死转，而是借助 <code>wfe</code></h3>
+<h3 id="32-arm64-的条件等待不是忙等死转而是借助-wfe" >3.2 ARM64 的条件等待不是忙等死转，而是借助 <code>wfe</code></h3>
 
 <p><code>arch/arm64/include/asm/barrier.h</code> 里的：</p>
 
@@ -761,7 +761,7 @@ hr {
 <li>等有事件或状态变化再重新检查</li>
 </ul>
 
-<h3>3.3 一个很容易忽视的点：rqspinlock 有 arm64 特化</h3>
+<h3 id="33-一个很容易忽视的点rqspinlock-有-arm64-特化" >3.3 一个很容易忽视的点：rqspinlock 有 arm64 特化</h3>
 
 <p>普通 <code>spinlock</code> 走通用 <code>qspinlock</code>，但 <code>rqspinlock</code> 在：</p>
 
@@ -865,7 +865,7 @@ hr {
 
 <p>慢路径大致分两阶段：</p>
 
-<h3>阶段 A：先尝试 pending holder 优化</h3>
+<h3 id="阶段-a先尝试-pending-holder-优化" >阶段 A：先尝试 pending holder 优化</h3>
 
 <p>当锁只有轻微竞争时，代码不会立刻排队，而是：</p>
 
@@ -877,7 +877,7 @@ hr {
 
 <p>这样做的目的，是在“只有一个后来者”的情况下，避免过早构建 MCS 队列。</p>
 
-<h3>阶段 B：竞争明显时，进入 MCS 队列</h3>
+<h3 id="阶段-b竞争明显时进入-mcs-队列" >阶段 B：竞争明显时，进入 MCS 队列</h3>
 
 <p>如果观察到：</p>
 
@@ -921,7 +921,7 @@ hr {
 
 <h2>4.6 ARM64 在 spinlock 中真正负责什么</h2>
 
-<h3>负责 1：等待循环的正确性</h3>
+<h3 id="负责-1等待循环的正确性">负责 1：等待循环的正确性</h3>
 
 <p><code>qspinlock.c</code> 中很多地方使用：</p>
 
@@ -932,7 +932,7 @@ hr {
 
 <p>在 arm64 上，这些等待不是纯忙轮询，而会落到 <code>__cmpwait_relaxed()</code>，内部有 <code>wfe</code>。</p>
 
-<h3>负责 2：解锁的 release 语义</h3>
+<h3 id="负责-2解锁的-release-语义">负责 2：解锁的 release 语义</h3>
 
 <p><code>include/asm-generic/qspinlock.h</code> 中：</p>
 
@@ -940,7 +940,7 @@ hr {
 
 <p>这保证解锁前的共享数据写入对后继持锁者可见。</p>
 
-<h3>负责 3：前进性</h3>
+<h3 id="负责-3前进性">负责 3：前进性</h3>
 
 <p><code>include/asm-generic/qspinlock.h</code> 文档明确强调：</p>
 
@@ -955,7 +955,7 @@ hr {
 
 <p>下面不再只讲概念，而是直接对关键代码做“逐行解释”。</p>
 
-<h3>4.7.1 fastpath 逐行解释</h3>
+<h3 id="471-fastpath-逐行解释" >4.7.1 fastpath 逐行解释</h3>
 
 <p>代码来自 <code>include/asm-generic/qspinlock.h</code>：</p>
 
@@ -1003,7 +1003,7 @@ hr {
 <li>注意这里把失败时观测到的 <code>val</code> 也带进去了，这样慢路径不必重新完全从头探测一次状态。</li>
 </ul>
 
-<h3>4.7.2 slowpath 逐行解释：pending 优化段</h3>
+<h3 id="472-slowpath-逐行解释pending-优化段">4.7.2 slowpath 逐行解释：pending 优化段</h3>
 
 <p>代码来自 <code>kernel/locking/qspinlock.c</code>：</p>
 
@@ -1073,7 +1073,7 @@ clear_pending_set_locked(lock);</code></pre>
 <li>这是 qspinlock 减少队列构建开销的关键一步。</li>
 </ul>
 
-<h3>4.7.3 slowpath 逐行解释：MCS 入队段</h3>
+<h3 id="473-slowpath-逐行解释mcs-入队段">4.7.3 slowpath 逐行解释：MCS 入队段</h3>
 
 <p>代码来自 <code>kernel/locking/qspinlock.c</code>：</p>
 
@@ -1178,7 +1178,7 @@ if (old &amp; _Q_TAIL_MASK) {
 
 <h2>4.8 qspinlock 时序图与状态迁移图</h2>
 
-<h3>4.8.1 轻度竞争时序图</h3>
+<h3 id="481-轻度竞争时序图" >4.8.1 轻度竞争时序图</h3>
 
 <pre><code class="language-mermaid">sequenceDiagram
 	participant CPU0 as CPU0 owner
@@ -1195,7 +1195,7 @@ if (old &amp; _Q_TAIL_MASK) {
 	CPU1-&gt;&gt;L: clear_pending_set_locked()
 	L--&gt;&gt;CPU1: become owner</code></pre>
 
-<h3>4.8.2 重度竞争状态图</h3>
+<h3 id="482-重度竞争状态图" >4.8.2 重度竞争状态图</h3>
 
 <pre><code class="language-mermaid">stateDiagram-v2
 	[*] --&gt; Unlocked
@@ -1295,7 +1295,7 @@ if (old &amp; _Q_TAIL_MASK) {
 
 <h2>5.6 semaphore 关键源码逐行解释</h2>
 
-<h3>5.6.1 <code>down()</code> 快路径逐行解释</h3>
+<h3 id="561-down-快路径逐行解释" >5.6.1 <code>down()</code> 快路径逐行解释</h3>
 
 <p>代码来自 <code>kernel/locking/semaphore.c</code>：</p>
 
@@ -1357,7 +1357,7 @@ if (old &amp; _Q_TAIL_MASK) {
 <li>最后释放内部自旋锁并恢复中断状态。</li>
 </ul>
 
-<h3>5.6.2 <code>___down_common()</code> 慢路径逐行解释</h3>
+<h3 id="562-down_common-慢路径逐行解释">5.6.2 <code>___down_common()</code> 慢路径逐行解释</h3>
 
 <p>代码来自 <code>kernel/locking/semaphore.c</code>：</p>
 
@@ -1579,7 +1579,7 @@ for (;;) {
 
 <h2>6.7 mutex 关键源码逐行解释</h2>
 
-<h3>6.7.1 <code>mutex_lock()</code> fastpath 逐行解释</h3>
+<h3 id="671-mutex_lock-fastpath-逐行解释" >6.7.1 <code>mutex_lock()</code> fastpath 逐行解释</h3>
 
 <p>代码来自 <code>kernel/locking/mutex.c</code>：</p>
 
@@ -1631,7 +1631,7 @@ if (atomic_long_try_cmpxchg_acquire(&amp;lock-&gt;owner, &amp;zero, curr))
 <li>失败时说明不是无竞争场景，需要走慢路径。</li>
 </ol>
 
-<h3>6.7.2 <code>mutex_optimistic_spin()</code> 逐行解释</h3>
+<h3 id="672-mutex_optimistic_spin-逐行解释" >6.7.2 <code>mutex_optimistic_spin()</code> 逐行解释</h3>
 
 <p>代码来自 <code>kernel/locking/mutex.c</code>：</p>
 
@@ -1705,7 +1705,7 @@ for (;;) {
 <li>继续下一轮自旋，但不做重型同步，只是降低流水线压力。</li>
 </ul>
 
-<h3>6.7.3 <code>__mutex_lock_common()</code> 慢路径逐行解释</h3>
+<h3 id="673-mutex_lock_common-慢路径逐行解释">6.7.3 <code>__mutex_lock_common()</code> 慢路径逐行解释</h3>
 
 <p>代码来自 <code>kernel/locking/mutex.c</code>：</p>
 
@@ -1793,7 +1793,7 @@ for (;;) {
 <li>唤醒后重新进入受保护检查区。</li>
 </ul>
 
-<h3>6.7.4 <code>__mutex_unlock_slowpath()</code> 逐行解释</h3>
+<h3 id="674-mutex_unlock_slowpath-逐行解释">6.7.4 <code>__mutex_unlock_slowpath()</code> 逐行解释</h3>
 
 <p>代码来自 <code>kernel/locking/mutex.c</code>：</p>
 
@@ -1881,7 +1881,7 @@ if (owner &amp; MUTEX_FLAG_HANDOFF)
 
 <h2>6.8 mutex 时序图与状态迁移图</h2>
 
-<h3>6.8.1 optimistic spinning + 睡眠时序图</h3>
+<h3 id="681-optimistic-spinning--睡眠时序图">6.8.1 optimistic spinning + 睡眠时序图</h3>
 
 <pre><code class="language-mermaid">sequenceDiagram
    participant Owner as owner task
@@ -1905,7 +1905,7 @@ if (owner &amp; MUTEX_FLAG_HANDOFF)
       Waiter-&gt;&gt;M: acquire mutex
    end</code></pre>
 
-<h3>6.8.2 mutex owner 状态图</h3>
+<h3 id="682-mutex-owner-状态图" >6.8.2 mutex owner 状态图</h3>
 
 <pre><code class="language-mermaid">stateDiagram-v2
    [*] --&gt; Unlocked
@@ -2050,13 +2050,13 @@ CONFIG_LOCK_TORTURE_TEST=m</code></pre>
 
 <p><code>Documentation/locking/locktorture.rst</code> 已经给了最直接的现成实验框架。</p>
 
-<h3>10.1 编译模块</h3>
+<h3 id="101-编译模块" >10.1 编译模块</h3>
 
 <p>开启：</p>
 
 <pre><code class="language-text">CONFIG_LOCK_TORTURE_TEST=m</code></pre>
 
-<h3>10.2 跑 spinlock 压测</h3>
+<h3 id="102-跑-spinlock-压测" >10.2 跑 spinlock 压测</h3>
 
 <pre><code class="language-bash">modprobe locktorture torture_type=spin_lock nwriters_stress=8 stat_interval=10
 dmesg | grep torture</code></pre>
@@ -2069,7 +2069,7 @@ dmesg | grep torture</code></pre>
 <li>CPU 数增加后吞吐是否线性恶化</li>
 </ol>
 
-<h3>10.3 跑 mutex 压测</h3>
+<h3 id="103-跑-mutex-压测" >10.3 跑 mutex 压测</h3>
 
 <pre><code class="language-bash">rmmod locktorture
 modprobe locktorture torture_type=mutex_lock nwriters_stress=8 stat_interval=10
@@ -2082,7 +2082,7 @@ dmesg | grep torture</code></pre>
 <li>是否能通过 <code>perf lock contention</code> 看到显著等待热点</li>
 </ol>
 
-<h3>10.4 结论预期</h3>
+<h3 id="104-结论预期" >10.4 结论预期</h3>
 
 <ul>
 <li>短临界区、高频竞争下，spinlock 往往延迟更低</li>
@@ -2100,7 +2100,7 @@ dmesg | grep torture</code></pre>
 <li><code>mutex</code> 不允许</li>
 </ol>
 
-<h3>11.1 semaphore 实验思路</h3>
+<h3 id="111-semaphore-实验思路" >11.1 semaphore 实验思路</h3>
 
 <p>准备一个二值 semaphore：</p>
 
@@ -2127,7 +2127,7 @@ dmesg | grep torture</code></pre>
 <li>它表达的是“资源计数恢复”，不是严格 owner 互斥</li>
 </ul>
 
-<h3>11.2 mutex 实验思路</h3>
+<h3 id="112-mutex-实验思路" >11.2 mutex 实验思路</h3>
 
 <p>准备一个 mutex：</p>
 
@@ -2158,7 +2158,7 @@ dmesg | grep torture</code></pre>
 
 <h2>12. 实验三：在 ARM64 上观察 qspinlock 的竞争热点</h2>
 
-<h3>12.1 开启 lockstat</h3>
+<h3 id="121-开启-lockstat" >12.1 开启 lockstat</h3>
 
 <pre><code class="language-bash">echo 1 &gt; /proc/sys/kernel/lock_stat
 cat /proc/lock_stat | head -n 80</code></pre>
@@ -2172,7 +2172,7 @@ cat /proc/lock_stat | head -n 80</code></pre>
 <li>顶部 contention point</li>
 </ul>
 
-<h3>12.2 寻找典型热点 spinlock</h3>
+<h3 id="122-寻找典型热点-spinlock" >12.2 寻找典型热点 spinlock</h3>
 
 <pre><code class="language-bash">grep &#x27;:&#x27; /proc/lock_stat | head</code></pre>
 
@@ -2184,7 +2184,7 @@ cat /proc/lock_stat | head -n 80</code></pre>
 <li>dentry / inode 相关锁</li>
 </ul>
 
-<h3>12.3 关注 <code>rqspinlock</code></h3>
+<h3 id="123-关注-rqspinlock" >12.3 关注 <code>rqspinlock</code></h3>
 
 <p>调度器 <code>rq->lock</code> 在 ARM64 上尤其值得看，因为它对应 <code>rqspinlock</code> 的等待特化。</p>
 
@@ -2221,7 +2221,7 @@ cat /proc/lock_stat | head -n 80</code></pre>
 <li><code>lockdep</code> / <code>lock_stat</code> 相关事件更偏向“锁类和统计”</li>
 </ul>
 
-<h3>13.1 用 tracefs 打开事件</h3>
+<h3 id="131-用-tracefs-打开事件" >13.1 用 tracefs 打开事件</h3>
 
 <pre><code class="language-bash">cd /sys/kernel/tracing
 echo 1 &gt; events/lock/contention_begin/enable
@@ -2237,7 +2237,7 @@ cat trace_pipe</code></pre>
 <li><code>WRITE</code></li>
 </ul>
 
-<h3>13.2 如何把地址对应回具体锁</h3>
+<h3 id="132-如何把地址对应回具体锁" >13.2 如何把地址对应回具体锁</h3>
 
 <p>有几种方法：</p>
 
@@ -2314,7 +2314,7 @@ cat /proc/lockdep | less</code></pre>
 <li>是否已经形成反向依赖边</li>
 </ol>
 
-<h3>lockdep 最擅长抓什么</h3>
+<h3 id="lockdep-最擅长抓什么" >lockdep 最擅长抓什么</h3>
 
 <ul>
 <li>ABBA 死锁</li>
@@ -2323,7 +2323,7 @@ cat /proc/lockdep | less</code></pre>
 <li>中断上下文与普通上下文的错误嵌套</li>
 </ul>
 
-<h3>lockdep 不擅长抓什么</h3>
+<h3 id="lockdep-不擅长抓什么" >lockdep 不擅长抓什么</h3>
 
 <ul>
 <li>性能差但语义合法的锁热点</li>
@@ -2335,7 +2335,7 @@ cat /proc/lockdep | less</code></pre>
 
 <h2>14.3 第三层：用 lockstat / perf lock 查性能热点</h2>
 
-<h3>lockstat</h3>
+<h3 id="lockstat" >lockstat</h3>
 
 <p>开启：</p>
 
@@ -2351,7 +2351,7 @@ cat /proc/lock_stat | less</code></pre>
 <li>热点 contention callsite 在哪里</li>
 </ul>
 
-<h3>perf lock</h3>
+<h3 id="perf-lock" >perf lock</h3>
 
 <p>参考 <code>tools/perf/Documentation/perf-lock.txt</code>，常用命令：</p>
 

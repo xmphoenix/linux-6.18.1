@@ -410,14 +410,14 @@ hr {
           <li><a href="#41-有序区间插入--memblock_add_range">4.1 有序区间插入 —— memblock_add_range()</a></li>
           <li><a href="#42-区间隔离分裂--memblock_isolate_range">4.2 区间隔离/分裂 —— memblock_isolate_range()</a></li>
           <li><a href="#43-区间合并--memblock_merge_regions">4.3 区间合并 —— memblock_merge_regions()</a></li>
-          <li><a href="#44-双有序区间集合差遍历--<strong>next_mem_range">4.4 双有序区间集合差遍历 —— next_mem_range()</a></li>
+          <li><a href="#44-双有序区间集合差遍历--next_mem_range">4.4 双有序区间集合差遍历 —— next_mem_range()</a></li>
           <li><a href="#45-二分查找--memblock_search">4.5 二分查找 —— memblock_search()</a></li>
           <li><a href="#46-动态数组倍增扩容--memblock_double_array">4.6 动态数组倍增扩容 —— memblock_double_array()</a></li>
-          <li><a href="#47-贪心累减定位--<strong>find_max_addr">4.7 贪心累减定位 —— find_max_addr()</a></li>
+          <li><a href="#47-贪心累减定位--find_max_addr">4.7 贪心累减定位 —— find_max_addr()</a></li>
           <li><a href="#48-数组元素删除--memblock_remove_region">4.8 数组元素删除 —— memblock_remove_region()</a></li>
           <li><a href="#49-对齐裁剪--memblock_trim_memory">4.9 对齐裁剪 —— memblock_trim_memory()</a></li>
-          <li><a href="#410-逆序首次适配--<strong>memblock_find_range_top_down">4.10 逆序首次适配 —— memblock_find_range_top_down()</a></li>
-          <li><a href="#411-正序首次适配--<strong>memblock_find_range_bottom_up">4.11 正序首次适配 —— memblock_find_range_bottom_up()</a></li>
+          <li><a href="#410-逆序首次适配--memblock_find_range_top_down">4.10 逆序首次适配 —— memblock_find_range_top_down()</a></li>
+          <li><a href="#411-正序首次适配--memblock_find_range_bottom_up">4.11 正序首次适配 —— memblock_find_range_bottom_up()</a></li>
           <li><a href="#412-多维条件谓词过滤--should_skip_region">4.12 多维条件谓词过滤 —— should_skip_region()</a></li>
           <li><a href="#413-级联降级回退策略--memblock_alloc_range_nid--memblock_alloc_internal">4.13 级联降级回退策略 —— memblock_alloc_range_nid() + memblock_alloc_internal()</a></li>
           <li><a href="#414-地址范围规范化--memblock_find_in_range_node">4.14 地址范围规范化 —— memblock_find_in_range_node()</a></li>
@@ -501,7 +501,7 @@ memblock_discard()                        ← 释放 memblock 自身数据（除
 
 <h2>二、数据结构</h2>
 
-<h3>2.1 三层嵌套结构</h3>
+<h3 id="21-三层嵌套结构" >2.1 三层嵌套结构</h3>
 
 <pre><code class="language-c">struct memblock {                          // 全局单例，静态初始化
     bool bottom_up;                        // 分配方向（默认 top-down）
@@ -525,7 +525,7 @@ struct memblock_region {                   // 单个内存区间
     int nid;                               // NUMA 节点 ID（CONFIG_NUMA）
 };</code></pre>
 
-<h3>2.2 静态初始化</h3>
+<h3 id="22-静态初始化" >2.2 静态初始化</h3>
 
 <pre><code class="language-c">static struct memblock_region memblock_memory_init_regions[128];
 static struct memblock_region memblock_reserved_init_regions[128];
@@ -541,7 +541,7 @@ struct memblock memblock = {
 
 <p><strong>关键不变量</strong>：<code>regions[]</code> 数组始终按 <code>base</code> 升序排列，相邻且属性相同的 region 会被自动合并。</p>
 
-<h3>2.3 Flag 标志位</h3>
+<h3 id="23-flag-标志位" >2.3 Flag 标志位</h3>
 
 <table>
 <thead><tr>
@@ -596,7 +596,7 @@ struct memblock memblock = {
 
 <h2>三、核心 API 一览</h2>
 
-<h3>3.1 内存注册</h3>
+<h3 id="31-内存注册" >3.1 内存注册</h3>
 
 <table>
 <thead><tr>
@@ -632,7 +632,7 @@ struct memblock memblock = {
 </tr>
 </tbody></table>
 
-<h3>3.2 内存分配</h3>
+<h3 id="32-内存分配" >3.2 内存分配</h3>
 
 <table>
 <thead><tr>
@@ -663,7 +663,7 @@ struct memblock memblock = {
 </tr>
 </tbody></table>
 
-<h3>3.3 属性操作</h3>
+<h3 id="33-属性操作" >3.3 属性操作</h3>
 
 <table>
 <thead><tr>
@@ -689,7 +689,7 @@ struct memblock memblock = {
 </tr>
 </tbody></table>
 
-<h3>3.4 查询</h3>
+<h3 id="34-查询" >3.4 查询</h3>
 
 <table>
 <thead><tr>
@@ -723,7 +723,7 @@ struct memblock memblock = {
 </tr>
 </tbody></table>
 
-<h3>3.5 迭代器</h3>
+<h3 id="35-迭代器" >3.5 迭代器</h3>
 
 <table>
 <thead><tr>
@@ -753,7 +753,7 @@ struct memblock memblock = {
 
 <h2>四、核心算法详解</h2>
 
-<h3>4.1 有序区间插入 —— <code>memblock_add_range()</code></h3>
+<h3 id="41-有序区间插入--memblock_add_range" >4.1 有序区间插入 —— <code>memblock_add_range()</code></h3>
 
 <p><strong>问题</strong>：向有序区间数组中插入 <code>[base, end)</code>，允许与已有区间重叠，只插入非重叠部分。</p>
 
@@ -794,7 +794,7 @@ repeat:
 
 <hr>
 
-<h3>4.2 区间隔离/分裂 —— <code>memblock_isolate_range()</code></h3>
+<h3 id="42-区间隔离分裂--memblock_isolate_range" >4.2 区间隔离/分裂 —— <code>memblock_isolate_range()</code></h3>
 
 <p><strong>问题</strong>：确保 <code>[base, base+size)</code> 的边界与 region 边界精确对齐。</p>
 
@@ -837,7 +837,7 @@ repeat:
 
 <hr>
 
-<h3>4.3 区间合并 —— <code>memblock_merge_regions()</code></h3>
+<h3 id="43-区间合并--memblock_merge_regions" >4.3 区间合并 —— <code>memblock_merge_regions()</code></h3>
 
 <p><strong>问题</strong>：合并数组中相邻且兼容的 region。</p>
 
@@ -863,7 +863,7 @@ repeat:
 
 <hr>
 
-<h3>4.4 双有序区间集合差遍历 —— <code>__next_mem_range()</code></h3>
+<h3 id="44-双有序区间集合差遍历--next_mem_range" >4.4 双有序区间集合差遍历 —— <code>__next_mem_range()</code></h3>
 
 <p><strong>问题</strong>：遍历 type_a \ type_b（memory 中有但 reserved 中没有的区间 = 空闲内存）。</p>
 
@@ -907,7 +907,7 @@ type_b (reserved):       [==]        [==]
 
 <hr>
 
-<h3>4.5 二分查找 —— <code>memblock_search()</code></h3>
+<h3 id="45-二分查找--memblock_search" >4.5 二分查找 —— <code>memblock_search()</code></h3>
 
 <p><strong>问题</strong>：判断一个物理地址属于哪个 region。</p>
 
@@ -931,7 +931,7 @@ type_b (reserved):       [==]        [==]
 
 <hr>
 
-<h3>4.6 动态数组倍增扩容 —— <code>memblock_double_array()</code></h3>
+<h3 id="46-动态数组倍增扩容--memblock_double_array" >4.6 动态数组倍增扩容 —— <code>memblock_double_array()</code></h3>
 
 <p><strong>问题</strong>：region 数组已满（初始 128 项），需要扩容。</p>
 
@@ -951,7 +951,7 @@ type_b (reserved):       [==]        [==]
 
 <hr>
 
-<h3>4.7 贪心累减定位 —— <code>__find_max_addr()</code></h3>
+<h3 id="47-贪心累减定位--find_max_addr" >4.7 贪心累减定位 —— <code>__find_max_addr()</code></h3>
 
 <p><strong>问题</strong>：<code>mem=</code> 启动参数指定内存限制大小，需要转换为物理地址上界。</p>
 
@@ -970,7 +970,7 @@ type_b (reserved):       [==]        [==]
 
 <hr>
 
-<h3>4.8 数组元素删除 —— <code>memblock_remove_region()</code></h3>
+<h3 id="48-数组元素删除--memblock_remove_region" >4.8 数组元素删除 —— <code>memblock_remove_region()</code></h3>
 
 <pre><code class="language-c">static void memblock_remove_region(struct memblock_type *type, unsigned long r)
 {
@@ -984,7 +984,7 @@ type_b (reserved):       [==]        [==]
 
 <hr>
 
-<h3>4.9 对齐裁剪 —— <code>memblock_trim_memory()</code></h3>
+<h3 id="49-对齐裁剪--memblock_trim_memory" >4.9 对齐裁剪 —— <code>memblock_trim_memory()</code></h3>
 
 <pre><code class="language-c">void memblock_trim_memory(phys_addr_t align)
 {
@@ -998,7 +998,7 @@ type_b (reserved):       [==]        [==]
 
 <hr>
 
-<h3>4.10 逆序首次适配 —— <code>__memblock_find_range_top_down()</code></h3>
+<h3 id="410-逆序首次适配--memblock_find_range_top_down" >4.10 逆序首次适配 —— <code>__memblock_find_range_top_down()</code></h3>
 
 <p><strong>问题</strong>：在空闲区间中找到一个能容纳 <code>size</code> 且满足 <code>align</code> 对齐的位置（从高地址开始）。</p>
 
@@ -1032,7 +1032,7 @@ type_b (reserved):       [==]        [==]
 
 <hr>
 
-<h3>4.11 正序首次适配 —— <code>__memblock_find_range_bottom_up()</code></h3>
+<h3 id="411-正序首次适配--memblock_find_range_bottom_up" >4.11 正序首次适配 —— <code>__memblock_find_range_bottom_up()</code></h3>
 
 <p><strong>问题</strong>：同上，但从低地址开始搜索。</p>
 
@@ -1062,7 +1062,7 @@ type_b (reserved):       [==]        [==]
 
 <hr>
 
-<h3>4.12 多维条件谓词过滤 —— <code>should_skip_region()</code></h3>
+<h3 id="412-多维条件谓词过滤--should_skip_region" >4.12 多维条件谓词过滤 —— <code>should_skip_region()</code></h3>
 
 <p><strong>问题</strong>：在遍历空闲区间时，根据分配请求的属性过滤不符合条件的 region。</p>
 
@@ -1112,7 +1112,7 @@ type_b (reserved):       [==]        [==]
 
 <hr>
 
-<h3>4.13 级联降级回退策略 —— <code>memblock_alloc_range_nid()</code> + <code>memblock_alloc_internal()</code></h3>
+<h3 id="413-级联降级回退策略--memblock_alloc_range_nid--memblock_alloc_internal" >4.13 级联降级回退策略 —— <code>memblock_alloc_range_nid()</code> + <code>memblock_alloc_internal()</code></h3>
 
 <p><strong>问题</strong>：分配失败时，如何逐步放宽约束以提高成功率？</p>
 
@@ -1162,7 +1162,7 @@ again:
 
 <hr>
 
-<h3>4.14 地址范围规范化 —— <code>memblock_find_in_range_node()</code></h3>
+<h3 id="414-地址范围规范化--memblock_find_in_range_node" >4.14 地址范围规范化 —— <code>memblock_find_in_range_node()</code></h3>
 
 <p><strong>问题</strong>：将用户传入的各种特殊常量和边界条件转化为有效的搜索范围。</p>
 
@@ -1194,7 +1194,7 @@ again:
 
 <hr>
 
-<h3>4.15 区间批量删除 —— <code>memblock_remove_range()</code></h3>
+<h3 id="415-区间批量删除--memblock_remove_range" >4.15 区间批量删除 —— <code>memblock_remove_range()</code></h3>
 
 <p><strong>问题</strong>：从 region 数组中移除 <code>[base, base+size)</code> 覆盖的所有 region。</p>
 
@@ -1224,7 +1224,7 @@ again:
 
 <hr>
 
-<h3>4.16 选择性区间保留 —— <code>memblock_cap_memory_range()</code></h3>
+<h3 id="416-选择性区间保留--memblock_cap_memory_range" >4.16 选择性区间保留 —— <code>memblock_cap_memory_range()</code></h3>
 
 <p><strong>问题</strong>：只保留 <code>[base, base+size)</code> 范围内的可映射内存，移除范围外的所有内存（但保留 NOMAP 区域）。</p>
 
@@ -1258,7 +1258,7 @@ again:
 
 <hr>
 
-<h3>4.17 区间属性批量设置 —— <code>memblock_set_node()</code></h3>
+<h3 id="417-区间属性批量设置--memblock_set_node" >4.17 区间属性批量设置 —— <code>memblock_set_node()</code></h3>
 
 <p><strong>问题</strong>：将 <code>[base, base+size)</code> 范围内所有 region 的 NUMA 节点 ID 设置为 <code>nid</code>。</p>
 
@@ -1289,7 +1289,7 @@ again:
 
 <h2>五、算法汇总表</h2>
 
-<h3>5.1 基础数据结构算法</h3>
+<h3 id="51-基础数据结构算法" >5.1 基础数据结构算法</h3>
 
 <table>
 <thead><tr>
@@ -1351,7 +1351,7 @@ again:
 </tr>
 </tbody></table>
 
-<h3>5.2 内存分配算法</h3>
+<h3 id="52-内存分配算法" >5.2 内存分配算法</h3>
 
 <table>
 <thead><tr>
@@ -1399,7 +1399,7 @@ again:
 </tr>
 </tbody></table>
 
-<h3>5.3 区间操作算法</h3>
+<h3 id="53-区间操作算法" >5.3 区间操作算法</h3>
 
 <table>
 <thead><tr>
@@ -1491,7 +1491,7 @@ again:
 <li><strong>bottom-up</strong>：从低地址向高地址搜索，用于 KASLR 场景避免碎片</li>
 </ul>
 
-<h3>分配路径中算法的协作关系</h3>
+<h3 id="分配路径中算法的协作关系" >分配路径中算法的协作关系</h3>
 
 <pre><code>                    ┌─────────────────────────────────┐
                     │  级联降级回退 (#11)                │
@@ -1533,7 +1533,7 @@ again:
 
 <h2>七、关键设计模式</h2>
 
-<h3>7.1 isolate → 操作 → merge 三步模式</h3>
+<h3 id="71-isolate-→-操作-→-merge-三步模式" >7.1 isolate → 操作 → merge 三步模式</h3>
 
 <p><code>memblock_setclr_flag()</code>、<code>memblock_set_node()</code>、<code>memblock_remove()</code> 都遵循同一模式：</p>
 
@@ -1543,7 +1543,7 @@ again:
 
 <p>这保证了操作的精确性（不影响目标范围外的 region）和数组的最简性（无冗余 region）。</p>
 
-<h3>7.2 memory − reserved = free</h3>
+<h3 id="72-memory-−-reserved--free">7.2 memory − reserved = free</h3>
 
 <p>memblock 不维护"空闲列表"，而是通过迭代器实时计算：</p>
 
@@ -1553,7 +1553,7 @@ again:
 
 <p>这避免了维护第三个数组的开销，也避免了三个数组之间一致性的问题。</p>
 
-<h3>7.3 NOMAP trick（ARM64）</h3>
+<h3 id="73-nomap-trickarm64">7.3 NOMAP trick（ARM64）</h3>
 
 <p>在 <code>map_mem()</code> 中建立线性映射时：</p>
 
@@ -1576,7 +1576,7 @@ memblock_clear_nomap(kernel_start, kernel_end - kernel_start);</code></pre>
 
 <h2>八、调试方法</h2>
 
-<h3>8.1 启动参数</h3>
+<h3 id="81-启动参数" >8.1 启动参数</h3>
 
 <pre><code class="language-bash"># 开启 memblock 调试输出
 memblock=debug
@@ -1584,12 +1584,12 @@ memblock=debug
 # 限制可用内存
 mem=512M</code></pre>
 
-<h3>8.2 运行时查看（需要 CONFIG_ARCH_KEEP_MEMBLOCK）</h3>
+<h3 id="82-运行时查看需要-config_arch_keep_memblock">8.2 运行时查看（需要 CONFIG_ARCH_KEEP_MEMBLOCK）</h3>
 
 <pre><code class="language-bash">cat /sys/kernel/debug/memblock/memory
 cat /sys/kernel/debug/memblock/reserved</code></pre>
 
-<h3>8.3 dmesg 输出示例</h3>
+<h3 id="83-dmesg-输出示例" >8.3 dmesg 输出示例</h3>
 
 <pre><code>MEMBLOCK configuration:
  memory size = 0x0000000080000000 reserved size = 0x0000000004800000

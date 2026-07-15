@@ -509,7 +509,7 @@ hr {
 
 
 
-<h2 id="一整体架构总览">一、整体架构总览</h2>
+<h2 id="一整体架构总览" >一、整体架构总览</h2>
 
 <p>ARM64 内核调度子系统分为六个抽象层，自底向上从硬件描述到调度策略逐层堆叠：</p>
 
@@ -544,11 +544,11 @@ hr {
 
 
 
-<h2 id="二layer-1-硬件拓扑描述">二、Layer 1: 硬件拓扑描述</h2>
+<h2 id="二layer-1-硬件拓扑描述" >二、Layer 1: 硬件拓扑描述</h2>
 
 <blockquote><strong>核心问题：</strong> "硬件长什么样？" — 将 ARM64 SoC 的物理拓扑（big.LITTLE、DynamIQ、多 cluster）转化为内核可查询的结构化数据。</blockquote>
 
-<h3 id="21-拓扑检测入口">2.1 拓扑检测入口</h3>
+<h3 id="21-拓扑检测入口" >2.1 拓扑检测入口</h3>
 
 <p>ARM64 的 CPU 拓扑检测在 <code>init_cpu_topology()</code> 中完成（位于 <code>drivers/base/arch_topology.c</code>），根据系统固件类型分两条路径：</p>
 
@@ -574,7 +574,7 @@ hr {
 
 <p>解析完成后，通过 <code>store_cpu_topology(cpu)</code> 将结果写入 <code>cpu_topology[]</code> 数组，然后用 <code>update_siblings_masks(cpu)</code> 构建各层级 sibling cpumask。</p>
 
-<h3 id="22-struct-cpu_topology">2.2 struct cpu_topology</h3>
+<h3 id="22-struct-cpu_topology" >2.2 struct cpu_topology</h3>
 
 <p>定义位于 <a href="include/linux/arch_topology.h#L62">include/linux/arch_topology.h:62</a>：</p>
 
@@ -603,7 +603,7 @@ cpu7 (Cortex-A520):thread_id=0  core_id=7  cluster_id=2  package_id=0</code></pr
 <p>各 CPU 的 <code>cluster_sibling</code> cpumask 分别对应 {0-1}、{2-4}、{5-7}，而 <code>llc_sibling</code> 取决于 SoC 是否配置了共享 L3。</p>
 </div>
 
-<h4 id="22-1-四个层级的硬件含义">2.2.1 thread / core / cluster / package 的硬件含义</h4>
+<h4 id="22-1-四个层级的硬件含义" >2.2.1 thread / core / cluster / package 的硬件含义</h4>
 
 <p><code>cpu_topology</code> 的四个 ID 字段不是随意划分的——每个字段对应硬件中的一个<strong>资源共享层级</strong>：</p>
 
@@ -619,7 +619,7 @@ cpu7 (Cortex-A520):thread_id=0  core_id=7  cluster_id=2  package_id=0</code></pr
 
 <p>这四层的包含关系是：<strong>SMT ⊂ CLS ⊂ MC ⊂ PKG</strong>。即在同一个 cluster 里的核一定在同一个 MC 域里，在同一个 MC 域里的核一定在同一个 package 里。</p>
 
-<h4 id="22-2-arm64-芯片场景">2.2.2 ARM64 芯片实际对应哪种硬件？</h4>
+<h4 id="22-2-arm64-芯片场景" >2.2.2 ARM64 芯片实际对应哪种硬件？</h4>
 
 <table>
 <thead><tr><th>芯片类型</th><th>SMT</th><th>CLUSTER</th><th>MC</th><th>NUMA</th><th>说明</th></tr></thead>
@@ -650,7 +650,7 @@ cpu7 (Cortex-A520):thread_id=0  core_id=7  cluster_id=2  package_id=0</code></pr
 <p><strong>核心结论</strong>：ARM64 的 cluster 层级是其相对于 x86 的最大独特性——x86 超线程 + P/E 核混合只有两档，而 ARM64 DynamIQ 可以有三四档不同微架构的簇，<code>cluster_id</code> 和 <code>cluster_sibling</code> 让调度器能精确感知这些边界。</p>
 </div>
 
-<h4 id="22-3-静态模板的运行时折叠">2.2.3 从 cpu_topology 到 sched_domain：冗余层级的自动折叠</h4>
+<h4 id="22-3-静态模板的运行时折叠" >2.2.3 从 cpu_topology 到 sched_domain：冗余层级的自动折叠</h4>
 
 <p><code>default_topology[]</code>（见 <a href="#54-arm64-默认拓扑层级表">§5.4</a>）是静态模板——定义了 <strong>最大可能</strong> 的层级组合（SMT → CLS → MC → PKG）。但在运行时，<code>cpu_attach_domain()</code>（<a href="kernel/sched/topology.c#L716">kernel/sched/topology.c:716</a>）会根据实际的 <code>cpu_topology[]</code> 数据将冗余层级从链表里摘除。</p>
 
@@ -746,11 +746,11 @@ cpu7 (Cortex-A520):thread_id=0  core_id=7  cluster_id=2  package_id=0</code></pr
   ③ PKG有MC没有的flag?      → ~SD_SHARE_LLC & 0 = 0, 不触发
   ④ 以上都不满足            → return 1  // PKG 冗余!</code></pre>
 
-<h3 id="24-qemu-virt-拓扑初始化全流程">2.4 QEMU virt 拓扑初始化全流程追踪</h3>
+<h3 id="24-qemu-virt-拓扑初始化全流程" >2.4 QEMU virt 拓扑初始化全流程追踪</h3>
 
 <p>以项目 <code>launch.sh</code> 中的 <code>qemu-system-aarch64 -machine virt -cpu cortex-a57 -smp 4</code> 为基准，从头到尾追踪硬件拓扑数据是如何初始化的。</p>
 
-<h4 id="24-1-调用链总览">2.4.1 调用链总览</h4>
+<h4 >2.4.1 调用链总览</h4>
 
 <pre><code>start_kernel()                                   [init/main.c]
   └─ smp_prepare_cpus()                          [arch/arm64/kernel/smp.c:772]
@@ -774,7 +774,7 @@ cpu7 (Cortex-A520):thread_id=0  core_id=7  cluster_id=2  package_id=0</code></pr
        │
        └─ ... (secondary CPU 上线后也调用 store_cpu_topology)</code></pre>
 
-<h4 id="24-2-关键代码逐段追踪">2.4.2 关键代码逐段追踪</h4>
+<h4 >2.4.2 关键代码逐段追踪</h4>
 
 <p><strong>第①步：reset_cpu_topology()</strong> — <a href="drivers/base/arch_topology.c#L794">arch_topology.c:794</a>，全部清零：</p>
 <pre><code>for_each_possible_cpu(cpu) {
@@ -800,7 +800,7 @@ cpu_topology[cpu].core_id    = core_id;  // 0,1,2,3
 
 <p><strong>第⑤步：store_cpu_topology() → update_siblings_masks()</strong> — <a href="drivers/base/arch_topology.c#L860">arch_topology.c:860</a>。DT 已填充 topology（package_id=0≠-1），跳到 <code>topology_populated</code> 标签，调用 <code>update_siblings_masks()</code>（<a href="drivers/base/arch_topology.c#L738">line 738</a>）：遍历所有 online CPU，根据 package_id/cluster_id/core_id 的相等关系填充各 sibling cpumask。</p>
 
-<h4 id="24-3-最终结构">2.4.3 最终 cpu_topology[] 结构</h4>
+<h4 >2.4.3 最终 cpu_topology[] 结构</h4>
 
 <table>
 <thead><tr><th></th><th>thread</th><th>core</th><th>cluster</th><th>package</th><th>core_sibling</th><th>cluster_sibling</th><th>llc_sibling</th><th>thread_sibling</th></tr></thead>
@@ -812,7 +812,7 @@ cpu_topology[cpu].core_id    = core_id;  // 0,1,2,3
 </tbody>
 </table>
 
-<h4 id="24-4-验证结论">2.4.4 验证结论</h4>
+<h4 >2.4.4 验证结论</h4>
 
 <p><strong>结论 1：QEMU virt + Cortex-A57 是纯同构系统。</strong> 所有 CPU 的 <code>core_sibling</code> = <code>cluster_sibling</code> = <code>llc_sibling</code> = {0,1,2,3}，四核完全等价。capacity 全为 1024（DT 中无 <code>capacity-dmips-mhz</code>，保持 <code>SCHED_CAPACITY_SCALE</code> 默认值）。</p>
 
@@ -822,7 +822,7 @@ cpu_topology[cpu].core_id    = core_id;  // 0,1,2,3
 
 <p><strong>结论 4：后续 <code>sched_init_smp() → sched_init_domains()</code> 构建调度域时，</strong><code>default_topology[]</code> 中的 SMT 和 CLS 层各自 mask 函数返回的 cpumask 要么只含单核（SMT: <code>cpu_smt_mask</code> 对无 SMT 核返回自身），要么与 MC 相同（CLS），最终经折叠后只剩 MC（span=0-3, flags=SD_SHARE_LLC）一层有效调度域。</p>
 
-<h4 id="24-5-运行时验证">2.4.5 运行时验证 — sysfs 直接读取拓扑数据</h4>
+<h4 >2.4.5 运行时验证 — sysfs 直接读取拓扑数据</h4>
 
 <p>内核已将 <code>cpu_topology[]</code> 的所有字段导出到 sysfs，无需添加任何打印代码。在 QEMU 虚拟机内直接读文件即可验证上述所有结论：</p>
 
@@ -858,7 +858,7 @@ mount -t debugfs none /sys/kernel/debug
 echo 'file arch_topology.c +p' > /sys/kernel/debug/dynamic_debug/control
 dmesg | grep -E "CPU[0-9]"</code></pre>
 
-<h3 id="23-arm64-算力解析">2.3 ARM64 算力解析</h3>
+<h3 id="23-arm64-算力解析" >2.3 ARM64 算力解析</h3>
 
 <p>ARM64 big.LITTLE/DynamIQ 体系的关键在于 <strong>CPU capacity（算力）</strong>——从 DT 的 <code>capacity-dmips-mhz</code> 属性解析并归一化：</p>
 
@@ -875,7 +875,7 @@ cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
 
 <p>这个 capacity 值被写入 <code>rq->cpu_capacity</code>（Layer 2），后续<strong>负载均衡</strong>和<strong>EAS 任务放置</strong>都依赖它来区分"大核够不够用"和"小核是否过载（misfit）"。</p>
 
-<h3 id="24-关键函数汇总">2.4 关键函数汇总</h3>
+<h3 id="24-关键函数汇总" >2.4 关键函数汇总</h3>
 
 <table>
 <thead><tr>
@@ -919,11 +919,11 @@ cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
 
 
 
-<h2 id="三layer-2-per-cpu-运行队列">三、Layer 2: Per-CPU 运行队列</h2>
+<h2 id="三layer-2-per-cpu-运行队列" >三、Layer 2: Per-CPU 运行队列</h2>
 
 <blockquote><strong>核心问题：</strong> "这个 CPU 上有什么？" — 每个 CPU 的一个 rq 实例是所有调度活动的"锚点"。</blockquote>
 
-<h3 id="31-struct-rq-核心字段">3.1 struct rq 核心字段</h3>
+<h3 id="31-struct-rq-核心字段" >3.1 struct rq 核心字段</h3>
 
 <p>定义位于 <a href="kernel/sched/sched.h#L1119">kernel/sched/sched.h:1119</a>：</p>
 
@@ -965,7 +965,7 @@ cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
 </ul>
 </div>
 
-<h3 id="32-内嵌三层队列">3.2 内嵌三层队列</h3>
+<h3 id="32-内嵌三层队列" >3.2 内嵌三层队列</h3>
 
 <p><code>rq</code> 不存储指向各调度类队列的指针，而是直接内嵌它们：</p>
 
@@ -998,11 +998,11 @@ cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
 
 
 
-<h2 id="四layer-3-调度实体">四、Layer 3: 调度实体</h2>
+<h2 id="四layer-3-调度实体" >四、Layer 3: 调度实体</h2>
 
 <blockquote><strong>核心问题：</strong> "谁可以被调度？" — 将"可调度性"从 <code>task_struct</code> 中抽离为独立结构。</blockquote>
 
-<h3 id="41-三类调度实体">4.1 三类调度实体</h3>
+<h3 id="41-三类调度实体" >4.1 三类调度实体</h3>
 
 <p>每个 <code>task_struct</code> 内嵌了全部三种调度实体，任务根据其调度策略使用对应的实体：</p>
 
@@ -1042,7 +1042,7 @@ cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
     struct sched_avg      avg;           // PELT 负载跟踪（util_avg, load_avg）
 };</code></pre>
 
-<h3 id="42-实体与-task_group-的关系">4.2 实体与 task_group 的关系</h3>
+<h3 id="42-实体与-task_group-的关系" >4.2 实体与 task_group 的关系</h3>
 
 <p>实体的关键设计在于<strong>它不仅代表任务，也代表任务组</strong>：</p>
 
@@ -1054,11 +1054,11 @@ cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
 
 
 
-<h2 id="五layer-4-调度域与根域">五、Layer 4: 调度域与根域</h2>
+<h2 id="五layer-4-调度域与根域" >五、Layer 4: 调度域与根域</h2>
 
 <blockquote><strong>核心问题：</strong> "CPU 之间如何组织？" — 为负载均衡和任务放置提供拓扑感知的 CPU 分组。</blockquote>
 
-<h3 id="51-struct-sched_domain">5.1 struct sched_domain</h3>
+<h3 id="51-struct-sched_domain" >5.1 struct sched_domain</h3>
 
 <p>定义位于 <a href="include/linux/sched/topology.h#L73">include/linux/sched/topology.h:73</a>。每个调度域代表一个 CPU 集合，层叠形成父子层级：</p>
 
@@ -1098,7 +1098,7 @@ cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
 </table>
 </div>
 
-<h3 id="52-struct-sched_group">5.2 struct sched_group</h3>
+<h3 id="52-struct-sched_group" >5.2 struct sched_group</h3>
 
 <p>定义位于 <a href="kernel/sched/sched.h#L2095">kernel/sched/sched.h:2095</a>。调度域内部由调度组环路组成——每个组是负载均衡中"迁移任务"的基本单位：</p>
 
@@ -1113,7 +1113,7 @@ cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
 
 <p><code>sched_group_capacity</code> 是附着在每个 group 上的辅助结构，记录该组的<strong>总算力</strong>和<strong>当前利用率</strong>，供 <code>find_busiest_group()</code> 判断哪个组需要"拉"任务。</p>
 
-<h3 id="53-struct-root_domain">5.3 struct root_domain</h3>
+<h3 id="53-struct-root_domain" >5.3 struct root_domain</h3>
 
 <p>定义位于 <a href="kernel/sched/sched.h#L985">kernel/sched/sched.h:985</a>。root_domain 是调度域层级的"顶层容器"，也是 <strong>cpuset 隔离</strong>的边界：</p>
 
@@ -1137,7 +1137,7 @@ cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
 <p><code>overutilized</code> 是 ARM64 EAS 路径的关键标志位。当某个 CPU 的利用率超过 80% tipping point 时，rd 被标记为 overutilized，后续的任务唤醒路径将<strong>跳过 EAS</strong>（<code>find_energy_efficient_cpu()</code> 直接返回 -1），回退到传统的负载均衡放置策略。EAS 只在系统<strong>非过载</strong>时生效，因为能耗优化的边际收益在系统繁忙时不足以弥补算力优先的损失。</p>
 </div>
 
-<h3 id="54-arm64-默认拓扑层级表">5.4 ARM64 默认拓扑层级表</h3>
+<h3 id="54-arm64-默认拓扑层级表" >5.4 ARM64 默认拓扑层级表</h3>
 
 <p>定义位于 <a href="kernel/sched/topology.c#L1771">kernel/sched/topology.c:1771</a>。通过 <code>SDTL_INIT</code> 宏将每层的 mask 函数和 flags 函数组织成表：</p>
 
@@ -1163,7 +1163,7 @@ cpu@5 { capacity-dmips-mhz = <386>; };   // 小核 (Cortex-A520)</code></pre>
 PKG 层: span={0,1,2,3}
 (无 SMT、无 CLS、无 NUMA)</code></pre>
 
-<h3 id="55-调度域构建核心函数">5.5 调度域构建核心函数</h3>
+<h3 id="55-调度域构建核心函数" >5.5 调度域构建核心函数</h3>
 
 <table>
 <thead><tr>
@@ -1202,11 +1202,11 @@ PKG 层: span={0,1,2,3}
 
 
 
-<h2 id="六layer-5-任务组与带宽控制">六、Layer 5: 任务组与带宽控制</h2>
+<h2 id="六layer-5-任务组与带宽控制" >六、Layer 5: 任务组与带宽控制</h2>
 
 <blockquote><strong>核心问题：</strong> "如何在任务集合之间分配 CPU 时间？" — cgroup 接口的调度后端。</blockquote>
 
-<h3 id="61-struct-task_group">6.1 struct task_group</h3>
+<h3 id="61-struct-task_group" >6.1 struct task_group</h3>
 
 <p>定义位于 <a href="kernel/sched/sched.h#L471">kernel/sched/sched.h:471</a>：</p>
 
@@ -1228,7 +1228,7 @@ PKG 层: span={0,1,2,3}
     struct rt_bandwidth    rt_bandwidth;      // RT 带宽限制
 };</code></pre>
 
-<h3 id="62-cgroup-层级调度模型">6.2 cgroup 层级调度模型</h3>
+<h3 id="62-cgroup-层级调度模型" >6.2 cgroup 层级调度模型</h3>
 
 <p>启用 <code>CONFIG_FAIR_GROUP_SCHED</code> 后，每个 cgroup cpu 子系统目录对应一个 task_group，形成树状层级。调度器按层级递归分配 CPU 时间：</p>
 
@@ -1256,11 +1256,11 @@ PKG 层: span={0,1,2,3}
 
 
 
-<h2 id="七layer-6-调度类">七、Layer 6: 调度类</h2>
+<h2 id="七layer-6-调度类" >七、Layer 6: 调度类</h2>
 
 <blockquote><strong>核心问题：</strong> "按什么策略调度？" — 将调度策略封装为可插拔的类接口。</blockquote>
 
-<h3 id="71-struct-sched_class">7.1 struct sched_class</h3>
+<h3 id="71-struct-sched_class" >7.1 struct sched_class</h3>
 
 <p>定义位于 <a href="kernel/sched/sched.h#L2398">kernel/sched/sched.h:2398</a>。这是整个调度子系统的策略抽象层，每个调度类实现一组函数指针：</p>
 
@@ -1295,7 +1295,7 @@ PKG 层: span={0,1,2,3}
     void (*update_curr)(struct rq *rq);   // 更新当前任务的 vruntime/runtime
 };</code></pre>
 
-<h3 id="72-cfs-调度类实例">7.2 CFS 调度类实例</h3>
+<h3 id="72-cfs-调度类实例" >7.2 CFS 调度类实例</h3>
 
 <p>CFS（Linux 6.6+ 已进化为 EEVDF，但从调度类的角度仍称为 fair_sched_class）的实例定义在 <a href="kernel/sched/fair.c#L13621">kernel/sched/fair.c:13621</a>：</p>
 
@@ -1326,7 +1326,7 @@ PKG 层: span={0,1,2,3}
     .update_curr        = update_curr_fair,
 };</code></pre>
 
-<h3 id="73-调度类的优先级顺序">7.3 调度类的优先级顺序</h3>
+<h3 id="73-调度类的优先级顺序" >7.3 调度类的优先级顺序</h3>
 
 <p>调度类按严格优先级排列（通过链接脚本将各 <code>DEFINE_SCHED_CLASS</code> 实例放入独立 section 并排序——<strong>高优先级先被检查</strong>）：</p>
 
@@ -1350,11 +1350,11 @@ PKG 层: span={0,1,2,3}
 
 
 
-<h2 id="八arm64-特有关键路径">八、ARM64 特有关键路径</h2>
+<h2 id="八arm64-特有关键路径" >八、ARM64 特有关键路径</h2>
 
 <blockquote><strong>核心问题：</strong> "ARM64 的调度与 x86 有什么不同？" — Energy-Aware Scheduling 和拓扑不对称性。</blockquote>
 
-<h3 id="81-select_task_rq_fair-任务放置">8.1 select_task_rq_fair 任务放置</h3>
+<h3 id="81-select_task_rq_fair-任务放置" >8.1 select_task_rq_fair 任务放置</h3>
 
 <p>定义位于 <a href="kernel/sched/fair.c#L8566">kernel/sched/fair.c:8566</a>。这是任务唤醒时选择目标 CPU 的核心函数，ARM64 上的关键差异在步骤①：</p>
 
@@ -1376,7 +1376,7 @@ PKG 层: span={0,1,2,3}
           ├── has_idle_core? → 优先选空闲核
           └── select_idle_cpu(): 在 LLC 域内扫描空闲 CPU</code></pre>
 
-<h3 id="82-find_energy_efficient_cpu">8.2 find_energy_efficient_cpu</h3>
+<h3 id="82-find_energy_efficient_cpu" >8.2 find_energy_efficient_cpu</h3>
 
 <p>定义位于 <a href="kernel/sched/fair.c#L8368">kernel/sched/fair.c:8368</a>。EAS 的核心：</p>
 
@@ -1402,7 +1402,7 @@ PKG 层: span={0,1,2,3}
   <li>当前 root_domain 未被标记为 <code>overutilized</code></li>
 </ol>
 
-<h3 id="83-perf_domain-与-energy-model">8.3 perf_domain 与 Energy Model</h3>
+<h3 id="83-perf_domain-与-energy-model" >8.3 perf_domain 与 Energy Model</h3>
 
 <p>性能域是 EAS 中将 CPU 分组为"共享同一性能级别"的最小单位：</p>
 
@@ -1420,7 +1420,7 @@ PKG 层: span={0,1,2,3}
 
 <p>（位于 <a href="kernel/sched/topology.c#L342">kernel/sched/topology.c:342</a>）从 EM 框架的 <code>em_cpu_get(cpu)</code> 获取 em_perf_domain 后构建。ARM64 平台通过 <code>em_dev_register_perf_domain()</code> 在 cpufreq 驱动初始化时注册 EM 数据。</p>
 
-<h3 id="84-算力与频率不变性">8.4 算力与频率不变性</h3>
+<h3 id="84-算力与频率不变性" >8.4 算力与频率不变性</h3>
 
 <p>ARM64 调度器依赖三个 per-CPU 变体实现<strong>负载跟踪的频率/算力不变性</strong>：</p>
 
@@ -1453,7 +1453,7 @@ PKG 层: span={0,1,2,3}
 
 
 
-<h2 id="九各层调用关系全景">九、各层调用关系全景</h2>
+<h2 id="九各层调用关系全景" >九、各层调用关系全景</h2>
 
 <p>以下展示从定时器 tick、任务唤醒到负载均衡的三条关键路径，标注每一层参与的函数和数据流向：</p>
 
@@ -1507,7 +1507,7 @@ __schedule()                                 // kernel/sched/core.c
 
 
 
-<h2 id="十总结">十、总结</h2>
+<h2 id="十总结" >十、总结</h2>
 
 <div class="layer-card">
 <h4>六层抽象的职责划分</h4>

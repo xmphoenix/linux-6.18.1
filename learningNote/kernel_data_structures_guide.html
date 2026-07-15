@@ -514,7 +514,7 @@ hr {
 
 <p><strong>Files</strong>: <code>include/linux/list.h</code>, <code>include/linux/types.h</code></p>
 
-<h3>Struct Definitions</h3>
+<h3 id="struct-definitions" >Struct Definitions</h3>
 
 <pre><code class="language-c">/* include/linux/types.h */
 struct list_head {
@@ -533,7 +533,7 @@ struct hlist_node {
 
 <p><code>hlist_head</code> uses a <strong>single pointer</strong> for the head (saves memory in hash tables with millions of buckets). <code>hlist_node</code> uses <code>**pprev</code> (pointer to the pointer that points to this node) to allow O(1) deletion without knowing the head.</p>
 
-<h3>Key API Functions</h3>
+<h3 id="key-api-functions" >Key API Functions</h3>
 
 <table>
 <thead><tr>
@@ -604,7 +604,7 @@ struct hlist_node {
 </tr>
 </tbody></table>
 
-<h3>Iteration Macros</h3>
+<h3 id="iteration-macros" >Iteration Macros</h3>
 
 <pre><code class="language-c">/* Iterate over list entries of a given container type */
 #define list_for_each_entry(pos, head, member)
@@ -622,7 +622,7 @@ struct hlist_node {
 /* Get the container struct from a list_head pointer */
 #define list_entry(ptr, type, member) container_of(ptr, type, member)</code></pre>
 
-<h3>Kernel Usage Examples</h3>
+<h3 id="kernel-usage-examples" >Kernel Usage Examples</h3>
 
 <ul>
 <li><strong>Task list</strong>: <code>struct task_struct</code> has <code>struct list_head tasks</code> linking all processes</li>
@@ -632,7 +632,7 @@ struct hlist_node {
 <li><strong>Network</strong>: <code>sk_buff_head</code> wraps a <code>list_head</code> for socket buffer chains</li>
 </ul>
 
-<h3>核心实现源码逐行注释</h3>
+<h3 id="核心实现源码逐行注释" >核心实现源码逐行注释</h3>
 
 <h4><code>__list_add()</code> — 双向链表插入的核心 (<a href="include/linux/list.h#L155">list.h</a>)</h4>
 
@@ -708,7 +708,7 @@ list_for_each_entry(task, &amp;init_task.tasks, tasks) {
 
 <p><strong>数学原理</strong>: 如果 <code>list_head</code> 成员在结构体中的偏移是 <code>offset</code>，那么结构体的起始地址 = <code>list_head 指针 - offset</code>。这就是 <code>container_of</code> 的全部魔法。</p>
 
-<h3>hlist 的设计精妙之处</h3>
+<h3 id="hlist-的设计精妙之处" >hlist 的设计精妙之处</h3>
 
 <pre><code class="language-c">struct hlist_head {
     struct hlist_node *first;       // 只有一个指针（8字节 vs list_head 的16字节）
@@ -1018,7 +1018,7 @@ if (next)
 <pre><code class="language-text">我不要循环双向链表的完整能力；
 我只要：桶头更省、从头遍历、已知节点可 O(1) 删除。</code></pre>
 
-<h3>Time Complexity</h3>
+<h3 id="time-complexity" >Time Complexity</h3>
 
 <table>
 <thead><tr>
@@ -1054,7 +1054,7 @@ if (next)
 
 <p><strong>Files</strong>: <code>include/linux/rbtree.h</code>, <code>include/linux/rbtree_types.h</code>, <code>lib/rbtree.c</code></p>
 
-<h3>Struct Definitions</h3>
+<h3 id="struct-definitions-1" >Struct Definitions</h3>
 
 <pre><code class="language-c">/* include/linux/rbtree_types.h */
 struct rb_node {
@@ -1203,7 +1203,7 @@ node_B
 
 <p><strong>Design trick</strong>: <code><strong>rb_parent_color</code> stores both the parent pointer AND the red/black color in the least significant bit. This works because <code>rb_node</code> is aligned to <code>sizeof(long)</code>, so the bottom bits of any valid pointer are always 0. The macro <code>rb_parent(r)</code> extracts the parent via <code>(r)-></strong>rb_parent_color & ~3</code>.</p>
 
-<h3>Key API Functions</h3>
+<h3 id="key-api-functions-1" >Key API Functions</h3>
 
 <pre><code class="language-c">/* Core operations */
 void rb_insert_color(struct rb_node *, struct rb_root *);
@@ -1235,7 +1235,7 @@ struct rb_node *rb_erase_cached(struct rb_node *node,
 /* Safe post-order iteration (for tree destruction) */
 #define rbtree_postorder_for_each_entry_safe(pos, n, root, field)</code></pre>
 
-<h3>Insert Pattern (Caller-implemented)</h3>
+<h3 id="insert-pattern-caller-implemented" >Insert Pattern (Caller-implemented)</h3>
 
 <p>The kernel does NOT provide a generic insert function — callers write their own comparison:</p>
 
@@ -1260,7 +1260,7 @@ void my_insert(struct rb_root *root, struct my_struct *data)
     rb_insert_color(&amp;data-&gt;node, root);
 }</code></pre>
 
-<h3>核心实现源码逐行注释 — 红黑树插入修复 (<a href="lib/rbtree.c#L89">rbtree.c</a>)</h3>
+<h3 >核心实现源码逐行注释 — 红黑树插入修复 (<a href="lib/rbtree.c#L89">rbtree.c</a>)</h3>
 
 <p>红黑树的五条性质确保树的高度 ≤ 2log₂(n+1)：</p>
 <ol>
@@ -1432,9 +1432,9 @@ while (true) {
     // 对称情况...
 }</code></pre>
 
-<h3>Kernel Usage Examples (Red-Black Tree)</h3>
+<h3 id="kernel-usage-examples-red-black-tree" >Kernel Usage Examples (Red-Black Tree)</h3>
 
-<h3>Time Complexity</h3>
+<h3 id="time-complexity-1" >Time Complexity</h3>
 
 <table>
 <thead><tr>
@@ -1474,7 +1474,7 @@ while (true) {
 
 <p><strong>Files</strong>: <code>include/linux/xarray.h</code>, <code>include/linux/radix-tree.h</code>, <code>lib/xarray.c</code></p>
 
-<h3>Struct Definitions</h3>
+<h3 id="struct-definitions-2" >Struct Definitions</h3>
 
 <pre><code class="language-c">/* include/linux/xarray.h */
 struct xarray {
@@ -1501,7 +1501,7 @@ struct xa_limit {
 <li><code>x1</code>: Value entry (stores integer in upper bits) or tagged pointer</li>
 </ul>
 
-<h3>Key API Functions</h3>
+<h3 id="key-api-functions-2" >Key API Functions</h3>
 
 <pre><code class="language-c">/* Core operations */
 void *xa_load(struct xarray *, unsigned long index);
@@ -1536,7 +1536,7 @@ static inline bool xa_is_value(const void *entry);
 #define xa_for_each_marked(xa, index, entry, filter)
 #define xa_for_each_start(xa, index, entry, start)</code></pre>
 
-<h3>内部节点结构 — <code>xa_node</code> (<a href="include/linux/xarray.h#L1168">xarray.h</a>)</h3>
+<h3 >内部节点结构 — <code>xa_node</code> (<a href="include/linux/xarray.h#L1168">xarray.h</a>)</h3>
 
 <pre><code class="language-c">struct xa_node {
     unsigned char  shift;      /* 每个slot还需要左移的位数 */
@@ -1584,7 +1584,7 @@ static inline unsigned long xa_to_value(const void *entry) { return (unsigned lo
 // 10: internal entry（节点指针、retry、error）
 static inline void *xa_mk_node(const struct xa_node *node) { return (void *)((unsigned long)node | 2); }</code></pre>
 
-<h3>Legacy Radix Tree API (Wrappers)</h3>
+<h3 id="legacy-radix-tree-api-wrappers" >Legacy Radix Tree API (Wrappers)</h3>
 
 <pre><code class="language-c">/* These map directly to xarray operations */
 #define RADIX_TREE(name, mask)   struct radix_tree_root name = RADIX_TREE_INIT(name, mask)
@@ -1594,7 +1594,7 @@ int radix_tree_insert(struct radix_tree_root *, unsigned long index, void *);
 void *radix_tree_delete(struct radix_tree_root *, unsigned long index);
 void *radix_tree_lookup(const struct radix_tree_root *, unsigned long);</code></pre>
 
-<h3>Kernel Usage Examples</h3>
+<h3 id="kernel-usage-examples-1" >Kernel Usage Examples</h3>
 
 <ul>
 <li><strong>Page cache</strong>: <code>struct address_space</code> uses <code>struct xarray i_pages</code> to map <code>pgoff_t → struct folio *</code></li>
@@ -1603,7 +1603,7 @@ void *radix_tree_lookup(const struct radix_tree_root *, unsigned long);</code></
 <li><strong>IDA/IDR</strong>: built on top of XArray internally</li>
 </ul>
 
-<h3>Time Complexity</h3>
+<h3 id="time-complexity-2" >Time Complexity</h3>
 
 <table>
 <thead><tr>
@@ -1641,7 +1641,7 @@ void *radix_tree_lookup(const struct radix_tree_root *, unsigned long);</code></
 
 <p><strong>Files</strong>: <code>include/linux/hashtable.h</code>, <code>include/linux/hash.h</code></p>
 
-<h3>"Struct" Definition (Macro-based)</h3>
+<h3 id="struct-definition-macro-based" >"Struct" Definition (Macro-based)</h3>
 
 <pre><code class="language-c">/* include/linux/hashtable.h */
 /* A hash table is simply an array of hlist_heads */
@@ -1658,7 +1658,7 @@ void *radix_tree_lookup(const struct radix_tree_root *, unsigned long);</code></
 
 <p><strong>Design</strong>: Statically-sized chained hash table. Each bucket is an <code>hlist_head</code> (not <code>list_head</code>) to save memory — with many buckets, the 8-byte savings per bucket from using a single pointer instead of two is significant.</p>
 
-<h3>Key API Functions</h3>
+<h3 id="key-api-functions-3" >Key API Functions</h3>
 
 <pre><code class="language-c">/* Initialization */
 #define hash_init(hashtable) __hash_init(hashtable, HASH_SIZE(hashtable))
@@ -1685,14 +1685,14 @@ static inline bool hash_hashed(struct hlist_node *node);   /* is in a table? */
 #define hash_for_each_rcu(name, bkt, obj, member)
 #define hash_for_each_possible_rcu(name, obj, member, key, cond...)</code></pre>
 
-<h3>Hash Functions</h3>
+<h3 id="hash-functions" >Hash Functions</h3>
 
 <pre><code class="language-c">/* include/linux/hash.h */
 /* Use hash_32 when possible for fast 32-bit hashing in 64-bit kernels */
 #define hash_min(val, bits)
     (sizeof(val) &lt;= 4 ? hash_32(val, bits) : hash_long(val, bits))</code></pre>
 
-<h3>Kernel Usage Examples</h3>
+<h3 id="kernel-usage-examples-2" >Kernel Usage Examples</h3>
 
 <ul>
 <li><strong>PID hash table</strong>: <code>kernel/pid.c</code> — fast PID to <code>struct pid</code> lookup</li>
@@ -1702,7 +1702,7 @@ static inline bool hash_hashed(struct hlist_node *node);   /* is in a table? */
 <li><strong>Network</strong>: connection tracking in <code>nf_conntrack</code></li>
 </ul>
 
-<h3>Time Complexity</h3>
+<h3 id="time-complexity-3" >Time Complexity</h3>
 
 <table>
 <thead><tr>
@@ -1739,14 +1739,14 @@ static inline bool hash_hashed(struct hlist_node *node);   /* is in a table? */
 
 <p><strong>Files</strong>: <code>include/linux/bitmap.h</code>, <code>include/linux/types.h</code>, <code>lib/bitmap.c</code></p>
 
-<h3>"Struct" Definition</h3>
+<h3 id="struct-definition" >"Struct" Definition</h3>
 
 <pre><code class="language-c">/* include/linux/types.h */
 #define DECLARE_BITMAP(name, bits)  unsigned long name[BITS_TO_LONGS(bits)]</code></pre>
 
 <p><strong>Design</strong>: A bitmap is simply an array of <code>unsigned long</code> values. <code>BITS_TO_LONGS()</code> computes the minimum number of longs needed. Individual bit operations come from <code>asm/bitops.h</code>, while bulk operations come from <code>lib/bitmap.c</code>.</p>
 
-<h3>Key API Functions</h3>
+<h3 id="key-api-functions-4" >Key API Functions</h3>
 
 <pre><code class="language-c">/* Allocation */
 unsigned long *bitmap_alloc(unsigned int nbits, gfp_t flags);
@@ -1801,7 +1801,7 @@ unsigned long find_next_zero_bit(const unsigned long *addr, unsigned long size, 
 #define for_each_set_bit(bit, addr, size)
 #define for_each_clear_bit(bit, addr, size)</code></pre>
 
-<h3>Kernel Usage Examples</h3>
+<h3 id="kernel-usage-examples-3" >Kernel Usage Examples</h3>
 
 <ul>
 <li><strong>CPU masks</strong>: <code>cpumask_t</code> is <code>DECLARE_BITMAP(bits, NR_CPUS)</code> — used everywhere for CPU affinity, online CPUs</li>
@@ -1811,7 +1811,7 @@ unsigned long find_next_zero_bit(const unsigned long *addr, unsigned long size, 
 <li><strong>Slab allocator</strong>: free object tracking bitmaps</li>
 </ul>
 
-<h3>Time Complexity</h3>
+<h3 id="time-complexity-4" >Time Complexity</h3>
 
 <table>
 <thead><tr>
@@ -1855,7 +1855,7 @@ unsigned long find_next_zero_bit(const unsigned long *addr, unsigned long size, 
 
 <p><strong>Files</strong>: <code>include/linux/idr.h</code>, <code>lib/radix-tree.c</code></p>
 
-<h3>Struct Definitions</h3>
+<h3 id="struct-definitions-3" >Struct Definitions</h3>
 
 <pre><code class="language-c">/* include/linux/idr.h */
 struct idr {
@@ -1875,7 +1875,7 @@ struct ida {
 
 <p><strong>Design</strong>: IDR maps integer IDs to pointers (like a sparse array). It's built on top of the radix tree / XArray. IDA is a more memory-efficient variant when you only need to allocate/free IDs without associating data.</p>
 
-<h3>Key API Functions — IDR</h3>
+<h3 id="key-api-functions--idr" >Key API Functions — IDR</h3>
 
 <pre><code class="language-c">/* Static definition */
 #define DEFINE_IDR(name)  struct idr name = IDR_INIT(name)
@@ -1908,7 +1908,7 @@ void idr_destroy(struct idr *);
 #define idr_lock(idr)       xa_lock(&amp;(idr)-&gt;idr_rt)
 #define idr_unlock(idr)     xa_unlock(&amp;(idr)-&gt;idr_rt)</code></pre>
 
-<h3>Key API Functions — IDA</h3>
+<h3 id="key-api-functions--ida" >Key API Functions — IDA</h3>
 
 <pre><code class="language-c">#define DEFINE_IDA(name)  struct ida name = IDA_INIT(name)
 
@@ -1922,7 +1922,7 @@ void ida_free(struct ida *, unsigned int id);
 /* Destroy */
 void ida_destroy(struct ida *ida);</code></pre>
 
-<h3>Kernel Usage Examples</h3>
+<h3 id="kernel-usage-examples-4" >Kernel Usage Examples</h3>
 
 <ul>
 <li><strong>File descriptors</strong>: <code>struct fdtable</code> — mapping fd numbers to <code>struct file *</code></li>
@@ -1933,7 +1933,7 @@ void ida_destroy(struct ida *ida);</code></pre>
 <li><strong>USB</strong>: URB IDs</li>
 </ul>
 
-<h3>Time Complexity</h3>
+<h3 id="time-complexity-5" >Time Complexity</h3>
 
 <table>
 <thead><tr>
@@ -1969,7 +1969,7 @@ void ida_destroy(struct ida *ida);</code></pre>
 
 <p><strong>Files</strong>: <code>include/linux/maple_tree.h</code>, <code>lib/maple_tree.c</code></p>
 
-<h3>Struct Definitions</h3>
+<h3 id="struct-definitions-4" >Struct Definitions</h3>
 
 <pre><code class="language-c">/* include/linux/maple_tree.h */
 struct maple_tree {
@@ -2035,7 +2035,7 @@ struct ma_state {
 
 <p><strong>Design</strong>: The Maple Tree is an <strong>RCU-safe B-tree</strong> variant optimized for storing <strong>ranges</strong> (key → value where keys are <code>unsigned long</code>). Nodes are 256 bytes (cache-line aligned). It replaced the rbtree+linked-list combination previously used for VMA management. The <code>arange</code> variant tracks gaps for efficient free-range allocation (critical for <code>mmap</code>).</p>
 
-<h3>Key API Functions</h3>
+<h3 id="key-api-functions-5" >Key API Functions</h3>
 
 <pre><code class="language-c">/* Static/dynamic initialization */
 #define DEFINE_MTREE(name)  struct maple_tree name = MTREE_INIT(name, 0)
@@ -2081,7 +2081,7 @@ void mas_erase(struct ma_state *mas);
 #define mas_lock(mas)    spin_lock(&amp;((mas)-&gt;tree-&gt;ma_lock))
 #define mas_unlock(mas)  spin_unlock(&amp;((mas)-&gt;tree-&gt;ma_lock))</code></pre>
 
-<h3>Kernel Usage Examples</h3>
+<h3 id="kernel-usage-examples-5" >Kernel Usage Examples</h3>
 
 <ul>
 <li><strong>VMA management</strong>: <code>struct mm_struct</code> has <code>struct maple_tree mm_mt</code> — <strong>the</strong> primary user. All VMA lookups, insertions, splits, and merges go through the maple tree. This replaced the previous rbtree + linked list.</li>
@@ -2089,7 +2089,7 @@ void mas_erase(struct ma_state *mas);
 <li><strong><code>/proc/pid/maps</code></strong>: Iterates VMAs via <code>mas_for_each()</code></li>
 </ul>
 
-<h3>Time Complexity</h3>
+<h3 id="time-complexity-6" >Time Complexity</h3>
 
 <table>
 <thead><tr>
@@ -2127,7 +2127,7 @@ void mas_erase(struct ma_state *mas);
 
 <p><strong>Files</strong>: <code>include/linux/plist.h</code>, <code>include/linux/plist_types.h</code>, <code>lib/plist.c</code></p>
 
-<h3>Struct Definitions</h3>
+<h3 id="struct-definitions-5" >Struct Definitions</h3>
 
 <pre><code class="language-c">/* include/linux/plist_types.h */
 struct plist_head {
@@ -2159,7 +2159,7 @@ struct plist_node {
 
 <p><code>INT_MIN</code> is the highest priority, <code>INT_MAX</code> is the lowest.</p>
 
-<h3>Key API Functions</h3>
+<h3 id="key-api-functions-6" >Key API Functions</h3>
 
 <pre><code class="language-c">/* Initialization */
 #define PLIST_HEAD(head)  struct plist_head head = PLIST_HEAD_INIT(head)
@@ -2187,7 +2187,7 @@ static inline struct plist_node *plist_last(const struct plist_head *head);
 #define plist_for_each_entry(pos, head, mem)
 #define plist_for_each_entry_safe(pos, n, head, m)</code></pre>
 
-<h3>Kernel Usage Examples</h3>
+<h3 id="kernel-usage-examples-6" >Kernel Usage Examples</h3>
 
 <ul>
 <li><strong>RT mutex waiters</strong>: <code>struct rt_mutex_waiter</code> uses <code>struct plist_node</code> for priority-inheritance ordered waiting</li>
@@ -2195,7 +2195,7 @@ static inline struct plist_node *plist_last(const struct plist_head *head);
 <li><strong>PM QoS</strong>: <code>struct pm_qos_constraints</code> maintains a plist of QoS requests sorted by value</li>
 </ul>
 
-<h3>Time Complexity</h3>
+<h3 id="time-complexity-7" >Time Complexity</h3>
 
 <table>
 <thead><tr>
@@ -2227,7 +2227,7 @@ static inline struct plist_node *plist_last(const struct plist_head *head);
 
 <p><strong>Files</strong>: <code>include/linux/kfifo.h</code>, <code>lib/kfifo.c</code></p>
 
-<h3>Struct Definitions</h3>
+<h3 id="struct-definitions-6" >Struct Definitions</h3>
 
 <pre><code class="language-c">/* include/linux/kfifo.h */
 struct __kfifo {
@@ -2249,7 +2249,7 @@ struct kfifo __STRUCT_KFIFO_PTR(unsigned char, 0, void);</code></pre>
 
 <p><strong>Lock-free guarantee</strong>: When there is exactly one reader and one writer, no locking is needed (the <code>in</code> index is only written by the producer, <code>out</code> only by the consumer, and <code>smp_wmb()</code>/<code>smp_rmb()</code> ensure ordering).</p>
 
-<h3>核心实现源码逐行注释 — 无锁环形缓冲区</h3>
+<h3 id="核心实现源码逐行注释--无锁环形缓冲区">核心实现源码逐行注释 — 无锁环形缓冲区</h3>
 
 <h4><code>__kfifo_in()</code> — 生产者写入 (<a href="lib/kfifo.c#L114">kfifo.c</a>)</h4>
 
@@ -2307,7 +2307,7 @@ struct kfifo __STRUCT_KFIFO_PTR(unsigned char, 0, void);</code></pre>
 
 <p>这保证了消费者看到 <code>in</code> 更新时，数据一定已经写好了。</p>
 
-<h3>Key API Functions</h3>
+<h3 id="key-api-functions-7" >Key API Functions</h3>
 
 <pre><code class="language-c">/* Static definition */
 #define DEFINE_KFIFO(fifo, type, size)          /* embedded buffer, power-of-2 size */
@@ -2346,7 +2346,7 @@ void kfifo_free(fifo);
 #define kfifo_to_user(fifo, to, len, copied)    /* copy to userspace */
 #define kfifo_from_user(fifo, from, len, copied) /* copy from userspace */</code></pre>
 
-<h3>Kernel Usage Examples</h3>
+<h3 id="kernel-usage-examples-7" >Kernel Usage Examples</h3>
 
 <ul>
 <li><strong>Serial drivers</strong>: <code>uart_port</code> uses kfifo for transmit/receive buffers</li>
@@ -2356,7 +2356,7 @@ void kfifo_free(fifo);
 <li><strong>USB gadget</strong>: endpoint FIFOs</li>
 </ul>
 
-<h3>Time Complexity</h3>
+<h3 id="time-complexity-8" >Time Complexity</h3>
 
 <table>
 <thead><tr>
@@ -2392,7 +2392,7 @@ void kfifo_free(fifo);
 
 <p><strong>Files</strong>: <code>include/linux/list_lru.h</code>, <code>mm/list_lru.c</code></p>
 
-<h3>Struct Definitions</h3>
+<h3 id="struct-definitions-7" >Struct Definitions</h3>
 
 <pre><code class="language-c">/* include/linux/list_lru.h */
 struct list_lru_one {
@@ -2429,7 +2429,7 @@ enum lru_status {
 
 <p><strong>Design</strong>: A <strong>NUMA-aware, memcg-aware LRU</strong> infrastructure for kernel caches. Each <code>list_lru</code> maintains separate lists per NUMA node (and optionally per memory cgroup). Items are added at the tail (least recently used) and the shrinker walks from the head (oldest). This enables the memory reclaim subsystem to evict the least-recently-used cached objects efficiently.</p>
 
-<h3>Key API Functions</h3>
+<h3 id="key-api-functions-8" >Key API Functions</h3>
 
 <pre><code class="language-c">/* Initialization */
 #define list_lru_init(lru)           __list_lru_init((lru), false, NULL)
@@ -2462,7 +2462,7 @@ unsigned long list_lru_walk_node(struct list_lru *lru, int nid,
 int memcg_list_lru_alloc(struct mem_cgroup *memcg, struct list_lru *lru, gfp_t);
 void memcg_reparent_list_lrus(struct mem_cgroup *memcg, struct mem_cgroup *parent);</code></pre>
 
-<h3>Kernel Usage Examples</h3>
+<h3 id="kernel-usage-examples-8" >Kernel Usage Examples</h3>
 
 <ul>
 <li><strong>Dentry cache</strong>: <code>struct dentry</code> uses <code>d_lru</code> list_head, managed by <code>super_block->s_dentry_lru</code> (a <code>list_lru</code>)</li>
@@ -2470,7 +2470,7 @@ void memcg_reparent_list_lrus(struct mem_cgroup *memcg, struct mem_cgroup *paren
 <li><strong>Shrinker integration</strong>: The shrinker subsystem calls <code>list_lru_walk_one()</code> during memory pressure to reclaim least-recently-used dentries/inodes</li>
 </ul>
 
-<h3>Time Complexity</h3>
+<h3 id="time-complexity-9" >Time Complexity</h3>
 
 <table>
 <thead><tr>
@@ -2504,7 +2504,7 @@ void memcg_reparent_list_lrus(struct mem_cgroup *memcg, struct mem_cgroup *paren
 
 <p>This section collects the objects that show up repeatedly in Linux <code>6.18.1</code>, and ties them back to the container chapters above. Read these structs as an <strong>object graph</strong> rather than as isolated definitions.</p>
 
-<h3>Reading Strategy</h3>
+<h3 id="reading-strategy" >Reading Strategy</h3>
 
 <ul>
 <li><code>task_struct</code> is the top-level execution object; from it you can reach memory (<code>mm</code>), credentials (<code>cred</code>), files (<code>files</code>), namespaces (<code>nsproxy</code>), and cgroups (<code>cgroups</code>).</li>
@@ -2514,7 +2514,7 @@ void memcg_reparent_list_lrus(struct mem_cgroup *memcg, struct mem_cgroup *paren
 <li>The container chapters above explain <em>how</em> lookup/queues work; the structs below explain <em>what</em> the kernel is actually moving around.</li>
 </ul>
 
-<h3>Process Context</h3>
+<h3 id="process-context" >Process Context</h3>
 
 <p><strong>Files</strong>: <code>include/linux/sched.h</code>, <code>include/linux/cred.h</code>, <code>include/linux/cgroup-defs.h</code></p>
 
@@ -2576,7 +2576,7 @@ struct task_struct {
 
 <p><strong>Why this struct is foundational</strong>: when a tracepoint, crash dump, or scheduler event says “current task”, this is the object being inspected. Almost every subsystem-specific object is reachable from here in one or two pointer hops.</p>
 
-<h3>Address Space</h3>
+<h3 id="address-space" >Address Space</h3>
 
 <p><strong>Files</strong>: <code>include/linux/mm_types.h</code></p>
 
@@ -2655,7 +2655,7 @@ struct vm_area_struct {
 
 <p><strong>Current-kernel takeaway</strong>: in <code>6.18.1</code>, VMA lookup is no longer conceptually “find rb_node in mm”; it is “search <code>mm_mt</code>, then reason about a <code>vm_area_struct</code>”.</p>
 
-<h3>Page Cache</h3>
+<h3 id="page-cache" >Page Cache</h3>
 
 <p><strong>Files</strong>: <code>include/linux/mm_types.h</code>, <code>include/linux/fs.h</code></p>
 
@@ -2721,7 +2721,7 @@ struct address_space {
 
 <p><strong>Mental model</strong>: <code>inode</code> owns an <code>address_space</code>; <code>address_space</code> indexes <code>folio</code>s; <code>folio</code>s eventually reach disk, swap, anonymous memory, or reclaim logic.</p>
 
-<h3>VFS Object Model</h3>
+<h3 id="vfs-object-model" >VFS Object Model</h3>
 
 <p><strong>Files</strong>: <code>include/linux/fs.h</code>, <code>include/linux/dcache.h</code></p>
 
@@ -2771,7 +2771,7 @@ filesystem root: super_block -&gt; s_root -&gt; dentry</code></pre>
 <li><code>file</code> is not the same thing as <code>inode</code>: multiple open <code>file</code> objects can point at the same <code>inode</code>, each with its own <code>f_pos</code>, flags, and credentials snapshot.</li>
 </ul>
 
-<h3>Device, Security, and Cgroups</h3>
+<h3 id="device-security-and-cgroups">Device, Security, and Cgroups</h3>
 
 <p><strong>Files</strong>: <code>include/linux/device.h</code>, <code>include/linux/cred.h</code>, <code>include/linux/cgroup-defs.h</code></p>
 
@@ -2861,7 +2861,7 @@ struct css_set {
 </tr>
 </tbody></table>
 
-<h3>Networking Data Path</h3>
+<h3 id="networking-data-path" >Networking Data Path</h3>
 
 <p><strong>Files</strong>: <code>include/linux/skbuff.h</code>, <code>include/linux/netdevice.h</code></p>
 
@@ -2937,7 +2937,7 @@ struct net_device {
 </tr>
 </tbody></table>
 
-<h3>Block I/O Data Path</h3>
+<h3 id="block-io-data-path">Block I/O Data Path</h3>
 
 <p><strong>Files</strong>: <code>include/linux/blk_types.h</code>, <code>include/linux/blk-mq.h</code>, <code>include/linux/blkdev.h</code></p>
 
@@ -3013,7 +3013,7 @@ struct request_queue {
 <li><code>request_queue.hctx_table</code> is an <code>xarray</code>, so even the modern block layer reuses the generic indexing primitives from earlier chapters.</li>
 </ul>
 
-<h3>Core Object Graph</h3>
+<h3 id="core-object-graph" >Core Object Graph</h3>
 
 <pre><code class="language-text">task_struct
  ├── mm ----------------------&gt; mm_struct

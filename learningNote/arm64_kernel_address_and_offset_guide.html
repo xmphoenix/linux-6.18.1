@@ -454,9 +454,9 @@ hr {
           <li><a href="#41-线性映射换算">4.1 线性映射换算</a></li>
           <li><a href="#42-内核镜像换算">4.2 内核镜像换算</a></li>
           <li><a href="#43-arm64-如何区分一个-va-属于哪一类">4.3 ARM64 如何区分一个 VA 属于哪一类</a></li>
-          <li><a href="#44-<strong>virt_to_phys-的真实逻辑">4.4 virt_to_phys() 的真实逻辑</a></li>
-          <li><a href="#45-<strong>phys_to_kimg-的意义">4.5 phys_to_kimg() 的意义</a></li>
-          <li><a href="#46-为什么-<strong>pa_symbol-和-</strong>pa-不能混用">4.6 为什么 pa_symbol() 和 pa() 不能混用</a></li>
+          <li><a href="#44-virt_to_phys-的真实逻辑">4.4 virt_to_phys() 的真实逻辑</a></li>
+          <li><a href="#45-phys_to_kimg-的意义">4.5 phys_to_kimg() 的意义</a></li>
+          <li><a href="#46-为什么-pa_symbol-和-pa-不能混用">4.6 为什么 pa_symbol() 和 pa() 不能混用</a></li>
         </ul>
       </li>
       <li class="toc-chapter">
@@ -467,7 +467,7 @@ hr {
           <li><a href="#53-第三优先级判断它是不是-vmalloc-地址">5.3 第三优先级：判断它是不是 vmalloc 地址</a></li>
           <li><a href="#54-模块地址为什么容易和-vmalloc-混淆">5.4 模块地址为什么容易和 vmalloc 混淆</a></li>
           <li><a href="#55-最实用的判断顺序">5.5 最实用的判断顺序</a></li>
-          <li><a href="#56-为什么不能把-vmalloc-地址直接传给-<strong>virt_to_phys">5.6 为什么不能把 vmalloc 地址直接传给 virt_to_phys()</a></li>
+          <li><a href="#56-为什么不能把-vmalloc-地址直接传给-virt_to_phys">5.6 为什么不能把 vmalloc 地址直接传给 virt_to_phys()</a></li>
           <li><a href="#57-一句话决策法">5.7 一句话决策法</a></li>
         </ul>
       </li>
@@ -488,7 +488,7 @@ hr {
         <div class="toc-chapter-header"><span class="arrow">▶</span> 8. 启动阶段这些地址和 offset 是怎么建立起来的</div>
         <ul class="toc-chapter-items">
           <li><a href="#81-early_map_kernel-先建立早期-kernel-image-映射">8.1 early_map_kernel() 先建立早期 kernel image 映射</a></li>
-          <li><a href="#82-<strong>primary_switched-保存-kimage_voffset">8.2 primary_switched 保存 kimage_voffset</a></li>
+          <li><a href="#82-primary_switched-保存-kimage_voffset">8.2 primary_switched 保存 kimage_voffset</a></li>
           <li><a href="#83-arm64_memblock_init-建立-memstart_addr从而建立-phys_offset">8.3 arm64_memblock_init() 建立 memstart_addr，从而建立 PHYS_OFFSET</a></li>
           <li><a href="#84-paging_init-建立完整内存映射">8.4 paging_init() 建立完整内存映射</a></li>
           <li><a href="#85-setup_arch-里的大致顺序">8.5 setup_arch() 里的大致顺序</a></li>
@@ -506,7 +506,7 @@ hr {
         <ul class="toc-chapter-items">
           <li><a href="#111-kimage_vaddr-不是-_text">11.1 KIMAGE_VADDR 不是 _text</a></li>
           <li><a href="#112-phys_offset-不是简单的-dram-起始地址别名">11.2 PHYS_OFFSET 不是简单的 DRAM 起始地址别名</a></li>
-          <li><a href="#113-<strong>pa_symbol-不是普通-virt_to_phys">11.3 pa_symbol() 不是普通 virt_to_phys()</a></li>
+          <li><a href="#113-pa_symbol-不是普通-virt_to_phys">11.3 pa_symbol() 不是普通 virt_to_phys()</a></li>
           <li><a href="#114-一个内核虚拟地址不一定属于-linear-map">11.4 一个内核虚拟地址不一定属于 linear map</a></li>
           <li><a href="#115-52-bit-内核不代表运行时一定真在-52-bit-va-下运行">11.5 52-bit 内核不代表运行时一定真在 52-bit VA 下运行</a></li>
         </ul>
@@ -528,11 +528,11 @@ hr {
 
 <p>ARM64 内核里至少要区分三类地址空间，否则几乎一定会把这些宏看乱：</p>
 
-<h3>1.1 物理地址</h3>
+<h3 id="11-物理地址" >1.1 物理地址</h3>
 
 <p>就是 CPU/MMU 看到的真实物理地址，例如 DRAM 的物理起始地址。</p>
 
-<h3>1.2 线性映射地址</h3>
+<h3 id="12-线性映射地址" >1.2 线性映射地址</h3>
 
 <p>也叫 direct map 或 linear map。它把一段连续物理内存按固定公式映射到内核虚拟地址空间。其核心基址就是 <code>PAGE_OFFSET</code>。</p>
 
@@ -541,7 +541,7 @@ hr {
 <pre><code class="language-c">virt = phys - PHYS_OFFSET + PAGE_OFFSET
 phys = virt - PAGE_OFFSET + PHYS_OFFSET</code></pre>
 
-<h3>1.3 内核镜像地址</h3>
+<h3 id="13-内核镜像地址" >1.3 内核镜像地址</h3>
 
 <p>这是内核映像自身 <code>.text/.rodata/.data/.bss</code> 所在的虚拟地址区域，不等同于 linear map。它的编译期基准是 <code>KIMAGE_VADDR</code>，实际运行时还可能叠加 KASLR 偏移。</p>
 
@@ -570,7 +570,7 @@ virt = phys + kimage_voffset</code></pre>
 <li><code>arch/arm64/include/asm/fixmap.h</code></li>
 </ul>
 
-<h3>2.1 <code>VA_BITS</code></h3>
+<h3 id="21-va_bits" >2.1 <code>VA_BITS</code></h3>
 
 <p>定义：</p>
 
@@ -582,7 +582,7 @@ virt = phys + kimage_voffset</code></pre>
 
 <pre><code class="language-c">VA_BITS = 52</code></pre>
 
-<h3>2.2 <code>VA_BITS_MIN</code></h3>
+<h3 id="22-va_bits_min" >2.2 <code>VA_BITS_MIN</code></h3>
 
 <p>定义：</p>
 
@@ -602,7 +602,7 @@ virt = phys + kimage_voffset</code></pre>
 
 <pre><code class="language-c">VA_BITS_MIN = 48</code></pre>
 
-<h3>2.3 <code>PAGE_OFFSET</code></h3>
+<h3 id="23-page_offset" >2.3 <code>PAGE_OFFSET</code></h3>
 
 <p>定义：</p>
 
@@ -618,7 +618,7 @@ virt = phys + kimage_voffset</code></pre>
 
 <p>这也是 <code>Documentation/arch/arm64/memory.rst</code> 强调的点：52-bit VA 内核为了支持早期 48-bit fallback，仍然保持 <code>PAGE_OFFSET</code> 固定在 52-bit 的位置，以便优化 <code>phys_to_virt()</code> / <code>virt_to_phys()</code>。</p>
 
-<h3>2.4 <code>PAGE_END</code></h3>
+<h3 id="24-page_end" >2.4 <code>PAGE_END</code></h3>
 
 <p>定义：</p>
 
@@ -642,7 +642,7 @@ virt = phys + kimage_voffset</code></pre>
 <li>若启用 KASAN，<code>PAGE_END</code> 可能变成 <code>KASAN_SHADOW_START</code>，不再等于 <code>_PAGE_END(VA_BITS_MIN)</code>。</li>
 </ul>
 
-<h3>2.5 <code>MODULES_VADDR</code>、<code>MODULES_END</code> 和 <code>MODULES_VSIZE</code></h3>
+<h3 id="25-modules_vaddrmodules_end-和-modules_vsize" >2.5 <code>MODULES_VADDR</code>、<code>MODULES_END</code> 和 <code>MODULES_VSIZE</code></h3>
 
 <p>定义：</p>
 
@@ -670,7 +670,7 @@ MODULES_END   = 0xffff800080000000</code></pre>
 
 <p>但这只是当前配置下成立，不是永远成立。</p>
 
-<h3>2.6 <code>KIMAGE_VADDR</code></h3>
+<h3 id="26-kimage_vaddr" >2.6 <code>KIMAGE_VADDR</code></h3>
 
 <p>定义：</p>
 
@@ -698,7 +698,7 @@ MODULES_END   = 0xffff800080000000</code></pre>
     return (u64)&amp;_text - KIMAGE_VADDR;
 }</code></pre>
 
-<h3>2.7 <code>KERNEL_START</code> 和 <code>KERNEL_END</code></h3>
+<h3 id="27-kernel_start-和-kernel_end" >2.7 <code>KERNEL_START</code> 和 <code>KERNEL_END</code></h3>
 
 <p>定义：</p>
 
@@ -723,7 +723,7 @@ MODULES_END   = 0xffff800080000000</code></pre>
 
 <p>在源码里，像 <code>memblock_reserve(__pa_symbol(_text), _end - _text)</code> 这类写法，依赖的正是这组实际边界符号。</p>
 
-<h3>2.8 <code>VMALLOC_START</code> 和 <code>VMALLOC_END</code></h3>
+<h3 id="28-vmalloc_start-和-vmalloc_end" >2.8 <code>VMALLOC_START</code> 和 <code>VMALLOC_END</code></h3>
 
 <p>定义来自 <code>arch/arm64/include/asm/pgtable.h</code>：</p>
 
@@ -761,7 +761,7 @@ MODULES_END   = 0xffff800080000000</code></pre>
 
 <p>它直接参与 <code>VMALLOC_END</code> 的计算，本质上是在 52-bit/48-bit 兼容布局里回收一部分原本为了大地址空间预留的 vmemmap 余量。</p>
 
-<h3>2.9 <code>VMEMMAP_RANGE</code>、<code>VMEMMAP_SIZE</code>、<code>VMEMMAP_START</code>、<code>VMEMMAP_END</code></h3>
+<h3 id="29-vmemmap_rangevmemmap_sizevmemmap_startvmemmap_end" >2.9 <code>VMEMMAP_RANGE</code>、<code>VMEMMAP_SIZE</code>、<code>VMEMMAP_START</code>、<code>VMEMMAP_END</code></h3>
 
 <p>定义：</p>
 
@@ -797,7 +797,7 @@ MODULES_END   = 0xffff800080000000</code></pre>
 
 <p>就能定位到该 PFN 对应的 <code>struct page</code>。</p>
 
-<h3>2.10 <code>PCI_IO_START</code> 和 <code>PCI_IO_END</code></h3>
+<h3 id="210-pci_io_start-和-pci_io_end" >2.10 <code>PCI_IO_START</code> 和 <code>PCI_IO_END</code></h3>
 
 <p>定义：</p>
 
@@ -810,7 +810,7 @@ MODULES_END   = 0xffff800080000000</code></pre>
 <pre><code class="language-c">PCI_IO_START = 0xffffffffc0800000
 PCI_IO_END   = 0xffffffffc1800000</code></pre>
 
-<h3>2.11 <code>FIXADDR_TOP</code>、<code>FIXADDR_START</code>、<code>FIXADDR_TOT_START</code></h3>
+<h3 id="211-fixaddr_topfixaddr_startfixaddr_tot_start" >2.11 <code>FIXADDR_TOP</code>、<code>FIXADDR_START</code>、<code>FIXADDR_TOT_START</code></h3>
 
 <p>定义：</p>
 
@@ -849,7 +849,7 @@ PCI_IO_END   = 0xffffffffc1800000</code></pre>
 <li><code>kimage_voffset</code></li>
 </ul>
 
-<h3>3.1 <code>memstart_addr</code> 与 <code>PHYS_OFFSET</code></h3>
+<h3 id="31-memstart_addr-与-phys_offset" >3.1 <code>memstart_addr</code> 与 <code>PHYS_OFFSET</code></h3>
 
 <p>定义：</p>
 
@@ -928,7 +928,7 @@ PCI_IO_END   = 0xffffffffc1800000</code></pre>
 <li>为什么某些物理内存可能因为超出 linear region 而被裁剪</li>
 </ul>
 
-<h3>3.2 <code>vabits_actual</code></h3>
+<h3 id="32-vabits_actual" >3.2 <code>vabits_actual</code></h3>
 
 <p>定义：</p>
 
@@ -956,7 +956,7 @@ PCI_IO_END   = 0xffffffffc1800000</code></pre>
 <li>早期布局代码对实际 TTBR1 地址空间大小的判断</li>
 </ul>
 
-<h3>3.3 <code>MIN_MEMBLOCK_ADDR</code> 和 <code>MAX_MEMBLOCK_ADDR</code></h3>
+<h3 id="33-min_memblock_addr-和-max_memblock_addr" >3.3 <code>MIN_MEMBLOCK_ADDR</code> 和 <code>MAX_MEMBLOCK_ADDR</code></h3>
 
 <p>定义：</p>
 
@@ -976,7 +976,7 @@ PCI_IO_END   = 0xffffffffc1800000</code></pre>
 <li>等 <code>arm64_memblock_init()</code> 里 <code>memstart_addr</code>、linear region、kernel image 位置都确定后，再做真正裁剪</li>
 </ul>
 
-<h3>3.4 <code>kaslr_offset()</code> 和 <code>kaslr_enabled()</code></h3>
+<h3 id="34-kaslr_offset-和-kaslr_enabled" >3.4 <code>kaslr_offset()</code> 和 <code>kaslr_enabled()</code></h3>
 
 <p>定义：</p>
 
@@ -1011,7 +1011,7 @@ PCI_IO_END   = 0xffffffffc1800000</code></pre>
 <li><code>kaslr_offset()</code> 是实际生效后的偏移结果</li>
 </ul>
 
-<h3>3.5 <code>kimage_voffset</code></h3>
+<h3 id="35-kimage_voffset" >3.5 <code>kimage_voffset</code></h3>
 
 <p>定义：</p>
 
@@ -1056,7 +1056,7 @@ str_l   x4, kimage_voffset, x5</code></pre>
 
 <p>这是理解所有地址宏最重要的一节。</p>
 
-<h3>4.1 线性映射换算</h3>
+<h3 id="41-线性映射换算" >4.1 线性映射换算</h3>
 
 <p>定义：</p>
 
@@ -1070,7 +1070,7 @@ str_l   x4, kimage_voffset, x5</code></pre>
 <li>例如通过 page allocator、memblock、普通页框直接映射得到的地址</li>
 </ul>
 
-<h3>4.2 内核镜像换算</h3>
+<h3 id="42-内核镜像换算" >4.2 内核镜像换算</h3>
 
 <p>定义：</p>
 
@@ -1084,7 +1084,7 @@ str_l   x4, kimage_voffset, x5</code></pre>
 <li>以及任何位于 kernel image mapping 里的地址</li>
 </ul>
 
-<h3>4.3 ARM64 如何区分一个 VA 属于哪一类</h3>
+<h3 id="43-arm64-如何区分一个-va-属于哪一类" >4.3 ARM64 如何区分一个 VA 属于哪一类</h3>
 
 <p>定义：</p>
 
@@ -1092,7 +1092,7 @@ str_l   x4, kimage_voffset, x5</code></pre>
 
 <p>如果落在 <code>[PAGE_OFFSET, PAGE_END)</code> 区间，就认为它属于 linear map；否则按 kernel image mapping 处理。</p>
 
-<h3>4.4 <code>__virt_to_phys()</code> 的真实逻辑</h3>
+<h3 id="44-virt_to_phys-的真实逻辑" >4.4 <code>__virt_to_phys()</code> 的真实逻辑</h3>
 
 <p>定义：</p>
 
@@ -1111,7 +1111,7 @@ str_l   x4, kimage_voffset, x5</code></pre>
 <li>在镜像映射里，用 <code>kimage_voffset</code></li>
 </ul>
 
-<h3>4.5 <code>__phys_to_kimg()</code> 的意义</h3>
+<h3 id="45-phys_to_kimg-的意义" >4.5 <code>__phys_to_kimg()</code> 的意义</h3>
 
 <p>定义：</p>
 
@@ -1128,7 +1128,7 @@ str_l   x4, kimage_voffset, x5</code></pre>
 
 <p>同一个物理页，在 ARM64 上可能同时拥有这两种不同语义的虚拟地址。</p>
 
-<h3>4.6 为什么 <code><strong>pa_symbol()</code> 和 <code></strong>pa()</code> 不能混用</h3>
+<h3 id="46-为什么-pa_symbol-和-pa-不能混用" >4.6 为什么 <code><strong>pa_symbol()</code> 和 <code></strong>pa()</code> 不能混用</h3>
 
 <p>定义：</p>
 
@@ -1153,7 +1153,7 @@ str_l   x4, kimage_voffset, x5</code></pre>
 
 <p>核心原则不是“先套公式”，而是“先分类，再换算”。</p>
 
-<h3>5.1 第一优先级：先判断它是不是 linear map</h3>
+<h3 id="51-第一优先级先判断它是不是-linear-map" >5.1 第一优先级：先判断它是不是 linear map</h3>
 
 <p>ARM64 自己给出的判定条件是：</p>
 
@@ -1178,7 +1178,7 @@ virt = phys - PHYS_OFFSET + PAGE_OFFSET</code></pre>
 <li><code>page_to_virt()</code>、<code>__va()</code> 一类得到的 direct-map 地址</li>
 </ul>
 
-<h3>5.2 第二优先级：判断它是不是 built-in kernel image 地址</h3>
+<h3 id="52-第二优先级判断它是不是-built-in-kernel-image-地址">5.2 第二优先级：判断它是不是 built-in kernel image 地址</h3>
 
 <p>这类地址最可靠的判别方法，不是单纯看它是否落在某个大区间，而是看它是否来自内核镜像本身的符号和段。</p>
 
@@ -1208,7 +1208,7 @@ virt = phys + kimage_voffset</code></pre>
 
 <p>所以判断 kernel image 时，最好依赖“符号来源”或 <code>[KERNEL_START, KERNEL_END)</code>，而不是只看 <code>addr >= KIMAGE_VADDR</code>。</p>
 
-<h3>5.3 第三优先级：判断它是不是 vmalloc 地址</h3>
+<h3 id="53-第三优先级判断它是不是-vmalloc-地址">5.3 第三优先级：判断它是不是 vmalloc 地址</h3>
 
 <p>通用层给出的判断接口是：</p>
 
@@ -1248,7 +1248,7 @@ virt = phys + kimage_voffset</code></pre>
 
 <p>例如 <a href="mm/vmalloc.c#L779">mm/vmalloc.c</a> 里的 <code>vmalloc_to_page()</code> 就是直接按页表层级走查该地址。</p>
 
-<h3>5.4 模块地址为什么容易和 vmalloc 混淆</h3>
+<h3 id="54-模块地址为什么容易和-vmalloc-混淆" >5.4 模块地址为什么容易和 vmalloc 混淆</h3>
 
 <p>模块地址区间是：</p>
 
@@ -1276,7 +1276,7 @@ return is_vmalloc_addr(x);</code></pre>
 
 <p>这说明从“通用内核辅助接口”的角度看，模块区经常被视为 vmalloc-like 高位映射区域，而不是 linear map。</p>
 
-<h3>5.5 最实用的判断顺序</h3>
+<h3 id="55-最实用的判断顺序" >5.5 最实用的判断顺序</h3>
 
 <p>如果你手里只有一个地址 <code>addr</code>，最稳妥的判断顺序是：</p>
 
@@ -1295,7 +1295,7 @@ return is_vmalloc_addr(x);</code></pre>
 5. 如果以上都不是
     -&gt; 再考虑 fixmap、vmemmap、PCI_IO、特殊映射等专用区域</code></pre>
 
-<h3>5.6 为什么不能把 <code>vmalloc</code> 地址直接传给 <code>__virt_to_phys()</code></h3>
+<h3 id="56-为什么不能把-vmalloc-地址直接传给-virt_to_phys">5.6 为什么不能把 <code>vmalloc</code> 地址直接传给 <code>__virt_to_phys()</code></h3>
 
 <p>这是最关键的一条工程规则。</p>
 
@@ -1320,7 +1320,7 @@ return is_vmalloc_addr(x);</code></pre>
 <li><code>vmalloc</code> 不是第三个偏移公式，而是“必须查页表/查 vmalloc 元数据”的一类</li>
 </ul>
 
-<h3>5.7 一句话决策法</h3>
+<h3 id="57-一句话决策法" >5.7 一句话决策法</h3>
 
 <p>看到一个 ARM64 内核 VA 时，可以先这么想：</p>
 
@@ -1357,7 +1357,7 @@ return is_vmalloc_addr(x);</code></pre>
 
 <p>前面的定义如果不落到算式上，很容易停留在“知道名字但不会用”的状态。下面给几组最常见的推导。</p>
 
-<h3>7.1 由 <code>MODULES_VADDR</code> 推到 <code>MODULES_END</code></h3>
+<h3 id="71-由-modules_vaddr-推到-modules_end" >7.1 由 <code>MODULES_VADDR</code> 推到 <code>MODULES_END</code></h3>
 
 <p>当前配置下：</p>
 
@@ -1368,7 +1368,7 @@ MODULES_END   = MODULES_VADDR + MODULES_VSIZE
 
 <p>这一步的意义很直接：模块区固定预留 <code>2GB</code>，内核镜像区编译期基址 <code>KIMAGE_VADDR</code> 就紧接在它后面。</p>
 
-<h3>7.2 由 <code>PAGE_END</code> 推到 <code>DIRECT_MAP_PHYSMEM_END</code></h3>
+<h3 id="72-由-page_end-推到-direct_map_physmem_end" >7.2 由 <code>PAGE_END</code> 推到 <code>DIRECT_MAP_PHYSMEM_END</code></h3>
 
 <p>定义是：</p>
 
@@ -1391,7 +1391,7 @@ PAGE_OFFSET  = 0xfff0000000000000</code></pre>
 
 <p>这个结果表达的是：当前 direct map 最多能覆盖到 <code>PHYS_OFFSET</code> 之上的 <code>0x000f7fffffffffff</code> 这个物理偏移位置。</p>
 
-<h3>7.3 为什么 <code>vmemmap + PHYS_PFN_OFFSET</code> 对应 direct map 的第一个 <code>struct page</code></h3>
+<h3 id="73-为什么-vmemmap--phys_pfn_offset-对应-direct-map-的第一个-struct-page">7.3 为什么 <code>vmemmap + PHYS_PFN_OFFSET</code> 对应 direct map 的第一个 <code>struct page</code></h3>
 
 <p>因为：</p>
 
@@ -1411,7 +1411,7 @@ PAGE_OFFSET  = 0xfff0000000000000</code></pre>
 
 <p>它正好对应 linear map 起始物理页框的 <code>struct page</code> 描述符。</p>
 
-<h3>7.4 一个 kernel symbol 如何转成物理地址</h3>
+<h3 id="74-一个-kernel-symbol-如何转成物理地址" >7.4 一个 kernel symbol 如何转成物理地址</h3>
 
 <p>对 <code>_text</code>、<code>_end</code> 这类 kernel image symbol，不应该先假设它在线性映射里，而应该走：</p>
 
@@ -1427,7 +1427,7 @@ PAGE_OFFSET  = 0xfff0000000000000</code></pre>
 
 <p>也就是说，<code>kimage_voffset</code> 把“带 KASLR 的实际镜像虚拟地址”拉回到它真正装载的物理地址。</p>
 
-<h3>7.5 同一个物理页可能有两种不同语义的虚拟地址</h3>
+<h3 id="75-同一个物理页可能有两种不同语义的虚拟地址" >7.5 同一个物理页可能有两种不同语义的虚拟地址</h3>
 
 <p>假设某个物理地址 <code>phys</code> 同时：</p>
 
@@ -1456,7 +1456,7 @@ kimage_va     = __phys_to_kimg(phys)</code></pre>
 
 <p>把几个宏分开背不难，真正难的是弄清楚它们在启动时是谁先建立、谁依赖谁。</p>
 
-<h3>8.1 <code>early_map_kernel()</code> 先建立早期 kernel image 映射</h3>
+<h3 id="81-early_map_kernel-先建立早期-kernel-image-映射" >8.1 <code>early_map_kernel()</code> 先建立早期 kernel image 映射</h3>
 
 <p>在 <a href="arch/arm64/kernel/pi/map_kernel.c#L241">arch/arm64/kernel/pi/map_kernel.c</a> 中，<code>early_map_kernel()</code> 会先决定：</p>
 
@@ -1473,7 +1473,7 @@ map_kernel(kaslr_offset, va_base - pa_base, root_level);</code></pre>
 
 <p>这一步建立的是“内核镜像先能跑起来”的早期映射，不是完整的 linear map。</p>
 
-<h3>8.2 <code>__primary_switched</code> 保存 <code>kimage_voffset</code></h3>
+<h3 id="82-primary_switched-保存-kimage_voffset">8.2 <code>__primary_switched</code> 保存 <code>kimage_voffset</code></h3>
 
 <p>在 <a href="arch/arm64/kernel/head.S#L220">arch/arm64/kernel/head.S</a> 中，切换到内核虚拟地址执行后，会立刻保存：</p>
 
@@ -1485,7 +1485,7 @@ str_l   x4, kimage_voffset, x5</code></pre>
 
 <p>从这之后，内核镜像符号就可以可靠地通过 <code>__pa_symbol()</code> 做地址转换。</p>
 
-<h3>8.3 <code>arm64_memblock_init()</code> 建立 <code>memstart_addr</code>，从而建立 <code>PHYS_OFFSET</code></h3>
+<h3 id="83-arm64_memblock_init-建立-memstart_addr从而建立-phys_offset">8.3 <code>arm64_memblock_init()</code> 建立 <code>memstart_addr</code>，从而建立 <code>PHYS_OFFSET</code></h3>
 
 <p>在 <a href="arch/arm64/mm/init.c#L185">arch/arm64/mm/init.c</a> 中，<code>arm64_memblock_init()</code> 会根据：</p>
 
@@ -1506,7 +1506,7 @@ str_l   x4, kimage_voffset, x5</code></pre>
 
 <p>所以真正意义上的 linear-map 基准物理地址，是在这一步才稳定下来的。</p>
 
-<h3>8.4 <code>paging_init()</code> 建立完整内存映射</h3>
+<h3 id="84-paging_init-建立完整内存映射" >8.4 <code>paging_init()</code> 建立完整内存映射</h3>
 
 <p>在 <a href="arch/arm64/mm/mmu.c#L1351">arch/arm64/mm/mmu.c</a> 中：</p>
 
@@ -1520,7 +1520,7 @@ str_l   x4, kimage_voffset, x5</code></pre>
 
 <p>这一步会把完整内存映射补齐，尤其是 direct map 的正式建立和完善。</p>
 
-<h3>8.5 <code>setup_arch()</code> 里的大致顺序</h3>
+<h3 id="85-setup_arch-里的大致顺序" >8.5 <code>setup_arch()</code> 里的大致顺序</h3>
 
 <p>在 <a href="arch/arm64/kernel/setup.c#L332">arch/arm64/kernel/setup.c</a> 中，相关主线顺序很清楚：</p>
 
@@ -1540,7 +1540,7 @@ start_kernel / setup_arch()
     -&gt; paging_init()
     -&gt; 建立完整 direct map 和其他内核映射</code></pre>
 
-<h3>8.6 这条时序的实际意义</h3>
+<h3 id="86-这条时序的实际意义" >8.6 这条时序的实际意义</h3>
 
 <p>这条链路解释了一个经常让人困惑的问题：为什么 early boot 代码喜欢用 <code>__pa_symbol()</code>，而不是普通 <code>virt_to_phys()</code>？</p>
 
@@ -1676,25 +1676,25 @@ high kernel VA</code></pre>
 
 <h2>11. 最容易犯错的几个点</h2>
 
-<h3>11.1 <code>KIMAGE_VADDR</code> 不是 <code>_text</code></h3>
+<h3 id="111-kimage_vaddr-不是-_text" >11.1 <code>KIMAGE_VADDR</code> 不是 <code>_text</code></h3>
 
 <p><code>KIMAGE_VADDR</code> 是镜像区编译期基准，而 <code>_text</code> 的实际 VA 可能因为 KASLR 变成：</p>
 
 <pre><code class="language-c">&amp;_text = KIMAGE_VADDR + kaslr_offset</code></pre>
 
-<h3>11.2 <code>PHYS_OFFSET</code> 不是简单的 DRAM 起始地址别名</h3>
+<h3 id="112-phys_offset-不是简单的-dram-起始地址别名" >11.2 <code>PHYS_OFFSET</code> 不是简单的 DRAM 起始地址别名</h3>
 
 <p>它是 <code>PAGE_OFFSET</code> 这条 linear map 起点在物理地址上的对应值，会经过对齐、裁剪，以及 52-bit 到 48-bit fallback 调整。</p>
 
-<h3>11.3 <code>__pa_symbol()</code> 不是普通 <code>virt_to_phys()</code></h3>
+<h3 id="113-pa_symbol-不是普通-virt_to_phys">11.3 <code>__pa_symbol()</code> 不是普通 <code>virt_to_phys()</code></h3>
 
 <p><code>__pa_symbol()</code> 是给 kernel image symbol 用的，本质走 <code>kimage_voffset</code>。早期 boot code 依赖它，是因为那时 linear map 还不完整。</p>
 
-<h3>11.4 一个内核虚拟地址不一定属于 linear map</h3>
+<h3 id="114-一个内核虚拟地址不一定属于-linear-map" >11.4 一个内核虚拟地址不一定属于 linear map</h3>
 
 <p>ARM64 必须先判定地址是否位于 <code>[PAGE_OFFSET, PAGE_END)</code>，否则就必须走 kernel image 的换算逻辑。</p>
 
-<h3>11.5 52-bit 内核不代表运行时一定真在 52-bit VA 下运行</h3>
+<h3 id="115-52-bit-内核不代表运行时一定真在-52-bit-va-下运行" >11.5 52-bit 内核不代表运行时一定真在 52-bit VA 下运行</h3>
 
 <p>当前内核是按 52-bit VA 构建的，但 <code>vabits_actual</code> 仍然可能在某些机器上回退到 48。ARM64 的很多宏和布局设计，正是为了兼容这件事。</p>
 

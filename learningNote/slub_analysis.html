@@ -406,7 +406,7 @@ hr {
         <div class="toc-chapter-header"><span class="arrow">▶</span> 4. calculate_sizes() — 对象布局决策</div>
         <ul class="toc-chapter-items">
           <li><a href="#阶段一word-对齐">阶段一：word 对齐</a></li>
-          <li><a href="#阶段二<strong>object_poison--右-redzonedebug">阶段二：OBJECT_POISON + 右 redzone（DEBUG）</a></li>
+          <li><a href="#阶段二object_poison--右-redzonedebug">阶段二：OBJECT_POISON + 右 redzone（DEBUG）</a></li>
           <li><a href="#阶段三free-pointer-位置决策">阶段三：free pointer 位置决策</a></li>
           <li><a href="#阶段四追加-track-信息debug">阶段四：追加 track 信息（DEBUG）</a></li>
           <li><a href="#阶段五追加左-redzonedebug">阶段五：追加左 redzone（DEBUG）</a></li>
@@ -489,7 +489,7 @@ hr {
 
 <h2>1. 核心数据结构</h2>
 
-<h3>1.1 struct kmem_cache（328 字节）</h3>
+<h3 id="11-struct-kmem_cache328-字节">1.1 struct kmem_cache（328 字节）</h3>
 
 <p>全局工厂描述符，每种对象类型一个实例。</p>
 
@@ -522,7 +522,7 @@ hr {
                                       ───
                                总计   328 字节</code></pre>
 
-<h3>1.2 struct kmem_cache_cpu（48 字节，per-CPU）</h3>
+<h3 id="12-struct-kmem_cache_cpu48-字节per-cpu">1.2 struct kmem_cache_cpu（48 字节，per-CPU）</h3>
 
 <p>每 CPU 的热路径分配器，无锁。</p>
 
@@ -536,7 +536,7 @@ hr {
                       ───
                总计    48 字节</code></pre>
 
-<h3>1.3 struct kmem_cache_node（72 字节，per-NUMA-node）</h3>
+<h3 id="13-struct-kmem_cache_node72-字节per-numa-node">1.3 struct kmem_cache_node（72 字节，per-NUMA-node）</h3>
 
 <p>NUMA 节点级共享仓库，有锁保护。</p>
 
@@ -625,11 +625,11 @@ hr {
 
 <h2>3. SLUB 自举流程</h2>
 
-<h3>3.1 鸡生蛋问题</h3>
+<h3 id="31-鸡生蛋问题" >3.1 鸡生蛋问题</h3>
 
 <p><code>kmem_cache_create()</code> 需要从 <code>kmem_cache</code> 这个 cache 分配一个 <code>struct kmem_cache</code> 对象，但 <code>kmem_cache</code> 本身还没有创建。同理，创建任何 cache 都需要 <code>kmem_cache_node</code> 对象来管理 per-node 数据。</p>
 
-<h3>3.2 三阶段自举</h3>
+<h3 id="32-三阶段自举" >3.2 三阶段自举</h3>
 
 <pre><code class="language-c">void __init kmem_cache_init(void)
 {
@@ -689,11 +689,11 @@ hr {
 
 <p>这是决定每个 slot 字节布局的核心函数，分 6 个阶段：</p>
 
-<h3>阶段一：word 对齐</h3>
+<h3 id="阶段一word-对齐">阶段一：word 对齐</h3>
 
 <pre><code class="language-c">size = ALIGN(size, sizeof(void *));  // ARM64: ALIGN(size, 8)</code></pre>
 
-<h3>阶段二：<code>__OBJECT_POISON</code> + 右 redzone（DEBUG）</h3>
+<h3 id="阶段二object_poison--右-redzonedebug">阶段二：<code>__OBJECT_POISON</code> + 右 redzone（DEBUG）</h3>
 
 <pre><code class="language-c">// 能毒化对象本体的条件：有 POISON 且无 RCU 且无 ctor
 if ((flags &amp; SLAB_POISON) &amp;&amp; !(flags &amp; SLAB_TYPESAFE_BY_RCU) &amp;&amp; !s-&gt;ctor)
@@ -705,7 +705,7 @@ if ((flags &amp; SLAB_RED_ZONE) &amp;&amp; size == s-&gt;object_size)
 
 s-&gt;inuse = size;  // ← inuse 在此固定</code></pre>
 
-<h3>阶段三：free pointer 位置决策</h3>
+<h3 id="阶段三free-pointer-位置决策">阶段三：free pointer 位置决策</h3>
 
 <pre><code class="language-c">if (POISON || RCU(非自定义) || ctor || (REDZONE &amp;&amp; 小对象)) {
     // 分支A：free ptr 放在对象外部（不能踩对象内容）
@@ -721,7 +721,7 @@ s-&gt;inuse = size;  // ← inuse 在此固定</code></pre>
 
 <p>分支C 将 free ptr 放在对象中间的原因：远离头尾，减少小范围 overflow 误踩。</p>
 
-<h3>阶段四：追加 track 信息（DEBUG）</h3>
+<h3 id="阶段四追加-track-信息debug">阶段四：追加 track 信息（DEBUG）</h3>
 
 <pre><code class="language-c">if (flags &amp; SLAB_STORE_USER) {
     size += 2 * sizeof(struct track);  // +64 字节
@@ -729,7 +729,7 @@ s-&gt;inuse = size;  // ← inuse 在此固定</code></pre>
         size += sizeof(unsigned int);  // +4 字节 orig_size
 }</code></pre>
 
-<h3>阶段五：追加左 redzone（DEBUG）</h3>
+<h3 id="阶段五追加左-redzonedebug">阶段五：追加左 redzone（DEBUG）</h3>
 
 <pre><code class="language-c">if (flags &amp; SLAB_RED_ZONE) {
     size += sizeof(void *);            // +8 字节右补充
@@ -737,7 +737,7 @@ s-&gt;inuse = size;  // ← inuse 在此固定</code></pre>
     size += s-&gt;red_left_pad;           // +64 字节
 }</code></pre>
 
-<h3>阶段六：最终对齐 + order 计算</h3>
+<h3 id="阶段六最终对齐--order-计算">阶段六：最终对齐 + order 计算</h3>
 
 <pre><code class="language-c">size = ALIGN(size, s-&gt;align);
 s-&gt;size = size;
@@ -750,7 +750,7 @@ s-&gt;min = oo_make(get_order(size), size);  // fallback（单对象）</code></
 
 <h2>5. Object Layout 详解</h2>
 
-<h3>5.1 无 Debug 时（生产内核）</h3>
+<h3 id="51-无-debug-时生产内核">5.1 无 Debug 时（生产内核）</h3>
 
 <pre><code>┌─────────────────────────────────────┐  ← slot 起始 = object 地址
 │  object data (object_size)          │
@@ -761,7 +761,7 @@ s-&gt;min = oo_make(get_order(size), size);  // fallback（单对象）</code></
 │  alignment padding                  │
 └─────────────────────────────────────┘  ← s-&gt;size</code></pre>
 
-<h3>5.2 全 Debug 时（RED_ZONE + POISON + STORE_USER）</h3>
+<h3 id="52-全-debug-时red_zone--poison--store_user">5.2 全 Debug 时（RED_ZONE + POISON + STORE_USER）</h3>
 
 <pre><code>┌──────────────────────────────────────────────────────────┐
 │  left redzone (red_left_pad=64B)    填 0xbb/0xcc         │
@@ -782,7 +782,7 @@ s-&gt;min = oo_make(get_order(size), size);  // fallback（单对象）</code></
 │  padding (0x5a) 对齐到 s-&gt;size                           │
 └──────────────────────────────────────────────────────────┘ ← s-&gt;size</code></pre>
 
-<h3>5.3 魔法字节表</h3>
+<h3 id="53-魔法字节表" >5.3 魔法字节表</h3>
 
 <table>
 <thead><tr>
@@ -822,7 +822,7 @@ s-&gt;min = oo_make(get_order(size), size);  // fallback（单对象）</code></
 
 <h2>6. SLUB Debug 机制</h2>
 
-<h3>6.1 Debug 标志</h3>
+<h3 id="61-debug-标志" >6.1 Debug 标志</h3>
 
 <table>
 <thead><tr>
@@ -863,7 +863,7 @@ s-&gt;min = oo_make(get_order(size), size);  // fallback（单对象）</code></
 </tr>
 </tbody></table>
 
-<h3>6.2 初始化</h3>
+<h3 id="62-初始化" >6.2 初始化</h3>
 
 <pre><code>bootloader cmdline: &quot;slab_debug=...&quot; / &quot;slub_debug=...&quot;
         │
@@ -878,7 +878,7 @@ setup_slub_debug()                     // mm/slub.c:1866
 do_kmem_cache_create()
     └── s-&gt;flags = kmem_cache_flags(flags, name)  // 合并全局 debug flags</code></pre>
 
-<h3>6.3 检测能力</h3>
+<h3 id="63-检测能力" >6.3 检测能力</h3>
 
 <table>
 <thead><tr>
@@ -919,7 +919,7 @@ do_kmem_cache_create()
 </tr>
 </tbody></table>
 
-<h3>6.4 对象生命周期字节变化</h3>
+<h3 id="64-对象生命周期字节变化" >6.4 对象生命周期字节变化</h3>
 
 <pre><code>新建 slab 页   → 整页填 0x5a (POISON_INUSE)
     │
@@ -933,7 +933,7 @@ do_kmem_cache_create()
 释放             → 检查 redzone=0xcc?(越界?) → 检查 double-free?
                   → 重填 body=0x6b, redzone=0xbb</code></pre>
 
-<h3>6.5 使用示例</h3>
+<h3 id="65-使用示例" >6.5 使用示例</h3>
 
 <pre><code class="language-bash">slub_debug              # 全 debug: f+z+p+u
 slub_debug=p            # 仅 poison（检测 UAF）
@@ -944,7 +944,7 @@ slub_debug=-            # 关闭所有（覆盖 CONFIG_SLUB_DEBUG_ON 默认值�
 
 <h2>7. kmalloc 缓存体系创建</h2>
 
-<h3>7.1 setup_kmalloc_cache_index_table()</h3>
+<h3 id="71-setup_kmalloc_cache_index_table" >7.1 setup_kmalloc_cache_index_table()</h3>
 
 <p>ARM64 上 <code>KMALLOC_MIN_SIZE=8</code>，三段逻辑全部跳过（for 循环 <code>8<8</code> 不执行，两个 if <code>8>=64</code> 和 <code>8>=128</code> 均为 false）。此函数是给 MIPS 等大对齐架构使用的，ARM64 上是 no-op。</p>
 
@@ -962,7 +962,7 @@ slub_debug=-            # 关闭所有（覆盖 CONFIG_SLUB_DEBUG_ON 默认值�
     2,  // 136-192B → kmalloc-192 (index 2, 非 2 次幂)
 };</code></pre>
 
-<h3>7.3 create_kmalloc_caches()</h3>
+<h3 id="73-create_kmalloc_caches" >7.3 create_kmalloc_caches()</h3>
 
 <p>ARM64 上 <code>KMALLOC_MIN_SIZE=8 ≤ 32</code> 且 <code>≤ 64</code>，因此 kmalloc-96 和 kmalloc-192 都会创建。</p>
 
@@ -974,7 +974,7 @@ slub_debug=-            # 关闭所有（覆盖 CONFIG_SLUB_DEBUG_ON 默认值�
 }
 slab_state = UP;</code></pre>
 
-<h3>7.4 new_kmalloc_cache() 在 ARM64 上的简化行为</h3>
+<h3 id="74-new_kmalloc_cache-在-arm64-上的简化行为" >7.4 new_kmalloc_cache() 在 ARM64 上的简化行为</h3>
 
 <p><code>__kmalloc_minalign()</code> 返回 8 = <code>ARCH_KMALLOC_MINALIGN</code>，所以：</p>
 <ul>
@@ -983,7 +983,7 @@ slab_state = UP;</code></pre>
 <li>直接调用 <code>create_kmalloc_cache(kmalloc_info[idx].name[type], size, flags)</code></li>
 </ul>
 
-<h3>7.5 最终创建的 kmalloc cache（NORMAL 系列）</h3>
+<h3 id="75-最终创建的-kmalloc-cachenormal-系列">7.5 最终创建的 kmalloc cache（NORMAL 系列）</h3>
 
 <table>
 <thead><tr>
@@ -1093,7 +1093,7 @@ slab_state = UP;</code></pre>
 
 <h2>8. 分配与释放路径</h2>
 
-<h3>8.1 分配路径</h3>
+<h3 id="81-分配路径" >8.1 分配路径</h3>
 
 <pre><code>kmalloc(N)
     │
@@ -1108,7 +1108,7 @@ slab_state = UP;</code></pre>
     │
     └── 最慢: new_slab() → 向 buddy allocator 申请新页</code></pre>
 
-<h3>8.2 释放路径</h3>
+<h3 id="82-释放路径" >8.2 释放路径</h3>
 
 <pre><code>kfree(ptr)
     │
@@ -1127,7 +1127,7 @@ slab_state = UP;</code></pre>
 
 <h2>9. 自定义 slab cache</h2>
 
-<h3>为什么不直接用 kmalloc？</h3>
+<h3 id="为什么不直接用-kmalloc" >为什么不直接用 kmalloc？</h3>
 
 <p><code>kernel/fork.c</code> 中的 <code>mm_cache_init()</code> 和 <code>proc_caches_init()</code> 在 SLUB 就绪后创建专用 cache：</p>
 
@@ -1165,7 +1165,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
 </tr>
 </tbody></table>
 
-<h3>调用时序</h3>
+<h3 id="调用时序" >调用时序</h3>
 
 <pre><code>start_kernel()
     ├── kmem_cache_init()          ← SLUB 自举，slab_state = UP
@@ -1267,7 +1267,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
 </tr>
 </tbody></table>
 
-<h3>kmem_cache_init() 后两个核心 cache 的具体值</h3>
+<h3 id="kmem_cache_init-后两个核心-cache-的具体值" >kmem_cache_init() 后两个核心 cache 的具体值</h3>
 
 <p><strong>kmem_cache_node（生产 72 字节的 struct kmem_cache_node）：</strong></p>
 
@@ -1357,7 +1357,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
 
 <hr>
 
-<h3>slab_state 状态机</h3>
+<h3 id="slab_state-状态机" >slab_state 状态机</h3>
 
 <pre><code>DOWN ─────► PARTIAL ─────► UP ─────► FULL
   │              │            │          │
@@ -1393,7 +1393,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
 
 <h2>11. 用户态内存分配全链路</h2>
 
-<h3>11.1 malloc → 物理内存 6 层路径</h3>
+<h3 id="111-malloc-→-物理内存-6-层路径" >11.1 malloc → 物理内存 6 层路径</h3>
 
 <pre><code>malloc(size)                              [glibc / ptmalloc2 用户空间]
     │
@@ -1419,7 +1419,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
           │
           └─ 填写页表 PTE，建立虚拟→物理映射</code></pre>
 
-<h3>11.2 关键原则</h3>
+<h3 id="112-关键原则" >11.2 关键原则</h3>
 
 <table>
 <thead><tr>
@@ -1445,7 +1445,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
 </tr>
 </tbody></table>
 
-<h3>11.3 glibc ptmalloc2 内存池机制</h3>
+<h3 id="113-glibc-ptmalloc2-内存池机制" >11.3 glibc ptmalloc2 内存池机制</h3>
 
 <pre><code>主线程 heap（brk 管理）：
   ┌─────────────────────────┐
@@ -1462,7 +1462,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
   │  独立 bin 体系          │
   └─────────────────────────┘</code></pre>
 
-<h3>11.4 glibc 碎片化处理策略</h3>
+<h3 id="114-glibc-碎片化处理策略" >11.4 glibc 碎片化处理策略</h3>
 
 <table>
 <thead><tr>
@@ -1503,7 +1503,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
 </tr>
 </tbody></table>
 
-<h3>11.5 ARM64 虚拟地址空间布局</h3>
+<h3 id="115-arm64-虚拟地址空间布局" >11.5 ARM64 虚拟地址空间布局</h3>
 
 <pre><code>0xFFFF_FFFF_FFFF_FFFF ─── 内核空间
         ...
@@ -1524,7 +1524,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
 
 <h2>12. brk / mmap 系统调用</h2>
 
-<h3>12.1 brk 系统调用（<code>mm/mmap.c</code> line 115）</h3>
+<h3 id="121-brk-系统调用mmmmapc-line-115">12.1 brk 系统调用（<code>mm/mmap.c</code> line 115）</h3>
 
 <pre><code class="language-c">SYSCALL_DEFINE1(brk, unsigned long, brk)</code></pre>
 
@@ -1544,7 +1544,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
         ├─ 检查 next VMA（stack_guard_gap）
         └─ do_brk_flags()         → 创建/扩展匿名 VMA（无物理页）</code></pre>
 
-<h3>12.2 mmap 系统调用（<code>mm/mmap.c</code> line 611）</h3>
+<h3 id="122-mmap-系统调用mmmmapc-line-611">12.2 mmap 系统调用（<code>mm/mmap.c</code> line 611）</h3>
 
 <pre><code class="language-c">SYSCALL_DEFINE6(mmap_pgoff, addr, len, prot, flags, fd, pgoff)
   └─ ksys_mmap_pgoff()
@@ -1579,7 +1579,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
 <li>匿名映射：<code>vm_ops = NULL</code>，等缺页异常处理；文件映射：调用 <code>file->f_op->mmap()</code> 设置 <code>vm_ops</code></li>
 </ol>
 
-<h3>12.3 应用场景对比</h3>
+<h3 id="123-应用场景对比" >12.3 应用场景对比</h3>
 
 <pre><code>malloc(size)
     │
@@ -1625,7 +1625,7 @@ fs_cachep     = kmem_cache_create(&quot;fs_cache&quot;, ...);</code></pre>
 </tr>
 </tbody></table>
 
-<h3>12.4 mmap 典型使用场景</h3>
+<h3 id="124-mmap-典型使用场景" >12.4 mmap 典型使用场景</h3>
 
 <pre><code class="language-c">// 1. glibc 大块 malloc
 malloc(200*1024) → mmap(MAP_ANONYMOUS|MAP_PRIVATE)

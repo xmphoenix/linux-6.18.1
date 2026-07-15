@@ -424,7 +424,7 @@ hr {
           <li><a href="#157-gp-kthread-主循环状态机算法">GP kthread 主循环状态机算法</a></li>
           <li><a href="#158-广度优先树遍历算法">广度优先树遍历算法</a></li>
           <li><a href="#159-expedited-gp-算法">Expedited GP 算法</a></li>
-          <li><a href="#1510-<strong>note_gp_changes-本地-gp-同步算法">note_gp_changes 本地 GP 同步算法</a></li>
+          <li><a href="#1510-note_gp_changes-本地-gp-同步算法">note_gp_changes 本地 GP 同步算法</a></li>
           <li><a href="#16-rcu-面试经典问题问答">RCU 面试经典问题问答</a></li>
           <li><a href="#17-rcu-各种读写场景处理流程">RCU 各种读写场景处理流程</a></li>
           <li><a href="#171-场景一单指针替换最基本模式">场景一：单指针替换（最基本模式）</a></li>
@@ -448,11 +448,11 @@ hr {
 
 <h2>1. RCU 原理和问题定位</h2>
 
-<h3>RCU 实现原理</h3>
+<h3 id="rcu-实现原理" >RCU 实现原理</h3>
 
 <p>RCU（Read-Copy-Update）是一种专为<strong>读多写少</strong>场景设计的同步机制。与传统读写锁不同，RCU 的核心设计哲学是：<strong>让读者零开销，把同步代价转移给写者</strong>。</p>
 
-<h4>基本思想：Read-Copy-Update 三步曲</h4>
+<h4 >基本思想：Read-Copy-Update 三步曲</h4>
 
 <pre><code> Reader 侧（零开销）            Writer 侧（承担同步代价）
  ┌────────────────┐             ┌──────────────────────────────┐
@@ -465,7 +465,7 @@ hr {
                                 │    → 安全释放旧数据            │
                                 └──────────────────────────────┘</code></pre>
 
-<h4>读者侧 — 为什么零开销</h4>
+<h4 >读者侧 — 为什么零开销</h4>
 
 <p>RCU 读者侧的 API 实现极其轻量（<code>include/linux/rcupdate.h</code>）：</p>
 
@@ -494,7 +494,7 @@ hr {
 <li><code>rcu_dereference(p)</code> 编译为 <code>smp_load_acquire()</code> 语义（ARM64 为 <code>ldar</code>），确保指针解引用不被重排到读侧临界区之前</li>
 </ul>
 
-<h4>写者侧 — 发布-订阅模型</h4>
+<h4 >写者侧 — 发布-订阅模型</h4>
 
 <p>写者通过<strong>发布-订阅模型</strong>实现无锁的指针替换（<code>include/linux/rcupdate.h</code>）：</p>
 
@@ -522,7 +522,7 @@ rcu_assign_pointer(gp, new_data)   p = rcu_dereference(gp)
 <li><code>smp_load_acquire</code> 保证：指针解引用<strong>后于</strong>指针读取，读者不会看到未初始化的数据</li>
 </ul>
 
-<h4>回收侧 — Grace Period 保障</h4>
+<h4 >回收侧 — Grace Period 保障</h4>
 
 <p>写者替换指针后，旧数据不能立即释放——可能还有读者持有旧指针。RCU 通过 <strong>Grace Period（宽限期）</strong> 确保安全回收：</p>
 
@@ -537,7 +537,7 @@ rcu_assign_pointer(gp, new_data)   p = rcu_dereference(gp)
 
 <p><code>synchronize_rcu()</code> 的语义：等待所有在调用<strong>之前</strong>已进入 <code>rcu_read_lock()</code> 临界区的读者退出。调用<strong>之后</strong>进入的读者不需要等待，因为它们只会看到新指针。</p>
 
-<h4>RCU 与传统锁的对比</h4>
+<h4 >RCU 与传统锁的对比</h4>
 
 <table>
 <thead><tr>
@@ -578,7 +578,7 @@ rcu_assign_pointer(gp, new_data)   p = rcu_dereference(gp)
 </tr>
 </tbody></table>
 
-<h4>典型使用模式</h4>
+<h4 >典型使用模式</h4>
 
 <p><strong>链表删除示例</strong>（最常见场景）：</p>
 
@@ -614,7 +614,7 @@ void my_free_callback(struct rcu_head *rhp)
 
 <hr>
 
-<h3>Quiescent State（静默状态）深入解析</h3>
+<h3 id="quiescent-state静默状态深入解析">Quiescent State（静默状态）深入解析</h3>
 
 <p>Quiescent State（QS，静默状态）是 RCU Grace Period 判定的<strong>核心概念</strong>——它标志着一个 CPU 当前<strong>不在</strong> RCU 读侧临界区内。当所有 CPU 都经过了至少一次 QS，就意味着所有旧读者已退出，Grace Period 结束。</p>
 
@@ -864,11 +864,11 @@ FQS 扫描时的 EQS 检测:
 
 <hr>
 
-<h3>1.1 RCU 软件架构</h3>
+<h3 id="11-rcu-软件架构" >1.1 RCU 软件架构</h3>
 
 <p><img src="image/rcu_tree_architecture.svg" alt="RCU Tree 软件架构"></p>
 
-<h4>1.1.1 层级树结构</h4>
+<h4 id="111-层级树结构" >1.1.1 层级树结构</h4>
 
 <p>RCU（Read-Copy-Update）在 Linux 内核中的核心实现是 <strong>Tree RCU</strong>（<code>kernel/rcu/tree.c</code>），采用层级树结构来高效管理大规模 SMP 系统上的 Grace Period 检测。</p>
 
@@ -947,7 +947,7 @@ FQS 扫描时的 EQS 检测:
 </tr>
 </tbody></table>
 
-<h4>1.1.2 Grace Period 状态机</h4>
+<h4 id="112-grace-period-状态机" >1.1.2 Grace Period 状态机</h4>
 
 <p>Grace Period（GP）是 RCU 的核心概念——在一个 GP 内，所有 CPU 都必须经过至少一次 Quiescent State（静默状态），之后旧数据的回调才能安全执行。</p>
 
@@ -1026,7 +1026,7 @@ FQS 扫描时的 EQS 检测:
 <li>通过 <code>__note_gp_changes()</code> 推进已就绪的 callback</li>
 </ul>
 
-<h4>1.1.3 Quiescent State 上报机制</h4>
+<h4 id="113-quiescent-state-上报机制" >1.1.3 Quiescent State 上报机制</h4>
 
 <p>Quiescent State（QS）表示一个 CPU 当前不在 RCU 读侧临界区内。</p>
 
@@ -1091,7 +1091,7 @@ FQS 扫描时的 EQS 检测:
 <li><code>rcu_watching_snap_recheck()</code>：比较状态是否变化，判断是否经过 EQS</li>
 </ol>
 
-<h4>1.1.4 Callback 分段处理流水线</h4>
+<h4 id="114-callback-分段处理流水线" >1.1.4 Callback 分段处理流水线</h4>
 
 <p>RCU callback 在 <code>struct rcu_segcblist</code> 中按 GP 依赖关系分为 4 个段：</p>
 
@@ -1112,7 +1112,7 @@ head ─────────────────────────
 <li>RCU softirq / NOCB kthread 执行 <code>RCU_DONE_TAIL</code> 段的回调</li>
 </ol>
 
-<h4>1.1.5 Force-Quiescent-State 扫描</h4>
+<h4 id="115-force-quiescent-state-扫描" >1.1.5 Force-Quiescent-State 扫描</h4>
 
 <p>当 GP 等待过久，FQS 机制会主动催促未上报 QS 的 CPU：</p>
 
@@ -1148,7 +1148,7 @@ head ─────────────────────────
 </tr>
 </tbody></table>
 
-<h4>1.1.6 NOCB 回调卸载架构</h4>
+<h4 id="116-nocb-回调卸载架构" >1.1.6 NOCB 回调卸载架构</h4>
 
 <p>当 <code>CONFIG_RCU_NOCB_CPU</code> 使能时，指定 CPU 的 RCU callback 执行被卸载到专门的 kthread：</p>
 
@@ -1161,11 +1161,11 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 
 <hr>
 
-<h3>1.2 RCU 关键数据结构</h3>
+<h3 id="12-rcu-关键数据结构" >1.2 RCU 关键数据结构</h3>
 
 <p><img src="image/rcu_data_structures.svg" alt="RCU 关键数据结构关系图"></p>
 
-<h4>1.2.1 struct rcu_state — 全局 RCU 状态</h4>
+<h4 id="121-struct-rcu_state--全局-rcu-状态">1.2.1 struct rcu_state — 全局 RCU 状态</h4>
 
 <p>定义在 <code>kernel/rcu/tree.h</code>，是整个 RCU 子系统的全局管理结构：</p>
 
@@ -1263,7 +1263,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 </tr>
 </tbody></table>
 
-<h4>1.2.2 struct rcu_node — 层级树节点</h4>
+<h4 id="122-struct-rcu_node--层级树节点">1.2.2 struct rcu_node — 层级树节点</h4>
 
 <p>定义在 <code>kernel/rcu/tree.h</code>，是层级树中的中间/叶节点：</p>
 
@@ -1366,7 +1366,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 </tr>
 </tbody></table>
 
-<h4>1.2.3 struct rcu_data — Per-CPU RCU 数据</h4>
+<h4 id="123-struct-rcu_data--per-cpu-rcu-数据">1.2.3 struct rcu_data — Per-CPU RCU 数据</h4>
 
 <p>定义在 <code>kernel/rcu/tree.h</code>，每个 CPU 一个实例：</p>
 
@@ -1484,7 +1484,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 </tr>
 </tbody></table>
 
-<h4>1.2.4 struct rcu_segcblist — 分段回调链表</h4>
+<h4 id="124-struct-rcu_segcblist--分段回调链表">1.2.4 struct rcu_segcblist — 分段回调链表</h4>
 
 <p>定义在 <code>kernel/rcu/rcu_segcblist.h</code>：</p>
 
@@ -1537,7 +1537,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 <li><code>SEGCBLIST_KTHREAD_CB</code> / <code>SEGCBLIST_KTHREAD_GP</code> — kthread 状态</li>
 </ul>
 
-<h4>1.2.5 struct rcu_snap_record — Stall 诊断快照</h4>
+<h4 id="125-struct-rcu_snap_record--stall-诊断快照">1.2.5 struct rcu_snap_record — Stall 诊断快照</h4>
 
 <p>定义在 <code>kernel/rcu/tree.h</code>，用于 RCU CPU Stall 告警时的 CPU 活动信息：</p>
 
@@ -1556,9 +1556,9 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 
 <hr>
 
-<h3>1.3 RCU 告警 Debug 需要 Enable 的内核开关</h3>
+<h3 id="13-rcu-告警-debug-需要-enable-的内核开关" >1.3 RCU 告警 Debug 需要 Enable 的内核开关</h3>
 
-<h4>1.3.1 基础 RCU 配置开关</h4>
+<h4 id="131-基础-rcu-配置开关" >1.3.1 基础 RCU 配置开关</h4>
 
 <table>
 <thead><tr>
@@ -1600,7 +1600,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 </tr>
 </tbody></table>
 
-<h4>1.3.2 Stall 检测配置开关</h4>
+<h4 id="132-stall-检测配置开关" >1.3.2 Stall 检测配置开关</h4>
 
 <table>
 <thead><tr>
@@ -1638,7 +1638,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 
 <blockquote><strong>Debug 建议</strong>：务必开启 <code>CONFIG_RCU_CPU_STALL_CPUTIME=y</code>，它能在 Stall 告警中输出硬中断/软中断/上下文切换的统计信息，是定位 Stall 根因的关键数据。</blockquote>
 
-<h4>1.3.3 Debug 与 Tracing 配置开关</h4>
+<h4 id="133-debug-与-tracing-配置开关" >1.3.3 Debug 与 Tracing 配置开关</h4>
 
 <table>
 <thead><tr>
@@ -1684,7 +1684,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 </tr>
 </tbody></table>
 
-<h4>1.3.4 运行时 sysctl 调优参数</h4>
+<h4 id="134-运行时-sysctl-调优参数" >1.3.4 运行时 sysctl 调优参数</h4>
 
 <p>通过 <code>/proc/sys/kernel/</code> 或 <code>sysctl</code> 在运行时调整：</p>
 
@@ -1727,7 +1727,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 </tr>
 </tbody></table>
 
-<h4>1.3.5 Boot 参数</h4>
+<h4 id="135-boot-参数" >1.3.5 Boot 参数</h4>
 
 <p>内核启动参数（通过 bootargs 传递）：</p>
 
@@ -1759,7 +1759,7 @@ NOCB CPU:  call_rcu() → nocb_bypass 链表 → nocb_gp_kthread（GP 跟踪）
 </tr>
 </tbody></table>
 
-<h4>1.3.6 推荐 Debug 配置组合</h4>
+<h4 id="136-推荐-debug-配置组合" >1.3.6 推荐 Debug 配置组合</h4>
 
 <p><strong>生产环境调试建议</strong>：</p>
 
@@ -1789,9 +1789,9 @@ CONFIG_RCU_STRICT_GRACE_PERIOD=y   # 仅小系统</code></pre>
 
 <hr>
 
-<h3>1.4 RCU 告警案例分析和 Log 解读</h3>
+<h3 id="14-rcu-告警案例分析和-log-解读" >1.4 RCU 告警案例分析和 Log 解读</h3>
 
-<h4>1.4.1 RCU CPU Stall 告警格式全解析</h4>
+<h4 id="141-rcu-cpu-stall-告警格式全解析" >1.4.1 RCU CPU Stall 告警格式全解析</h4>
 
 <p><strong>Stall 检测入口</strong>：<code>check_cpu_stall()</code>（<code>kernel/rcu/tree_stall.h</code>）</p>
 
@@ -1853,7 +1853,7 @@ ncpus=8               在线 CPU 数</code></pre>
 <li><code>==> 10500(ms)</code>：本次采样周期的总时长</li>
 </ul>
 
-<h4>1.4.2 案例一：单核长时间关中断导致 RCU Stall</h4>
+<h4 id="142-案例一单核长时间关中断导致-rcu-stall">1.4.2 案例一：单核长时间关中断导致 RCU Stall</h4>
 
 <p><strong>典型 Log</strong>：</p>
 
@@ -1879,7 +1879,7 @@ ncpus=8               在线 CPU 数</code></pre>
 <li>查看 NMI dump 的栈回溯确认卡在什么位置</li>
 </ul>
 
-<h4>1.4.3 案例二：PREEMPT_RCU 下读侧临界区阻塞 GP</h4>
+<h4 id="143-案例二preempt_rcu-下读侧临界区阻塞-gp">1.4.3 案例二：PREEMPT_RCU 下读侧临界区阻塞 GP</h4>
 
 <p><strong>典型 Log</strong>：</p>
 
@@ -1913,7 +1913,7 @@ ncpus=8               在线 CPU 数</code></pre>
 <li>如果开启了 <code>CONFIG_RCU_BOOST</code>，检查 boost 是否生效</li>
 </ul>
 
-<h4>1.4.4 案例三：GP kthread 饥饿</h4>
+<h4 id="144-案例三gp-kthread-饥饿">1.4.4 案例三：GP kthread 饥饿</h4>
 
 <p><strong>典型 Log</strong>：</p>
 
@@ -1939,7 +1939,7 @@ RCU grace-period kthread stack dump:
 <li><code>OOM is now expected behavior</code>：GP 无法完成 → callback 堆积 → slab 内存无法释放 → OOM</li>
 </ul>
 
-<h4>1.4.5 案例四：FQS Timer 丢失唤醒</h4>
+<h4 id="145-案例四fqs-timer-丢失唤醒">1.4.5 案例四：FQS Timer 丢失唤醒</h4>
 
 <p><strong>典型 Log</strong>：</p>
 
@@ -1960,7 +1960,7 @@ RCU grace-period kthread stack dump:
 <li>检查是否有 <code>local_bh_disable()</code> 长时间未恢复</li>
 </ul>
 
-<h4>1.4.6 Stall 检测时序与误报排除</h4>
+<h4 id="146-stall-检测时序与误报排除" >1.4.6 Stall 检测时序与误报排除</h4>
 
 <p><strong>检测时序</strong>（<code>kernel/rcu/tree_stall.h: check_cpu_stall()</code>）：</p>
 
@@ -2002,11 +2002,11 @@ if (!rcu_seq_state(gs2))  → GP 已完成</code></pre>
 
 <hr>
 
-<h3>1.5 RCU 核心算法总结</h3>
+<h3 id="15-rcu-核心算法总结" >1.5 RCU 核心算法总结</h3>
 
 <p>本节提炼 Tree RCU 实现中涉及的核心算法，帮助理解 RCU 运行机理和 debug 问题时的思路。</p>
 
-<h4>1.5.1 GP 序列号编码算法</h4>
+<h4 id="151-gp-序列号编码算法" >1.5.1 GP 序列号编码算法</h4>
 
 <p><strong>源码</strong>：<code>kernel/rcu/rcu.h</code> — <code>rcu_seq_start()</code> / <code>rcu_seq_end()</code> / <code>rcu_seq_snap()</code></p>
 
@@ -2071,7 +2071,7 @@ if (!rcu_seq_state(gs2))  → GP 已完成</code></pre>
 <p><strong><code>rcu_seq_snap()</code> 算法解析</strong>：  <br>
 给定当前 <code>gp_seq</code>，返回一个目标值 <code>s</code>，保证从当前时刻起至少经过一个<strong>完整</strong> GP 后，<code>gp_seq >= s</code> 才为真。公式 <code>(cur + 2*MASK + 1) & ~MASK</code> 等价于向上取整到下一个 "状态=00" 的值再多跨一个完整 GP，确保 <code>call_rcu()</code> 时注册的 callback 在未来某个 GP 完成后才被执行。</p>
 
-<h4>1.5.2 漏斗锁算法（Funnel Locking）</h4>
+<h4 id="152-漏斗锁算法funnel-locking">1.5.2 漏斗锁算法（Funnel Locking）</h4>
 
 <p><strong>源码</strong>：<code>kernel/rcu/tree.c</code> — <code>rcu_start_this_gp()</code></p>
 
@@ -2117,7 +2117,7 @@ CPU 发起 GP 请求 (gp_seq_req)
 
 <p><strong>复杂度</strong>：$O(\log_{fanout} N_{CPU})$ 层级锁获取，远优于直接竞争单一全局锁的 $O(N_{CPU})$。</p>
 
-<h4>1.5.3 QS 位图逐层上报算法</h4>
+<h4 id="153-qs-位图逐层上报算法" >1.5.3 QS 位图逐层上报算法</h4>
 
 <p><strong>源码</strong>：<code>kernel/rcu/tree.c</code> — <code>rcu_report_qs_rnp()</code> / <code>rcu_report_qs_rdp()</code></p>
 
@@ -2156,7 +2156,7 @@ CPU 发起 GP 请求 (gp_seq_req)
 <li>从叶到根最坏 $O(\text{depth})$ 次锁操作，但平均只需 1-2 层</li>
 </ul>
 
-<h4>1.5.4 Callback 分段流水线算法</h4>
+<h4 id="154-callback-分段流水线算法" >1.5.4 Callback 分段流水线算法</h4>
 
 <p><strong>源码</strong>：<code>kernel/rcu/rcu_segcblist.c</code> — <code>rcu_segcblist_advance()</code> / <code>rcu_segcblist_accelerate()</code></p>
 
@@ -2204,7 +2204,7 @@ gp_seq[4] 数组: 每段所属的 GP 序列号</code></pre>
 <li><code>advance</code> 在 GP 完成后将已就绪段滑向 <code>DONE</code>，供 softirq 或 NOCB kthread 执行</li>
 </ul>
 
-<h4>1.5.5 Force-Quiescent-State 两阶段扫描算法</h4>
+<h4 id="155-force-quiescent-state-两阶段扫描算法" >1.5.5 Force-Quiescent-State 两阶段扫描算法</h4>
 
 <p><strong>源码</strong>：<code>kernel/rcu/tree.c</code> — <code>rcu_gp_fqs()</code> / <code>force_qs_rnp()</code></p>
 
@@ -2233,7 +2233,7 @@ gp_seq[4] 数组: 每段所属的 GP 序列号</code></pre>
 
 <p>当 callback 堆积严重时，FQS 循环自动加速，更频繁地催促未响应的 CPU。</p>
 
-<h4>1.5.6 Stall 检测 5 重屏障验证算法</h4>
+<h4 id="156-stall-检测-5-重屏障验证算法" >1.5.6 Stall 检测 5 重屏障验证算法</h4>
 
 <p><strong>源码</strong>：<code>kernel/rcu/tree_stall.h</code> — <code>check_cpu_stall()</code></p>
 
@@ -2287,7 +2287,7 @@ gs2 = READ_ONCE(rcu_state.gp_seq);        // ④ 第二次读 gp_seq
 <pre><code class="language-c">cmpxchg(&amp;rcu_state.jiffies_stall, js, jn)</code></pre>
 <p>使用 <code>cmpxchg</code> 确保只有一个 CPU 输出 stall 告警（self-detected 或 other-detected），避免重复打印。</p>
 
-<h4>1.5.7 GP kthread 主循环状态机算法</h4>
+<h4 id="157-gp-kthread-主循环状态机算法" >1.5.7 GP kthread 主循环状态机算法</h4>
 
 <p><strong>源码</strong>：<code>kernel/rcu/tree.c</code> — <code>rcu_gp_kthread()</code></p>
 
@@ -2355,7 +2355,7 @@ gs2 = READ_ONCE(rcu_state.gp_seq);        // ④ 第二次读 gp_seq
 </tr>
 </tbody></table>
 
-<h4>1.5.8 广度优先树遍历算法</h4>
+<h4 id="158-广度优先树遍历算法" >1.5.8 广度优先树遍历算法</h4>
 
 <p><strong>源码</strong>：<code>kernel/rcu/tree.c</code> — <code>rcu_for_each_node_breadth_first()</code> / <code>rcu_for_each_leaf_node()</code></p>
 
@@ -2385,7 +2385,7 @@ gs2 = READ_ONCE(rcu_state.gp_seq);        // ④ 第二次读 gp_seq
 <li><code>level[]</code> 数组 $O(1)$ 定位任意层的起始位置</li>
 </ul>
 
-<h4>1.5.9 Expedited GP 算法</h4>
+<h4 id="159-expedited-gp-算法" >1.5.9 Expedited GP 算法</h4>
 
 <p><strong>源码</strong>：<code>kernel/rcu/tree_exp.h</code> — <code>exp_funnel_lock()</code> / <code>sync_rcu_exp_select_cpus()</code></p>
 
@@ -2455,7 +2455,7 @@ gs2 = READ_ONCE(rcu_state.gp_seq);        // ④ 第二次读 gp_seq
 </tr>
 </tbody></table>
 
-<h4>1.5.10 __note_gp_changes 本地 GP 同步算法</h4>
+<h4 id="1510-note_gp_changes-本地-gp-同步算法">1.5.10 __note_gp_changes 本地 GP 同步算法</h4>
 
 <p><strong>源码</strong>：<code>kernel/rcu/tree.c</code> — <code>__note_gp_changes()</code></p>
 
@@ -2490,7 +2490,7 @@ gs2 = READ_ONCE(rcu_state.gp_seq);        // ④ 第二次读 gp_seq
 <li>GP init/cleanup 中 GP kthread 自身也会调用</li>
 </ul>
 
-<h3>1.6 RCU 面试经典问题问答</h3>
+<h3 id="16-rcu-面试经典问题问答" >1.6 RCU 面试经典问题问答</h3>
 
 <h4>Q1: RCU 和读写锁（rwlock）有什么区别？各自适用什么场景？</h4>
 
@@ -2729,11 +2729,11 @@ gs2 = READ_ONCE(rcu_state.gp_seq);        // ④ 第二次读 gp_seq
 
 <p><strong>选择规则</strong>：不需要睡眠用 <code>rcu_read_lock()</code>；数据可能被软中断并发访问用 <code>rcu_read_lock_bh()</code>；必须在读侧临界区睡眠用 <code>srcu_read_lock()</code>（但性能较低，每个 <code>srcu_struct</code> 独立跟踪 GP）。</p>
 
-<h3>1.7 RCU 各种读写场景处理流程</h3>
+<h3 id="17-rcu-各种读写场景处理流程" >1.7 RCU 各种读写场景处理流程</h3>
 
 <p>本节系统梳理 RCU 在不同数据结构和并发模式下的标准使用范式。每个场景给出 Writer / Reader / Reclaimer 三方代码模板、内存屏障配对关系和典型内核使用实例。</p>
 
-<h4>1.7.1 场景一：单指针替换（最基本模式）</h4>
+<h4 id="171-场景一单指针替换最基本模式">1.7.1 场景一：单指针替换（最基本模式）</h4>
 
 <p><strong>适用场景</strong>：全局单一指针指向某个动态分配对象，需要原子替换。</p>
 
@@ -2796,7 +2796,7 @@ rcu_assign_pointer()   ──┘     ┌── rcu_dereference()
 
 <p><strong>内核实例</strong>：<code>net/core/net_namespace.c</code> 中的 <code>net_generic()</code> 使用此模式读取网络命名空间的子系统私有数据。</p>
 
-<h4>1.7.2 场景二：RCU 链表 — 增删改查全流程</h4>
+<h4 id="172-场景二rcu-链表--增删改查全流程">1.7.2 场景二：RCU 链表 — 增删改查全流程</h4>
 
 <p><strong>适用场景</strong>：RCU 保护的双向链表（<code>struct list_head</code>），最常见的 RCU 使用模式。</p>
 
@@ -2898,7 +2898,7 @@ kfree(B)                         // 安全释放</code></pre>
 
 <p><strong>内核实例</strong>：<code>kernel/module/main.c</code> 中的模块列表 <code>modules</code> 使用 <code>list_add_rcu</code> / <code>list_del_rcu</code> + <code>list_for_each_entry_rcu</code> 管理已加载模块。</p>
 
-<h4>1.7.3 场景三：RCU 哈希表 — hlist 操作</h4>
+<h4 id="173-场景三rcu-哈希表--hlist-操作">1.7.3 场景三：RCU 哈希表 — hlist 操作</h4>
 
 <p><strong>适用场景</strong>：RCU 保护的哈希桶链表（<code>struct hlist_head</code> + <code>struct hlist_node</code>），适合大规模查找场景。</p>
 
@@ -2960,7 +2960,7 @@ rcu_read_unlock();</code></pre>
 
 <p><strong>内核实例</strong>：<code>include/linux/pid.h</code> 中 PID 哈希表、<code>net/netfilter/nf_conntrack_core.c</code> 中连接追踪哈希表。</p>
 
-<h4>1.7.4 场景四：RCU + 引用计数（最安全模式）</h4>
+<h4 id="174-场景四rcu--引用计数最安全模式">1.7.4 场景四：RCU + 引用计数（最安全模式）</h4>
 
 <p><strong>适用场景</strong>：对象需要在 RCU 读侧临界区外继续使用（如需要睡眠操作）。纯 RCU 读侧临界区不能睡眠，通过引用计数延长对象生命周期。</p>
 
@@ -3029,7 +3029,7 @@ void delete_obj(struct my_obj *obj)
 
 <p><strong>内核实例</strong>：<code>fs/dcache.c</code> 中 dentry 查找（<code>d_lookup</code> + <code>dget</code>）、<code>net/core/sock.c</code> 中 socket 查找。</p>
 
-<h4>1.7.5 场景五：三种回收方式对比与选择</h4>
+<h4 id="175-场景五三种回收方式对比与选择">1.7.5 场景五：三种回收方式对比与选择</h4>
 
 <table>
 <thead><tr>
@@ -3135,7 +3135,7 @@ unsigned long snap = get_state_synchronize_rcu();
 cond_synchronize_rcu(snap);      // 仅在 GP 未自然完成时等待
 kfree(old);</code></pre>
 
-<h4>1.7.6 场景六：SRCU — 可睡眠的 RCU 读侧</h4>
+<h4 id="176-场景六srcu--可睡眠的-rcu-读侧">1.7.6 场景六：SRCU — 可睡眠的 RCU 读侧</h4>
 
 <p><strong>适用场景</strong>：读侧临界区内需要执行可能睡眠的操作（分配内存、I/O、获取 mutex 等）。</p>
 
@@ -3199,7 +3199,7 @@ call_srcu(&amp;my_srcu, &amp;p-&gt;rcu, my_free);       // 异步回调</code></
 
 <p><strong>内核实例</strong>：<code>kernel/notifier.c</code> 中 blocking notifier chain、<code>drivers/vfio/</code> 中 VFIO 设备操作。</p>
 
-<h4>1.7.7 场景七：RCU 保护的数组/指针数组</h4>
+<h4 id="177-场景七rcu-保护的数组指针数组">1.7.7 场景七：RCU 保护的数组/指针数组</h4>
 
 <p><strong>适用场景</strong>：通过索引直接访问的指针数组（如 fd 表、网络命名空间子系统数组）。</p>
 
@@ -3258,7 +3258,7 @@ void resize_array(int new_size)
 
 <p><strong>内核实例</strong>：<code>fs/file.c</code> 中 <code>struct fdtable</code> 的 <code>fd</code> 数组扩容、<code>net/core/net_namespace.c</code> 中 <code>net_generic()</code> 子系统数据数组。</p>
 
-<h4>1.7.8 场景八：延迟执行 — <code>get_state_synchronize_rcu</code> + <code>cond_synchronize_rcu</code></h4>
+<h4 id="178-场景八延迟执行--get_state_synchronize_rcu--cond_synchronize_rcu">1.7.8 场景八：延迟执行 — <code>get_state_synchronize_rcu</code> + <code>cond_synchronize_rcu</code></h4>
 
 <p><strong>适用场景</strong>：写者知道后续还有其他工作要做，希望与 GP 重叠执行，仅在必要时等待。</p>
 
@@ -3293,7 +3293,7 @@ kfree(old);                                          // ④ 安全释放</code><
 
 <p><strong>内核实例</strong>：<code>mm/slab_common.c</code> 中 slab 内存回收、<code>kernel/bpf/</code> 中 BPF 程序替换。</p>
 
-<h4>1.7.9 场景九：批量操作 — <code>rcu_barrier</code></h4>
+<h4 id="179-场景九批量操作--rcu_barrier">1.7.9 场景九：批量操作 — <code>rcu_barrier</code></h4>
 
 <p><strong>适用场景</strong>：需要确保所有已注册的 <code>call_rcu()</code> 回调<strong>执行完毕</strong>（不仅仅是 GP 完成）。</p>
 
@@ -3325,7 +3325,7 @@ rcu_barrier();
 
 <p><strong>实现原理</strong>：<code>rcu_barrier</code> 向每个 CPU 注册一个 <code>rcu_barrier</code> 回调，然后等待所有这些回调执行完毕。因为 RCU 回调按注册顺序执行，<code>rcu_barrier</code> 回调排在已有回调之后，当它执行时，之前的所有回调必然已完成。</p>
 
-<h4>1.7.10 各场景 API 速查表</h4>
+<h4 id="1710-各场景-api-速查表" >1.7.10 各场景 API 速查表</h4>
 
 <table>
 <thead><tr>
@@ -4055,7 +4055,7 @@ hrtimer 采样间隔       = soft_thresh / 5          = 4s
 Buddy 检查间隔         = 采样间隔 * 3             = 12s（略 &gt; hard 阈值）
 Hung Task 超时         = hung_task_timeout_secs   = 120s（独立配置）</code></pre>
 
-<h3>2.5 Watchdog 告警 Log 解读</h3>
+<h3 id="14-rcu-告警案例分析和-log-解读">2.5 Watchdog 告警 Log 解读</h3>
 
 <p><strong>Soft Lockup 告警</strong>：</p>
 

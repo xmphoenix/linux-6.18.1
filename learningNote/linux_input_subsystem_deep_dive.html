@@ -583,7 +583,7 @@ hr {
 
 <h2>2. 关键数据结构</h2>
 
-<h3>数据结构关系总览</h3>
+<h3 id="数据结构关系总览" >数据结构关系总览</h3>
 
 <p>下图展示了 Input 子系统核心数据结构之间的引用、内嵌和链表连接关系：</p>
 
@@ -597,7 +597,7 @@ hr {
 <li>内核内部事件使用 <code>struct input_value</code>（无时间戳），传递给用户空间时转换为 <code>struct input_event</code>（含时间戳）</li>
 </ul>
 
-<h3>2.1 struct input_dev — 输入设备</h3>
+<h3 id="21-struct-input_dev--输入设备" >2.1 struct input_dev — 输入设备</h3>
 
 <blockquote>定义：<code>include/linux/input.h</code></blockquote>
 
@@ -687,7 +687,7 @@ hr {
 
 <hr>
 
-<h3>2.2 struct input_handler — 事件处理器</h3>
+<h3 id="22-struct-input_handler--事件处理器" >2.2 struct input_handler — 事件处理器</h3>
 
 <blockquote>定义：<code>include/linux/input.h</code></blockquote>
 
@@ -776,7 +776,7 @@ hr {
 
 <hr>
 
-<h3>2.3 struct input_handle — 设备与处理器的桥梁</h3>
+<h3 id="23-struct-input_handle--设备与处理器的桥梁" >2.3 struct input_handle — 设备与处理器的桥梁</h3>
 
 <blockquote>定义：<code>include/linux/input.h</code></blockquote>
 
@@ -821,7 +821,7 @@ hr {
 
 <hr>
 
-<h3>2.4 struct input_event — 用户空间事件</h3>
+<h3 id="24-struct-input_event--用户空间事件" >2.4 struct input_event — 用户空间事件</h3>
 
 <blockquote>定义：<code>include/uapi/linux/input.h</code></blockquote>
 
@@ -903,7 +903,7 @@ hr {
 
 <hr>
 
-<h3>2.5 struct input_value — 内核内部事件</h3>
+<h3 id="25-struct-input_value--内核内部事件" >2.5 struct input_value — 内核内部事件</h3>
 
 <blockquote>定义：<code>include/linux/input.h</code></blockquote>
 
@@ -917,7 +917,7 @@ hr {
 
 <hr>
 
-<h3>2.6 struct input_id — 设备标识</h3>
+<h3 id="26-struct-input_id--设备标识" >2.6 struct input_id — 设备标识</h3>
 
 <blockquote>定义：<code>include/uapi/linux/input.h</code></blockquote>
 
@@ -930,7 +930,7 @@ hr {
 
 <hr>
 
-<h3>2.7 struct input_absinfo — 绝对轴参数</h3>
+<h3 id="27-struct-input_absinfo--绝对轴参数" >2.7 struct input_absinfo — 绝对轴参数</h3>
 
 <blockquote>定义：<code>include/uapi/linux/input.h</code></blockquote>
 
@@ -945,7 +945,7 @@ hr {
 
 <hr>
 
-<h3>2.8 struct evdev / struct evdev_client — evdev 处理器内部结构</h3>
+<h3 id="28-struct-evdev--struct-evdev_client--evdev-处理器内部结构" >2.8 struct evdev / struct evdev_client — evdev 处理器内部结构</h3>
 
 <blockquote>定义：<code>drivers/input/evdev.c</code></blockquote>
 
@@ -981,7 +981,7 @@ struct evdev_client {
 
 <hr>
 
-<h3>2.9 struct input_device_id — 设备匹配表条目</h3>
+<h3 id="29-struct-input_device_id--设备匹配表条目" >2.9 struct input_device_id — 设备匹配表条目</h3>
 
 <blockquote>定义：<code>include/linux/mod_devicetable.h</code></blockquote>
 
@@ -1023,13 +1023,13 @@ struct evdev_client {
 
 <h2>3. 软件框架分析</h2>
 
-<h3>软件架构总览</h3>
+<h3 id="软件架构总览" >软件架构总览</h3>
 
 <p>下图展示了 Input 子系统从硬件到用户空间的五层软件架构，以及层间的核心 API 调用关系：</p>
 
 <p><img src="image/linux_input_subsystem_software_arch.svg" alt="Linux Input 子系统软件架构总览"></p>
 
-<h3>3.1 设备注册流程</h3>
+<h3 id="31-设备注册流程" >3.1 设备注册流程</h3>
 
 <pre><code>驱动程序                         Input Core                        Handler
   │                                 │                                 │
@@ -1084,7 +1084,7 @@ struct evdev_client {
 
 <hr>
 
-<h3>3.2 处理器注册流程</h3>
+<h3 id="32-处理器注册流程" >3.2 处理器注册流程</h3>
 
 <pre><code>Handler                          Input Core
   │                                 │
@@ -1111,7 +1111,7 @@ struct evdev_client {
 
 <hr>
 
-<h3>3.3 设备-处理器匹配机制</h3>
+<h3 id="33-设备-处理器匹配机制" >3.3 设备-处理器匹配机制</h3>
 
 <p><strong><code>input_match_device()</code></strong> 执行两级匹配：</p>
 
@@ -1149,7 +1149,7 @@ struct evdev_client {
 
 <hr>
 
-<h3>3.4 事件流转机制</h3>
+<h3 id="34-事件流转机制" >3.4 事件流转机制</h3>
 
 <p>这是 Input 子系统最核心的数据路径：</p>
 
@@ -1249,7 +1249,7 @@ struct evdev_client {
 
 <hr>
 
-<h3>3.5 设备打开/关闭流程</h3>
+<h3 id="35-设备打开关闭流程" >3.5 设备打开/关闭流程</h3>
 
 <pre><code>用户空间 open(&quot;/dev/input/event0&quot;)
     │
@@ -1291,7 +1291,7 @@ evdev_release()
 
 <hr>
 
-<h3>3.6 独占抓取 (Grab) 机制</h3>
+<h3 id="36-独占抓取-grab-机制" >3.6 独占抓取 (Grab) 机制</h3>
 
 <pre><code class="language-c">/* 用户空间通过 ioctl 实现独占 */
 ioctl(fd, EVIOCGRAB, 1);  // 获取独占控制
@@ -1303,7 +1303,7 @@ ioctl(fd, EVIOCGRAB, 0);  // 释放独占控制</code></pre>
 
 <h2>4. 初始化路径</h2>
 
-<h3>4.1 Input Core 初始化</h3>
+<h3 id="41-input-core-初始化" >4.1 Input Core 初始化</h3>
 
 <pre><code>内核启动
   │
@@ -1350,7 +1350,7 @@ do_initcalls()
   │
   └─ ... 其他输入驱动</code></pre>
 
-<h3>4.2 完整的设备节点创建路径</h3>
+<h3 id="42-完整的设备节点创建路径" >4.2 完整的设备节点创建路径</h3>
 
 <pre><code>input_register_device(dev)
     │
@@ -1384,7 +1384,7 @@ do_initcalls()
     │
     └─ 设备注册完成</code></pre>
 
-<h3>4.3 全局数据结构初始状态</h3>
+<h3 id="43-全局数据结构初始状态" >4.3 全局数据结构初始状态</h3>
 
 <pre><code class="language-c">/* drivers/input/input.c */
 
@@ -1407,7 +1407,7 @@ const struct class input_class = {
 
 <p><code>gpio_keys</code> 是一个经典的 GPIO 按键驱动，支持设备树配置、去抖动、中断唤醒等特性。以下是带详细中文注释的核心代码分析。</p>
 
-<h3>5.1 核心数据结构</h3>
+<h3 id="51-核心数据结构" >5.1 核心数据结构</h3>
 
 <pre><code class="language-c">/*
  * 每个 GPIO 按键的运行时数据
@@ -1441,7 +1441,7 @@ struct gpio_keys_drvdata {
     struct gpio_button_data data[];               /* 按键数据(柔性数组) */
 };</code></pre>
 
-<h3>5.2 探测函数 (Probe) — 驱动初始化入口</h3>
+<h3 id="52-探测函数-probe--驱动初始化入口">5.2 探测函数 (Probe) — 驱动初始化入口</h3>
 
 <pre><code class="language-c">static int gpio_keys_probe(struct platform_device *pdev)
 {
@@ -1572,7 +1572,7 @@ struct gpio_keys_drvdata {
     return 0;
 }</code></pre>
 
-<h3>5.3 中断处理与事件上报</h3>
+<h3 id="53-中断处理与事件上报" >5.3 中断处理与事件上报</h3>
 
 <pre><code class="language-c">/*
  * GPIO 中断处理函数
@@ -1668,7 +1668,7 @@ static void gpio_keys_debounce_event(struct gpio_button_data *bdata)
     input_sync(bdata-&gt;input);
 }</code></pre>
 
-<h3>5.4 完整事件链路追踪</h3>
+<h3 id="54-完整事件链路追踪" >5.4 完整事件链路追踪</h3>
 
 <p>以下是用户按下 GPIO 按键到用户空间收到事件的完整链路：</p>
 
@@ -1742,7 +1742,7 @@ static void gpio_keys_debounce_event(struct gpio_button_data *bdata)
  │    [1] { type=EV_SYN, code=SYN_REPORT, value=0 } ← 同步分隔    │
  └─────────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>5.5 设备树配置示例</h3>
+<h3 id="55-设备树配置示例" >5.5 设备树配置示例</h3>
 
 <pre><code class="language-dts">/* 设备树 (Device Tree) 中的 gpio-keys 节点 */
 gpio-keys {
@@ -1774,7 +1774,7 @@ gpio-keys {
     };
 };</code></pre>
 
-<h3>5.6 用户空间测试程序</h3>
+<h3 id="56-用户空间测试程序" >5.6 用户空间测试程序</h3>
 
 <pre><code class="language-c">/*
  * 简单的 input 事件读取程序
@@ -1841,7 +1841,7 @@ int main(int argc, char *argv[])
 
 <h2>附录：关键 API 速查</h2>
 
-<h3>设备驱动常用 API</h3>
+<h3 id="设备驱动常用-api" >设备驱动常用 API</h3>
 
 <table>
 <thead><tr>
@@ -1903,7 +1903,7 @@ int main(int argc, char *argv[])
 </tr>
 </tbody></table>
 
-<h3>Handler 常用 API</h3>
+<h3 id="handler-常用-api" >Handler 常用 API</h3>
 
 <table>
 <thead><tr>
@@ -1952,7 +1952,7 @@ int main(int argc, char *argv[])
 <blockquote><strong>环境：</strong> QEMU <code>virt</code> 机型 + ARM64 (Cortex-A57)，使用 <code>launch.sh</code> 启动。<br>
 内核配置要求：<code>CONFIG_INPUT_EVDEV=y</code>，<code>CONFIG_KEYBOARD_GPIO=y</code>，<code>CONFIG_GPIO_PL061=y</code>。</blockquote>
 
-<h3>6.1 实验一：探索 QEMU virt 默认 Input 设备</h3>
+<h3 id="61-实验一探索-qemu-virt-默认-input-设备">6.1 实验一：探索 QEMU virt 默认 Input 设备</h3>
 
 <p><strong>目标：</strong> 了解 QEMU virt 机型自动创建了哪些 input 设备，理解设备注册到 input 子系统的过程。</p>
 
@@ -2053,7 +2053,7 @@ ls -la /dev/input/
 
 <hr>
 
-<h3>6.2 实验二：使用 uinput 创建虚拟输入设备</h3>
+<h3 id="62-实验二使用-uinput-创建虚拟输入设备">6.2 实验二：使用 uinput 创建虚拟输入设备</h3>
 
 <p><strong>目标：</strong> 通过 <code>/dev/uinput</code> 在用户空间创建虚拟 input 设备，模拟按键事件，理解事件从设备→core→handler→用户空间的完整路径。</p>
 
@@ -2222,7 +2222,7 @@ hexdump -C /dev/input/event1 &amp;
 
 <hr>
 
-<h3>6.3 实验三：内核模块模拟输入设备</h3>
+<h3 id="63-实验三内核模块模拟输入设备">6.3 实验三：内核模块模拟输入设备</h3>
 
 <p><strong>目标：</strong> 编写内核模块创建 input_dev，使用定时器定期上报事件，深入理解驱动层如何调用 input core API。</p>
 
@@ -2449,7 +2449,7 @@ ls /dev/input/
 
 <hr>
 
-<h3>6.4 实验四：使用 evdev 事件监控工具</h3>
+<h3 id="64-实验四使用-evdev-事件监控工具">6.4 实验四：使用 evdev 事件监控工具</h3>
 
 <p><strong>目标：</strong> 在 QEMU 中监控所有 input 事件，理解 <code>evdev_client</code> 的环形缓冲机制。</p>
 
@@ -2584,7 +2584,7 @@ cp simple_evtest /path/to/rootfs/
 
 <hr>
 
-<h3>6.5 实验五：EVIOCGRAB 独占抓取实验</h3>
+<h3 id="65-实验五eviocgrab-独占抓取实验">6.5 实验五：EVIOCGRAB 独占抓取实验</h3>
 
 <p><strong>目标：</strong> 理解 <code>input_dev->grab</code> 机制 — 一旦某个 handle 独占设备，其他 handler 无法收到事件。</p>
 
@@ -2667,7 +2667,7 @@ int main(int argc, char *argv[])
 
 <hr>
 
-<h3>6.6 实验六：GDB 追踪事件分发路径</h3>
+<h3 id="66-实验六gdb-追踪事件分发路径">6.6 实验六：GDB 追踪事件分发路径</h3>
 
 <p><strong>目标：</strong> 使用 QEMU + GDB 在内核中设置断点，单步追踪事件从 <code>input_event()</code> 到 <code>evdev_events()</code> 的完整路径。</p>
 
@@ -2784,7 +2784,7 @@ $7 = {type = 0, code = 0, value = 0}      ← EV_SYN/SYN_REPORT/0</code></pre>
 
 <hr>
 
-<h3>6.7 实验总结与关键观察</h3>
+<h3 id="67-实验总结与关键观察" >6.7 实验总结与关键观察</h3>
 
 <table>
 <thead><tr>
@@ -2851,7 +2851,7 @@ $7 = {type = 0, code = 0, value = 0}      ← EV_SYN/SYN_REPORT/0</code></pre>
 
 <h2>7. 面试题精选</h2>
 
-<h3>7.1 架构与设计类</h3>
+<h3 id="71-架构与设计类" >7.1 架构与设计类</h3>
 
 <hr>
 
@@ -2965,7 +2965,7 @@ input_dev (鼠标) ──handle_C──→ input_handler (evdev)
 
 <hr>
 
-<h3>7.2 事件流转类</h3>
+<h3 id="72-事件流转类" >7.2 事件流转类</h3>
 
 <hr>
 
@@ -3109,7 +3109,7 @@ if (handle) {
 
 <hr>
 
-<h3>7.3 设备注册与匹配类</h3>
+<h3 id="73-设备注册与匹配类" >7.3 设备注册与匹配类</h3>
 
 <hr>
 
@@ -3170,7 +3170,7 @@ static const struct input_device_id evdev_ids[] = {
 
 <hr>
 
-<h3>7.4 并发与同步类</h3>
+<h3 id="74-并发与同步类" >7.4 并发与同步类</h3>
 
 <hr>
 
@@ -3270,7 +3270,7 @@ if (client-&gt;head == client-&gt;tail) {
 
 <hr>
 
-<h3>7.5 实践与调试类</h3>
+<h3 id="75-实践与调试类" >7.5 实践与调试类</h3>
 
 <hr>
 
@@ -3376,7 +3376,7 @@ ioctl(fd, EVIOCGABS(ABS_X), &amp;absinfo);                     // 获取绝对�
 
 <hr>
 
-<h3>7.6 高级与深入类</h3>
+<h3 id="76-高级与深入类" >7.6 高级与深入类</h3>
 
 <hr>
 
@@ -3528,7 +3528,7 @@ static irqreturn_t my_isr(int irq, void *dev_id)
 
 <blockquote>本节系统总结 Input 子系统的调试方法和工具链，按照<strong>分层排查</strong>的思路组织：从用户空间到内核，从现象到根因。</blockquote>
 
-<h3>8.1 调试工具总览</h3>
+<h3 id="81-调试工具总览" >8.1 调试工具总览</h3>
 
 <table>
 <thead><tr>
@@ -3620,7 +3620,7 @@ static irqreturn_t my_isr(int irq, void *dev_id)
 
 <hr>
 
-<h3>8.2 第一步：procfs/sysfs 快速诊断</h3>
+<h3 id="82-第一步procfssysfs-快速诊断">8.2 第一步：procfs/sysfs 快速诊断</h3>
 
 <p>这是最基本的排查手段，无需任何额外工具。</p>
 
@@ -3685,7 +3685,7 @@ python3 -c &quot;bits=0x120013; [print(f&#x27;bit {i}&#x27;) for i in range(32) 
 
 <hr>
 
-<h3>8.3 第二步：evtest 实时事件监控</h3>
+<h3 id="83-第二步evtest-实时事件监控">8.3 第二步：evtest 实时事件监控</h3>
 
 <p><code>evtest</code> 是调试 input 设备最常用的工具，直接读取 evdev 原始事件。</p>
 
@@ -3718,7 +3718,7 @@ dd if=/dev/input/event0 bs=24 count=1 2&gt;/dev/null | od -A x -t x1
 
 <hr>
 
-<h3>8.4 第三步：dmesg 内核日志分析</h3>
+<h3 id="84-第三步dmesg-内核日志分析">8.4 第三步：dmesg 内核日志分析</h3>
 
 <pre><code class="language-bash"># 查看 input 子系统相关的所有内核日志
 dmesg | grep -iE &#x27;input|evdev|event[0-9]|gpio.key&#x27;
@@ -3743,7 +3743,7 @@ dmesg | grep -iE &#x27;input|evdev|event[0-9]|gpio.key&#x27;
 
 <hr>
 
-<h3>8.5 第四步：dynamic_debug 动态调试</h3>
+<h3 id="85-第四步dynamic_debug-动态调试">8.5 第四步：dynamic_debug 动态调试</h3>
 
 <p>无需重编译内核即可启用 <code>dev_dbg()</code> / <code>pr_debug()</code> 输出。Input Core 在设备注册、注销等关键路径有 <code>dev_dbg()</code> 调用。</p>
 
@@ -3773,7 +3773,7 @@ echo &#x27;file input.c -p&#x27; &gt; /sys/kernel/debug/dynamic_debug/control</c
 
 <hr>
 
-<h3>8.6 第五步：ftrace 函数追踪</h3>
+<h3 id="86-第五步ftrace-函数追踪">8.6 第五步：ftrace 函数追踪</h3>
 
 <p>用 ftrace 追踪事件路径中每个函数的调用关系和耗时，适合分析延迟和性能问题。</p>
 
@@ -3844,7 +3844,7 @@ cat trace_pipe
 
 <hr>
 
-<h3>8.7 第六步：kprobes 动态探测</h3>
+<h3 id="87-第六步kprobes-动态探测">8.7 第六步：kprobes 动态探测</h3>
 
 <p>无需修改源码，可在任意内核函数入口/返回处插入探测。</p>
 
@@ -3875,7 +3875,7 @@ echo 1 &gt; /sys/kernel/debug/tracing/events/myprobe/disp_ret/enable
 
 <hr>
 
-<h3>8.8 第七步：GDB 内核调试</h3>
+<h3 id="88-第七步gdb-内核调试">8.8 第七步：GDB 内核调试</h3>
 
 <p>使用 QEMU + GDB 可以设置断点、查看内核数据结构、单步追踪。</p>
 
@@ -3934,7 +3934,7 @@ p input_handler_list</code></pre>
 
 <hr>
 
-<h3>8.9 第八步：KUnit 单元测试</h3>
+<h3 id="89-第八步kunit-单元测试">8.9 第八步：KUnit 单元测试</h3>
 
 <p>Linux 6.18.1 Input 子系统自带 KUnit 测试套件，位于 <code>drivers/input/tests/input_test.c</code>。</p>
 
@@ -3956,7 +3956,7 @@ cd tools/testing/kunit
 
 <hr>
 
-<h3>8.10 调试决策流程图</h3>
+<h3 id="810-调试决策流程图" >8.10 调试决策流程图</h3>
 
 <pre><code>问题现象
   │
@@ -4018,7 +4018,7 @@ cd tools/testing/kunit
 
 <h2>9. 常见问题与解决方案</h2>
 
-<h3>9.1 设备注册类问题</h3>
+<h3 id="91-设备注册类问题" >9.1 设备注册类问题</h3>
 
 <hr>
 
@@ -4121,7 +4121,7 @@ __set_bit(KEY_POWER, dev-&gt;keybit);</code></pre>
 
 <hr>
 
-<h3>9.2 事件丢失类问题</h3>
+<h3 id="92-事件丢失类问题" >9.2 事件丢失类问题</h3>
 
 <hr>
 
@@ -4283,7 +4283,7 @@ printf(&quot;fuzz=%d flat=%d\n&quot;, absinfo.fuzz, absinfo.flat);</code></pre>
 
 <hr>
 
-<h3>9.3 驱动开发类问题</h3>
+<h3 id="93-驱动开发类问题" >9.3 驱动开发类问题</h3>
 
 <hr>
 
@@ -4371,7 +4371,7 @@ static irqreturn_t my_isr(int irq, void *data)
 
 <hr>
 
-<h3>9.4 多点触摸类问题</h3>
+<h3 id="94-多点触摸类问题" >9.4 多点触摸类问题</h3>
 
 <hr>
 
@@ -4422,7 +4422,7 @@ input_sync(input);</code></pre>
 
 <hr>
 
-<h3>9.5 电源管理类问题</h3>
+<h3 id="95-电源管理类问题" >9.5 电源管理类问题</h3>
 
 <hr>
 
@@ -4467,7 +4467,7 @@ static int my_input_suspend(struct device *dev)
 
 <hr>
 
-<h3>9.6 性能类问题</h3>
+<h3 id="96-性能类问题" >9.6 性能类问题</h3>
 
 <hr>
 
@@ -4518,7 +4518,7 @@ cat /proc/bus/input/handlers
 
 <hr>
 
-<h3>9.7 问题速查表</h3>
+<h3 id="97-问题速查表" >9.7 问题速查表</h3>
 
 <table>
 <thead><tr>

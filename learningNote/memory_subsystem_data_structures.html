@@ -538,7 +538,7 @@ hr {
 
 <h2>2. Memblock — 早期启动内存管理</h2>
 
-<h3>2.1 数据结构</h3>
+<h3 id="21-数据结构" >2.1 数据结构</h3>
 
 <pre><code class="language-c">struct memblock {
     bool bottom_up;              // 分配方向：自底向上 or 自顶向下
@@ -562,7 +562,7 @@ struct memblock_region {
     int nid;                          // NUMA node ID
 };</code></pre>
 
-<h3>2.2 结构关系图</h3>
+<h3 id="22-结构关系图" >2.2 结构关系图</h3>
 
 <pre><code>struct memblock (全局唯一，静态初始化)
   ├── memory (memblock_type)
@@ -574,7 +574,7 @@ struct memblock_region {
 
 空闲内存 = memory 中未被 reserved 覆盖的部分</code></pre>
 
-<h3>2.3 设计目的</h3>
+<h3 id="23-设计目的" >2.3 设计目的</h3>
 
 <table>
 <thead><tr>
@@ -608,7 +608,7 @@ struct memblock_region {
 
 <h2>3. NUMA — 节点拓扑描述</h2>
 
-<h3>3.1 数据结构</h3>
+<h3 id="31-数据结构" >3.1 数据结构</h3>
 
 <pre><code class="language-c">typedef struct pglist_data {
     // ====== Zone 管理 ======
@@ -641,7 +641,7 @@ struct zoneref {
     int zone_idx;         // zone 类型索引
 };</code></pre>
 
-<h3>3.2 结构关系图（QEMU 1GB 单 node）</h3>
+<h3 id="32-结构关系图qemu-1gb-单-node" >3.2 结构关系图（QEMU 1GB 单 node）</h3>
 
 <pre><code>pg_data_t  (node 0)
   │
@@ -659,7 +659,7 @@ struct zoneref {
   ├── node_present_pages = 262144  (1GB / 4KB)
   └── kswapd → (内核线程指针)</code></pre>
 
-<h3>3.3 设计目的</h3>
+<h3 id="33-设计目的" >3.3 设计目的</h3>
 
 <table>
 <thead><tr>
@@ -689,7 +689,7 @@ struct zoneref {
 
 <h2>4. Sparse Memory — 物理内存到 struct page 的映射</h2>
 
-<h3>4.1 数据结构</h3>
+<h3 id="41-数据结构" >4.1 数据结构</h3>
 
 <pre><code class="language-c">struct mem_section {
     unsigned long section_mem_map;        // 编码了 struct page 数组基地址 + flags
@@ -702,7 +702,7 @@ struct mem_section_usage {
     unsigned long pageblock_flags[0];    // 每个 pageblock 的迁移类型标记
 };</code></pre>
 
-<h3>4.2 结构关系图</h3>
+<h3 id="42-结构关系图" >4.2 结构关系图</h3>
 
 <pre><code>                  全局数组: mem_section[][]
                   (二级数组，EXTREME模式下按需分配root)
@@ -727,7 +727,7 @@ ARM64 典型参数：
   SUBSECTIONS_PER_SECTION = 64 (每个 subsection = 2MB)
   pageblock_order = 9 (每个 pageblock = 2MB = 512页)</code></pre>
 
-<h3>4.3 PFN ↔ struct page 转换（VMEMMAP 模式）</h3>
+<h3 id="43-pfn-↔-struct-page-转换vmemmap-模式" >4.3 PFN ↔ struct page 转换（VMEMMAP 模式）</h3>
 
 <pre><code>物理地址空间                        虚拟地址空间 (vmemmap 区域)
 ┌────────────┐                    ┌──────────────────────┐
@@ -740,7 +740,7 @@ ARM64 典型参数：
 pfn_to_page(pfn) = vmemmap + pfn    (一次加法，O(1))
 page_to_pfn(page) = page - vmemmap  (一次减法，O(1))</code></pre>
 
-<h3>4.4 设计目的</h3>
+<h3 id="44-设计目的" >4.4 设计目的</h3>
 
 <table>
 <thead><tr>
@@ -774,7 +774,7 @@ page_to_pfn(page) = page - vmemmap  (一次减法，O(1))</code></pre>
 
 <h2>5. Buddy — 页帧分配器</h2>
 
-<h3>5.1 数据结构</h3>
+<h3 id="51-数据结构" >5.1 数据结构</h3>
 
 <pre><code class="language-c">struct zone {
     // ====== 水位线 ======
@@ -825,7 +825,7 @@ struct per_cpu_pages {
     struct list_head lists[NR_PCP_LISTS]; // per-migratetype × per-order 链表
 };</code></pre>
 
-<h3>5.2 Buddy 核心结构图</h3>
+<h3 id="52-buddy-核心结构图" >5.2 Buddy 核心结构图</h3>
 
 <pre><code>struct zone (以 ZONE_DMA 为例)
   │
@@ -855,7 +855,7 @@ struct per_cpu_pages {
   Node 0, zone DMA: 1 2 4 3 3 4 5 6 10 7 223
                      ^order0        ...        ^order10</code></pre>
 
-<h3>5.3 分配与释放流程</h3>
+<h3 id="53-分配与释放流程" >5.3 分配与释放流程</h3>
 
 <pre><code>分配 alloc_pages(gfp, order):
   ┌─────────────────────────────────────────┐
@@ -882,7 +882,7 @@ struct per_cpu_pages {
   │        order, migratetype)               │
   └─────────────────────────────────────────┘</code></pre>
 
-<h3>5.4 设计目的</h3>
+<h3 id="54-设计目的" >5.4 设计目的</h3>
 
 <table>
 <thead><tr>
@@ -916,7 +916,7 @@ struct per_cpu_pages {
 
 <h2>6. SLUB — 小对象分配器</h2>
 
-<h3>6.1 数据结构</h3>
+<h3 id="61-数据结构" >6.1 数据结构</h3>
 
 <pre><code class="language-c">struct kmem_cache {
     // ====== Per-CPU 快速路径 ======
@@ -964,7 +964,7 @@ struct slab {                       // 复用 struct page 的内存布局
     unsigned frozen:1;               // 是否被 CPU 冻结（正在使用）
 };</code></pre>
 
-<h3>6.2 SLUB 三级缓存结构</h3>
+<h3 id="62-slub-三级缓存结构" >6.2 SLUB 三级缓存结构</h3>
 
 <blockquote><strong>完整模型图</strong>: 结合 <code>struct kmem_cache</code>、<code>struct kmem_cache_cpu</code>、<code>struct kmem_cache_node</code>、<code>struct slab</code> 与 <code>slab_alloc_node()</code> 分配路径，展示多核 CPU 上 SLUB 对象如何按 CPU 本地、Node 共享池、Buddy 后备页源逐级组织:<br>
 <br>
@@ -995,7 +995,7 @@ struct slab {                       // 复用 struct page 的内存布局
   │                    │
   └── (buddy allocator: alloc_pages)</code></pre>
 
-<h3>6.3 分配流程</h3>
+<h3 id="63-分配流程" >6.3 分配流程</h3>
 
 <pre><code>kmalloc(64, GFP_KERNEL)
   │
@@ -1025,7 +1025,7 @@ kmem_cache_alloc(kmalloc_caches[64], ...)
 <br>
 <img src="image/slub_256b_data_structure_sizes.svg" alt="SLUB 256B 数据结构大小"></blockquote>
 
-<h3>6.5 设计目的</h3>
+<h3 id="64-设计目的">6.5 设计目的</h3>
 
 <table>
 <thead><tr>
@@ -1089,7 +1089,7 @@ kmem_cache_alloc(kmalloc_caches[64], ...)
     atomic_t _refcount;                 // 4B: 引用计数
 };</code></pre>
 
-<h3>7.1 struct page 在不同子系统中的身份</h3>
+<h3 id="71-struct-page-在不同子系统中的身份" >7.1 struct page 在不同子系统中的身份</h3>
 
 <pre><code>               ┌─────────── struct page ───────────┐
                │                                    │
@@ -1104,7 +1104,7 @@ kmem_cache_alloc(kmalloc_caches[64], ...)
  (=order)    inuse/objects  index
  PageBuddy   PG_slab        PG_lru</code></pre>
 
-<h3>7.2 设计目的</h3>
+<h3 id="72-设计目的" >7.2 设计目的</h3>
 
 <table>
 <thead><tr>
@@ -1154,7 +1154,7 @@ kmem_cache_alloc(kmalloc_caches[64], ...)
 
 <h2>9. 生命周期流程图</h2>
 
-<h3>9.1 启动阶段（从硬件到 kmalloc 可用）</h3>
+<h3 id="91-启动阶段从硬件到-kmalloc-可用">9.1 启动阶段（从硬件到 kmalloc 可用）</h3>
 
 <pre><code>   固件/DTB 提供物理内存信息
           │
@@ -1206,7 +1206,7 @@ kmem_cache_alloc(kmalloc_caches[64], ...)
    │    完成后: kmalloc() 可用                 │
    └─────────────────────────────────────────┘</code></pre>
 
-<h3>9.2 运行时分配路径</h3>
+<h3 id="92-运行时分配路径" >9.2 运行时分配路径</h3>
 
 <pre><code>用户 malloc(100)
   │
@@ -1280,7 +1280,7 @@ kmem_cache_alloc(kmalloc_caches[64], ...)
 
 <h2>11. 为什么要这么设计？设计哲学</h2>
 
-<h3>11.1 分层的必要性</h3>
+<h3 id="111-分层的必要性" >11.1 分层的必要性</h3>
 
 <pre><code>问题：从 8 字节到 4MB，分配需求跨越 19 个数量级，没有单一算法能高效覆盖全部。
 
@@ -1291,7 +1291,7 @@ kmem_cache_alloc(kmalloc_caches[64], ...)
      │ 初始化时从 Memblock 接管
   Memblock (物理区间)    任意大小          线性扫描，boot only</code></pre>
 
-<h3>11.2 核心设计原则</h3>
+<h3 id="112-核心设计原则" >11.2 核心设计原则</h3>
 
 <ol>
 <li><strong>启动递进</strong>: memblock → buddy → slab，每层建立在上一层之上</li>
@@ -1307,7 +1307,7 @@ kmem_cache_alloc(kmalloc_caches[64], ...)
 
 <p>五个子系统并非都是"分配器"，它们分为三个分配器和两个基础设施：</p>
 
-<h3>12.1 三个分配器（有对外分配 API）</h3>
+<h3 id="121-三个分配器有对外分配-api">12.1 三个分配器（有对外分配 API）</h3>
 
 <table>
 <thead><tr>
@@ -1347,7 +1347,7 @@ alloc_pages()      →  buddy 可用（页级分配）
      ▼
 kmalloc()          →  slub 可用（对象级分配）</code></pre>
 
-<h3>12.2 两个基础设施（无独立分配 API）</h3>
+<h3 id="122-两个基础设施无独立分配-api">12.2 两个基础设施（无独立分配 API）</h3>
 
 <table>
 <thead><tr>
@@ -1381,7 +1381,7 @@ kmalloc()          →  slub 可用（对象级分配）</code></pre>
 
 <p>Buddy 看似只需要 free_area 链表就能工作，但实际上它<strong>必须依赖</strong> Sparse 和 NUMA/Zone。</p>
 
-<h3>13.1 没有 Sparse 会怎样？</h3>
+<h3 id="131-没有-sparse-会怎样" >13.1 没有 Sparse 会怎样？</h3>
 
 <p>Buddy 对每个 4KB 物理页维护一个 struct page（64B）。必须有某种方式把 PFN 映射到 struct page。</p>
 
@@ -1408,7 +1408,7 @@ kmalloc()          →  slub 可用（对象级分配）</code></pre>
 
 <p><strong>结论：没有 Sparse，buddy 在大内存/有空洞的系统上根本无法启动。</strong></p>
 
-<h3>13.2 没有 Zone 会怎样？</h3>
+<h3 id="132-没有-zone-会怎样" >13.2 没有 Zone 会怎样？</h3>
 
 <pre><code>DMA 控制器只能访问 0~16MB 的内存
 用户进程 malloc 把 0~16MB 全部分掉了
@@ -1418,7 +1418,7 @@ kmalloc()          →  slub 可用（对象级分配）</code></pre>
 
 <p><strong>结论：没有 Zone，DMA 等硬件约束无法满足，这是正确性问题。</strong></p>
 
-<h3>13.3 没有 NUMA 会怎样？</h3>
+<h3 id="133-没有-numa-会怎样" >13.3 没有 NUMA 会怎样？</h3>
 
 <pre><code>2-socket 服务器，CPU0 访问本地内存 100ns，访问远端内存 300ns
 没有 NUMA 信息 → buddy 随机分配 → 50% 概率分到远端 → 性能下降 3x
@@ -1426,7 +1426,7 @@ kmalloc()          →  slub 可用（对象级分配）</code></pre>
 
 <p><strong>结论：UMA 系统可以不要 NUMA，但多 socket 系统没有 NUMA 会性能暴跌。</strong></p>
 
-<h3>13.4 总结</h3>
+<h3 id="134-总结" >13.4 总结</h3>
 
 <pre><code>                 能不能去掉            去掉的代价
 Sparse           不能（大内存必需）      struct page 数组爆炸，无法启动
@@ -1440,7 +1440,7 @@ NUMA             可以（UMA 系统）        多 socket 系统性能暴跌</co
 
 <h2>14. PFN 与 struct page 深入详解</h2>
 
-<h3>14.1 PFN（Page Frame Number）— 物理页的编号</h3>
+<h3 id="141-pfnpage-frame-number-物理页的编号">14.1 PFN（Page Frame Number）— 物理页的编号</h3>
 
 <p>PFN 就是物理页的编号，等于物理地址右移 12 位（除以 4KB）：</p>
 
@@ -1494,7 +1494,7 @@ PFN      = 物理地址 &gt;&gt; 12 = 物理地址 / 4KB</code></pre>
 </tr>
 </tbody></table>
 
-<h3>14.2 struct page — 物理页的元数据</h3>
+<h3 id="142-struct-page--物理页的元数据">14.2 struct page — 物理页的元数据</h3>
 
 <p>每个 4KB 物理页对应一个 64 字节的 struct page，记录这个页的所有元数据：</p>
 
@@ -1563,7 +1563,7 @@ PFN      = 物理地址 &gt;&gt; 12 = 物理地址 / 4KB</code></pre>
   PageBuddy(page)   → 判断是否是 buddy 空闲页
   PageSlab(page)    → 判断是否是 slab 页</code></pre>
 
-<h3>14.3 PFN ↔ struct page 转换</h3>
+<h3 id="143-pfn-↔-struct-page-转换" >14.3 PFN ↔ struct page 转换</h3>
 
 <pre><code>                    pfn_to_page()
         PFN  ─────────────────────→  struct page *
@@ -1578,7 +1578,7 @@ VMEMMAP 实现（ARM64）：
 vmemmap 是一个虚拟地址常量（ARM64: 0xFFFF_FE00_0000_0000 附近）
 内核通过页表把 vmemmap 区域映射到实际存放 struct page 的物理内存上</code></pre>
 
-<h3>14.4 具体场景举例</h3>
+<h3 id="144-具体场景举例" >14.4 具体场景举例</h3>
 
 <h4>场景 1：Buddy 分配一页给用户进程</h4>
 
@@ -1642,7 +1642,7 @@ vmemmap 是一个虚拟地址常量（ARM64: 0xFFFF_FE00_0000_0000 附近）
        cache = slab-&gt;slab_cache      ← 知道是哪个 kmem_cache
        对象归还到 freelist</code></pre>
 
-<h3>14.5 一句话总结</h3>
+<h3 id="145-一句话总结" >14.5 一句话总结</h3>
 
 <ul>
 <li><strong>PFN</strong> = 物理页的编号，是所有子系统之间的<strong>通用语言</strong>（页表用它、zone 用它、buddy 用它算伙伴）</li>
