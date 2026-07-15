@@ -566,7 +566,7 @@ hr {
 
 <p>这段注释非常关键，建议当成阅读全文件的索引。</p>
 
-<h3>2.1 逐行解释这段锁顺序注释</h3>
+<h3 id="21-逐行解释这段锁顺序注释" >2.1 逐行解释这段锁顺序注释</h3>
 
 <ol>
 <li><code>slab_mutex</code></li>
@@ -629,7 +629,7 @@ hr {
 
 <p>这几个状态决定了走哪把锁。</p>
 
-<h3>3.1 对这四种状态的直观理解</h3>
+<h3 id="31-对这四种状态的直观理解" >3.1 对这四种状态的直观理解</h3>
 
 <ol>
 <li><strong>node partial slab</strong></li>
@@ -665,7 +665,7 @@ hr {
 <li>开 debug 时可能被追踪到 full 链表里</li>
 </ul>
 
-<h3>3.2 状态迁移图</h3>
+<h3 id="32-状态迁移图" >3.2 状态迁移图</h3>
 
 <pre><code class="language-mermaid">stateDiagram-v2
 	[*] --&gt; NodePartial
@@ -704,7 +704,7 @@ hr {
            -&gt; new_slab()
            -&gt; freeze_slab()</code></pre>
 
-<h3>4.1 分配热路径时序图</h3>
+<h3 id="41-分配热路径时序图" >4.1 分配热路径时序图</h3>
 
 <pre><code class="language-mermaid">sequenceDiagram
 	participant T as task
@@ -759,7 +759,7 @@ if (!USE_LOCKLESS_FAST_PATH() ||
 	}
 }</code></pre>
 
-<h3>5.1 逐行解释</h3>
+<h3 id="51-逐行解释" >5.1 逐行解释</h3>
 
 <ol>
 <li><code>c = raw_cpu_ptr(s->cpu_slab);</code></li>
@@ -833,7 +833,7 @@ if (!USE_LOCKLESS_FAST_PATH() ||
 <li>这是典型 lockless retry 模式。</li>
 </ul>
 
-<h3>5.2 这里为什么不需要 <code>spinlock</code></h3>
+<h3 id="52-这里为什么不需要-spinlock" >5.2 这里为什么不需要 <code>spinlock</code></h3>
 
 <p>因为 SLUB 用的是：</p>
 
@@ -855,7 +855,7 @@ if (!USE_LOCKLESS_FAST_PATH() ||
 
 <p>这条路径是理解 <code>cpu_slab->lock</code>、<code>node->list_lock</code> 如何协作的核心。</p>
 
-<h3>6.1 关键代码片段</h3>
+<h3 id="61-关键代码片段" >6.1 关键代码片段</h3>
 
 <pre><code class="language-c">slab = READ_ONCE(c-&gt;slab);
 ...
@@ -876,7 +876,7 @@ if (!freelist) {
 	goto new_slab;
 }</code></pre>
 
-<h3>6.2 逐行解释</h3>
+<h3 id="62-逐行解释" >6.2 逐行解释</h3>
 
 <ol>
 <li><code>slab = READ_ONCE(c->slab);</code></li>
@@ -935,7 +935,7 @@ if (!freelist) {
 <li>后面转去找 partial 或新建 slab。</li>
 </ul>
 
-<h3>6.3 <code>get_freelist()</code> 的锁语义</h3>
+<h3 id="63-get_freelist-的锁语义" >6.3 <code>get_freelist()</code> 的锁语义</h3>
 
 <p><code>get_freelist()</code> 的本质是：</p>
 
@@ -980,7 +980,7 @@ if (!freelist) {
       -&gt; spin_lock_irqsave(&amp;n-&gt;list_lock, flags)
       -&gt; remove_partial() / alloc_single_from_partial()</code></pre>
 
-<h3>7.1 关键代码片段</h3>
+<h3 id="71-关键代码片段" >7.1 关键代码片段</h3>
 
 <pre><code class="language-c">if (gfpflags_allow_spinning(pc-&gt;flags))
 	spin_lock_irqsave(&amp;n-&gt;list_lock, flags);
@@ -995,7 +995,7 @@ list_for_each_entry_safe(slab, slab2, &amp;n-&gt;partial, slab_list) {
 
 spin_unlock_irqrestore(&amp;n-&gt;list_lock, flags);</code></pre>
 
-<h3>7.2 逐行解释</h3>
+<h3 id="72-逐行解释" >7.2 逐行解释</h3>
 
 <ol>
 <li><code>spin_lock_irqsave(&n->list_lock, flags)</code></li>
@@ -1026,7 +1026,7 @@ spin_unlock_irqrestore(&amp;n-&gt;list_lock, flags);</code></pre>
 <li>一旦决定把这个 slab 交给当前 CPU，就需要先从 node partial 链表摘掉。</li>
 </ul>
 
-<h3>7.3 debug cache 为什么更依赖 <code>list_lock</code></h3>
+<h3 id="73-debug-cache-为什么更依赖-list_lock" >7.3 debug cache 为什么更依赖 <code>list_lock</code></h3>
 
 <p><code>slub.c</code> 文件头就写了：</p>
 
@@ -1047,7 +1047,7 @@ spin_unlock_irqrestore(&amp;n-&gt;list_lock, flags);</code></pre>
 
 <h2>8. <code>freeze_slab()</code>：为什么说 cpu slab 是“冻结态”</h2>
 
-<h3>8.1 关键代码片段</h3>
+<h3 id="81-关键代码片段" >8.1 关键代码片段</h3>
 
 <pre><code class="language-c">freelist = slab-&gt;freelist;
 counters = slab-&gt;counters;
@@ -1063,7 +1063,7 @@ new.frozen = 1;
 	NULL, new.counters,
 	&quot;freeze_slab&quot;));</code></pre>
 
-<h3>8.2 逐行解释</h3>
+<h3 id="82-逐行解释" >8.2 逐行解释</h3>
 
 <ol>
 <li>读取 <code>slab->freelist</code> 和 counters。</li>
@@ -1101,7 +1101,7 @@ new.frozen = 1;
 
 <p>当当前 CPU 不再适合继续使用这个 slab 时，会走 <code>deactivate_slab()</code>。</p>
 
-<h3>9.1 关键代码片段</h3>
+<h3 id="91-关键代码片段" >9.1 关键代码片段</h3>
 
 <pre><code class="language-c">if (READ_ONCE(slab-&gt;freelist)) {
 	stat(s, DEACTIVATE_REMOTE_FREES);
@@ -1134,7 +1134,7 @@ if (!new.inuse &amp;&amp; n-&gt;nr_partial &gt;= s-&gt;min_partial) {
 	spin_unlock_irqrestore(&amp;n-&gt;list_lock, flags);
 }</code></pre>
 
-<h3>9.2 逐行解释</h3>
+<h3 id="92-逐行解释" >9.2 逐行解释</h3>
 
 <ol>
 <li><code>if (READ_ONCE(slab->freelist))</code></li>
@@ -1192,7 +1192,7 @@ if (!new.inuse &amp;&amp; n-&gt;nr_partial &gt;= s-&gt;min_partial) {
 <li>还有空闲对象，就重新放回 node partial 链表。</li>
 </ul>
 
-<h3>9.3 这条路径用了哪些锁</h3>
+<h3 id="93-这条路径用了哪些锁" >9.3 这条路径用了哪些锁</h3>
 
 <ol>
 <li>slab freelist/counters 更新：<code>slab_update_freelist()</code></li>
@@ -1225,7 +1225,7 @@ if (!new.inuse &amp;&amp; n-&gt;nr_partial &gt;= s-&gt;min_partial) {
           -&gt; fastpath: update current cpu freelist
           -&gt; slowpath: __slab_free()</code></pre>
 
-<h3>10.1 释放热路径时序图</h3>
+<h3 id="101-释放热路径时序图" >10.1 释放热路径时序图</h3>
 
 <pre><code class="language-mermaid">sequenceDiagram
 	participant T as task
@@ -1252,7 +1252,7 @@ if (!new.inuse &amp;&amp; n-&gt;nr_partial &gt;= s-&gt;min_partial) {
 
 <h2>11. <code>do_slab_free()</code>：当前 CPU slab 的 lockless fast free</h2>
 
-<h3>11.1 关键代码片段</h3>
+<h3 id="111-关键代码片段" >11.1 关键代码片段</h3>
 
 <pre><code class="language-c">c = raw_cpu_ptr(s-&gt;cpu_slab);
 tid = READ_ONCE(c-&gt;tid);
@@ -1271,7 +1271,7 @@ if (unlikely(!__update_cpu_freelist_fast(s, freelist, head, tid))) {
 	goto redo;
 }</code></pre>
 
-<h3>11.2 逐行解释</h3>
+<h3 id="112-逐行解释" >11.2 逐行解释</h3>
 
 <ol>
 <li><code>c = raw_cpu_ptr(s->cpu_slab); tid = READ_ONCE(c->tid);</code></li>
@@ -1317,7 +1317,7 @@ if (unlikely(!__update_cpu_freelist_fast(s, freelist, head, tid))) {
 <li>若期间被别的路径打断修改了 <code>tid/freelist</code>，则重新来一轮。</li>
 </ul>
 
-<h3>11.3 为什么 free fastpath 和 alloc fastpath 几乎镜像对称</h3>
+<h3 id="113-为什么-free-fastpath-和-alloc-fastpath-几乎镜像对称" >11.3 为什么 free fastpath 和 alloc fastpath 几乎镜像对称</h3>
 
 <p>因为二者都是围绕同一对字段：</p>
 
@@ -1339,7 +1339,7 @@ if (unlikely(!__update_cpu_freelist_fast(s, freelist, head, tid))) {
 
 <h2>12. <code>__slab_free()</code>：释放慢路径如何决定是否碰 <code>list_lock</code></h2>
 
-<h3>12.1 关键代码片段</h3>
+<h3 id="121-关键代码片段" >12.1 关键代码片段</h3>
 
 <pre><code class="language-c">prior = slab-&gt;freelist;
 counters = slab-&gt;counters;
@@ -1364,7 +1364,7 @@ if (likely(!n)) {
 	return;
 }</code></pre>
 
-<h3>12.2 逐行解释</h3>
+<h3 id="122-逐行解释" >12.2 逐行解释</h3>
 
 <ol>
 <li><code>prior = slab->freelist; counters = slab->counters;</code></li>
@@ -1424,7 +1424,7 @@ if (likely(!n)) {
 <li>如果原来是 full slab，现在第一次出现空闲对象，而且 cache 支持 cpu partial，就先放到 percpu partial，而不是立刻回 node partial。</li>
 </ul>
 
-<h3>12.3 这条路径体现出的性能策略</h3>
+<h3 id="123-这条路径体现出的性能策略" >12.3 这条路径体现出的性能策略</h3>
 
 <p>SLUB 的目标不是“free 完就马上回全局链表”，而是：</p>
 
@@ -1446,7 +1446,7 @@ if (likely(!n)) {
 	return;
 }</code></pre>
 
-<h3>13.1 关键代码片段</h3>
+<h3 id="131-关键代码片段" >13.1 关键代码片段</h3>
 
 <pre><code class="language-c">spin_lock_irqsave(&amp;n-&gt;list_lock, flags);
 
@@ -1465,7 +1465,7 @@ if (free_debug_processing(...)) {
 
 spin_unlock_irqrestore(&amp;n-&gt;list_lock, flags);</code></pre>
 
-<h3>13.2 逐行解释</h3>
+<h3 id="132-逐行解释" >13.2 逐行解释</h3>
 
 <ol>
 <li><code>spin_lock_irqsave(&n->list_lock, flags);</code></li>
@@ -1528,7 +1528,7 @@ spin_unlock_irqrestore(&amp;n-&gt;list_lock, flags);</code></pre>
 else
 	ret = __update_freelist_slow(...);</code></pre>
 
-<h3>14.1 这里和 ARM64 的关系</h3>
+<h3 id="141-这里和-arm64-的关系" >14.1 这里和 ARM64 的关系</h3>
 
 <p>在 ARM64 上，这通常意味着：</p>
 
@@ -1572,7 +1572,7 @@ list_for_each_entry(s, &amp;slab_caches, list) {
 }
 mutex_unlock(&amp;slab_mutex);</code></pre>
 
-<h3>15.1 这说明什么</h3>
+<h3 id="151-这说明什么" >15.1 这说明什么</h3>
 
 <ol>
 <li><code>slab_mutex</code> 是<strong>管理锁</strong>，不是分配/释放热路径锁。</li>
@@ -1597,7 +1597,7 @@ mutex_unlock(&amp;slab_mutex);</code></pre>
 
 <h2>16. 把主文档里的三类锁重新映射回 SLUB</h2>
 
-<h3>16.1 spinlock 在 SLUB 里的真实位置</h3>
+<h3 id="161-spinlock-在-slub-里的真实位置" >16.1 spinlock 在 SLUB 里的真实位置</h3>
 
 <p>主要是：</p>
 
@@ -1609,7 +1609,7 @@ mutex_unlock(&amp;slab_mutex);</code></pre>
 
 <p>其中最重要的是 <code>node->list_lock</code>，它就是 SLUB 的集中式共享锁。</p>
 
-<h3>16.2 mutex 在 SLUB 里的真实位置</h3>
+<h3 id="162-mutex-在-slub-里的真实位置" >16.2 mutex 在 SLUB 里的真实位置</h3>
 
 <p>主要是：</p>
 
@@ -1620,7 +1620,7 @@ mutex_unlock(&amp;slab_mutex);</code></pre>
 
 <p>它们不保护对象分配的每一步，而是保护全局结构和 flush 生命周期。</p>
 
-<h3>16.3 semaphore 在 SLUB 里几乎不是核心角色</h3>
+<h3 id="163-semaphore-在-slub-里几乎不是核心角色" >16.3 semaphore 在 SLUB 里几乎不是核心角色</h3>
 
 <p><code>slub.c</code> 本体不以 semaphore 作为核心同步手段。</p>
 
@@ -1636,7 +1636,7 @@ mutex_unlock(&amp;slab_mutex);</code></pre>
 
 <p>如果你要调试 SLUB 锁行为，最推荐的函数断点如下：</p>
 
-<h3>分配路径</h3>
+<h3 id="分配路径" >分配路径</h3>
 
 <ul>
 <li><code>slab_alloc_node()</code></li>
@@ -1647,7 +1647,7 @@ mutex_unlock(&amp;slab_mutex);</code></pre>
 <li><code>deactivate_slab()</code></li>
 </ul>
 
-<h3>释放路径</h3>
+<h3 id="释放路径" >释放路径</h3>
 
 <ul>
 <li><code>slab_free()</code></li>
@@ -1657,7 +1657,7 @@ mutex_unlock(&amp;slab_mutex);</code></pre>
 <li><code>put_cpu_partial()</code></li>
 </ul>
 
-<h3>管理路径</h3>
+<h3 id="管理路径" >管理路径</h3>
 
 <ul>
 <li><code>flush_this_cpu_slab()</code></li>

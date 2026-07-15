@@ -624,7 +624,7 @@ hr {
 
 <hr>
 
-<h2>一句话先说清</h2>
+<h2 >一句话先说清</h2>
 
 <p><strong>Linux ARM64 虚拟内存管理的主线，就是把“CPU 的地址翻译硬件”与“内核维护的地址空间对象”接起来：硬件负责从 VA 走到页表，内核负责决定这段 VA 是否存在、权限是什么、缺页时该补什么页、何时拆映射与刷新 TLB。</strong></p>
 
@@ -632,7 +632,7 @@ hr {
 
 <hr>
 
-<h2>学习范围与边界</h2>
+<h2 >学习范围与边界</h2>
 
 <p>这份文档只讨论 ARM64 虚拟内存管理的核心内容：</p>
 
@@ -691,7 +691,7 @@ hr {
 
 <p>把 ARM64 Linux VM 拆成下面四层：</p>
 
-<h3>1. 硬件翻译层</h3>
+<h3 id="1-硬件翻译层" >1. 硬件翻译层</h3>
 
 <p>CPU 拿到虚拟地址后，使用 TTBR、TCR、MAIR、页表项权限位来完成地址翻译。</p>
 
@@ -704,7 +704,7 @@ hr {
 <li>如果翻译失败，抛出哪类异常</li>
 </ol>
 
-<h3>2. 地址空间描述层</h3>
+<h3 id="2-地址空间描述层" >2. 地址空间描述层</h3>
 
 <p>内核用 <code>mm_struct</code> 和 <code>vm_area_struct</code> 描述一个进程有哪些虚拟地址区间，以及这些区间应该具有什么属性。</p>
 
@@ -716,7 +716,7 @@ hr {
 <li>它是否允许写、执行、共享、增长栈等</li>
 </ol>
 
-<h3>3. 页表维护层</h3>
+<h3 id="3-页表维护层" >3. 页表维护层</h3>
 
 <p>内核根据 VMA 策略，在真正访问时建立、修改或删除页表项。</p>
 
@@ -728,7 +728,7 @@ hr {
 <li>修改后如何与 TLB 一致</li>
 </ol>
 
-<h3>4. 缺页与生命周期层</h3>
+<h3 id="4-缺页与生命周期层" >4. 缺页与生命周期层</h3>
 
 <p>当 CPU 因为页不存在、权限不对、COW 等原因触发异常时，Linux 进入 fault 路径处理。</p>
 
@@ -746,7 +746,7 @@ hr {
 
 <p>这一部分不是为了学体系结构考试，而是为了后面读 Linux fault 和页表代码时不迷路。</p>
 
-<h3>1. TTBR0_EL1 和 TTBR1_EL1</h3>
+<h3 id="1-ttbr0_el1-和-ttbr1_el1" >1. TTBR0_EL1 和 TTBR1_EL1</h3>
 
 <p>ARM64 EL1 下通常有两套翻译基址：</p>
 
@@ -764,7 +764,7 @@ hr {
 
 <p>所以“切换进程地址空间”最核心的硬件动作之一，就是切换用户态那部分页表根；而内核全局映射一般保持在 TTBR1 侧。</p>
 
-<h4>Linux 不是只讲概念，它会先把每 CPU 的 MMU 状态准备好</h4>
+<h4 >Linux 不是只讲概念，它会先把每 CPU 的 MMU 状态准备好</h4>
 
 <p>这里要先补一句非常关键的话：</p>
 
@@ -816,7 +816,7 @@ hr {
 <li>定义 VA 范围、ASID 行为、TBI 等全局翻译策略</li>
 </ol>
 
-<h4>1.3 <code>__enable_mmu</code> 做的是“给这个 CPU 装上页表根并真正开 MMU”</h4>
+<h4 id="13-一张关系总表谁描述策略谁描述后端谁描述现场">1.3 <code>__enable_mmu</code> 做的是“给这个 CPU 装上页表根并真正开 MMU”</h4>
 
 <p><code>__enable_mmu</code> 在 <a href="arch/arm64/kernel/head.S">arch/arm64/kernel/head.S</a> 里，关键动作是：</p>
 
@@ -933,7 +933,7 @@ hr {
 
 <p><strong>每个 CPU 有自己独立的翻译硬件现场，但这些现场可以指向相同或不同的页表对象。</strong></p>
 
-<h3>2. TCR_EL1</h3>
+<h3 id="2-tcr_el1" >2. TCR_EL1</h3>
 
 <p><code>TCR_EL1</code> 决定翻译规则，最常见要点：</p>
 
@@ -1123,7 +1123,7 @@ hr {
 <li>ASID 怎样参与上下文隔离</li>
 </ol>
 
-<h3>3. MAIR_EL1</h3>
+<h3 id="3-vmalloc虚拟连续但物理不一定连续" >3. MAIR_EL1</h3>
 
 <p><code>MAIR_EL1</code> 决定内存属性索引背后的真实语义，例如：</p>
 
@@ -1222,7 +1222,7 @@ hr {
 
 <p>与 MTE/tagged pointer 相关。Linux 启动早期先按 Normal memory 放，后续如果硬件支持 MTE，再切换到 tagged 语义。</p>
 
-<h4>MAIR 和页表项是怎么接起来的</h4>
+<h4 id="3-mair_el1">MAIR 和页表项是怎么接起来的</h4>
 
 <p>连接点是 <code>PTE_ATTRINDX()</code>，定义在 <a href="arch/arm64/include/asm/pgtable-hwdef.h">arch/arm64/include/asm/pgtable-hwdef.h</a>。</p>
 
@@ -1253,7 +1253,7 @@ hr {
 
 <p><strong>页表项里不是直接写“缓存/设备/非缓存”的全文，而是写一个索引；<code>MAIR_EL1</code> 才是这组索引对应含义的总字典。</strong></p>
 
-<h3>4. 页表级数</h3>
+<h3 id="4-页表级数" >4. 页表级数</h3>
 
 <p>ARM64 的页表级数受虚拟地址位数和页大小影响。你在 4KB granule 下最常见的是：</p>
 
@@ -1275,7 +1275,7 @@ hr {
 <li>折叠层不代表概念消失，只是代码层面复用</li>
 </ol>
 
-<h3>5. Data Abort / Instruction Abort</h3>
+<h3 id="5-data-abort--instruction-abort" >5. Data Abort / Instruction Abort</h3>
 
 <p>当翻译失败或者权限检查失败时，ARM64 会产生内存访问异常。对 Linux VM 最重要的是：</p>
 
@@ -1298,7 +1298,7 @@ hr {
 
 <p>这一部分是整个 VM 学习的“骨架”。</p>
 
-<h3>1. mm_struct：一个进程的地址空间总控对象</h3>
+<h3 id="1-mm_struct一个进程的地址空间总控对象" >1. mm_struct：一个进程的地址空间总控对象</h3>
 
 <p><code>mm_struct</code> 是进程用户地址空间的总对象，定义在 <a href="include/linux/mm_types.h#L944">include/linux/mm_types.h</a>。</p>
 
@@ -1317,7 +1317,7 @@ hr {
 
 <p><strong><code>mm_struct</code> 是“这个进程拥有怎样的用户虚拟地址空间”的内核状态总和。</strong></p>
 
-<h3>2. vm_area_struct：一段属性一致的虚拟地址区间</h3>
+<h3 id="2-vm_area_struct一段属性一致的虚拟地址区间" >2. vm_area_struct：一段属性一致的虚拟地址区间</h3>
 
 <p><code>vm_area_struct</code> 定义在 <a href="include/linux/mm_types.h#L813">include/linux/mm_types.h</a>。</p>
 
@@ -1340,7 +1340,7 @@ hr {
 
 <p><strong>VMA 不是页表，也不是物理页，它是“这段地址应该怎么被对待”的策略描述。</strong></p>
 
-<h3>3. Maple Tree：当前 VMA 主索引</h3>
+<h3 id="3-maple-tree当前-vma-主索引" >3. Maple Tree：当前 VMA 主索引</h3>
 
 <p><code>mm_struct</code> 里现在是 <code>struct maple_tree mm_mt;</code>，见 <a href="include/linux/mm_types.h#L961">include/linux/mm_types.h</a>。</p>
 
@@ -1352,7 +1352,7 @@ hr {
 <li><code>VMA_ITERATOR</code> / <code>vma_iter_init()</code> 是当前 VMA 遍历入口之一，见 <a href="include/linux/mm_types.h#L1352">include/linux/mm_types.h</a></li>
 </ol>
 
-<h3>4. <code>shared.rb</code> 不是 VMA 主树</h3>
+<h3 id="4-sharedrb-不是-vma-主树" >4. <code>shared.rb</code> 不是 VMA 主树</h3>
 
 <p><code>vm_area_struct</code> 里仍然还有：</p>
 
@@ -1376,7 +1376,7 @@ hr {
 
 <p>学习 ARM64 VM 时，不要只盯着用户态。你需要同时分清用户地址和内核地址。</p>
 
-<h3>1. 用户地址空间</h3>
+<h3 id="1-用户地址空间" >1. 用户地址空间</h3>
 
 <p>用户地址空间主要受这些因素控制：</p>
 
@@ -1400,7 +1400,7 @@ hr {
 
 <p>这些区间在内核里都会表现为一个或多个 VMA。</p>
 
-<h3>2. 内核地址空间</h3>
+<h3 id="2-内核地址空间" >2. 内核地址空间</h3>
 
 <p>ARM64 学习 VM 时，必须把下面几块区分开：</p>
 
@@ -1421,7 +1421,7 @@ hr {
 <li>但它们都属于“ARM64 虚拟地址空间布局”的大图</li>
 </ol>
 
-<h3>3. vmalloc：虚拟连续，但物理不一定连续</h3>
+<h3 id="3-munmap先改地址空间形状再拆-pte-和页表再销毁-vma" >3. vmalloc：虚拟连续，但物理不一定连续</h3>
 
 <p><code>vmalloc</code> 是理解“内核虚拟地址空间”和“普通用户缺页路径不是一回事”最好的例子之一。</p>
 
@@ -1438,7 +1438,7 @@ hr {
 
 <p>这和 <code>kmalloc</code> 很不一样。<code>kmalloc</code> 更偏向直接拿物理上连续、或者至少由 slab/buddy 直接组织好的对象；<code>vmalloc</code> 则明显更依赖页表来“拼接”地址空间。</p>
 
-<h4><code>vmalloc()</code> 主调用链</h4>
+<h4 id="3-vmalloc"><code>vmalloc()</code> 主调用链</h4>
 
 <p>如果只看最典型的 <code>vmalloc(size)</code>，主路径可以先压成下面这条链：</p>
 
@@ -2350,7 +2350,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <h2>页表：VM 的硬件落点</h2>
 
-<h3>1. 页表不是策略本身</h3>
+<h3 id="1-页表不是策略本身" >1. 页表不是策略本身</h3>
 
 <p>一个最常见误区是把页表当成 VM 的全部。</p>
 
@@ -2369,7 +2369,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>fork 后它仍然是可写 VMA，但页表可能暂时被降成只读以支持 COW</li>
 </ol>
 
-<h3>2. 用户页表最重要的几个对象</h3>
+<h3 id="2-用户页表最重要的几个对象" >2. 用户页表最重要的几个对象</h3>
 
 <p>学习 Linux VM 时，至少要知道这些抽象层名：</p>
 
@@ -2388,7 +2388,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>页表页现在有 <code>ptdesc</code> 抽象，定义在 <a href="include/linux/mm_types.h#L522">include/linux/mm_types.h</a></li>
 </ol>
 
-<h3>3. 页表项里你最该关心什么</h3>
+<h3 id="3-页表项里你最该关心什么" >3. 页表项里你最该关心什么</h3>
 
 <p>学习 ARM64 VM，优先抓这些语义位，而不是一上来背所有 bit layout：</p>
 
@@ -2402,7 +2402,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>huge mapping 还是普通页映射</li>
 </ol>
 
-<h3>4. ARM64 常见 PTE 关键位速查</h3>
+<h3 id="4-arm64-常见-pte-关键位速查" >4. ARM64 常见 PTE 关键位速查</h3>
 
 <p>如果你只想先建立读代码的直觉，最值得优先记住的是下面这些位。定义可以直接看 <a href="arch/arm64/include/asm/pgtable-hwdef.h">arch/arm64/include/asm/pgtable-hwdef.h</a> 和 <a href="arch/arm64/include/asm/pgtable.h">arch/arm64/include/asm/pgtable.h</a>。</p>
 
@@ -2467,7 +2467,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p>not Global。和 TLB/ASID 作用域有关，用户态映射通常会涉及它。</p>
 
-<h3>5. 把这些位翻译成直观语义</h3>
+<h3 id="5-把这些位翻译成直观语义" >5. 把这些位翻译成直观语义</h3>
 
 <p>你可以先用下面这张简化表建立感觉：</p>
 
@@ -2552,7 +2552,7 @@ dmesg | grep mem_allocator_lab</code></pre>
     J[内核代码 vmalloc] --&gt; K[vmap_area 查找切分合并]
     K --&gt; L[页表映射离散物理页]</code></pre>
 
-<h3>1. <code>kmalloc()</code>：内核小对象分配器</h3>
+<h3 id="1-kmalloc内核小对象分配器" >1. <code>kmalloc()</code>：内核小对象分配器</h3>
 
 <p>如果把 <code>kmalloc()</code> 放到和 <code>vmalloc()</code> 同一层理解，最重要的一句是：</p>
 
@@ -2656,7 +2656,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li><code>vmalloc()</code> 更像内核虚拟地址空间分配器。</li>
 </ol>
 
-<h3>2. 用户态 <code>malloc()</code>：真正的策略层在 libc</h3>
+<h3 id="2-用户态-malloc真正的策略层在-libc" >2. 用户态 <code>malloc()</code>：真正的策略层在 libc</h3>
 
 <p>很多人第一次学 VM 会误以为：</p>
 
@@ -2699,7 +2699,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>所以看到 <code>malloc()</code> 结果，不能直接推断内核一定做了哪条 syscall。</li>
 </ol>
 
-<h3>3. <code>brk()</code>：扩展 heap VMA，而不是新建一个独立 mmap 区</h3>
+<h3 id="3-brk扩展-heap-vma而不是新建一个独立-mmap-区" >3. <code>brk()</code>：扩展 heap VMA，而不是新建一个独立 mmap 区</h3>
 
 <p>如果把 <code>malloc()</code> 走 heap 的情况落到内核，最核心的路径在：</p>
 
@@ -2737,7 +2737,7 @@ dmesg | grep mem_allocator_lab</code></pre>
     I --&gt; J[do_brk_flags]
     J --&gt; K[扩展或创建 brk VMA]</code></pre>
 
-<h3>4. <code>mmap()</code>：真正的“建立用户映射”主路径</h3>
+<h3 id="4-mmap真正的建立用户映射主路径" >4. <code>mmap()</code>：真正的“建立用户映射”主路径</h3>
 
 <p><code>mmap()</code> 和 <code>brk()</code> 的最大区别是：</p>
 
@@ -2844,7 +2844,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong><code>mmap()</code> 更像“用户地址空间形状管理器”，<code>vmalloc()</code> 更像“内核虚拟区间与页表安装器”。</strong></p>
 
-<h3>5. 一张总图：<code>malloc</code>、<code>brk</code>、<code>mmap</code>、<code>kmalloc</code>、<code>vmalloc</code></h3>
+<h3 id="5-一张总图mallocbrkmmapkmallocvmalloc" >5. 一张总图：<code>malloc</code>、<code>brk</code>、<code>mmap</code>、<code>kmalloc</code>、<code>vmalloc</code></h3>
 
 <pre><code class="language-mermaid">flowchart TD
     A[用户 malloc] --&gt; B{libc 策略}
@@ -2880,7 +2880,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p>把这三层分清，后面的 <code>mmap()</code>、缺页、COW、page cache、rmap、<code>vmalloc()</code> 就都会自动归位。</p>
 
-<h3>1. 一张总图：这些结构到底怎么连</h3>
+<h3 id="1-一张总图这些结构到底怎么连" >1. 一张总图：这些结构到底怎么连</h3>
 
 <pre><code class="language-mermaid">flowchart TD
     A[task_struct] --&gt; B[mm_struct]
@@ -2923,7 +2923,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li><code>vm_struct / vmap_area</code> 是内核 <code>vmalloc</code> 世界里的对应抽象，不属于用户 VMA 主线。</li>
 </ol>
 
-<h3>2. 重要数据结构总表</h3>
+<h3 id="2-重要数据结构总表" >2. 重要数据结构总表</h3>
 
 <table>
 <thead><tr>
@@ -3001,7 +3001,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 </tr>
 </tbody></table>
 
-<h3>3. <code>mm_struct</code>：进程用户地址空间的总控对象</h3>
+<h3 id="3-mm_struct进程用户地址空间的总控对象" >3. <code>mm_struct</code>：进程用户地址空间的总控对象</h3>
 
 <p><code>mm_struct</code> 定义在 <a href="include/linux/mm_types.h">include/linux/mm_types.h</a>。如果只看 VM 主线，最重要的字段是：</p>
 
@@ -3019,7 +3019,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong><code>mm_struct</code> 不是单个映射，而是“这个进程整张用户虚拟地址地图 + 页表根 + 统计信息 + 同步原语”的总对象。</strong></p>
 
-<h3>4. <code>maple_tree mm_mt</code>：当前 VMA 的主索引</h3>
+<h3 id="4-maple_tree-mm_mt当前-vma-的主索引" >4. <code>maple_tree mm_mt</code>：当前 VMA 的主索引</h3>
 
 <p>现在进程地址空间里的 VMA 主索引不再是 rb-tree，而是 Maple Tree：</p>
 
@@ -3036,7 +3036,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li><code>mm_mt</code> 是它里面专门负责“按地址找 VMA”的索引结构。</li>
 </ol>
 
-<h3>5. <code>vm_area_struct</code>：一段属性一致的虚拟地址区间</h3>
+<h3 id="5-vm_area_struct一段属性一致的虚拟地址区间" >5. <code>vm_area_struct</code>：一段属性一致的虚拟地址区间</h3>
 
 <p><code>vm_area_struct</code> 不是页表，也不是物理页。它描述的是：</p>
 
@@ -3061,7 +3061,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong>VMA 描述的是“这段地址应该怎样”，而不是“这段地址现在已经映射了哪些物理页”。</strong></p>
 
-<h3>6. <code>anon_vma</code> 和 <code>anon_vma_chain</code>：匿名页世界里的“关系网络”</h3>
+<h3 id="6-anon_vma-和-anon_vma_chain匿名页世界里的关系网络" >6. <code>anon_vma</code> 和 <code>anon_vma_chain</code>：匿名页世界里的“关系网络”</h3>
 
 <p>很多人知道匿名页会 COW，但不知道 Linux 靠什么把这些相关 VMA 串起来。答案就是：</p>
 
@@ -3095,7 +3095,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>所以 Linux 用 <code>anon_vma</code> 作为中间层，把“这批相关匿名映射”组织起来。</li>
 </ol>
 
-<h3>7. <code>address_space</code>：文件页缓存和 file-backed 映射的总后端</h3>
+<h3 id="7-address_space文件页缓存和-file-backed-映射的总后端" >7. <code>address_space</code>：文件页缓存和 file-backed 映射的总后端</h3>
 
 <p>文件映射世界里，最重要的总后端对象不是 VMA，而是 <code>address_space</code>，定义在 <a href="include/linux/fs.h">include/linux/fs.h</a>。</p>
 
@@ -3130,7 +3130,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong>VMA 只是“这个进程怎么看这段文件”，<code>address_space</code> 才是“这份文件页缓存本体和所有映射关系的总后端”。</strong></p>
 
-<h3>8. <code>vm_operations_struct</code>：VMA 的行为多态接口</h3>
+<h3 id="8-vm_operations_structvma-的行为多态接口" >8. <code>vm_operations_struct</code>：VMA 的行为多态接口</h3>
 
 <p>虚拟内存里有个特别重要但容易被忽略的抽象，就是 <code>vm_operations_struct</code>。它定义在 <a href="include/linux/mm.h">include/linux/mm.h</a>。</p>
 
@@ -3156,7 +3156,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong><code>vm_area_struct</code> 描述“是什么区间”，<code>vm_operations_struct</code> 描述“这段区间遇到 fault 或写入时该怎么做”。</strong></p>
 
-<h3>9. <code>vm_fault</code>：一次缺页处理的现场包</h3>
+<h3 id="9-vm_fault一次缺页处理的现场包" >9. <code>vm_fault</code>：一次缺页处理的现场包</h3>
 
 <p><code>vm_fault</code> 定义在 <a href="include/linux/mm.h">include/linux/mm.h</a>。它不是长期存在的数据结构，而是 fault 处理过程中临时组织的一份上下文。</p>
 
@@ -3185,7 +3185,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong><code>vm_fault</code> 不是地址空间本身，而是“这次 fault 要解决问题时手里拿着的一组现场变量”。</strong></p>
 
-<h3>10. <code>folio / struct page</code>：最终承载内容的物理页抽象</h3>
+<h3 id="10-folio--struct-page最终承载内容的物理页抽象" >10. <code>folio / struct page</code>：最终承载内容的物理页抽象</h3>
 
 <p>虚拟内存里所有高层抽象，最后都要落到页上。这个承载层就是：</p>
 
@@ -3213,7 +3213,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong>VMA、页表、fault、rmap 最终都不是替代 <code>page/folio</code>，而是在围绕“这页怎么被描述、映射、回收、反查”工作。</strong></p>
 
-<h3>11. ARM64 视角还要多记一个：<code>mm_context_t</code></h3>
+<h3 id="11-arm64-视角还要多记一个mm_context_t" >11. ARM64 视角还要多记一个：<code>mm_context_t</code></h3>
 
 <p>如果只讲通用 MM，会遗漏 ARM64 很重要的一层：<code>mm_struct->context</code>。</p>
 
@@ -3232,7 +3232,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li><code>mm_context_t</code> 负责架构上下文状态。</li>
 </ol>
 
-<h3>12. 内核 vmalloc 世界的对应结构：<code>vm_struct</code> 和 <code>vmap_area</code></h3>
+<h3 id="12-内核-vmalloc-世界的对应结构vm_struct-和-vmap_area" >12. 内核 vmalloc 世界的对应结构：<code>vm_struct</code> 和 <code>vmap_area</code></h3>
 
 <p>前面讲的 <code>mm_struct</code> / <code>vm_area_struct</code> 是用户地址空间主线。内核 <code>vmalloc</code> 还有自己的一套对应抽象：</p>
 
@@ -3249,7 +3249,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li><code>vm_struct</code> 更像 vmalloc 对外可见的描述符。</li>
 </ol>
 
-<h3>13. 一张关系总表：谁描述策略，谁描述后端，谁描述现场</h3>
+<h3 >13. 一张关系总表：谁描述策略，谁描述后端，谁描述现场</h3>
 
 <table>
 <thead><tr>
@@ -3291,7 +3291,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 </tr>
 </tbody></table>
 
-<h3>14. 最后的总记忆法</h3>
+<h3 id="14-最后的总记忆法" >14. 最后的总记忆法</h3>
 
 <p>如果你想把这些结构体一口气记住，可以用下面这三句话：</p>
 
@@ -3322,7 +3322,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li><code>folio/page</code> 与 PTE 决定最终怎么建立或拆除映射。</li>
 </ol>
 
-<h3>1. 匿名缺页：<code>mm_struct -> VMA -> anon_vma -> folio/page -> PTE</code></h3>
+<h3 id="1-匿名缺页mm_struct---vma---anon_vma---foliopage---pte" >1. 匿名缺页：<code>mm_struct -> VMA -> anon_vma -> folio/page -> PTE</code></h3>
 
 <p>匿名缺页的主线可以压缩成一句话：</p>
 
@@ -3378,7 +3378,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong>匿名页不是 VMA 本身的一部分，VMA 只是规则；真正落地的是匿名 <code>folio/page</code> 加上指向它的 PTE。</strong></p>
 
-<h3>2. 文件缺页：<code>VMA -> vm_file -> address_space -> i_pages -> folio/page</code></h3>
+<h3 id="2-文件缺页vma---vm_file---address_space---i_pages---foliopage" >2. 文件缺页：<code>VMA -> vm_file -> address_space -> i_pages -> folio/page</code></h3>
 
 <p>文件映射缺页最关键的结论是：</p>
 
@@ -3433,7 +3433,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong>VMA 决定“这是哪个文件的哪段映射”，<code>address_space</code> 决定“这页文件内容现在是否已经在 page cache 里”。</strong></p>
 
-<h3>3. <code>munmap()</code>：先改地址空间形状，再拆 PTE 和页表，再销毁 VMA</h3>
+<h3 >3. <code>munmap()</code>：先改地址空间形状，再拆 PTE 和页表，再销毁 VMA</h3>
 
 <p><code>munmap()</code> 最重要的结论是：</p>
 
@@ -3488,7 +3488,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong>它本质上是在同时修改两张图：一张是 <code>mm_mt/VMA</code> 组成的地址空间图，一张是 PTE/page table 组成的硬件映射图。</strong></p>
 
-<h3>4. <code>fork()</code> 与 COW：先共享页并写保护，真正写入时再分裂</h3>
+<h3 id="4-fork-与-cow先共享页并写保护真正写入时再分裂" >4. <code>fork()</code> 与 COW：先共享页并写保护，真正写入时再分裂</h3>
 
 <p><code>fork()</code>/COW 的最关键结论是：</p>
 
@@ -3543,7 +3543,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong>fork 复制的是“映射关系和页表语义”，不是立刻复制所有物理页；真正复制物理页发生在后续写 fault。</strong></p>
 
-<h3>5. 把四条路径并排对比</h3>
+<h3 id="5-把四条路径并排对比" >5. 把四条路径并排对比</h3>
 
 <table>
 <thead><tr>
@@ -3585,7 +3585,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <h2>VMA 管理：<code>mmap()</code> 这一层到底在干什么</h2>
 
-<h3>1. <code>mmap()</code> 不是直接分配物理页</h3>
+<h3 id="1-mmap-不是直接分配物理页" >1. <code>mmap()</code> 不是直接分配物理页</h3>
 
 <p>它通常先做的是：</p>
 
@@ -3598,7 +3598,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p>真正分配页常常等到首次访问时通过缺页完成。</p>
 
-<h3>2. 你读 VMA 管理代码要看什么</h3>
+<h3 id="2-你读-vma-管理代码要看什么" >2. 你读 VMA 管理代码要看什么</h3>
 
 <p>建议先抓这几类操作：</p>
 
@@ -3616,7 +3616,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li><a href="mm/vma.c">mm/vma.c</a></li>
 </ol>
 
-<h3>3. VMA 相关系统调用的学习顺序</h3>
+<h3 id="3-vma-相关系统调用的学习顺序" >3. VMA 相关系统调用的学习顺序</h3>
 
 <p>建议顺序：</p>
 
@@ -3636,7 +3636,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p>这是 Linux ARM64 虚拟内存里最关键的一条路径。</p>
 
-<h3>1. 先给结论</h3>
+<h3 id="1-先给结论" >1. 先给结论</h3>
 
 <p>一次用户态缺页，最重要的步骤是：</p>
 
@@ -3650,7 +3650,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>返回用户态重试指令</li>
 </ol>
 
-<h3>2. ARM64 入口</h3>
+<h3 id="2-arm64-入口" >2. ARM64 入口</h3>
 
 <p>建议从这里开始：</p>
 
@@ -4077,7 +4077,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 -&gt; do_mem_abort()
 -&gt; fault.c 中进一步分发</code></pre>
 
-<h3>3. 查找 VMA</h3>
+<h3 id="3-查找-vma" >3. 查找 VMA</h3>
 
 <p>fault 到达通用 MM 前，必须先知道这个地址是不是落在合法 VMA 中。</p>
 
@@ -4091,7 +4091,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p>如果地址压根不在合法 VMA 中，通常直接走 SIGSEGV。</p>
 
-<h3>4. <code>handle_mm_fault()</code> 的意义</h3>
+<h3 id="4-handle_mm_fault-的意义" >4. <code>handle_mm_fault()</code> 的意义</h3>
 
 <p>你可以把 <code>handle_mm_fault()</code> 理解成：</p>
 
@@ -4107,7 +4107,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>权限升级或脏位处理</li>
 </ol>
 
-<h3>5. 一次用户态匿名页缺页的真实调用链</h3>
+<h3 id="5-一次用户态匿名页缺页的真实调用链" >5. 一次用户态匿名页缺页的真实调用链</h3>
 
 <p>如果你想真正把 ARM64 VM 主线打通，最值得亲自走一遍的不是所有 fault 分支，而是“用户态访问一个尚未建立映射的匿名地址”这条最基本路径。</p>
 
@@ -4130,7 +4130,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 -&gt; set_pte_at()
 -&gt; 返回用户态重试</code></pre>
 
-<h3>6. 第一步：ARM64 捕获异常并进入 fault 路径</h3>
+<h3 id="6-第一步arm64-捕获异常并进入-fault-路径" >6. 第一步：ARM64 捕获异常并进入 fault 路径</h3>
 
 <p>ARM64 缺页不是直接从 <code>fault.c</code> 开始，而是先经过异常入口层。最值得先抓住的文件和函数是：</p>
 
@@ -4169,7 +4169,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p><strong><code>entry-common.c</code> 负责把“ARM64 异常语义”送进 fault 路径，但它本身基本不直接做 VMA 查找。真正开始碰 VMA 的地方在 <code>fault.c</code> 的 <code>do_page_fault()</code>。</strong></p>
 
-<h3>7. <code>do_mem_abort()</code> 不是最终处理者，而是总分发器</h3>
+<h3 id="7-do_mem_abort-不是最终处理者而是总分发器" >7. <code>do_mem_abort()</code> 不是最终处理者，而是总分发器</h3>
 
 <p><code>do_mem_abort()</code> 的核心不是自己处理所有 fault，而是根据 <code>ESR_EL1</code> 里的 <code>FSC</code> 字段选择下一跳。</p>
 
@@ -4207,7 +4207,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li><code>do_page_fault()</code> 只是其中最常见、最重要的一条分支</li>
 </ol>
 
-<h3>8. <code>do_page_fault()</code> 做的第一件大事不是分配页</h3>
+<h3 id="8-do_page_fault-做的第一件大事不是分配页" >8. <code>do_page_fault()</code> 做的第一件大事不是分配页</h3>
 
 <p><code>do_page_fault()</code> 的本质不是“直接补页”，而是 ARM64 页故障协调器。它先把异常转换成 Linux VM 可以处理的语义，再把真正建页表的工作交给通用 MM。</p>
 
@@ -4232,7 +4232,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>根据返回结果决定成功、重试、发信号还是内核报错</li>
 </ol>
 
-<h3>9. 第二步：先找 VMA，再谈修 fault</h3>
+<h3 id="9-第二步先找-vma再谈修-fault">9. 第二步：先找 VMA，再谈修 fault</h3>
 
 <p>在 <a href="arch/arm64/mm/fault.c">arch/arm64/mm/fault.c</a> 里，<code>do_page_fault()</code> 会先：</p>
 
@@ -4255,7 +4255,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p>也就是说，它先解决“这个地址在地址空间语义上是否合法”，然后才把真正修映射的工作交给通用 MM。</p>
 
-<h3>10. 第三步：进入通用 MM 层</h3>
+<h3 id="10-第三步进入通用-mm-层">10. 第三步：进入通用 MM 层</h3>
 
 <p>ARM64 侧确认地址合法后，调用：</p>
 
@@ -4273,7 +4273,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li><code>__handle_mm_fault()</code></li>
 </ol>
 
-<h3>11. 第四步：逐级走页表，直到 PTE 层</h3>
+<h3 id="11-第四步逐级走页表直到-pte-层">11. 第四步：逐级走页表，直到 PTE 层</h3>
 
 <p><code>__handle_mm_fault()</code> 在 <a href="mm/memory.c">mm/memory.c</a> 里会依次做：</p>
 
@@ -4293,7 +4293,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>所以 OOM 可以发生在真正分配匿名页之前</li>
 </ol>
 
-<h3>12. 第五步：为什么会走到 <code>do_anonymous_page()</code></h3>
+<h3 id="12-第五步为什么会走到-do_anonymous_page">12. 第五步：为什么会走到 <code>do_anonymous_page()</code></h3>
 
 <p>在 <a href="mm/memory.c">mm/memory.c</a> 里，PTE 层 fault 最终会按映射类型分流。</p>
 
@@ -4307,7 +4307,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p>这就是匿名页和文件页必须分开学的原因：它们从 PTE fault 层开始就分岔了。</p>
 
-<h3>13. 第六步：<code>do_anonymous_page()</code> 到底干了什么</h3>
+<h3 id="13-第六步do_anonymous_page-到底干了什么">13. 第六步：<code>do_anonymous_page()</code> 到底干了什么</h3>
 
 <p><code>do_anonymous_page()</code> 在 <a href="mm/memory.c">mm/memory.c</a> 里，是理解匿名 demand paging 的核心函数。</p>
 
@@ -4350,7 +4350,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>PTE 把两者变成 CPU 可执行的映射</li>
 </ol>
 
-<h3>12. 第七步：真正落地到页表的动作是什么</h3>
+<h3 id="12-第七步真正落地到页表的动作是什么">12. 第七步：真正落地到页表的动作是什么</h3>
 
 <p>匿名页 fault 最终真正让映射生效的关键动作，就是安装 PTE。</p>
 
@@ -4368,7 +4368,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>CPU 之后重试这条指令时，就能按新页表继续访问</li>
 </ol>
 
-<h3>13. 第八步：为什么这条路径能帮助你理解整个 VM</h3>
+<h3 id="13-第八步为什么这条路径能帮助你理解整个-vm">13. 第八步：为什么这条路径能帮助你理解整个 VM</h3>
 
 <p>因为它把最核心的四个对象一次性串起来了：</p>
 
@@ -4387,7 +4387,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p>这是 Linux VM 的基础分水岭。</p>
 
-<h3>1. 匿名页</h3>
+<h3 id="1-匿名页">1. 匿名页</h3>
 
 <p>典型来源：</p>
 
@@ -4407,7 +4407,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>回收时可能走 swap</li>
 </ol>
 
-<h3>2. 文件页</h3>
+<h3 id="2-文件页">2. 文件页</h3>
 
 <p>典型来源：</p>
 
@@ -4425,7 +4425,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>文件截断、写回、回收、反向映射关系更复杂</li>
 </ol>
 
-<h3>3. 你该看哪条文件缺页路径</h3>
+<h3 id="3-你该看哪条文件缺页路径">3. 你该看哪条文件缺页路径</h3>
 
 <p>建议先抓：</p>
 
@@ -4445,7 +4445,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <h2>fork 和 COW：虚拟内存为什么比“复制页表”复杂得多</h2>
 
-<h3>1. fork 的关键不是立刻复制所有页</h3>
+<h3 id="1-fork-的关键不是立刻复制所有页">1. fork 的关键不是立刻复制所有页</h3>
 
 <p>fork 后，父子进程最常见的策略不是立刻复制全部匿名页，而是：</p>
 
@@ -4458,7 +4458,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p>这就是写时复制，COW。</p>
 
-<h3>2. 你学习 COW 必须同时看三层</h3>
+<h3 id="2-你学习-cow-必须同时看三层">2. 你学习 COW 必须同时看三层</h3>
 
 <ol>
 <li>VMA 仍然可能是可写的</li>
@@ -4474,7 +4474,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <p>这三条路径建议你尽快补上，因为它们体现了 VM 不只是“建映射”，更是“修改映射”。</p>
 
-<h3>1. <code>mprotect()</code></h3>
+<h3 id="1-mprotect">1. <code>mprotect()</code></h3>
 
 <p>关注点：</p>
 
@@ -4485,7 +4485,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>刷新 TLB</li>
 </ol>
 
-<h3>2. <code>munmap()</code></h3>
+<h3 id="2-munmap">2. <code>munmap()</code></h3>
 
 <p>关注点：</p>
 
@@ -4495,7 +4495,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>通过 <code>mmu_gather</code> 批量回收页表和延迟 TLB flush</li>
 </ol>
 
-<h3>3. <code>mremap()</code></h3>
+<h3 id="3-mremap">3. <code>mremap()</code></h3>
 
 <p>关注点：</p>
 
@@ -4511,7 +4511,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 
 <h2>ASID、TLB、TLB shootdown：不懂这个就不算真的懂 ARM64 VM</h2>
 
-<h3>1. 为什么页表改了还不够</h3>
+<h3 id="1-为什么页表改了还不够">1. 为什么页表改了还不够</h3>
 
 <p>因为 CPU 会缓存地址翻译结果到 TLB。</p>
 
@@ -4667,7 +4667,7 @@ dmesg | grep mem_allocator_lab</code></pre>
 <li>然后才安全认为新映射状态真正生效</li>
 </ol>
 
-<h3>2. ASID 到底是什么，为什么它能减少 flush</h3>
+<h3 id="2-asid-到底是什么为什么它能减少-flush">2. ASID 到底是什么，为什么它能减少 flush</h3>
 
 <p>先把一句最重要的话记住：</p>
 
@@ -5410,7 +5410,7 @@ isb();</code></pre>
 
 <p>这就把“进程切换”“ASID 更新”“TLB 清理”“TTBR 改写”四件事连成了一条真实的执行链。</p>
 
-<h3>3. TLB invalidation 在 ARM64 上到底怎么分层</h3>
+<h3 id="3-tlb-invalidation-在-arm64-上到底怎么分层">3. TLB invalidation 在 ARM64 上到底怎么分层</h3>
 
 <p>TLB 失效不是一个动作，而是一组不同粒度的动作。<code>arch/arm64/include/asm/tlbflush.h</code> 的注释已经把 API 分层讲得很清楚，见 <a href="arch/arm64/include/asm/tlbflush.h#L186-L256">arch/arm64/include/asm/tlbflush.h</a>。</p>
 
@@ -5470,7 +5470,7 @@ __tlbi(vale1is, addr);</code></pre>
 
 <p>也就是说，Linux 在 ARM64 上不是机械地一页页 TLBI，而是会根据范围大小和硬件能力做分层选择。</p>
 
-<h3>4. TLB shootdown 为什么麻烦</h3>
+<h3 id="4-tlb-shootdown-为什么麻烦">4. TLB shootdown 为什么麻烦</h3>
 
 <p>因为一个 <code>mm</code> 可以同时跑在多个 CPU 上。</p>
 
@@ -5544,7 +5544,7 @@ __tlbi(vale1is, addr);</code></pre>
 
 <p>这就是为什么“清 PTE”绝不是普通变量写零。</p>
 
-<h3>5. 把 ASID 和 TLB 放在一起理解</h3>
+<h3 id="5-把-asid-和-tlb-放在一起理解">5. 把 ASID 和 TLB 放在一起理解</h3>
 
 <p>把两者合起来，你就能得到 ARM64 VM 非常关键的一条理解：</p>
 
@@ -5570,11 +5570,11 @@ __tlbi(vale1is, addr);</code></pre>
 
 <p>如果你学习 ARM64 VM 只看用户态，也是不够的。至少还要建立这几个内核地址区的正确区分：</p>
 
-<h3>1. linear map</h3>
+<h3 id="1-linear-map">1. linear map</h3>
 
 <p>内核对物理内存的线性映射。它和用户页表 fault 不是一套机制，但同属 ARM64 虚拟地址空间设计的一部分。</p>
 
-<h3>2. kernel image mapping</h3>
+<h3 id="2-kernel-image-mapping">2. kernel image mapping</h3>
 
 <p>内核镜像代码与数据所在虚拟区，和 linear map 不是同一个概念。</p>
 
@@ -5582,11 +5582,11 @@ __tlbi(vale1is, addr);</code></pre>
 
 <p>用于非连续物理页拼接出连续虚拟地址空间。</p>
 
-<h3>4. fixmap</h3>
+<h3 id="4-fixmap">4. fixmap</h3>
 
 <p>少量固定用途虚拟地址。</p>
 
-<h3>5. vmemmap</h3>
+<h3 id="5-vmemmap">5. vmemmap</h3>
 
 <p>用于映射 <code>struct page</code> 数组的虚拟区。</p>
 
@@ -5598,7 +5598,7 @@ __tlbi(vale1is, addr);</code></pre>
 
 <p>下面这批文件建议你反复来回看。</p>
 
-<h3>第一批：对象定义</h3>
+<h3 id="第一批对象定义">第一批：对象定义</h3>
 
 <ol>
 <li><a href="include/linux/mm_types.h">include/linux/mm_types.h</a></li>
@@ -5606,21 +5606,21 @@ __tlbi(vale1is, addr);</code></pre>
 <li><a href="include/linux/maple_tree.h">include/linux/maple_tree.h</a></li>
 </ol>
 
-<h3>第二批：ARM64 fault 入口</h3>
+<h3 id="第二批arm64-fault-入口">第二批：ARM64 fault 入口</h3>
 
 <ol>
 <li><a href="arch/arm64/kernel/entry-common.c">arch/arm64/kernel/entry-common.c</a></li>
 <li><a href="arch/arm64/mm/fault.c">arch/arm64/mm/fault.c</a></li>
 </ol>
 
-<h3>第三批：VMA 管理</h3>
+<h3 id="第三批vma-管理">第三批：VMA 管理</h3>
 
 <ol>
 <li><a href="mm/vma.c">mm/vma.c</a></li>
 <li><a href="mm/mmap.c">mm/mmap.c</a></li>
 </ol>
 
-<h3>第四批：通用缺页与页表修改</h3>
+<h3 id="第四批通用缺页与页表修改">第四批：通用缺页与页表修改</h3>
 
 <ol>
 <li><a href="mm/memory.c">mm/memory.c</a></li>
@@ -5628,7 +5628,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li><a href="mm/mremap.c">mm/mremap.c</a></li>
 </ol>
 
-<h3>第五批：文件映射与反向映射</h3>
+<h3 id="第五批文件映射与反向映射">第五批：文件映射与反向映射</h3>
 
 <ol>
 <li><a href="mm/filemap.c">mm/filemap.c</a></li>
@@ -5642,7 +5642,7 @@ __tlbi(vale1is, addr);</code></pre>
 
 <p>这是当前工作区里最稳的学习顺序。</p>
 
-<h3>第 1 阶段：建立骨架</h3>
+<h3 id="第-1-阶段建立骨架">第 1 阶段：建立骨架</h3>
 
 <p>目标：先知道“有哪些对象”和“它们之间是什么关系”。</p>
 
@@ -5662,7 +5662,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li><code>shared.rb</code> 为什么还存在</li>
 </ol>
 
-<h3>第 2 阶段：跑通一次真实 fault</h3>
+<h3 id="第-2-阶段跑通一次真实-fault">第 2 阶段：跑通一次真实 fault</h3>
 
 <p>目标：建立“用户访问 VA -> ARM64 异常 -> Linux fault -> 页表更新”的完整链路。</p>
 
@@ -5683,7 +5683,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>页表何时真正建立</li>
 </ol>
 
-<h3>第 3 阶段：学地址空间修改</h3>
+<h3 id="第-3-阶段学地址空间修改">第 3 阶段：学地址空间修改</h3>
 
 <p>目标：理解 VMA 不是静态表，而是会持续变化。</p>
 
@@ -5703,7 +5703,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li><code>munmap</code> 如何安全拆映射</li>
 </ol>
 
-<h3>第 4 阶段：补匿名页、文件页、COW</h3>
+<h3 id="第-4-阶段补匿名页文件页cow">第 4 阶段：补匿名页、文件页、COW</h3>
 
 <p>顺序：</p>
 
@@ -5725,7 +5725,7 @@ __tlbi(vale1is, addr);</code></pre>
 
 <h2>最容易踩的坑</h2>
 
-<h3>1. 把 VMA、页表、物理页混成一层</h3>
+<h3 id="1-把-vma页表物理页混成一层">1. 把 VMA、页表、物理页混成一层</h3>
 
 <p>一定要分清：</p>
 
@@ -5735,15 +5735,15 @@ __tlbi(vale1is, addr);</code></pre>
 <li>物理页是底层承载对象</li>
 </ol>
 
-<h3>2. 只读 x86 资料，不补 ARM64 fault 入口</h3>
+<h3 id="2-只读-x86-资料不补-arm64-fault-入口">2. 只读 x86 资料，不补 ARM64 fault 入口</h3>
 
 <p>Linux 通用 MM 很多思想跨架构相通，但 ARM64 的异常模型、页表位语义、ASID/TLB 细节必须单独掌握。</p>
 
-<h3>3. 只学 <code>handle_mm_fault()</code>，不学 <code>mmap()</code>/<code>munmap()</code></h3>
+<h3 id="3-只学-handle_mm_fault不学-mmapmunmap">3. 只学 <code>handle_mm_fault()</code>，不学 <code>mmap()</code>/<code>munmap()</code></h3>
 
 <p>这样会只理解“怎么补页”，却不理解“地址空间是怎么长出来和被拆掉的”。</p>
 
-<h3>4. 看到 <code>rb_node</code> 就以为 VMA 还没换 Maple Tree</h3>
+<h3 id="4-看到-rb_node-就以为-vma-还没换-maple-tree">4. 看到 <code>rb_node</code> 就以为 VMA 还没换 Maple Tree</h3>
 
 <p>要区分：</p>
 
@@ -5753,7 +5753,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>NOMMU region tree：仍是 rb tree</li>
 </ol>
 
-<h3>5. 只背宏，不结合具体 fault 路径</h3>
+<h3 id="5-只背宏不结合具体-fault-路径">5. 只背宏，不结合具体 fault 路径</h3>
 
 <p>学习 VM 时最容易沉迷宏和位定义，但真正有价值的是把一个真实场景从头走通。</p>
 
@@ -5763,7 +5763,7 @@ __tlbi(vale1is, addr);</code></pre>
 
 <p>下面这些练习最适合当前 ARM64 源码环境。</p>
 
-<h3>练习 1：画一次匿名页读 fault 调用链</h3>
+<h3 id="练习-1画一次匿名页读-fault-调用链">练习 1：画一次匿名页读 fault 调用链</h3>
 
 <p>目标：从 ARM64 异常入口一直追到建立 PTE。</p>
 
@@ -5783,7 +5783,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>标出在哪一步填 PTE</li>
 </ol>
 
-<h3>练习 2：对比匿名写 fault 和 COW fault</h3>
+<h3 id="练习-2对比匿名写-fault-和-cow-fault">练习 2：对比匿名写 fault 和 COW fault</h3>
 
 <p>目标：分清“普通匿名首次写入”和“fork 后写入”的差异。</p>
 
@@ -5795,7 +5795,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>是否需要复制旧页内容</li>
 </ol>
 
-<h3>练习 3：对比 <code>mmap</code> 后未访问 与 已访问 的区别</h3>
+<h3 id="练习-3对比-mmap-后未访问-与-已访问-的区别">练习 3：对比 <code>mmap</code> 后未访问 与 已访问 的区别</h3>
 
 <p>目标：理解 VMA 存在不等于页表已建立。</p>
 
@@ -5807,7 +5807,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>首次访问才进入 demand paging</li>
 </ol>
 
-<h3>练习 4：追踪 <code>munmap</code> 的页表拆除与 TLB flush</h3>
+<h3 id="练习-4追踪-munmap-的页表拆除与-tlb-flush">练习 4：追踪 <code>munmap</code> 的页表拆除与 TLB flush</h3>
 
 <p>目标：理解“删映射”比“建映射”更讲究同步与时序。</p>
 
@@ -5865,7 +5865,7 @@ __tlbi(vale1is, addr);</code></pre>
 
 <p>这一章按专题单独补齐。</p>
 
-<h3>1. 匿名页面</h3>
+<h3 id="1-匿名页面">1. 匿名页面</h3>
 
 <h4>定义、含义、作用</h4>
 
@@ -5927,7 +5927,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>ARM64 页表支持 contpte 优化，见 <a href="arch/arm64/mm/contpte.c">arch/arm64/mm/contpte.c</a>。大量匿名页在页表层会受它影响。</li>
 </ol>
 
-<h3>2. Page Cache 和文件页</h3>
+<h3 id="2-page-cache-和文件页">2. Page Cache 和文件页</h3>
 
 <h4>定义、含义、作用</h4>
 
@@ -5987,7 +5987,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>ARM64 页表属性位和 <a href="arch/arm64/include/asm/pgtable-prot.h">arch/arm64/include/asm/pgtable-prot.h</a> 决定这些文件页以什么权限落入页表。</li>
 </ol>
 
-<h3>3. 页面回收</h3>
+<h3 id="3-页面回收">3. 页面回收</h3>
 
 <h4>定义、含义、作用</h4>
 
@@ -6509,7 +6509,7 @@ __tlbi(vale1is, addr);</code></pre>
 
 <hr>
 
-<h3>4. SLAB / SLUB 与 VM 的关系</h3>
+<h3 id="4-slab--slub-与-vm-的关系">4. SLAB / SLUB 与 VM 的关系</h3>
 
 <h4>定义、含义、作用</h4>
 
@@ -6566,7 +6566,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>页表根目录等特定对象在 ARM64 上会落到 <a href="arch/arm64/mm/pgd.c">arch/arm64/mm/pgd.c</a>。</li>
 </ol>
 
-<h3>5. 反向映射 rmap</h3>
+<h3 id="5-反向映射-rmap">5. 反向映射 rmap</h3>
 
 <h4>定义、含义、作用</h4>
 
@@ -6626,7 +6626,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>但最后的拆映射、改权限、TLBI 仍要落到 ARM64 页表和 TLB 路径。</li>
 </ol>
 
-<h3>6. KSM</h3>
+<h3 id="6-ksm">6. KSM</h3>
 
 <h4>定义、含义、作用</h4>
 
@@ -6677,7 +6677,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>它最终仍依赖 ARM64 fault、PTE 权限、TLB flush 完成写保护与拆分。</li>
 </ol>
 
-<h3>7. Huge Page / THP / HugeTLB</h3>
+<h3 id="7-huge-page--thp--hugetlb">7. Huge Page / THP / HugeTLB</h3>
 
 <h4>定义、含义、作用</h4>
 
@@ -6739,7 +6739,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>ARM64 的页粒度、页表级数、contpte、TLBI 语义都会影响大页表现。</li>
 </ol>
 
-<h3>8. 页迁移</h3>
+<h3 id="8-页迁移">8. 页迁移</h3>
 
 <h4>定义、含义、作用</h4>
 
@@ -6801,7 +6801,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>ARM64 huge page migration 相关支持可从 <a href="arch/arm64/mm/hugetlbpage.c">arch/arm64/mm/hugetlbpage.c</a> 继续看。</li>
 </ol>
 
-<h3>9. 内存规整 compaction</h3>
+<h3 id="9-内存规整-compaction">9. 内存规整 compaction</h3>
 
 <h4>定义、含义、作用</h4>
 
@@ -6852,7 +6852,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>但 compaction 成败会直接影响 ARM64 上的大页映射和 TLB 效率。</li>
 </ol>
 
-<h3>10. OOM</h3>
+<h3 id="10-oom">10. OOM</h3>
 
 <h4>定义、含义、作用</h4>
 
@@ -6912,7 +6912,7 @@ __tlbi(vale1is, addr);</code></pre>
 
 <p>三者不是同一层，但它们构成了一条完整供应链。</p>
 
-<h3>1. VM 和 buddy 页面分配器的联系</h3>
+<h3 id="1-vm-和-buddy-页面分配器的联系">1. VM 和 buddy 页面分配器的联系</h3>
 
 <h4>先说分工</h4>
 
@@ -6979,7 +6979,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>slab 向 buddy 申请 backing pages</li>
 </ol>
 
-<h3>2. VM 和内核页表管理的联系</h3>
+<h3 id="2-vm-和内核页表管理的联系">2. VM 和内核页表管理的联系</h3>
 
 <h4>先说分工</h4>
 
@@ -7040,7 +7040,7 @@ __tlbi(vale1is, addr);</code></pre>
 <li>fork 时复制页表结构并设置 CoW 权限</li>
 </ol>
 
-<h3>3. 把三者连成一条完整主线</h3>
+<h3 id="3-把三者连成一条完整主线">3. 把三者连成一条完整主线</h3>
 
 <p>你可以把 VM、buddy、页表管理压缩成下面这条线：</p>
 

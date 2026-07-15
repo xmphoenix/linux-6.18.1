@@ -399,17 +399,17 @@ hr {
 
 <h2>1. 软件架构总览</h2>
 
-<h3>1.1 设计目标</h3>
+<h3 id="11-设计目标" >1.1 设计目标</h3>
 
 <p>Hung task 检测器的核心使命：<strong>发现长时间处于 <code>TASK_UNINTERRUPTIBLE</code>（D 状态）而未被调度的任务，并发出告警或触发 panic</strong>。</p>
 
 <p>在正常的内核运行中，进程进入 D 状态是为了等待不可中断的 I/O 操作（如磁盘读写），通常在毫秒级别就会返回。当一个进程在 D 状态停留超过 120 秒（默认值），几乎可以确定内核存在 bug——可能是死锁、驱动异常或资源泄漏。</p>
 
-<h3>1.2 整体架构图</h3>
+<h3 id="12-整体架构图" >1.2 整体架构图</h3>
 
 <p><img src="image/hung_task_architecture.svg" alt="Hung Task 软件架构总览"></p>
 
-<h3>1.3 核心源文件</h3>
+<h3 id="13-核心源文件" >1.3 核心源文件</h3>
 
 <table>
 <thead><tr>
@@ -435,7 +435,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>1.4 Kconfig 编译选项</h3>
+<h3 id="14-kconfig-编译选项" >1.4 Kconfig 编译选项</h3>
 
 <pre><code class="language-kconfig">CONFIG_DETECT_HUNG_TASK        # 主开关，依赖 DEBUG_KERNEL
 CONFIG_DEFAULT_HUNG_TASK_TIMEOUT  # 默认超时（秒），默认 120

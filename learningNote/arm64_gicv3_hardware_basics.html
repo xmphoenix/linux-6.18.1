@@ -1361,7 +1361,7 @@ CPU Interface 负责最后交付给 CPU</code></pre>
 
 <p>这几个名字如果只背英文缩写，学习时很容易没有画面。更好的方式是把它们和 Linux/ARM64 里真实会遇到的场景绑定起来。</p>
 
-<h3>SGI 的典型例子</h3>
+<h3 id="sgi-的典型例子" >SGI 的典型例子</h3>
 
 <p>SGI 是软件主动发给别的 CPU 的中断，本质上是核间通信工具，不是外设自己拉起来的硬件线。</p>
 
@@ -1381,7 +1381,7 @@ CPU Interface 负责最后交付给 CPU</code></pre>
 
 <p>所以 SGI 的关键词是：<code>软件生成</code>、<code>跨 CPU 通知</code>、<code>IPI</code>。</p>
 
-<h3>PPI 的典型例子</h3>
+<h3 id="ppi-的典型例子" >PPI 的典型例子</h3>
 
 <p>PPI 是每个 CPU 私有的外设中断。它不是 CPU 自己软件发出来的，而是某个“每核独有”的硬件源对本核发中断。</p>
 
@@ -1401,7 +1401,7 @@ CPU Interface 负责最后交付给 CPU</code></pre>
 
 <p>所以 PPI 的关键词是：<code>每 CPU 私有</code>、<code>硬件源触发</code>、<code>常见于 timer/PMU</code>。</p>
 
-<h3>EPPI 的典型例子</h3>
+<h3 id="eppi-的典型例子" >EPPI 的典型例子</h3>
 
 <p>EPPI 是 Extended PPI，本质上还是“每 CPU 私有中断”，只是 PPI 原本 16 个编号位不够用了，于是架构又扩了一段新的 per-CPU interrupt 空间。</p>
 
@@ -1428,7 +1428,7 @@ CPU Interface 负责最后交付给 CPU</code></pre>
 
 <p>这也是为什么 Linux 在 <code>gic_irq_in_rdist()</code> 里把 <code>SGI_RANGE</code>、<code>PPI_RANGE</code>、<code>EPPI_RANGE</code> 一起归到 Redistributor。</p>
 
-<h3>LPI 的典型例子</h3>
+<h3 id="lpi-的典型例子" >LPI 的典型例子</h3>
 
 <p>LPI 是现代 ARM64 平台里最值得重视的一类，因为它通常和 PCIe 设备的 MSI/MSI-X 绑定。</p>
 
@@ -1456,7 +1456,7 @@ ITS 把这条消息翻译成中断，再交给 GIC</code></pre>
 
 <p>所以 LPI 的关键词是：<code>MSI/MSI-X</code>、<code>ITS 翻译</code>、<code>大规模消息中断</code>。</p>
 
-<h3>一张最实用的对照表</h3>
+<h3 id="一张最实用的对照表" >一张最实用的对照表</h3>
 
 <table>
 <thead><tr>
@@ -1726,7 +1726,7 @@ CPU 握手类:
 
 <h2>4.0.1.1 名字里的数字和后缀是什么意思</h2>
 
-<h3>末尾的 <code>EL1</code></h3>
+<h3 id="末尾的-el1" >末尾的 <code>EL1</code></h3>
 
 <p>这个最容易理解，它表示这个 system register 属于哪个异常级。</p>
 
@@ -1742,7 +1742,7 @@ CPU 握手类:
 最后的 EL1 不是中断号的一部分
 而是在说“这个寄存器是 EL1 访问的 CPU interface 寄存器”</code></pre>
 
-<h3>中间的 <code>1</code></h3>
+<h3 id="中间的-1" >中间的 <code>1</code></h3>
 
 <p>像 <code>IAR1</code>、<code>EOIR1</code>、<code>IGRPEN1</code> 里的这个 <code>1</code>，通常是和 Group 1 中断接口相关。</p>
 
@@ -1762,7 +1762,7 @@ CPU 握手类:
 
 <p>这就能解释为什么 Linux 异常入口路径里读的是 <code>ICC_IAR1_EL1</code>，而不是你随便猜的别的寄存器。</p>
 
-<h3>末尾的 <code>nE</code></h3>
+<h3 id="末尾的-ne" >末尾的 <code>nE</code></h3>
 
 <p>这类后缀出现在 Distributor 的扩展寄存器里，比如：</p>
 
@@ -1795,7 +1795,7 @@ CPU 握手类:
 
 <p>只讲表格不够，下面直接做几次“现场拆词”，这是最有效的训练方式。</p>
 
-<h3>例子 1: <code>GICD_ISENABLER</code></h3>
+<h3 id="例子-1-gicd_isenabler" >例子 1: <code>GICD_ISENABLER</code></h3>
 
 <p>拆法：</p>
 
@@ -1814,7 +1814,7 @@ ENABLER    -&gt; Enable Register</code></pre>
 <li>Linux 驱动为共享外设中断做 enable。</li>
 </ol>
 
-<h3>例子 2: <code>GICD_IROUTER</code></h3>
+<h3 id="例子-2-gicd_irouter" >例子 2: <code>GICD_IROUTER</code></h3>
 
 <p>拆法：</p>
 
@@ -1832,7 +1832,7 @@ IROUTER -&gt; Interrupt Router</code></pre>
 <li>它一定和 SPI/ESPI 这类共享中断绑核有关。</li>
 </ol>
 
-<h3>例子 3: <code>GICR_WAKER</code></h3>
+<h3 id="例子-3-gicr_waker" >例子 3: <code>GICR_WAKER</code></h3>
 
 <p>拆法：</p>
 
@@ -1851,7 +1851,7 @@ WAKER  -&gt; Wake control</code></pre>
 <li>Redistributor 是否真正醒了。</li>
 </ol>
 
-<h3>例子 4: <code>ICC_IAR1_EL1</code></h3>
+<h3 id="例子-4-icc_iar1_el1" >例子 4: <code>ICC_IAR1_EL1</code></h3>
 
 <p>拆法：</p>
 
@@ -1871,7 +1871,7 @@ EL1   -&gt; EL1 访问</code></pre>
 <li>这是“我现在到底在处理谁”的入口寄存器。</li>
 </ol>
 
-<h3>例子 5: <code>ICC_EOIR1_EL1</code></h3>
+<h3 id="例子-5-icc_eoir1_el1" >例子 5: <code>ICC_EOIR1_EL1</code></h3>
 
 <p>拆法：</p>
 
@@ -1895,7 +1895,7 @@ EL1    -&gt; EL1 访问</code></pre>
 
 <p>这就是为什么 Linux 里 <code>ICC_EOIR1_EL1</code> 后面还会跟着 <code>ICC_DIR_EL1</code>。</p>
 
-<h3>例子 6: <code>GICR_PROPBASER</code></h3>
+<h3 id="例子-6-gicr_propbaser" >例子 6: <code>GICR_PROPBASER</code></h3>
 
 <p>拆法：</p>
 
@@ -1918,7 +1918,7 @@ BASER      -&gt; Base Register</code></pre>
 
 <p>如果只按单个寄存器背，很容易过几天就忘。更稳的方法是按“场景”记一组寄存器。</p>
 
-<h3>场景一：打开一条共享中断</h3>
+<h3 id="场景一打开一条共享中断" >场景一：打开一条共享中断</h3>
 
 <p>你脑子里应该联想到这一组：</p>
 
@@ -1938,7 +1938,7 @@ BASER      -&gt; Base Register</code></pre>
 <li>给它设目标 CPU。</li>
 </ol>
 
-<h3>场景二：CPU 进入中断处理</h3>
+<h3 id="场景二cpu-进入中断处理" >场景二：CPU 进入中断处理</h3>
 
 <p>你脑子里应该联想到这一组：</p>
 
@@ -1956,7 +1956,7 @@ BASER      -&gt; Base Register</code></pre>
 <li>最后彻底失活。</li>
 </ol>
 
-<h3>场景三：LPI/MSI 初始化</h3>
+<h3 id="场景三lpimsi-初始化" >场景三：LPI/MSI 初始化</h3>
 
 <p>你脑子里应该联想到这一组：</p>
 
@@ -1974,7 +1974,7 @@ BASER      -&gt; Base Register</code></pre>
 <li>ITS 如何把 MSI 翻译成 LPI。</li>
 </ol>
 
-<h3>场景四：本地 Redistributor 上下电</h3>
+<h3 id="场景四本地-redistributor-上下电" >场景四：本地 Redistributor 上下电</h3>
 
 <p>你脑子里应该联想到：</p>
 
@@ -2114,7 +2114,7 @@ BASER      -&gt; Base Register</code></pre>
 
 <h2>4.0.3 最容易背混的几个寄存器，怎么区分</h2>
 
-<h3><code>ISENABLER</code> 和 <code>ICENABLER</code></h3>
+<h3 id="isenabler-和-icenabler" ><code>ISENABLER</code> 和 <code>ICENABLER</code></h3>
 
 <p>这两个只差一个字母，但其实非常规则：</p>
 
@@ -2128,21 +2128,21 @@ BASER      -&gt; Base Register</code></pre>
 <pre><code class="language-text">ISENABLER = set enable = 打开
 ICENABLER = clear enable = 关闭</code></pre>
 
-<h3><code>ISPENDR</code> 和 <code>ICPENDR</code></h3>
+<h3 id="ispendr-和-icpendr" ><code>ISPENDR</code> 和 <code>ICPENDR</code></h3>
 
 <p>同样的规律：</p>
 
 <pre><code class="language-text">ISPENDR = set pending = 置 pending
 ICPENDR = clear pending = 清 pending</code></pre>
 
-<h3><code>ISACTIVER</code> 和 <code>ICACTIVER</code></h3>
+<h3 id="isactiver-和-icactiver" ><code>ISACTIVER</code> 和 <code>ICACTIVER</code></h3>
 
 <p>还是同一套规律：</p>
 
 <pre><code class="language-text">ISACTIVER = set active
 ICACTIVER = clear active</code></pre>
 
-<h3><code>IAR</code>、<code>EOIR</code>、<code>DIR</code></h3>
+<h3 id="iareoirdir" ><code>IAR</code>、<code>EOIR</code>、<code>DIR</code></h3>
 
 <p>这三个是 CPU interface 最核心的一组，最容易出现在异常入口和尾部路径上。</p>
 
@@ -2154,7 +2154,7 @@ DIR  = 我再把它彻底失活</code></pre>
 
 <p>如果是 EOI mode 1，这个顺序尤其重要。</p>
 
-<h3><code>PROPBASER</code> 和 <code>PENDBASER</code></h3>
+<h3 id="propbaser-和-pendbaser" ><code>PROPBASER</code> 和 <code>PENDBASER</code></h3>
 
 <p>它们通常在 ITS/LPI 学习里第一次把人看晕。其实只要抓住关键词就行：</p>
 
@@ -2450,19 +2450,19 @@ RPR = 现场看板，告诉你现在谁在台上运行</code></pre>
 
 <h2>8.2.6 容易混淆的点</h2>
 
-<h3><code>ICC_PMR_EL1</code> 不是 enable 位</h3>
+<h3 id="icc_pmr_el1-不是-enable-位" ><code>ICC_PMR_EL1</code> 不是 enable 位</h3>
 
 <p>它不会直接把某条中断打开或关闭。打开/关闭中断更多是 <code>GICD_ISENABLER</code>、<code>GICD_ICENABLER</code>、<code>GICR_<em>ENABLER</em></code> 这一类寄存器的职责。</p>
 
 <p><code>PMR</code> 管的是“当前 CPU 是否愿意接收某个优先级范围”。</p>
 
-<h3><code>ICC_PMR_EL1</code> 不是在改中断本身的优先级</h3>
+<h3 id="icc_pmr_el1-不是在改中断本身的优先级" ><code>ICC_PMR_EL1</code> 不是在改中断本身的优先级</h3>
 
 <p>中断本身的优先级通常在 <code>GICD_IPRIORITYR</code> 或者对应的 Redistributor 优先级寄存器中配置。</p>
 
 <p><code>PMR</code> 改的是 CPU 当前的准入门槛，不是中断对象自己的属性。</p>
 
-<h3><code>ICC_PMR_EL1</code> 和 <code>DAIF.IF</code> 不是一回事</h3>
+<h3 id="icc_pmr_el1-和-daifif-不是一回事" ><code>ICC_PMR_EL1</code> 和 <code>DAIF.IF</code> 不是一回事</h3>
 
 <p><code>DAIF.IF</code> 更像 CPU 异常入口层面的 IRQ mask。</p>
 
@@ -2484,7 +2484,7 @@ RPR = 现场看板，告诉你现在谁在台上运行</code></pre>
 
 <p>这里最关键的点有三个。</p>
 
-<h3>第一，<code>gic_handle_irq()</code> 不是一上来就只管读 IAR</h3>
+<h3 id="第一gic_handle_irq-不是一上来就只管读-iar" >第一，<code>gic_handle_irq()</code> 不是一上来就只管读 IAR</h3>
 
 <p>在 <code>drivers/irqchip/irq-gic-v3.c</code> 里，<code>gic_handle_irq()</code> 会先判断当前是不是从 <code>IRQs disabled</code> 的上下文进来的：</p>
 
@@ -2495,7 +2495,7 @@ RPR = 现场看板，告诉你现在谁在台上运行</code></pre>
 
 <p>这一步和 <code>PMR</code> 有直接关系，因为从不同上下文进来，内核要不要临时重新调整优先级门槛，处理方式是不一样的。</p>
 
-<h3>第二，<code>RPR</code> 被用来判断“当前这条是不是 pseudo-NMI 优先级”</h3>
+<h3 id="第二rpr-被用来判断当前这条是不是-pseudo-nmi-优先级" >第二，<code>RPR</code> 被用来判断“当前这条是不是 pseudo-NMI 优先级”</h3>
 
 <p>在 <code>__gic_handle_irq_from_irqson()</code> 里，代码顺序很有代表性：</p>
 
@@ -2511,7 +2511,7 @@ RPR = 现场看板，告诉你现在谁在台上运行</code></pre>
 
 <p>也就是说，Linux 不是单靠“某个中断号范围”去猜它是不是 pseudo-NMI，而是直接从 CPU interface 当前优先级状态来判断。</p>
 
-<h3>第三，<code>PMR</code> 在 IRQ 处理中被动态调整</h3>
+<h3 id="第三pmr-在-irq-处理中被动态调整" >第三，<code>PMR</code> 在 IRQ 处理中被动态调整</h3>
 
 <p>在 <code>__gic_handle_irq_from_irqson()</code> 里，如果启用了 priority masking，驱动会：</p>
 
@@ -2699,11 +2699,11 @@ Group 0 = 更接近 secure side / 特权控制语义，普通世界 Linux 通常
 
 <h2>8.3.8 容易混淆的点</h2>
 
-<h3>Group 0 / Group 1 不是“高优先级组 / 低优先级组”</h3>
+<h3 id="group-0--group-1-不是高优先级组--低优先级组" >Group 0 / Group 1 不是“高优先级组 / 低优先级组”</h3>
 
 <p>它们不是简单的高低优先级划分，真正的优先级仍然由中断优先级字段决定。</p>
 
-<h3>Group 0 / Group 1 也不是“外设中断 / 软件中断”的分类</h3>
+<h3 id="group-0--group-1-也不是外设中断--软件中断的分类" >Group 0 / Group 1 也不是“外设中断 / 软件中断”的分类</h3>
 
 <p>它们和 SGI/PPI/SPI/LPI 那条分类轴不是一回事。</p>
 
@@ -2716,7 +2716,7 @@ Group 0 = 更接近 secure side / 特权控制语义，普通世界 Linux 通常
 
 <p>这两条轴是交叉的，不要混成一条。</p>
 
-<h3>普通世界 Linux 看到的世界不一定等于硬件的完整世界</h3>
+<h3 id="普通世界-linux-看到的世界不一定等于硬件的完整世界" >普通世界 Linux 看到的世界不一定等于硬件的完整世界</h3>
 
 <p>Linux 读到和写到的 <code>ICC_PMR_EL1</code> 优先级值，在某些安全配置下可能是经过 non-secure 视图转换后的值。</p>
 
@@ -2726,7 +2726,7 @@ Group 0 = 更接近 secure side / 特权控制语义，普通世界 Linux 通常
 
 <p>如果你想真正建立“Group 1 是 Linux 日常 IRQ 主通道”的感觉，最好把初始化路径和运行时路径连在一起看。</p>
 
-<h3>初始化阶段</h3>
+<h3 id="初始化阶段" >初始化阶段</h3>
 
 <p>在 <code>drivers/irqchip/irq-gic-v3.c</code> 的 CPU interface 初始化路径里，可以看到几件很关键的事情：</p>
 
@@ -2744,7 +2744,7 @@ Group 0 = 更接近 secure side / 特权控制语义，普通世界 Linux 通常
 
 <p>所以这不是一个抽象概念，而是 Linux 在 CPU 初始化阶段明确做出的动作。</p>
 
-<h3>运行时阶段</h3>
+<h3 id="运行时阶段" >运行时阶段</h3>
 
 <p>运行时你最常看到的 Group 1 证据就是：</p>
 
@@ -3043,11 +3043,11 @@ ITS:
 
 <h2>17.1 场景一：SGI，典型是 reschedule IPI</h2>
 
-<h3>场景描述</h3>
+<h3 id="场景描述" >场景描述</h3>
 
 <p>CPU0 发现 CPU3 需要立即重新调度，于是给 CPU3 发一个 reschedule IPI。</p>
 
-<h3>硬件到软件的完整流程</h3>
+<h3 id="硬件到软件的完整流程" >硬件到软件的完整流程</h3>
 
 <pre><code class="language-text">CPU0 想唤醒或打断 CPU3
 -&gt; Linux IPI 框架调用 GICv3 的 SGI 发送路径
@@ -3066,7 +3066,7 @@ ITS:
 -&gt; 写 ICC_EOIR1_EL1 / ICC_DIR_EL1 收尾
 -&gt; 返回原上下文</code></pre>
 
-<h3>这里最该抓住什么</h3>
+<h3 id="这里最该抓住什么" >这里最该抓住什么</h3>
 
 <ol>
 <li>SGI 是 <strong>CPU 写 <code>ICC_SGI1R_EL1</code> 主动制造出来</strong> 的。</li>
@@ -3074,7 +3074,7 @@ ITS:
 <li>响应路径进入 Linux 后，和别的 Group 1 IRQ 一样，仍然通过 <code>gic_handle_irq()</code> 主线处理。</li>
 </ol>
 
-<h3>再换个贴近内核的例子</h3>
+<h3 id="再换个贴近内核的例子" >再换个贴近内核的例子</h3>
 
 <p>TLB shootdown 也可以按同一条路径理解：</p>
 
@@ -3086,11 +3086,11 @@ ITS:
 
 <h2>17.2 场景二：PPI，典型是 architected timer 中断</h2>
 
-<h3>场景描述</h3>
+<h3 id="场景描述-1" >场景描述</h3>
 
 <p>CPU1 上的本地定时器到期，需要让当前 CPU 进入时钟中断处理。</p>
 
-<h3>完整流程</h3>
+<h3 id="完整流程" >完整流程</h3>
 
 <pre><code class="language-text">CPU1 的本地 timer 到期
 -&gt; timer 硬件把对应 PPI 拉成 pending
@@ -3106,7 +3106,7 @@ ITS:
 -&gt; ICC_EOIR1_EL1 / ICC_DIR_EL1 收尾
 -&gt; 返回被打断的上下文</code></pre>
 
-<h3>这里最该抓住什么</h3>
+<h3 id="这里最该抓住什么-1" >这里最该抓住什么</h3>
 
 <ol>
 <li>PPI 不是别的 CPU 发给你的，它是 <strong>本 CPU 私有硬件源</strong> 触发的。</li>
@@ -3114,7 +3114,7 @@ ITS:
 <li>一旦进入 Linux，响应路径和 SGI/SPI 在主干上几乎一样，区别只在“中断是如何产生的”。</li>
 </ol>
 
-<h3>再给一个 PPI 例子</h3>
+<h3 id="再给一个-ppi-例子" >再给一个 PPI 例子</h3>
 
 <p>PMU overflow 也能按同一模型理解：</p>
 
@@ -3125,11 +3125,11 @@ ITS:
 
 <h2>17.3 场景三：SPI，典型是网卡共享中断</h2>
 
-<h3>场景描述</h3>
+<h3 id="场景描述-2" >场景描述</h3>
 
 <p>网卡收到一个包，需要打中断通知某个 CPU 收包。</p>
 
-<h3>完整流程</h3>
+<h3 id="完整流程-1" >完整流程</h3>
 
 <pre><code class="language-text">网卡设备拉起一条共享中断线
 -&gt; GIC Distributor 看到对应 SPI pending
@@ -3146,7 +3146,7 @@ ITS:
 -&gt; flow handler 最后调用 EOI/Deactivate
 -&gt; 返回原上下文</code></pre>
 
-<h3>这里最该抓住什么</h3>
+<h3 id="这里最该抓住什么-2" >这里最该抓住什么</h3>
 
 <ol>
 <li>SPI 是 <strong>全局共享中断</strong>，源头语义主要在 <strong>Distributor</strong>。</li>
@@ -3154,7 +3154,7 @@ ITS:
 <li>真正进 Linux 之后，它还是沿着同一条 <code>gic_handle_irq()</code> 主线往下走。</li>
 </ol>
 
-<h3>再给一个更具体的例子</h3>
+<h3 id="再给一个更具体的例子" >再给一个更具体的例子</h3>
 
 <p>如果网卡 IRQ 被绑到 CPU5，可以这样理解：</p>
 
@@ -3164,11 +3164,11 @@ ITS:
 
 <h2>17.4 场景四：EPPI，典型是扩展本地错误上报中断</h2>
 
-<h3>场景描述</h3>
+<h3 id="场景描述-3" >场景描述</h3>
 
 <p>某个 SoC 把额外的每核本地错误上报源放在 EPPI 空间里，比如扩展 RAS/trace/watchdog 本地中断。</p>
 
-<h3>完整流程</h3>
+<h3 id="完整流程-2" >完整流程</h3>
 
 <pre><code class="language-text">CPU0 本地扩展硬件源触发
 -&gt; 对应 EPPI 在 CPU0 的 Redistributor 侧变成 pending
@@ -3180,7 +3180,7 @@ ITS:
 -&gt; 对应的 per-CPU handler 运行
 -&gt; ICC_EOIR1_EL1 / ICC_DIR_EL1 收尾</code></pre>
 
-<h3>核心理解</h3>
+<h3 id="核心理解" >核心理解</h3>
 
 <ol>
 <li>EPPI 在“响应路径”上和 PPI 几乎一样。</li>
@@ -3190,11 +3190,11 @@ ITS:
 
 <h2>17.5 场景五：LPI，典型是 NVMe 的 MSI-X</h2>
 
-<h3>场景描述</h3>
+<h3 id="场景描述-4" >场景描述</h3>
 
 <p>NVMe 控制器某个提交队列完成了 IO，通过 MSI-X 通知 Linux。</p>
 
-<h3>完整流程</h3>
+<h3 id="完整流程-3" >完整流程</h3>
 
 <pre><code class="language-text">NVMe 设备发出 MSI/MSI-X 写事务
 -&gt; ITS 捕获这个消息
@@ -3209,7 +3209,7 @@ ITS:
 -&gt; block 层完成队列处理
 -&gt; EOIR / DIR 收尾</code></pre>
 
-<h3>这里最该抓住什么</h3>
+<h3 id="这里最该抓住什么-3" >这里最该抓住什么</h3>
 
 <ol>
 <li>LPI 的源头不是“设备拉线”，而是 <strong>设备发消息</strong>。</li>
@@ -3297,7 +3297,7 @@ ITS:
 
 <h2>18.2 每一步的最小含义</h2>
 
-<h3>第一步：映射 GICD / GICR</h3>
+<h3 id="第一步映射-gicd--gicr" >第一步：映射 GICD / GICR</h3>
 
 <p>没有这一步，你连寄存器都访问不了。最少需要：</p>
 
@@ -3306,7 +3306,7 @@ ITS:
 <li>一个或多个 Redistributor region 基址</li>
 </ol>
 
-<h3>第二步：验证 GIC 版本</h3>
+<h3 id="第二步验证-gic-版本" >第二步：验证 GIC 版本</h3>
 
 <p>至少要确认：</p>
 
@@ -3315,7 +3315,7 @@ ITS:
 <li>版本是 GICv3/GICv4 兼容路径</li>
 </ol>
 
-<h3>第三步：建立 Linux 中断命名空间</h3>
+<h3 id="第三步建立-linux-中断命名空间" >第三步：建立 Linux 中断命名空间</h3>
 
 <p>最核心的是：</p>
 
@@ -3324,13 +3324,13 @@ ITS:
 <li>后续才能把 GIC hwirq 映射成 Linux virq</li>
 </ol>
 
-<h3>第四步：开启 system register interface</h3>
+<h3 id="第四步开启-system-register-interface" >第四步：开启 system register interface</h3>
 
 <p>也就是让 CPU 能通过 <code>ICC_*</code> system registers 和 GIC 交互。</p>
 
 <p>如果这一步没做好，后面的 <code>ICC_IAR1_EL1</code>、<code>ICC_EOIR1_EL1</code> 都没法正常用。</p>
 
-<h3>第五步：准备优先级和 PMR</h3>
+<h3 id="第五步准备优先级和-pmr">第五步：准备优先级和 PMR</h3>
 
 <p>至少要完成：</p>
 
@@ -3340,7 +3340,7 @@ ITS:
 <li>确保 CPU 至少能看到正常 Group 1 IRQ</li>
 </ol>
 
-<h3>第六步：初始化 Distributor</h3>
+<h3 id="第六步初始化-distributor">第六步：初始化 Distributor</h3>
 
 <p>至少要完成：</p>
 
@@ -3353,7 +3353,7 @@ ITS:
 <li>给 SPI 设一个可用的默认路由</li>
 </ol>
 
-<h3>第七步：初始化当前 CPU 的 Redistributor</h3>
+<h3 id="第七步初始化当前-cpu-的-redistributor">第七步：初始化当前 CPU 的 Redistributor</h3>
 
 <p>至少要完成：</p>
 
@@ -3366,7 +3366,7 @@ ITS:
 <li>打开 <code>ICC_IGRPEN1_EL1</code></li>
 </ol>
 
-<h3>第八步：注册异常入口处理函数</h3>
+<h3 id="第八步注册异常入口处理函数">第八步：注册异常入口处理函数</h3>
 
 <p>也就是：</p>
 
@@ -3374,7 +3374,7 @@ ITS:
 
 <p>没有这一步，即使 GIC 硬件已经能送中断，ARM64 异常入口也不知道该把 IRQ 交给谁处理。</p>
 
-<h3>第九步：ITS/LPI 可选步骤</h3>
+<h3 id="第九步itslpi-可选步骤">第九步：ITS/LPI 可选步骤</h3>
 
 <p>如果平台支持 PCIe MSI/MSI-X 并且 GIC 支持 LPI，那么最少还需要：</p>
 
@@ -3439,7 +3439,7 @@ DT/ACPI 发现 GICv3
 <li>但 <code>handle_arch_irq</code> 在 GIC 驱动初始化前还只是默认占位 handler</li>
 </ol>
 
-<h3>19.0.1 第一步：boot CPU 和 secondary CPU 先把 <code>VBAR_EL1</code> 指向 <code>vectors</code></h3>
+<h3 id="1901-第一步boot-cpu-和-secondary-cpu-先把-vbar_el1-指向-vectors">19.0.1 第一步：boot CPU 和 secondary CPU 先把 <code>VBAR_EL1</code> 指向 <code>vectors</code></h3>
 
 <p>这一步发生在 GIC 驱动初始化之前，而且是每个 CPU 各自完成的。</p>
 
@@ -5229,7 +5229,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 -&gt; 开始执行 entry.S 里那个槽位的代码
 -&gt; Linux 再继续走 kernel_ventry / entry_handler / entry-common.c</code></pre>
 
-<h3>19.0.2 第二步：<code>entry.S</code> 里 IRQ 槽位早就定义好了</h3>
+<h3 id="1902-第二步entrys-里-irq-槽位早就定义好了">19.0.2 第二步：<code>entry.S</code> 里 IRQ 槽位早就定义好了</h3>
 
 <p><code>VBAR_EL1</code> 指到 <code>vectors</code> 之后，并不是直接跳进 <code>gic_handle_irq()</code>，而是先跳到 <code>entry.S</code> 里的异常向量表。</p>
 
@@ -5251,7 +5251,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 -&gt; kernel_entry 建 pt_regs
 -&gt; BL 对应 C handler</code></pre>
 
-<h3>19.0.3 第三步：<code>entry-common.c</code> 已经定义好了 IRQ 的 C 入口</h3>
+<h3 id="1903-第三步entry-commonc-已经定义好了-irq-的-c-入口">19.0.3 第三步：<code>entry-common.c</code> 已经定义好了 IRQ 的 C 入口</h3>
 
 <p>GIC 驱动初始化前，<code>entry-common.c</code> 这层也已经就位。</p>
 
@@ -5273,7 +5273,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p><strong>到了 <code>entry-common.c</code> 这一层，ARM64 已经不再关心“底下是不是 GICv3、GICv2 还是别的 irqchip”，它只认一个架构根入口函数指针：<code>handle_arch_irq</code>。</strong></p>
 
-<h3>19.0.4 第四步：GICv3 初始化前，<code>handle_arch_irq</code> 还只是默认占位符</h3>
+<h3 id="1904-第四步gicv3-初始化前handle_arch_irq-还只是默认占位符">19.0.4 第四步：GICv3 初始化前，<code>handle_arch_irq</code> 还只是默认占位符</h3>
 
 <p>在 <code>arch/arm64/kernel/irq.c</code> 里，当前架构根 IRQ 入口最初是：</p>
 
@@ -5298,7 +5298,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p><strong>把 ARM64 早已存在的 IRQ 根入口，正式接到 GICv3 驱动的运行时取号/EOI/分发逻辑上。</strong></p>
 
-<h3>19.0.5 把这段前置条件压缩成一条最值得背的链</h3>
+<h3 id="1905-把这段前置条件压缩成一条最值得背的链" >19.0.5 把这段前置条件压缩成一条最值得背的链</h3>
 
 <pre><code class="language-text">head.S
 -&gt; __primary_switched() / __secondary_switched()
@@ -5364,7 +5364,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p>这是当前版本最核心的主函数。</p>
 
-<h3>第一步：建立全局 <code>gic_data</code></h3>
+<h3 id="第一步建立全局-gic_data">第一步：建立全局 <code>gic_data</code></h3>
 
 <p>它首先保存：</p>
 
@@ -5377,7 +5377,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p>这一步相当于把“GIC 硬件描述”灌进全局驱动状态。</p>
 
-<h3>第二步：读 <code>GICD_TYPER</code>，识别能力</h3>
+<h3 id="第二步读-gicd_typer识别能力">第二步：读 <code>GICD_TYPER</code>，识别能力</h3>
 
 <p>它会读取 <code>GICD_TYPER</code>，得到：</p>
 
@@ -5397,7 +5397,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p>这一步直接决定后面驱动会不会走扩展中断和 ITS/LPI 路径。</p>
 
-<h3>第三步：处理 quirk 和 <code>GICD_TYPER2</code></h3>
+<h3 id="第三步处理-quirk-和-gicd_typer2">第三步：处理 quirk 和 <code>GICD_TYPER2</code></h3>
 
 <p>驱动会：</p>
 
@@ -5409,7 +5409,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p>这说明初始化不是“纯规范路径”，而是已经考虑了具体 SoC/厂商实现差异。</p>
 
-<h3>第四步：创建 <code>irq_domain</code></h3>
+<h3 id="第四步创建-irq_domain">第四步：创建 <code>irq_domain</code></h3>
 
 <p>这里做的是：</p>
 
@@ -5421,13 +5421,13 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p>这一步很关键，因为它建立了 GIC hwirq 到 Linux virq 的抽象入口。</p>
 
-<h3>第五步：初始化 MBI 能力</h3>
+<h3 id="第五步初始化-mbi-能力">第五步：初始化 MBI 能力</h3>
 
 <p>如果 <code>GICD_TYPER</code> 表示支持 MBI，驱动会调用 <code>mbi_init()</code>。</p>
 
 <p>这不是最常见主线，但说明当前驱动在主初始化阶段已经把 message-based interrupt 能力考虑进去了。</p>
 
-<h3>第六步：注册异常入口处理函数</h3>
+<h3 id="第六步注册异常入口处理函数">第六步：注册异常入口处理函数</h3>
 
 <p>这一步就是：</p>
 
@@ -5594,7 +5594,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p>如果 <code>gic_dist_supports_lpis()</code> 返回真，当前版本会继续进入 ITS/LPI 初始化。</p>
 
-<h3><code>its_init()</code> 主要做什么</h3>
+<h3 id="its_init-主要做什么" ><code>its_init()</code> 主要做什么</h3>
 
 <ol>
 <li>创建 <code>itt_pool</code></li>
@@ -5607,11 +5607,11 @@ UNHANDLED(el1t, 64, error)</code></pre>
 <li>注册 ITS syscore ops</li>
 </ol>
 
-<h3><code>its_cpu_init()</code> 的位置含义</h3>
+<h3 id="its_cpu_init-的位置含义" ><code>its_cpu_init()</code> 的位置含义</h3>
 
 <p>它说明除了全局 ITS 初始化外，每 CPU 侧还要做配套设置，特别是 LPI 最终要落到某个 Redistributor 这一点。</p>
 
-<h3><code>its_lpi_memreserve_init()</code> 的位置含义</h3>
+<h3 id="its_lpi_memreserve_init-的位置含义" ><code>its_lpi_memreserve_init()</code> 的位置含义</h3>
 
 <p>它说明当前版本还会把 LPI 相关内存保留和后续管理接上。</p>
 
@@ -5676,7 +5676,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
     N --&gt; T
     T --&gt; U[irq_desc / flow handler / driver ISR]</code></pre>
 
-<h3>19.15.1 <code>VBAR_EL1 = vectors</code>：保证“CPU 能接住 IRQ”</h3>
+<h3 id="19151-vbar_el1--vectors保证cpu-能接住-irq">19.15.1 <code>VBAR_EL1 = vectors</code>：保证“CPU 能接住 IRQ”</h3>
 
 <p>这一步不是 GIC 驱动做的，但它是所有后续初始化能发挥作用的绝对前提。</p>
 
@@ -5696,7 +5696,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 -&gt; 通过 VBAR_EL1 进入 vectors
 -&gt; 走 entry.S / entry-common.c</code></pre>
 
-<h3>19.15.2 <code>set_handle_irq(gic_handle_irq)</code>：把 ARM64 架构 IRQ 根入口接到 GICv3</h3>
+<h3 id="19152-set_handle_irqgic_handle_irq把-arm64-架构-irq-根入口接到-gicv3">19.15.2 <code>set_handle_irq(gic_handle_irq)</code>：把 ARM64 架构 IRQ 根入口接到 GICv3</h3>
 
 <p>这是第 19 章和第 20 章之间最关键的一根桥。</p>
 
@@ -5720,7 +5720,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 -&gt; handle_arch_irq
 -&gt; gic_handle_irq</code></pre>
 
-<h3>19.15.3 <code>gic_cpu_sys_reg_enable()</code>：让 <code>gic_handle_irq()</code> 能真的访问 <code>ICC_*</code></h3>
+<h3 id="19153-gic_cpu_sys_reg_enable让-gic_handle_irq-能真的访问-icc_">19.15.3 <code>gic_cpu_sys_reg_enable()</code>：让 <code>gic_handle_irq()</code> 能真的访问 <code>ICC_*</code></h3>
 
 <p><code>gic_handle_irq()</code> 不是读 MMIO 的旧式 CPU interface，它依赖当前 CPU 已经能使用 system register 接口。</p>
 
@@ -5741,7 +5741,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 -&gt; 写 ICC_EOIR1_EL1 做 priority drop / EOI
 -&gt; 必要时操作 ICC_PMR_EL1</code></pre>
 
-<h3>19.15.4 <code>gic_prio_init()</code>：决定运行时优先级语义到底怎么解释</h3>
+<h3 id="19154-gic_prio_init决定运行时优先级语义到底怎么解释">19.15.4 <code>gic_prio_init()</code>：决定运行时优先级语义到底怎么解释</h3>
 
 <p>这一初始化动作很容易被忽略，因为它不像 enable register 那样显眼。</p>
 
@@ -5765,7 +5765,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p>所以这一步不是“初始化时看一眼就结束”，而是在之后每次 IRQ/NMI 优先级判断时持续被消费。</p>
 
-<h3>19.15.5 <code>gic_dist_init()</code>：决定全局 SPI 能不能真的送到某个 CPU</h3>
+<h3 id="19155-gic_dist_init决定全局-spi-能不能真的送到某个-cpu">19.15.5 <code>gic_dist_init()</code>：决定全局 SPI 能不能真的送到某个 CPU</h3>
 
 <p>这一步最直接的运行时消费点是：</p>
 
@@ -5781,7 +5781,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p><strong><code>gic_handle_irq()</code> 负责“IRQ 到了之后怎么办”，但 <code>gic_dist_init()</code> 负责“IRQ 能不能先到”。</strong></p>
 
-<h3>19.15.6 <code>gic_cpu_init()</code> / <code>gic_cpu_sys_reg_init()</code>：决定本地 CPU interface 能不能真的取号和开中断</h3>
+<h3 id="19156-gic_cpu_init--gic_cpu_sys_reg_init决定本地-cpu-interface-能不能真的取号和开中断">19.15.6 <code>gic_cpu_init()</code> / <code>gic_cpu_sys_reg_init()</code>：决定本地 CPU interface 能不能真的取号和开中断</h3>
 
 <p>这是每 CPU 本地侧最直接的运行时前提。</p>
 
@@ -5807,7 +5807,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p><strong><code>gic_cpu_init()</code> 负责“让这个 CPU 成为一个可以真正接收和确认 Group1 IRQ 的 CPU”。</strong></p>
 
-<h3>19.15.7 <code>irq_domain_create_tree()</code>：决定 <code>hwirq -> virq</code> 能不能翻译成功</h3>
+<h3 id="19157-irq_domain_create_tree决定-hwirq---virq-能不能翻译成功">19.15.7 <code>irq_domain_create_tree()</code>：决定 <code>hwirq -> virq</code> 能不能翻译成功</h3>
 
 <p>运行时 <code>gic_handle_irq()</code> 不是自己直接去找驱动 ISR，它最终会走：</p>
 
@@ -5826,7 +5826,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p>如果这条 domain 没建好，前面哪怕已经成功从 <code>ICC_IAR1_EL1</code> 取到硬件中断号，后面也只会落到 “Unexpected interrupt” 这一类错误路径。</p>
 
-<h3>19.15.8 ITS/LPI 初始化：决定 LPI 路径是不是只停在“硬件支持”层面</h3>
+<h3 id="19158-itslpi-初始化决定-lpi-路径是不是只停在硬件支持层面">19.15.8 ITS/LPI 初始化：决定 LPI 路径是不是只停在“硬件支持”层面</h3>
 
 <p>如果系统支持 LPI，那么：</p>
 
@@ -5840,7 +5840,7 @@ UNHANDLED(el1t, 64, error)</code></pre>
 
 <p>普通 SPI/PPI 路径不一定立刻消费它们，但一旦进入 MSI/LPI 场景，运行时路径就会直接依赖这些初始化结果。</p>
 
-<h3>19.15.9 最后把“初始化”和“第一次 IRQ”压成一条完整闭环</h3>
+<h3 id="19159-最后把初始化和第一次-irq压成一条完整闭环">19.15.9 最后把“初始化”和“第一次 IRQ”压成一条完整闭环</h3>
 
 <p>建议把下面这条闭环直接背下来：</p>
 
@@ -5869,7 +5869,7 @@ gic_of_init() / gic_acpi_init()
 
 <p>这条闭环一旦打通，你对第 19 章的理解就会从“记住初始化函数顺序”升级成“知道这些初始化究竟是为了哪一次运行时动作服务”。</p>
 
-<h3>19.15.10 最后再给一张“初始化函数 vs 运行时消费点”速查表</h3>
+<h3 id="191510-最后再给一张初始化函数-vs-运行时消费点速查表">19.15.10 最后再给一张“初始化函数 vs 运行时消费点”速查表</h3>
 
 <p>如果你后面要在源码里来回跳，第 19 章最值得配套保存的就是下面这张表。</p>
 
@@ -5946,7 +5946,7 @@ gic_of_init() / gic_acpi_init()
 
 <p><strong>第 19 章左边这些初始化函数，最终都是在第 20 章右边那条运行时路径上被逐个消费掉的。</strong></p>
 
-<h3>19.16 用一个具体 SPI 例子把 <code>DT -> hwirq -> virq -> runtime IRQ</code> 一次走完</h3>
+<h3 id="1916-用一个具体-spi-例子把-dt---hwirq---virq---runtime-irq-一次走完">19.16 用一个具体 SPI 例子把 <code>DT -> hwirq -> virq -> runtime IRQ</code> 一次走完</h3>
 
 <p>如果前面的内容你都能跟上，下一步最值得补的不是再记一堆函数名，而是拿一个具体 SPI 例子把整条链真正走一遍。</p>
 
@@ -7551,7 +7551,7 @@ OF/irqdomain 侧
 
 <p>你把这三个数字分清了，后面再看 <code>irq-gic-v3.c</code>、<code>irqdomain.c</code>、驱动 probe 里的 <code>platform_get_irq()</code>，基本就不会再串线。</p>
 
-<h3>19.17 再给一个完全对称的 PPI 例子：为什么它不走 <code>GICD_IROUTER</code></h3>
+<h3 id="1917-再给一个完全对称的-ppi-例子为什么它不走-gicd_irouter">19.17 再给一个完全对称的 PPI 例子：为什么它不走 <code>GICD_IROUTER</code></h3>
 
 <p>刚才那个 SPI 例子解决的是“共享中断怎么走全链路”。</p>
 
@@ -7781,7 +7781,7 @@ irqdomain
 
 <p>只要你把这个例子和前面的 SPI 例子一对照，后面再看 GICv3，就不太会再把“共享中断路由”和“每 CPU 本地中断”混成一条路径了。</p>
 
-<h3>19.18 最后补第三个对称例子：LPI，为什么它既不像 SPI 也不像 PPI</h3>
+<h3 id="1918-最后补第三个对称例子lpi为什么它既不像-spi-也不像-ppi">19.18 最后补第三个对称例子：LPI，为什么它既不像 SPI 也不像 PPI</h3>
 
 <p>如果只把 SPI 和 PPI 对比清楚，GICv3 的主体已经能看懂一大半；但还有最后一类最现代、也最容易被误解的路径：LPI。</p>
 
@@ -8071,7 +8071,7 @@ irqdomain
 <li>LPI：ITS 翻译 MSI，再落到目标 CPU 的 Redistributor</li>
 </ol>
 
-<h3>19.19 再往源码里压一层：<code>MAPD / MAPC / MAPTI</code> 到底分别把哪三件事钉死</h3>
+<h3 id="1919-再往源码里压一层mapd--mapc--mapti-到底分别把哪三件事钉死">19.19 再往源码里压一层：<code>MAPD / MAPC / MAPTI</code> 到底分别把哪三件事钉死</h3>
 
 <p>前面的 LPI 例子已经把逻辑讲通了，但如果你第一次看 <code>irq-gic-v3-its.c</code>，还是很容易被一堆 ITS 命令名字绕晕。</p>
 
@@ -8257,7 +8257,7 @@ IRQ 激活
 -&gt; generic_handle_domain_irq(...)
 -&gt; 驱动 ISR</code></pre>
 
-<h3>19.20 再补最后一跳：驱动调用 <code>pci_alloc_irq_vectors()</code> 以后，Linux 是怎么走到 ITS domain 的</h3>
+<h3 id="1920-再补最后一跳驱动调用-pci_alloc_irq_vectors-以后linux-是怎么走到-its-domain-的">19.20 再补最后一跳：驱动调用 <code>pci_alloc_irq_vectors()</code> 以后，Linux 是怎么走到 ITS domain 的</h3>
 
 <p>到前面为止，我们已经把 ITS 内部世界讲清了。但很多人第一次真正写驱动时，脑子里会卡在另一个问题上：</p>
 
@@ -8536,7 +8536,7 @@ SYM_CODE_END(vectors)</code></pre>
 
 <p>也就是说，向量表槽位本身不直接保存所有寄存器，它先做一层最小入口处理，然后跳到 <code>el1h_64_irq</code>。</p>
 
-<h3>20.2.1 把 <code>kernel_ventry</code> 宏按“逐行注释”直接翻成白话</h3>
+<h3 id="2021-把-kernel_ventry-宏按逐行注释直接翻成白话">20.2.1 把 <code>kernel_ventry</code> 宏按“逐行注释”直接翻成白话</h3>
 
 <p>前面为了先抓主线，我把 <code>kernel_ventry</code> 压缩成了一个短骨架。现在把原宏按“这一行到底在干什么”直接展开一遍。</p>
 
@@ -8868,11 +8868,11 @@ el1h_64_irq 再保存现场并跳进 C</code></pre>
 
 <p>下面逐句解释。</p>
 
-<h3><code>.align 7</code></h3>
+<h3 id="align-7"><code>.align 7</code></h3>
 
 <p>把这个向量入口按 128 字节对齐。因为 AArch64 异常向量槽位本来就是固定大小，硬件按这个布局来取入口地址。</p>
 
-<h3><code>sub sp, sp, #PT_REGS_SIZE</code></h3>
+<h3 id="sub-sp-sp-pt_regs_size"><code>sub sp, sp, #PT_REGS_SIZE</code></h3>
 
 <p>先在当前栈上给 <code>pt_regs</code> 预留出一整块空间。</p>
 
@@ -8881,33 +8881,33 @@ el1h_64_irq 再保存现场并跳进 C</code></pre>
 <pre><code class="language-text">后面所有被打断现场
 都要往这块 pt_regs 里存</code></pre>
 
-<h3><code>add sp, sp, x0</code></h3>
+<h3 id="add-sp-sp-x0"><code>add sp, sp, x0</code></h3>
 
 <p>临时把 <code>x0</code> 的值加到 <code>sp</code> 上。</p>
 
 <p>这一步不是为了改最终栈，而是配合后两条指令做 <strong>栈溢出检测</strong>，同时尽量不多占 GPR。</p>
 
-<h3><code>sub x0, sp, x0</code></h3>
+<h3 id="sub-x0-sp-x0"><code>sub x0, sp, x0</code></h3>
 
 <p>把刚才变形过的 <code>sp</code> 再减掉原始 <code>x0</code>，结果得到原来的 <code>sp</code> 值，并暂存在 <code>x0</code> 里。</p>
 
 <p>注释里已经说得很直白：这是为了在不额外破坏别的寄存器前提下检查栈范围。</p>
 
-<h3><code>tbnz x0, #THREAD_SHIFT, 0f</code></h3>
+<h3 id="tbnz-x0-thread_shift-0f"><code>tbnz x0, #THREAD_SHIFT, 0f</code></h3>
 
 <p>检查恢复出来的 <code>sp</code> 在 <code>THREAD_SHIFT</code> 对应位上是不是异常置位。</p>
 
 <p>如果这一位不该为 1 却为 1，说明当前栈很可能越界或溢出了，于是跳到 <code>0f</code> 的 overflow 路径。</p>
 
-<h3><code>sub x0, sp, x0</code></h3>
+<h3 id="sub-x0-sp-x0-1"><code>sub x0, sp, x0</code></h3>
 
 <p>如果没有 overflow，那么这一步把最开始的 <code>x0</code> 原值算回来。</p>
 
-<h3><code>sub sp, sp, x0</code></h3>
+<h3 id="sub-sp-sp-x0"><code>sub sp, sp, x0</code></h3>
 
 <p>把刚才为了检测临时扭动过的 <code>sp</code> 恢复回真正应该使用的异常栈顶。</p>
 
-<h3><code>b el1h_64_irq</code></h3>
+<h3 id="b-el1h_64_irq" ><code>b el1h_64_irq</code></h3>
 
 <p>跳到真正的 EL1h 64-bit IRQ 汇编入口。</p>
 
@@ -8925,11 +8925,11 @@ el1h_64_irq 再保存现场并跳进 C</code></pre>
 
 <p>下面继续逐句解释。</p>
 
-<h3><code>kernel_entry 1, 64</code></h3>
+<h3 id="kernel_entry-1-64"><code>kernel_entry 1, 64</code></h3>
 
 <p>这是整个异常保存现场的核心宏。它会把当前被打断现场压成一份完整 <code>pt_regs</code>。</p>
 
-<h3><code>mov x0, sp</code></h3>
+<h3 id="mov-x0-sp"><code>mov x0, sp</code></h3>
 
 <p>把当前 <code>sp</code> 作为第一个参数传给 C 层。</p>
 
@@ -8937,11 +8937,11 @@ el1h_64_irq 再保存现场并跳进 C</code></pre>
 
 <pre><code class="language-text">把 pt_regs *regs 传给 el1h_64_irq_handler(regs)</code></pre>
 
-<h3><code>bl el1h_64_irq_handler</code></h3>
+<h3 id="bl-el1h_64_irq_handler" ><code>bl el1h_64_irq_handler</code></h3>
 
 <p>正式进入 C 层的 EL1h IRQ handler。</p>
 
-<h3><code>b ret_to_kernel</code></h3>
+<h3 id="b-ret_to_kernel" ><code>b ret_to_kernel</code></h3>
 
 <p>C 层处理返回后，进入异常返回路径，最终执行 <code>kernel_exit 1</code> 再 <code>eret</code> 回到被打断的内核上下文。</p>
 
@@ -9044,19 +9044,19 @@ el1h_64_irq 再保存现场并跳进 C</code></pre>
 
 <pre><code class="language-text">把通用寄存器现场整块搬进 pt_regs</code></pre>
 
-<h3><code>add x21, sp, #PT_REGS_SIZE</code></h3>
+<h3 id="add-x21-sp-pt_regs_size"><code>add x21, sp, #PT_REGS_SIZE</code></h3>
 
 <p>算出“被打断前的栈顶位置”，也就是原始 SP 值，后面作为 aborted SP 保存。</p>
 
-<h3><code>get_current_task tsk</code></h3>
+<h3 id="get_current_task-tsk" ><code>get_current_task tsk</code></h3>
 
 <p>拿当前 task，也就是当前线程的 <code>thread_info/task_struct</code> 入口。</p>
 
-<h3><code>mrs x22, elr_el1</code></h3>
+<h3 id="mrs-x22-elr_el1"><code>mrs x22, elr_el1</code></h3>
 
 <p>读出异常返回地址，也就是“被打断时下一条要执行的 PC”。</p>
 
-<h3><code>mrs x23, spsr_el1</code></h3>
+<h3 id="mrs-x23-spsr_el1"><code>mrs x23, spsr_el1</code></h3>
 
 <p>读出被打断现场的 PSTATE/SPSR 信息。</p>
 
@@ -9068,7 +9068,7 @@ el1h_64_irq 再保存现场并跳进 C</code></pre>
 
 <p>构造一个空的元数据 frame record，供内核 unwinder 识别异常边界。</p>
 
-<h3><code>mov x0, #FRAME_META_TYPE_PT_REGS</code></h3>
+<h3 id="mov-x0-frame_meta_type_pt_regs"><code>mov x0, #FRAME_META_TYPE_PT_REGS</code></h3>
 
 <p>标记这个 frame 的类型是 <code>pt_regs</code> 类型的异常帧。</p>
 
@@ -9076,7 +9076,7 @@ el1h_64_irq 再保存现场并跳进 C</code></pre>
 
 <p>把这个 frame 类型写进栈帧元数据。</p>
 
-<h3><code>add x29, sp, #S_STACKFRAME</code></h3>
+<h3 id="add-x29-sp-s_stackframe"><code>add x29, sp, #S_STACKFRAME</code></h3>
 
 <p>把 <code>x29</code> 设置成当前异常 frame 的 frame pointer，方便 unwinder 和调试器继续回溯。</p>
 
@@ -9739,17 +9739,17 @@ request_threaded_irq() 是它的超集版本</code></pre>
 
 <h2>24.5 <code>__setup_irq()</code> 里最值得抓住的几个关键动作</h2>
 
-<h3>动作一：把 <code>new->irq = irq</code></h3>
+<h3 id="动作一把-new-irq--irq">动作一：把 <code>new->irq = irq</code></h3>
 
 <p>这一步很基础，但意义明确：</p>
 
 <pre><code class="language-text">这个 irqaction 从现在开始正式属于哪条 Linux irq</code></pre>
 
-<h3>动作二：如果提供了 <code>thread_fn</code>，就准备线程化处理</h3>
+<h3 id="动作二如果提供了-thread_fn就准备线程化处理">动作二：如果提供了 <code>thread_fn</code>，就准备线程化处理</h3>
 
 <p>也就是说，如果驱动用的是 <code>request_threaded_irq()</code>，那么 <code>__setup_irq()</code> 不只是挂一个硬中断 handler，还会配套建立线程化处理环境。</p>
 
-<h3>动作三：首次安装 action 时请求 irqchip 资源</h3>
+<h3 id="动作三首次安装-action-时请求-irqchip-资源">动作三：首次安装 action 时请求 irqchip 资源</h3>
 
 <p>源码里会调用：</p>
 
@@ -9759,7 +9759,7 @@ request_threaded_irq() 是它的超集版本</code></pre>
 
 <pre><code class="language-text">IRQ core 会去让底层 irq_chip 做这条中断线需要的资源准备</code></pre>
 
-<h3>动作四：共享中断检查</h3>
+<h3 id="动作四共享中断检查">动作四：共享中断检查</h3>
 
 <p>如果这条中断线已经有旧 action，那么 <code>__setup_irq()</code> 会检查：</p>
 
@@ -9772,7 +9772,7 @@ request_threaded_irq() 是它的超集版本</code></pre>
 
 <p>如果不一致，就拒绝共享。</p>
 
-<h3>动作五：第一次注册时激活并可能启动中断</h3>
+<h3 id="动作五第一次注册时激活并可能启动中断">动作五：第一次注册时激活并可能启动中断</h3>
 
 <p>第一次装 action 时，<code>__setup_irq()</code> 会调用：</p>
 

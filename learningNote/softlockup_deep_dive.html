@@ -394,7 +394,7 @@ hr {
 
 <hr>
 
-<h2>1. 软件架构总览</h2>
+<h2 id="1-软件架构总览" >1. 软件架构总览</h2>
 
 <p>Softlockup 检测器的软件架构分为四个层次：<strong>用户空间接口层</strong>、<strong>配置管理层</strong>、<strong>检测核心层</strong>、<strong>Per-CPU 执行层</strong>。用户通过 sysctl / 启动参数配置检测参数，配置管理层协调 watchdog 在各 CPU 上的启停，检测核心层基于 hrtimer 硬中断周期性检查调度器是否正常运行，Per-CPU 层维护独立的时间戳与状态。</p>
 

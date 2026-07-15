@@ -476,9 +476,9 @@ hr {
 
 <hr>
 
-<h2>1. LED 框架历史变迁</h2>
+<h2 id="41-led-设备注册注销">1. LED 框架历史变迁</h2>
 
-<h3>1.1 早期阶段 (2005-2006, Linux 2.6.x)</h3>
+<h3 id="11-早期阶段-2005-2006-linux-26x" >1.1 早期阶段 (2005-2006, Linux 2.6.x)</h3>
 
 <ul>
 <li><strong>创建者</strong>: John Lenz 和 Richard Purdie (Openedhand Ltd.)</li>
@@ -488,7 +488,7 @@ hr {
 <li>最初的 trigger 包括: <code>timer</code>、<code>default-on</code>、<code>heartbeat</code></li>
 </ul>
 
-<h3>1.2 硬件闪烁支持 (2007-2010, Linux 2.6.x)</h3>
+<h3 id="12-硬件闪烁支持-2007-2010-linux-26x" >1.2 硬件闪烁支持 (2007-2010, Linux 2.6.x)</h3>
 
 <ul>
 <li>引入 <code>blink_set()</code> 回调，支持硬件加速闪烁</li>
@@ -497,7 +497,7 @@ hr {
 <li>增加了 <code>LED_CORE_SUSPENDRESUME</code> 标志，支持电源管理</li>
 </ul>
 
-<h3>1.3 LED Flash 子类 (2015, Linux 4.x)</h3>
+<h3 id="13-led-flash-子类-2015-linux-4x" >1.3 LED Flash 子类 (2015, Linux 4.x)</h3>
 
 <ul>
 <li>Samsung 的 Jacek Anaszewski 引入 Flash LED class (<code>led-class-flash.c</code>)</li>
@@ -505,7 +505,7 @@ hr {
 <li>添加 <code>LED_DEV_CAP_FLASH</code> 标志</li>
 </ul>
 
-<h3>1.4 Userspace LED 驱动 (2016, Linux 4.x)</h3>
+<h3 id="14-userspace-led-驱动-2016-linux-4x" >1.4 Userspace LED 驱动 (2016, Linux 4.x)</h3>
 
 <ul>
 <li>David Lechner 引入 <code>uleds</code> (userspace LED) 驱动</li>
@@ -513,7 +513,7 @@ hr {
 <li>通过 <code>/dev/uleds</code> 字符设备接口操作</li>
 </ul>
 
-<h3>1.5 多色 LED 支持 (2019-2020, Linux 5.x)</h3>
+<h3 id="15-多色-led-支持-2019-2020-linux-5x" >1.5 多色 LED 支持 (2019-2020, Linux 5.x)</h3>
 
 <ul>
 <li>Texas Instruments 的 Dan Murphy 引入 LED Multicolor class (<code>led-class-multicolor.c</code>)</li>
@@ -522,7 +522,7 @@ hr {
 <li>引入 <code>LED_MULTI_COLOR</code> 标志</li>
 </ul>
 
-<h3>1.6 现代化改进 (2020-2025, Linux 5.x - 6.x)</h3>
+<h3 id="16-现代化改进-2020-2025-linux-5x---6x" >1.6 现代化改进 (2020-2025, Linux 5.x - 6.x)</h3>
 
 <ul>
 <li><strong>DT 命名标准化</strong>: 采用 <code><devicename:color:function></code> 命名规范</li>
@@ -536,7 +536,7 @@ hr {
 <li><strong>LED RGB 子类</strong>: <code>drivers/leds/rgb/</code> 目录下的 RGB LED 驱动</li>
 </ul>
 
-<h3>1.7 Linux 6.18.1 当前状态</h3>
+<h3 id="17-linux-6181-当前状态" >1.7 Linux 6.18.1 当前状态</h3>
 
 <p>当前版本的 LED 子系统包含：</p>
 <ul>
@@ -551,7 +551,7 @@ hr {
 
 <h2>2. LED 子系统软件架构</h2>
 
-<h3>2.1 分层架构</h3>
+<h3 id="21-分层架构" >2.1 分层架构</h3>
 
 <pre><code>┌──────────────────────────────────────────────────────────┐
 │                  User Space                               │
@@ -590,7 +590,7 @@ hr {
 │  - hw_control_set/get (硬件自主控制)                       │
 └──────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>2.2 核心源文件组织</h3>
+<h3 id="22-核心源文件组织" >2.2 核心源文件组织</h3>
 
 <table>
 <thead><tr>
@@ -632,7 +632,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>2.3 亮度设置路径</h3>
+<h3 id="23-亮度设置路径" >2.3 亮度设置路径</h3>
 
 <pre><code>led_set_brightness(led_cdev, value)     [不可睡眠，可从 IRQ 调用]
     │
@@ -660,7 +660,7 @@ led_set_brightness_sync(led_cdev, value)  [同步阻塞版本]
 <li>当只有 <code>brightness_set_blocking</code> 时，通过 <strong>workqueue</strong> 异步执行</li>
 </ul>
 
-<h3>2.4 软件闪烁机制</h3>
+<h3 id="24-软件闪烁机制" >2.4 软件闪烁机制</h3>
 
 <pre><code>led_blink_set(delay_on, delay_off)
     │
@@ -682,7 +682,7 @@ led_set_brightness_sync(led_cdev, value)  [同步阻塞版本]
 
 <h2>3. 核心数据结构</h2>
 
-<h3>3.1 <code>struct led_classdev</code> — LED 核心设备结构</h3>
+<h3 id="31-struct-led_classdev--led-核心设备结构">3.1 <code>struct led_classdev</code> — LED 核心设备结构</h3>
 
 <pre><code class="language-c">/* 定义在 include/linux/leds.h */
 struct led_classdev {
@@ -805,7 +805,7 @@ struct led_classdev {
 </tr>
 </tbody></table>
 
-<h3>3.2 <code>struct led_trigger</code> — LED 触发器</h3>
+<h3 id="32-struct-led_trigger--led-触发器">3.2 <code>struct led_trigger</code> — LED 触发器</h3>
 
 <pre><code class="language-c">struct led_trigger {
     const char       *name;                 /* trigger 名称 */
@@ -819,7 +819,7 @@ struct led_classdev {
     const struct attribute_group **groups;  /* trigger 自定义 sysfs 属性组 */
 };</code></pre>
 
-<h3>3.3 <code>struct led_init_data</code> — LED 初始化数据</h3>
+<h3 id="33-struct-led_init_data--led-初始化数据">3.3 <code>struct led_init_data</code> — LED 初始化数据</h3>
 
 <pre><code class="language-c">struct led_init_data {
     struct fwnode_handle *fwnode;    /* 设备固件节点 */
@@ -828,7 +828,7 @@ struct led_classdev {
     bool devname_mandatory;         /* 设备名是否必须 */
 };</code></pre>
 
-<h3>3.4 <code>struct led_classdev_mc</code> — 多色 LED</h3>
+<h3 id="34-struct-led_classdev_mc--多色-led">3.4 <code>struct led_classdev_mc</code> — 多色 LED</h3>
 
 <pre><code class="language-c">struct led_classdev_mc {
     struct led_classdev led_cdev;
@@ -843,7 +843,7 @@ struct mc_subled {
     unsigned int channel;         /* 硬件通道 */
 };</code></pre>
 
-<h3>3.5 <code>struct led_lookup_data</code> — LED 查找表</h3>
+<h3 id="35-struct-led_lookup_data--led-查找表">3.5 <code>struct led_lookup_data</code> — LED 查找表</h3>
 
 <pre><code class="language-c">struct led_lookup_data {
     struct list_head list;
@@ -852,7 +852,7 @@ struct mc_subled {
     const char *con_id;     /* 连接标识 */
 };</code></pre>
 
-<h3>3.6 颜色 ID 常量</h3>
+<h3 id="36-颜色-id-常量" >3.6 颜色 ID 常量</h3>
 
 <pre><code class="language-c">/* 定义在 dt-bindings/leds/common.h */
 #define LED_COLOR_ID_WHITE    0
@@ -898,7 +898,7 @@ void led_classdev_unregister(struct led_classdev *led_cdev);
 void devm_led_classdev_unregister(struct device *parent,
                                   struct led_classdev *led_cdev);</code></pre>
 
-<h3>4.2 亮度控制</h3>
+<h3 id="42-亮度控制" >4.2 亮度控制</h3>
 
 <pre><code class="language-c">/* 设置亮度 (不可睡眠, 可从 IRQ 调用) */
 void led_set_brightness(struct led_classdev *led_cdev, unsigned int brightness);
@@ -920,7 +920,7 @@ void led_mc_set_brightness(struct led_classdev *led_cdev,
                            unsigned int *intensity_value,
                            unsigned int num_colors, unsigned int brightness);</code></pre>
 
-<h3>4.3 闪烁控制</h3>
+<h3 id="43-闪烁控制" >4.3 闪烁控制</h3>
 
 <pre><code class="language-c">/* 设置闪烁 (可睡眠, 优先使用硬件加速) */
 void led_blink_set(struct led_classdev *led_cdev,
@@ -938,7 +938,7 @@ void led_blink_set_oneshot(struct led_classdev *led_cdev,
 /* 停止软件闪烁 */
 void led_stop_software_blink(struct led_classdev *led_cdev);</code></pre>
 
-<h3>4.4 Trigger API</h3>
+<h3 id="44-trigger-api" >4.4 Trigger API</h3>
 
 <pre><code class="language-c">/* 注册/注销 trigger */
 int led_trigger_register(struct led_trigger *trigger);
@@ -978,7 +978,7 @@ static inline void *led_get_trigger_data(struct led_classdev *led_cdev);
 #define module_led_trigger(__led_trigger) \
     module_driver(__led_trigger, led_trigger_register, led_trigger_unregister)</code></pre>
 
-<h3>4.5 LED Consumer API</h3>
+<h3 id="45-led-consumer-api" >4.5 LED Consumer API</h3>
 
 <pre><code class="language-c">/* 获取 LED 设备 (通过 DT 或 lookup table) */
 struct led_classdev *led_get(struct device *dev, char *con_id);
@@ -991,7 +991,7 @@ void led_put(struct led_classdev *led_cdev);
 void led_add_lookup(struct led_lookup_data *led_lookup);
 void led_remove_lookup(struct led_lookup_data *led_lookup);</code></pre>
 
-<h3>4.6 PM 和辅助函数</h3>
+<h3 id="46-pm-和辅助函数" >4.6 PM 和辅助函数</h3>
 
 <pre><code class="language-c">/* 电源管理 */
 void led_classdev_suspend(struct led_classdev *led_cdev);
@@ -1023,7 +1023,7 @@ int led_mc_calc_color_components(struct led_classdev_mc *mcled_cdev,
 
 <h2>5. LED Trigger 机制</h2>
 
-<h3>5.1 内置 Trigger 列表</h3>
+<h3 id="51-内置-trigger-列表" >5.1 内置 Trigger 列表</h3>
 
 <table>
 <thead><tr>
@@ -1119,7 +1119,7 @@ int led_mc_calc_color_components(struct led_classdev_mc *mcled_cdev,
 </tr>
 </tbody></table>
 
-<h3>5.2 Trigger 工作流</h3>
+<h3 id="52-trigger-工作流" >5.2 Trigger 工作流</h3>
 
 <pre><code>1. 注册 Trigger:
    led_trigger_register(trig)
@@ -1144,7 +1144,7 @@ int led_mc_calc_color_components(struct led_classdev_mc *mcled_cdev,
      -&gt; led_trigger_set(led_cdev, NULL)
        -&gt; deactivate, 设置 LED_OFF</code></pre>
 
-<h3>5.3 自定义 Trigger 示例</h3>
+<h3 id="53-自定义-trigger-示例" >5.3 自定义 Trigger 示例</h3>
 
 <pre><code class="language-c">static int my_trig_activate(struct led_classdev *led_cdev)
 {
@@ -1174,7 +1174,7 @@ module_led_trigger(my_trigger);</code></pre>
 
 <h2>6. LED 命名规范</h2>
 
-<h3>6.1 标准格式</h3>
+<h3 id="61-标准格式" >6.1 标准格式</h3>
 
 <pre><code>&lt;devicename:color:function&gt;</code></pre>
 
@@ -1184,7 +1184,7 @@ module_led_trigger(my_trigger);</code></pre>
 <li><strong>function</strong>: 功能描述 (status, power, disk-activity, ...)</li>
 </ul>
 
-<h3>6.2 DT 属性</h3>
+<h3 id="62-dt-属性" >6.2 DT 属性</h3>
 
 <pre><code class="language-dts">leds {
     compatible = &quot;gpio-leds&quot;;
@@ -1204,7 +1204,7 @@ module_led_trigger(my_trigger);</code></pre>
     };
 };</code></pre>
 
-<h3>6.3 sysfs 接口</h3>
+<h3 id="63-sysfs-接口" >6.3 sysfs 接口</h3>
 
 <pre><code>/sys/class/leds/&lt;led-name&gt;/
 ├── brightness          # 读写亮度 (0 ~ max_brightness)
@@ -1220,7 +1220,7 @@ module_led_trigger(my_trigger);</code></pre>
 
 <h2>7. 关键知识点汇总</h2>
 
-<h3>7.1 并发与锁机制</h3>
+<h3 id="71-并发与锁机制" >7.1 并发与锁机制</h3>
 
 <table>
 <thead><tr>
@@ -1261,7 +1261,7 @@ module_led_trigger(my_trigger);</code></pre>
 </tr>
 </tbody></table>
 
-<h3>7.2 workqueue 设计</h3>
+<h3 id="72-workqueue-设计" >7.2 workqueue 设计</h3>
 
 <ul>
 <li>所有 LED 共享一个全局 workqueue (<code>leds_wq</code>)</li>
@@ -1272,7 +1272,7 @@ module_led_trigger(my_trigger);</code></pre>
 <li>使用 <code>smp_mb__before_atomic()</code> 确保 <code>delayed_set_value</code> 对 work 可见</li>
 </ul>
 
-<h3>7.3 RCU 在 trigger 中的应用</h3>
+<h3 id="73-rcu-在-trigger-中的应用" >7.3 RCU 在 trigger 中的应用</h3>
 
 <ul>
 <li><code>trig->led_cdevs</code> 链表使用 RCU 保护</li>
@@ -1281,7 +1281,7 @@ module_led_trigger(my_trigger);</code></pre>
 <li>确保 trigger 事件分发的高性能和无锁读</li>
 </ul>
 
-<h3>7.4 devm 资源管理</h3>
+<h3 id="74-devm-资源管理" >7.4 devm 资源管理</h3>
 
 <p>推荐使用 devm_* 版本 API，自动在设备卸载时清理:</p>
 <ul>
@@ -1290,7 +1290,7 @@ module_led_trigger(my_trigger);</code></pre>
 <li><code>devm_led_get()</code> / <code>devm_of_led_get()</code></li>
 </ul>
 
-<h3>7.5 hw_control 机制 (硬件自主控制)</h3>
+<h3 id="75-hw_control-机制-硬件自主控制" >7.5 hw_control 机制 (硬件自主控制)</h3>
 
 <p>现代 LED 驱动（如网口 PHY LED）支持硬件自主控制模式：</p>
 <ul>
@@ -1305,7 +1305,7 @@ module_led_trigger(my_trigger);</code></pre>
 
 <h2>8. QEMU 实验设计</h2>
 
-<h3>实验 1: GPIO LED 基础控制</h3>
+<h3 id="实验-1-gpio-led-基础控制" >实验 1: GPIO LED 基础控制</h3>
 
 <p><strong>目标</strong>: 在 QEMU virt 机器上通过 DT overlay 添加 GPIO LED，验证 sysfs 控制</p>
 
@@ -1428,7 +1428,7 @@ rmmod led_exp1_gpio_sim</code></pre>
 
 <hr>
 
-<h3>实验 2: 自定义 LED Trigger</h3>
+<h3 id="实验-2-自定义-led-trigger" >实验 2: 自定义 LED Trigger</h3>
 
 <p><strong>目标</strong>: 编写自定义 trigger，每次写入 sysfs 属性时闪烁 LED</p>
 
@@ -1562,7 +1562,7 @@ echo none &gt; /sys/class/leds/blue:disk/trigger</code></pre>
 
 <hr>
 
-<h3>实验 3: 使用 uleds 用户空间 LED 驱动</h3>
+<h3 id="实验-3-使用-uleds-用户空间-led-驱动" >实验 3: 使用 uleds 用户空间 LED 驱动</h3>
 
 <p><strong>目标</strong>: 通过 <code>/dev/uleds</code> 在用户空间创建虚拟 LED，演示用户空间 LED 驱动机制</p>
 
@@ -1636,7 +1636,7 @@ echo heartbeat &gt; /sys/class/leds/user::virtual/trigger
 
 <hr>
 
-<h3>实验 4: LED 与内核子系统联动 (blocking vs non-blocking)</h3>
+<h3 id="实验-4-led-与内核子系统联动-blocking-vs-non-blocking" >实验 4: LED 与内核子系统联动 (blocking vs non-blocking)</h3>
 
 <p><strong>目标</strong>: 对比 <code>brightness_set</code> (非阻塞) 和 <code>brightness_set_blocking</code> (阻塞) 两条路径</p>
 
@@ -1723,7 +1723,7 @@ dmesg | grep -E &quot;fast_led|slow_led&quot; | tail -20</code></pre>
 
 <hr>
 
-<h3>实验 5: LED Trigger 事件机制——模拟内核事件驱动 LED</h3>
+<h3 id="实验-5-led-trigger-事件机制模拟内核事件驱动-led">实验 5: LED Trigger 事件机制——模拟内核事件驱动 LED</h3>
 
 <p><strong>目标</strong>: 编写一个内核模块，注册 simple trigger 并用内核定时器模拟事件驱动 LED</p>
 
@@ -1802,7 +1802,7 @@ dmesg | grep &quot;event_trigger&quot; | tail -25</code></pre>
 
 <hr>
 
-<h3>实验 6: PL061 GPIO + 自定义 DTB 真实硬件链路实验</h3>
+<h3 id="实验-6-pl061-gpio--自定义-dtb-真实硬件链路实验">实验 6: PL061 GPIO + 自定义 DTB 真实硬件链路实验</h3>
 
 <p><strong>目标</strong>: 利用 QEMU virt 内置的 PL061 GPIO 控制器，通过自定义 DTB 添加 <code>gpio-leds</code> 节点，走完 <strong>DT 解析 → platform driver match → GPIO 子系统 → LED 子系统</strong> 的完整硬件驱动链路，与真实开发板体验一致。</p>
 
@@ -2038,7 +2038,7 @@ leds-gpio.c  (drivers/leds/leds-gpio.c)
 
 <hr>
 
-<h3>实验 7: Kconfig 和 Makefile 模板</h3>
+<h3 id="实验-7-kconfig-和-makefile-模板" >实验 7: Kconfig 和 Makefile 模板</h3>
 
 <p><strong>用于将上述实验模块集成到内核构建系统中</strong>:</p>
 
@@ -2070,7 +2070,7 @@ clean:
 
 <h2>附录: 快速参考</h2>
 
-<h3>sysfs 操作速查</h3>
+<h3 id="sysfs-操作速查" >sysfs 操作速查</h3>
 
 <pre><code class="language-bash"># 列出所有 LED
 ls /sys/class/leds/
@@ -2093,7 +2093,7 @@ echo none &gt; /sys/class/leds/&lt;led&gt;/trigger
 echo 500 &gt; /sys/class/leds/&lt;led&gt;/delay_on
 echo 300 &gt; /sys/class/leds/&lt;led&gt;/delay_off</code></pre>
 
-<h3>驱动开发 Checklist</h3>
+<h3 id="驱动开发-checklist" >驱动开发 Checklist</h3>
 
 <ul>
 <li class="task-list-item"><input type="checkbox" disabled >选择 <code>brightness_set</code> (非阻塞) 还是 <code>brightness_set_blocking</code> (可阻塞)</li>

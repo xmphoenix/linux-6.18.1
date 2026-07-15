@@ -528,7 +528,7 @@ hr {
 
 <p>Perf 是一个横跨内核态和用户态的性能分析框架，代码分布在以下几个核心区域：</p>
 
-<h3>1.1 用户态工具 (<code>tools/perf/</code>)</h3>
+<h3 id="11-用户态工具-toolsperf">1.1 用户态工具 (<code>tools/perf/</code>)</h3>
 
 <h4>1.1.1 主入口与构建系统</h4>
 
@@ -998,7 +998,7 @@ hr {
 
 <hr>
 
-<h3>1.2 内核态代码</h3>
+<h3 id="12-内核态代码" >1.2 内核态代码</h3>
 
 <h4>1.2.1 核心子系统 (<code>kernel/events/</code>)</h4>
 
@@ -1173,7 +1173,7 @@ obj-$(CONFIG_HARDLOCKUP_DETECTOR_PERF) += watchdog_hld.o</code></pre>
 
 <h2>2. Perf 依赖的内核选项与用户态依赖</h2>
 
-<h3>2.1 内核配置选项</h3>
+<h3 id="21-内核配置选项" >2.1 内核配置选项</h3>
 
 <h4>2.1.1 核心选项（必选）</h4>
 
@@ -1323,7 +1323,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
 </tr>
 </tbody></table>
 
-<h3>2.2 用户态依赖库</h3>
+<h3 id="22-用户态依赖库" >2.2 用户态依赖库</h3>
 
 <h4>2.2.1 必需依赖</h4>
 
@@ -1447,7 +1447,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
 
 <h2>3. Perf 实现原理</h2>
 
-<h3>3.1 整体架构</h3>
+<h3 id="31-整体架构" >3.1 整体架构</h3>
 
 <pre><code>┌─────────────────────────────────────────────────────────────────────┐
 │                          用户空间 (User Space)                       │
@@ -1493,7 +1493,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
 │                              └──────────────────────────┘          │
 └─────────────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>3.2 核心系统调用：<code>perf_event_open()</code></h3>
+<h3 id="32-核心系统调用perf_event_open">3.2 核心系统调用：<code>perf_event_open()</code></h3>
 
 <p>perf 的一切始于一个系统调用（定义于 <code>kernel/events/core.c:13387</code>）：</p>
 
@@ -1513,7 +1513,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
 <li><code>close()</code> — 关闭并释放事件</li>
 </ul>
 
-<h3>3.3 事件类型体系</h3>
+<h3 id="33-事件类型体系" >3.3 事件类型体系</h3>
 
 <p><code>perf_event_attr.type</code> 决定事件来源（定义于 <code>include/uapi/linux/perf_event.h</code>）：</p>
 
@@ -1558,7 +1558,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
     PERF_COUNT_SW_CGROUP_SWITCHES   = 11,  // cgroup 切换
 };</code></pre>
 
-<h3>3.4 两种工作模式</h3>
+<h3 id="34-两种工作模式" >3.4 两种工作模式</h3>
 
 <h4>3.4.1 计数模式 (Counting)</h4>
 
@@ -1590,7 +1590,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
   → 写入 ring_buffer → mmap 共享内存 → 用户态 perf record 读取
   → 写入 perf.data 文件</code></pre>
 
-<h3>3.5 PMU 驱动模型 (<code>struct pmu</code>)</h3>
+<h3 id="35-pmu-驱动模型-struct-pmu" >3.5 PMU 驱动模型 (<code>struct pmu</code>)</h3>
 
 <p>每种事件源由一个 <code>struct pmu</code> 实例驱动（定义于 <code>include/linux/perf_event.h:329</code>）：</p>
 
@@ -1655,7 +1655,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
 </tr>
 </tbody></table>
 
-<h3>3.6 环形缓冲区机制</h3>
+<h3 id="36-环形缓冲区机制" >3.6 环形缓冲区机制</h3>
 
 <p>采样数据通过 <code>mmap()</code> 共享的环形缓冲区从内核传递到用户态：</p>
 
@@ -1688,7 +1688,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
 <li>用户态更新 <code>data_tail</code>（读指针）通知内核已消费</li>
 </ol>
 
-<h3>3.7 事件调度算法</h3>
+<h3 id="37-事件调度算法" >3.7 事件调度算法</h3>
 
 <p>当 PMU 硬件计数器数量有限时（ARM64 PMUv3 典型为 6 个），内核需要调度事件：</p>
 
@@ -1707,7 +1707,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
    - 计数器值虚拟化为 64 位（硬件可能只有 32/48 位）
    - 溢出时自动扩展</code></pre>
 
-<h3>3.8 用户态工具工作流</h3>
+<h3 id="38-用户态工具工作流" >3.8 用户态工具工作流</h3>
 
 <h4><code>perf record</code> 工作流：</h4>
 
@@ -1733,7 +1733,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
       → symbol__resolve()        # 符号解析 (IP → 函数名)
   → hists__fprintf()             # 输出报告</code></pre>
 
-<h3>3.9 <code>perf_event_attr</code> 关键字段</h3>
+<h3 id="39-perf_event_attr-关键字段" >3.9 <code>perf_event_attr</code> 关键字段</h3>
 
 <pre><code class="language-c">struct perf_event_attr {
     __u32 type;            // 事件大类 (HARDWARE/SOFTWARE/TRACEPOINT/...)
@@ -1762,7 +1762,7 @@ select HAVE_HARDLOCKUP_DETECTOR_PERF if PERF_EVENTS &amp;&amp; \
 
 <h2>4. ARM64 架构 Perf 编译指南</h2>
 
-<h3>4.1 前置条件</h3>
+<h3 id="41-前置条件" >4.1 前置条件</h3>
 
 <h4>4.1.1 交叉编译工具链</h4>
 
@@ -1799,7 +1799,7 @@ sudo apt-get install libbabeltrace-dev:arm64</code></pre>
 
 <blockquote><strong>注意</strong>：如果无法安装 arm64 的库包，可以选择禁用对应功能来编译最小化版本。</blockquote>
 
-<h3>4.2 编译方法</h3>
+<h3 id="42-编译方法" >4.2 编译方法</h3>
 
 <h4>4.2.1 完整编译（在内核源码树中）</h4>
 
@@ -1859,7 +1859,7 @@ make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
 <pre><code class="language-bash">make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
     LDFLAGS=-static</code></pre>
 
-<h3>4.3 安装与部署</h3>
+<h3 id="43-安装与部署" >4.3 安装与部署</h3>
 
 <pre><code class="language-bash"># 安装到指定目录（默认 /usr/local）
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
@@ -1871,7 +1871,7 @@ scp /tmp/perf-install/usr/local/bin/perf root@target:/usr/local/bin/
 # 或者直接复制编译产物
 scp tools/perf/perf root@target:/usr/local/bin/</code></pre>
 
-<h3>4.4 编译特性检测</h3>
+<h3 id="44-编译特性检测" >4.4 编译特性检测</h3>
 
 <p>编译过程中 Makefile.config 会自动检测可用的库和特性，输出类似：</p>
 
@@ -1898,7 +1898,7 @@ scp tools/perf/perf root@target:/usr/local/bin/</code></pre>
 
 <pre><code class="language-bash">make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- VF=1</code></pre>
 
-<h3>4.5 验证编译结果</h3>
+<h3 id="45-验证编译结果" >4.5 验证编译结果</h3>
 
 <pre><code class="language-bash"># 确认是 ARM64 二进制
 file tools/perf/perf
@@ -1909,7 +1909,7 @@ perf version
 perf list          # 列出可用事件
 perf stat ls       # 基础功能测试</code></pre>
 
-<h3>4.6 常见编译问题</h3>
+<h3 id="46-常见编译问题" >4.6 常见编译问题</h3>
 
 <table>
 <thead><tr>
@@ -2030,7 +2030,7 @@ echo  0 &gt; /proc/sys/kernel/kptr_restrict          # 暴露内核符号地址<
 
 <h2>5. ARM64 PMU 硬件内部细节</h2>
 
-<h3>5.1 PMUv3 架构概述</h3>
+<h3 id="51-pmuv3-架构概述" >5.1 PMUv3 架构概述</h3>
 
 <p>ARMv8 Performance Monitors Extension（PMUv3）定义于 ARM Architecture Reference Manual D13 章节，是 ARM64 平台性能分析的硬件基础。自 ARMv8.1 起持续增强，目前演进到 PMUv3p9（ARMv8.9/ARMv9.4）。</p>
 
@@ -2074,7 +2074,7 @@ echo  0 &gt; /proc/sys/kernel/kptr_restrict          # 暴露内核符号地址<
 │  └────────────────────────────────────────────────────────────────┘    │
 └────────────────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>5.2 关键寄存器详解</h3>
+<h3 id="52-关键寄存器详解" >5.2 关键寄存器详解</h3>
 
 <h4>5.2.1 PMCR_EL0 — PMU 控制寄存器</h4>
 
@@ -2142,7 +2142,7 @@ echo  0 &gt; /proc/sys/kernel/kptr_restrict          # 暴露内核符号地址<
 
 <p><strong>事件能力检测</strong>：硬件通过 <code>PMCEID0_EL0</code> 和 <code>PMCEID1_EL0</code> 寄存器声明支持哪些事件，内核在探测阶段读取并存入 <code>arm_pmu->pmceid_bitmap</code> / <code>pmceid_ext_bitmap</code>。</p>
 
-<h3>5.3 PMUv3 版本演进</h3>
+<h3 id="53-pmuv3-版本演进" >5.3 PMUv3 版本演进</h3>
 
 <table>
 <thead><tr>
@@ -2188,7 +2188,7 @@ echo  0 &gt; /proc/sys/kernel/kptr_restrict          # 暴露内核符号地址<
 </tr>
 </tbody></table>
 
-<h3>5.4 计数器宽度与溢出机制</h3>
+<h3 id="54-计数器宽度与溢出机制" >5.4 计数器宽度与溢出机制</h3>
 
 <pre><code>32 位计数器（默认）:
   ┌────────────────────────────────┐
@@ -2206,7 +2206,7 @@ PMCCNTR_EL0（周期计数器，始终 64 位）:
   当 PMCR.LC=1 时为 64 位计数
   当 PMCR.LC=0 时仅低 32 位有效</code></pre>
 
-<h3>5.5 Bias 技术（长计数器 32 位溢出模拟）</h3>
+<h3 id="55-bias-技术长计数器-32-位溢出模拟">5.5 Bias 技术（长计数器 32 位溢出模拟）</h3>
 
 <p>当硬件支持 64 位计数器（<code>PMCR.LP=1</code>）但用户请求的是 32 位事件时，内核使用 <strong>bias 技术</strong> 让 64 位计数器在低 32 位溢出时触发中断：</p>
 
@@ -2222,7 +2222,7 @@ PMCCNTR_EL0（周期计数器，始终 64 位）:
   value &amp;= 0x00000000_FFFFFFFF   ← 清除高 32 位 bias
   返回真实的低 32 位计数值</code></pre>
 
-<h3>5.6 链式计数器（Chained Events）</h3>
+<h3 id="56-链式计数器chained-events">5.6 链式计数器（Chained Events）</h3>
 
 <p>对于 32 位计数器，可以将两个相邻计数器链接成一个 64 位计数器：</p>
 
@@ -2236,7 +2236,7 @@ PMCCNTR_EL0（周期计数器，始终 64 位）:
 - 高计数器编程为 CHAIN 事件（0x1E），在低计数器溢出时递增
 - 内核通过 armv8pmu_get_chain_idx() 分配连续偶奇对</code></pre>
 
-<h3>5.7 中断流程</h3>
+<h3 id="57-中断流程" >5.7 中断流程</h3>
 
 <pre><code>PMU 计数器溢出
     │
@@ -2277,7 +2277,7 @@ armv8pmu_handle_irq()          ← drivers/perf/arm_pmuv3.c
 
 <h2>6. ARM64 PMU 驱动重要数据结构</h2>
 
-<h3>6.1 <code>struct arm_pmu</code>（核心 PMU 抽象）</h3>
+<h3 id="61-struct-arm_pmu核心-pmu-抽象">6.1 <code>struct arm_pmu</code>（核心 PMU 抽象）</h3>
 
 <p>定义于 <code>include/linux/perf/arm_pmu.h</code>，是 ARM PMU 驱动的核心数据结构，封装了通用 <code>struct pmu</code> 并添加 ARM 特有的回调和状态：</p>
 
@@ -2336,7 +2336,7 @@ armv8pmu_handle_irq()          ← drivers/perf/arm_pmuv3.c
 
 <blockquote>分段讲解（6.1 聚焦）：这一段只看图中 <code>struct arm_pmu</code>、<code>struct pmu</code> 和 <code>struct pmu_hw_events</code> 三块。要点是 <code>arm_pmu</code> 通过嵌入 <code>pmu</code> 把自己挂进 perf core，再通过 <code>hw_events</code> 把每 CPU 的硬件槽位表串起来，所以它既是 perf 的 PMU 接口实现，又是 ARM64 硬件能力和寄存器操作的总入口。</blockquote>
 
-<h3>6.2 <code>struct pmu_hw_events</code>（每 CPU 硬件事件状态）</h3>
+<h3 id="62-struct-pmu_hw_events每-cpu-硬件事件状态">6.2 <code>struct pmu_hw_events</code>（每 CPU 硬件事件状态）</h3>
 
 <pre><code class="language-c">struct pmu_hw_events {
     /*
@@ -2368,7 +2368,7 @@ armv8pmu_handle_irq()          ← drivers/perf/arm_pmuv3.c
 
 <blockquote>分段讲解（6.2 聚焦）：这一段主要看图右下侧 <code>struct pmu_hw_events</code> 与中心 <code>struct perf_event</code> 的连线。<code>events[idx] = event</code> 表示某个硬件计数器槽位当前被哪个事件占用，<code>used_mask</code> 则是分配算法扫描的位图；它是“事件真正上 CPU 硬件槽位”的第一现场。</blockquote>
 
-<h3>6.3 <code>struct hw_perf_event</code>（通用 perf 硬件事件状态）</h3>
+<h3 id="63-struct-hw_perf_event通用-perf-硬件事件状态">6.3 <code>struct hw_perf_event</code>（通用 perf 硬件事件状态）</h3>
 
 <p>嵌入在 <code>struct perf_event</code> 中（<code>event->hw</code>），保存每个事件的硬件层状态：</p>
 
@@ -2396,7 +2396,7 @@ armv8pmu_handle_irq()          ← drivers/perf/arm_pmuv3.c
 
 <blockquote>分段讲解（6.3 聚焦）：这里重点看图中央 <code>struct perf_event</code> 到右上 <code>struct hw_perf_event</code> 的嵌入关系。<code>hw_perf_event</code> 不是独立分配的对象，而是 <code>perf_event</code> 内部那块“面向 PMU 寄存器编程”的状态区，里面的 <code>idx</code>、<code>config_base</code>、<code>prev_count</code>、<code>period_left</code> 会直接被 <code>armpmu_add()</code>、<code>armpmu_event_update()</code> 和 <code>armpmu_event_set_period()</code> 读写。</blockquote>
 
-<h3>6.4 关键数据结构关系图</h3>
+<h3 id="64-关键数据结构关系图" >6.4 关键数据结构关系图</h3>
 
 <p>前面 6.1 到 6.3 已经按 <code>arm_pmu</code>、<code>pmu_hw_events</code>、<code>hw_perf_event</code> 三个观察点分段看过同一张图；把这三段拼起来后，就能得到完整主线：用户态 <code>perf_event_attr</code> 先生成 <code>perf_event</code>，<code>perf_event</code> 再通过 <code>pmu</code> / <code>arm_pmu</code> 找到 ARM64 PMU 驱动，最终在每 CPU 的 <code>pmu_hw_events</code> 中占据具体槽位，并把硬件运行态保存在 <code>event->hw</code> 里。</p>
 
@@ -2412,7 +2412,7 @@ armv8pmu_handle_irq()          ← drivers/perf/arm_pmuv3.c
 
 <h2>7. ARM64 PMU 初始化流程与重要接口</h2>
 
-<h3>7.1 完整初始化流程</h3>
+<h3 id="71-完整初始化流程" >7.1 完整初始化流程</h3>
 
 <pre><code>内核启动
   │
@@ -2519,7 +2519,7 @@ device_initcall(armv8_pmu_driver_init)          ← arm_pmuv3.c 末尾
 <li>两条路径虽然枚举方式不同，但都会收敛到 <code>armv8_pmuv3_pmu_init()</code>、<code>armpmu_register()</code> 和 <code>perf_pmu_register()</code></li>
 </ul>
 
-<h3>7.2 事件生命周期接口</h3>
+<h3 id="72-事件生命周期接口" >7.2 事件生命周期接口</h3>
 
 <h4>7.2.1 事件创建：<code>armpmu_event_init()</code></h4>
 
@@ -2609,7 +2609,7 @@ armpmu_add(event, flags)                   ← arm_pmu.c
 <li><code>armpmu_start()</code> / <code>armv8pmu_enable_event()</code> 之后，硬件寄存器才真正开始计数</li>
 </ul>
 
-<h3>7.3 事件映射机制</h3>
+<h3 id="73-事件映射机制" >7.3 事件映射机制</h3>
 
 <p>事件映射将 perf 通用事件 ID 转换为硬件 PMU 事件编号：</p>
 
@@ -2649,7 +2649,7 @@ switch (event-&gt;attr.type) {
 
 <h2>8. ARM64 PMU 代码中的关键算法</h2>
 
-<h3>8.1 计数器分配算法（<code>armv8pmu_get_event_idx</code>）</h3>
+<h3 id="81-计数器分配算法armv8pmu_get_event_idx">8.1 计数器分配算法（<code>armv8pmu_get_event_idx</code>）</h3>
 
 <p>计数器分配策略遵循<strong>专用优先、通用兜底</strong>原则：</p>
 
@@ -2688,7 +2688,7 @@ switch (event-&gt;attr.type) {
 │         return -EAGAIN  ← 所有计数器已满                          │
 └─────────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>8.2 采样周期设置算法（<code>armpmu_event_set_period</code>）</h3>
+<h3 id="82-采样周期设置算法armpmu_event_set_period">8.2 采样周期设置算法（<code>armpmu_event_set_period</code>）</h3>
 
 <p>此算法将"还需要多少事件才溢出"转换为硬件计数器的初始值：</p>
 
@@ -2721,7 +2721,7 @@ switch (event-&gt;attr.type) {
 │    经过 10000 个事件 → 0x00000000 → 溢出 → PMI                    │
 └─────────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>8.3 计数器更新算法（<code>armpmu_event_update</code>）</h3>
+<h3 id="83-计数器更新算法armpmu_event_update">8.3 计数器更新算法（<code>armpmu_event_update</code>）</h3>
 
 <p>无锁原子更新，处理硬件计数器的环绕（wrap-around）：</p>
 
@@ -2755,7 +2755,7 @@ new_raw_count  = 0x00001000  (当前，已溢出)
 delta = (0x00001000 - 0xFFFFF000) &amp; 0xFFFFFFFF
       = 0x00002000  ← 正确！跨越溢出点计算了 8192 个事件</code></pre>
 
-<h3>8.4 事件组验证算法（<code>validate_group</code>）</h3>
+<h3 id="84-事件组验证算法validate_group">8.4 事件组验证算法（<code>validate_group</code>）</h3>
 
 <p>验证一组事件能否同时放入有限的硬件计数器：</p>
 
@@ -2783,7 +2783,7 @@ delta = (0x00001000 - 0xFFFFF000) &amp; 0xFFFFFFFF
 注意：这是&quot;试装&quot;算法，不修改真实硬件状态。
 使用 fake_pmu 模拟计数器占用，验证所有事件能否同时就绪。</code></pre>
 
-<h3>8.5 中断处理算法（<code>armv8pmu_handle_irq</code>）</h3>
+<h3 id="85-中断处理算法armv8pmu_handle_irq">8.5 中断处理算法（<code>armv8pmu_handle_irq</code>）</h3>
 
 <pre><code>armv8pmu_handle_irq(cpu_pmu):
 ┌─────────────────────────────────────────────────────────────────┐
@@ -2883,7 +2883,7 @@ PMI 中断         → armpmu_dispatch_irq()
 
 <p>以下是 <code>drivers/perf/arm_pmuv3.c</code> 中最核心的函数，附详细中文注释。</p>
 
-<h3>10.1 PMU 初始化函数</h3>
+<h3 id="101-pmu-初始化函数" >10.1 PMU 初始化函数</h3>
 
 <pre><code class="language-c">/*
  * armv8_pmu_init — PMUv3 驱动初始化入口
@@ -2931,7 +2931,7 @@ static int armv8_pmu_init(struct arm_pmu *cpu_pmu, char *name,
     return 0;
 }</code></pre>
 
-<h3>10.2 硬件探测函数</h3>
+<h3 id="102-硬件探测函数" >10.2 硬件探测函数</h3>
 
 <pre><code class="language-c">/*
  * __armv8pmu_probe_pmu — 在目标 CPU 上探测 PMU 硬件参数
@@ -3003,7 +3003,7 @@ static void __armv8pmu_probe_pmu(void *info)
     brbe_probe(cpu_pmu);
 }</code></pre>
 
-<h3>10.3 中断处理函数</h3>
+<h3 id="103-中断处理函数" >10.3 中断处理函数</h3>
 
 <pre><code class="language-c">/*
  * armv8pmu_handle_irq — PMUv3 溢出中断处理
@@ -3097,7 +3097,7 @@ static irqreturn_t armv8pmu_handle_irq(struct arm_pmu *cpu_pmu)
     return IRQ_HANDLED;
 }</code></pre>
 
-<h3>10.4 事件使能/禁用函数</h3>
+<h3 id="104-事件使能禁用函数">10.4 事件使能/禁用函数</h3>
 
 <pre><code class="language-c">/*
  * armv8pmu_enable_event — 使能一个事件的硬件计数器
@@ -3157,7 +3157,7 @@ static void armv8pmu_disable_event(struct perf_event *event)
     armv8pmu_disable_event_irq(event);
 }</code></pre>
 
-<h3>10.5 计数器读写函数</h3>
+<h3 id="105-计数器读写函数" >10.5 计数器读写函数</h3>
 
 <pre><code class="language-c">/*
  * armv8pmu_read_counter — 读取事件的硬件计数器值
@@ -3222,7 +3222,7 @@ static void armv8pmu_write_counter(struct perf_event *event, u64 value)
          */
 }</code></pre>
 
-<h3>10.6 PMU 重置函数</h3>
+<h3 id="106-pmu-重置函数" >10.6 PMU 重置函数</h3>
 
 <pre><code class="language-c">/*
  * armv8pmu_reset — 重置 PMU 到已知初始状态
@@ -3270,7 +3270,7 @@ static void armv8pmu_reset(void *info)
     armv8pmu_pmcr_write(pmcr);
 }</code></pre>
 
-<h3>10.7 平台驱动注册</h3>
+<h3 id="107-平台驱动注册" >10.7 平台驱动注册</h3>
 
 <pre><code class="language-c">/*
  * DT 兼容性列表 — 匹配设备树中的 PMU 节点
@@ -3336,7 +3336,7 @@ static int __init armv8_pmu_driver_init(void)
 }
 device_initcall(armv8_pmu_driver_init)</code></pre>
 
-<h3>10.8 厂商特定 PMU 初始化宏</h3>
+<h3 id="108-厂商特定-pmu-初始化宏" >10.8 厂商特定 PMU 初始化宏</h3>
 
 <pre><code class="language-c">/*
  * 大多数 ARM Cortex 处理器使用通用的 PMUv3 事件映射，
@@ -3385,7 +3385,7 @@ PMUV3_INIT_MAP_EVENT(armv8_cavium_thunder, armv8_thunder_map_event)
 <blockquote>本章基于 Linux 6.18.1 源码 <code>tools/perf/</code> 目录中注册的所有子命令，面向 ARM64 (AArch64) 平台给出具体用法和实战案例。<br>
 所有命令均可通过 <code>perf help <subcmd></code> 查看完整手册。</blockquote>
 
-<h3>11.1 命令总览</h3>
+<h3 id="111-命令总览" >11.1 命令总览</h3>
 
 <p>perf 共包含 <strong>34 个子命令</strong>（31 个 C builtin + 3 个 shell 脚本），按功能分为六大类：</p>
 
@@ -3425,7 +3425,7 @@ PMUV3_INIT_MAP_EVENT(armv8_cavium_thunder, armv8_thunder_map_event)
 
 <hr>
 
-<h3>11.2 性能剖析类命令</h3>
+<h3 id="112-性能剖析类命令" >11.2 性能剖析类命令</h3>
 
 <h4>11.2.1 <code>perf stat</code> — 精确性能计数器统计</h4>
 
@@ -3867,7 +3867,7 @@ perf top --stdio</code></pre>
 
 <hr>
 
-<h3>11.3 追踪调试类命令</h3>
+<h3 id="113-追踪调试类命令" >11.3 追踪调试类命令</h3>
 
 <h4>11.3.1 <code>perf trace</code> — 系统调用追踪 ★</h4>
 
@@ -4071,7 +4071,7 @@ perf script -F +addr,+phys_addr</code></pre>
 
 <hr>
 
-<h3>11.4 专项分析类命令</h3>
+<h3 id="114-专项分析类命令" >11.4 专项分析类命令</h3>
 
 <h4>11.4.1 <code>perf c2c</code> — 缓存伪共享检测</h4>
 
@@ -4411,7 +4411,7 @@ perf diff config_a.data config_b.data</code></pre>
 
 <hr>
 
-<h3>11.5 数据管理类命令</h3>
+<h3 id="115-数据管理类命令" >11.5 数据管理类命令</h3>
 
 <h4>11.5.1 <code>perf evlist</code> — 事件列表查看</h4>
 
@@ -4553,7 +4553,7 @@ perf report -i perf.data</code></pre>
 
 <hr>
 
-<h3>11.6 系统工具类命令</h3>
+<h3 id="116-系统工具类命令" >11.6 系统工具类命令</h3>
 
 <h4>11.6.1 <code>perf list</code> — 事件列表</h4>
 
@@ -4791,7 +4791,7 @@ perf iostat -d sda -- sleep 10</code></pre>
 
 <hr>
 
-<h3>11.7 ARM64 特有的 Perf 使用技巧</h3>
+<h3 id="117-arm64-特有的-perf-使用技巧" >11.7 ARM64 特有的 Perf 使用技巧</h3>
 
 <h4>11.7.1 使用原始 PMU 事件编号</h4>
 
@@ -6160,7 +6160,7 @@ setcap cap_perfmon+ep /usr/bin/perf</code></pre>
 <code>CONFIG_PERF_EVENTS=y</code>、<code>CONFIG_HW_PERF_EVENTS=y</code>、<code>CONFIG_DEBUG_INFO=y</code>、<code>CONFIG_KALLSYMS_ALL=y</code>。<br>
 QEMU 默认提供 PMU 模拟（<code>-cpu host,pmu=on</code> 或 <code>-cpu cortex-a72</code>），大部分 cycles/instructions 事件可用。</blockquote>
 
-<h3>12.1 Case 1：CPU 热点函数定位 — 死循环 / 计算密集</h3>
+<h3 id="121-case-1cpu-热点函数定位--死循环--计算密集">12.1 Case 1：CPU 热点函数定位 — 死循环 / 计算密集</h3>
 
 <p><strong>目标</strong>：演示如何用 perf 快速定位消耗 CPU 最多的函数</p>
 
@@ -6243,7 +6243,7 @@ perf report --stdio --sort comm,dso,sym
 
 <hr>
 
-<h3>12.2 Case 2：Cache Miss 分析 — 数组遍历顺序</h3>
+<h3 id="122-case-2cache-miss-分析--数组遍历顺序">12.2 Case 2：Cache Miss 分析 — 数组遍历顺序</h3>
 
 <p><strong>目标</strong>：演示行优先 vs 列优先遍历对 Cache Miss 的影响，用 perf 量化差异</p>
 
@@ -6341,7 +6341,7 @@ perf script | stackcollapse-perf.pl | flamegraph.pl \
 
 <hr>
 
-<h3>12.3 Case 3：上下文切换分析 — 多线程锁竞争</h3>
+<h3 id="123-case-3上下文切换分析--多线程锁竞争">12.3 Case 3：上下文切换分析 — 多线程锁竞争</h3>
 
 <p><strong>目标</strong>：演示高锁竞争场景下大量上下文切换，用 perf 定位瓶颈</p>
 
@@ -6433,7 +6433,7 @@ perf stat -e context-switches,cycles,instructions -- ./lock_contention_v2
 
 <hr>
 
-<h3>12.4 Case 4：Page Fault 分析 — 内存分配模式</h3>
+<h3 id="124-case-4page-fault-分析--内存分配模式">12.4 Case 4：Page Fault 分析 — 内存分配模式</h3>
 
 <p><strong>目标</strong>：分析大量内存分配导致的 page fault 开销，用 perf 量化和定位</p>
 
@@ -6539,7 +6539,7 @@ perf report --stdio
 
 <hr>
 
-<h3>12.5 Case 5：内核 tracepoint 追踪 — 调度延迟与 I/O</h3>
+<h3 id="125-case-5内核-tracepoint-追踪--调度延迟与-io">12.5 Case 5：内核 tracepoint 追踪 — 调度延迟与 I/O</h3>
 
 <p><strong>目标</strong>：用 perf 的 tracepoint 功能追踪内核调度和块 I/O 事件</p>
 
@@ -6624,7 +6624,7 @@ awk &#x27;{print $5}&#x27; events.log | sort | uniq -c | sort -rn
 
 <hr>
 
-<h3>12.6 Case 6：False Sharing 检测 — 多核缓存行冲突</h3>
+<h3 id="126-case-6false-sharing-检测--多核缓存行冲突">12.6 Case 6：False Sharing 检测 — 多核缓存行冲突</h3>
 
 <p><strong>目标</strong>：演示多核访问同一 cache line 不同变量导致的性能下降</p>
 
@@ -6719,7 +6719,7 @@ perf stat -e L1-dcache-load-misses,L1-dcache-store-misses \
 
 <hr>
 
-<h3>12.7 Case 7：内核模块性能分析 — 自定义驱动热点</h3>
+<h3 id="127-case-7内核模块性能分析--自定义驱动热点">12.7 Case 7：内核模块性能分析 — 自定义驱动热点</h3>
 
 <p><strong>目标</strong>：在 QEMU 中加载自定义内核模块，用 perf 分析模块内部函数热点</p>
 
@@ -6829,7 +6829,7 @@ perf annotate heavy_compute
 
 <hr>
 
-<h3>12.8 QEMU Perf 实践注意事项汇总</h3>
+<h3 id="128-qemu-perf-实践注意事项汇总" >12.8 QEMU Perf 实践注意事项汇总</h3>
 
 <table>
 <thead><tr>
@@ -6883,7 +6883,7 @@ perf annotate heavy_compute
 
 <h2>13. Perf 高频面试题精选（附详细答案）</h2>
 
-<h3>13.1 基础概念类</h3>
+<h3 id="131-基础概念类" >13.1 基础概念类</h3>
 
 <h4>Q1：perf 的工作原理是什么？它是如何采样的？</h4>
 
@@ -7036,7 +7036,7 @@ LLC-load-misses,branch-misses -- ./my_app
 
 <hr>
 
-<h3>13.2 实战分析类</h3>
+<h3 id="132-实战分析类" >13.2 实战分析类</h3>
 
 <h4>Q5：CPU 使用率高但 IPC 低，可能是什么原因？如何用 perf 排查？</h4>
 
@@ -7273,7 +7273,7 @@ perf stat --repeat 5 -e cycles,instructions -- ./my_app
 
 <hr>
 
-<h3>13.3 内核原理类</h3>
+<h3 id="133-内核原理类" >13.3 内核原理类</h3>
 
 <h4>Q11：perf_event_open() 系统调用的核心参数有哪些？</h4>
 
@@ -7432,7 +7432,7 @@ perf stat -e cycles:uk -- ./my_app   # :uk = 两者都计（默认）</code></pr
 
 <hr>
 
-<h3>13.4 高级场景类</h3>
+<h3 id="134-高级场景类" >13.4 高级场景类</h3>
 
 <h4>Q15：如何用 perf 分析中断 / 软中断的性能影响？</h4>
 

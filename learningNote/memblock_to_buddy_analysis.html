@@ -392,10 +392,10 @@ hr {
       <li class="toc-chapter">
         <div class="toc-chapter-header"><span class="arrow">▶</span> 3. 关键函数说明</div>
         <ul class="toc-chapter-items">
-          <li><a href="#31-<strong>free_pages_memory--按对齐分配-ordermemblockc">3.1 free_pages_memory() — 按对齐分配 order（memblock.c）</a></li>
+          <li><a href="#31-free_pages_memory--按对齐分配-ordermemblockc">3.1 free_pages_memory() — 按对齐分配 order（memblock.c）</a></li>
           <li><a href="#32-free_one_page--中间层page_allocc1528">3.2 free_one_page() — 中间层（page_alloc.c:1528）</a></li>
-          <li><a href="#33-<strong>free_one_page--buddy-合并核心page_allocc940">3.3 free_one_page() — buddy 合并核心（page_alloc.c:940）</a></li>
-          <li><a href="#34-<strong>add_to_free_list--最终插入page_allocc803">3.4 add_to_free_list() — 最终插入（page_alloc.c:803）</a></li>
+          <li><a href="#33-free_one_page--buddy-合并核心page_allocc940">3.3 free_one_page() — buddy 合并核心（page_alloc.c:940）</a></li>
+          <li><a href="#34-add_to_free_list--最终插入page_allocc803">3.4 add_to_free_list() — 最终插入（page_alloc.c:803）</a></li>
         </ul>
       </li>
       <li class="toc-chapter">
@@ -449,7 +449,7 @@ hr {
 
 <h2>3. 关键函数说明</h2>
 
-<h3>3.1 <code>__free_pages_memory()</code> — 按对齐分配 order（memblock.c）</h3>
+<h3 id="31-free_pages_memory--按对齐分配-ordermemblockc">3.1 <code>__free_pages_memory()</code> — 按对齐分配 order（memblock.c）</h3>
 
 <pre><code class="language-c">static void __init __free_pages_memory(unsigned long start, unsigned long end)
 {
@@ -470,7 +470,7 @@ hr {
 
 <p><strong>关键规律</strong>：order-N 块要求 <code>PFN % (1 << N) == 0</code>，即自然对齐约束决定了每个块的 order，<strong>不是全部都用最大 order</strong>。</p>
 
-<h3>3.2 <code>free_one_page()</code> — 中间层（page_alloc.c:1528）</h3>
+<h3 id="32-free_one_page--中间层page_allocc1528">3.2 <code>free_one_page()</code> — 中间层（page_alloc.c:1528）</h3>
 
 <p>注意：<code>free_one_page()</code> <strong>不直接</strong>调用 <code>__free_one_page()</code>，中间经过 <code>split_large_buddy()</code>：</p>
 
@@ -480,7 +480,7 @@ hr {
        // 若 order &gt; pageblock_order，拆成多个 pageblock_order 大小的块
        └─ __free_one_page(page, pfn, zone, order, mt, fpi)</code></pre>
 
-<h3>3.3 <code>__free_one_page()</code> — buddy 合并核心（page_alloc.c:940）</h3>
+<h3 id="33-free_one_page--buddy-合并核心page_allocc940">3.3 <code>__free_one_page()</code> — buddy 合并核心（page_alloc.c:940）</h3>
 
 <pre><code class="language-c">while (order &lt; MAX_PAGE_ORDER) {
     buddy = find_buddy_page_pfn(page, pfn, order, &amp;buddy_pfn);
@@ -497,7 +497,7 @@ done_merging:
 
 <p><strong>buddy 伙伴公式</strong>：<code>buddy_pfn = pfn ^ (1 << order)</code></p>
 
-<h3>3.4 <code>__add_to_free_list()</code> — 最终插入（page_alloc.c:803）</h3>
+<h3 id="34-add_to_free_list--最终插入page_allocc803">3.4 <code>__add_to_free_list()</code> — 最终插入（page_alloc.c:803）</h3>
 
 <pre><code class="language-c">static inline void __add_to_free_list(struct page *page, struct zone *zone,
                                       unsigned int order, int migratetype, bool tail)

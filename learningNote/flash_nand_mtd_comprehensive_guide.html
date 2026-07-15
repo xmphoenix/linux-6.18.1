@@ -502,7 +502,7 @@ hr {
 
 <h2>1. Flash 涉及的标准协议</h2>
 
-<h3>1.1 SPI 协议标准</h3>
+<h3 id="11-spi-协议标准" >1.1 SPI 协议标准</h3>
 
 <table>
 <thead><tr>
@@ -540,7 +540,7 @@ hr {
 
 <blockquote><strong>命名约定 xS-yS-zS</strong>: x=命令线数, y=地址线数, z=数据线数。S=SDR(单沿), D=DTR(双沿)</blockquote>
 
-<h3>1.2 JEDEC 标准</h3>
+<h3 id="12-jedec-标准" >1.2 JEDEC 标准</h3>
 
 <table>
 <thead><tr>
@@ -562,7 +562,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>1.3 ONFI (Open NAND Flash Interface)</h3>
+<h3 id="13-onfi-open-nand-flash-interface" >1.3 ONFI (Open NAND Flash Interface)</h3>
 
 <pre><code>内核文件: include/linux/mtd/onfi.h</code></pre>
 <ul>
@@ -571,7 +571,7 @@ hr {
 <li>定义了标准命令集</li>
 </ul>
 
-<h3>1.4 CFI (Common Flash Interface)</h3>
+<h3 id="14-cfi-common-flash-interface" >1.4 CFI (Common Flash Interface)</h3>
 
 <pre><code>内核文件: drivers/mtd/chips/cfi_util.c, cfi_probe.c
          include/linux/mtd/cfi.h</code></pre>
@@ -580,7 +580,7 @@ hr {
 <li>定义了 <code>cfi_cmdset_0001</code>（Intel/Sharp）, <code>cfi_cmdset_0002</code>（AMD/Spansion）, <code>cfi_cmdset_0020</code>（ST）</li>
 </ul>
 
-<h3>1.5 SPI NAND 标准命令集</h3>
+<h3 id="15-spi-nand-标准命令集" >1.5 SPI NAND 标准命令集</h3>
 
 <pre><code class="language-c">/* 来自 include/linux/mtd/spinand.h */
 命令码 0xff  - RESET         (复位)
@@ -598,7 +598,7 @@ hr {
 命令码 0x10  - PROGRAM_EXECUTE      (执行编程)
 命令码 0xd8  - BLOCK_ERASE          (块擦除)</code></pre>
 
-<h3>1.6 SPI NOR 标准命令集</h3>
+<h3 id="16-spi-nor-标准命令集" >1.6 SPI NOR 标准命令集</h3>
 
 <pre><code class="language-c">/* 来自 include/linux/mtd/spi-nor.h */
 SPINOR_OP_RDSR   0x05  - 读状态寄存器
@@ -614,7 +614,7 @@ SPINOR_OP_RDSFDP 0x5a  - 读 SFDP 参数</code></pre>
 
 <h2>2. SPI Flash 硬件属性分析</h2>
 
-<h3>2.1 存储组织结构</h3>
+<h3 id="21-存储组织结构" >2.1 存储组织结构</h3>
 
 <pre><code>┌─────────────────────────────────────────────────┐
 │                   SPI NAND Flash                 │
@@ -632,7 +632,7 @@ SPINOR_OP_RDSFDP 0x5a  - 读 SFDP 参数</code></pre>
 │  └── LUN 1                                       │
 └─────────────────────────────────────────────────┘</code></pre>
 
-<h3>2.2 内核中的内存组织数据结构</h3>
+<h3 id="22-内核中的内存组织数据结构" >2.2 内核中的内存组织数据结构</h3>
 
 <pre><code class="language-c">/* include/linux/mtd/nand.h */
 struct nand_memory_organization {
@@ -660,7 +660,7 @@ NAND_MEMORG(1,     // bits_per_cell (SLC)
             1,     // luns_per_target
             1)     // ntargets</code></pre>
 
-<h3>2.3 Block Size（块大小）</h3>
+<h3 id="23-block-size块大小" >2.3 Block Size（块大小）</h3>
 
 <table>
 <thead><tr>
@@ -686,7 +686,7 @@ NAND_MEMORG(1,     // bits_per_cell (SLC)
 </tr>
 </tbody></table>
 
-<h3>2.4 OTP (One-Time Programmable)</h3>
+<h3 id="24-otp-one-time-programmable" >2.4 OTP (One-Time Programmable)</h3>
 
 <pre><code class="language-c">/* include/linux/mtd/spinand.h */
 // OTP 区域布局
@@ -716,7 +716,7 @@ struct spinand_user_otp_ops {
 <li><strong>控制寄存器</strong>: <code>CFG_OTP_ENABLE</code> (BIT(6) of REG_CFG 0xb0) 使能 OTP 访问模式</li>
 </ul>
 
-<h3>2.5 ECC (Error Correction Code)</h3>
+<h3 id="25-ecc-error-correction-code" >2.5 ECC (Error Correction Code)</h3>
 
 <pre><code class="language-c">/* ECC 引擎类型 - include/linux/mtd/nand.h */
 enum nand_ecc_engine_type {
@@ -754,7 +754,7 @@ enum nand_ecc_algo {
   2. PROGRAM_LOAD                → 数据写入缓存, 芯片自动计算 ECC
   3. PROGRAM_EXECUTE             → 执行编程</code></pre>
 
-<h3>2.6 Block 数据布局与坏块/有效块 Layout</h3>
+<h3 id="26-block-数据布局与坏块有效块-layout" >2.6 Block 数据布局与坏块/有效块 Layout</h3>
 
 <h4>2.6.1 布局一：单 Plane 顺序布局 (Sequential)</h4>
 
@@ -1203,7 +1203,7 @@ Linux 内核中，SPI NAND (<code>spinand_write_to_cache_op</code>) 和 Raw NAND
 </tr>
 </tbody></table>
 
-<h3>2.7 OOB 区域内容详细布局</h3>
+<h3 id="27-oob-区域内容详细布局" >2.7 OOB 区域内容详细布局</h3>
 
 <h4>2.7.1 OOB 通用结构</h4>
 
@@ -1366,7 +1366,7 @@ Section 2:                                 Section 3:
 </tr>
 </tbody></table>
 
-<h3>2.8 坏块标记 (Bad Block Marker) 详解</h3>
+<h3 id="28-坏块标记-bad-block-marker-详解" >2.8 坏块标记 (Bad Block Marker) 详解</h3>
 
 <h4>2.8.1 坏块标记在 OOB 中的位置</h4>
 
@@ -1403,7 +1403,7 @@ Section 2:                                 Section 3:
 │ BBM=0x00,0x00 → 由 spinand_markbad() 写入      │
 └────────────────────────────────────────────────┘</code></pre>
 
-<h3>2.9 如何区分出厂坏块、首次烧写坏块和运行时坏块</h3>
+<h3 id="29-如何区分出厂坏块首次烧写坏块和运行时坏块">2.9 如何区分出厂坏块、首次烧写坏块和运行时坏块</h3>
 
 <h4>2.9.1 三种坏块的产生场景</h4>
 
@@ -1679,7 +1679,7 @@ static int nand_block_bad(struct nand_chip *chip, loff_t ofs)
 区分的关键在于<strong>检测时机</strong>：上电首次扫描发现的是出厂坏块，运行中 markbad 标记的是运行时坏块。<br>
 内核 BBT 通过 <code>FACTORY_BAD</code> vs <code>WORN</code> 两个不同状态码来记录这一区别。</blockquote>
 
-<h3>2.10 SPI Flash 关键寄存器</h3>
+<h3 id="210-spi-flash-关键寄存器" >2.10 SPI Flash 关键寄存器</h3>
 
 <pre><code>┌──────────────────────────────────────────┐
 │  寄存器地址    名称            功能        │
@@ -1696,7 +1696,7 @@ static int nand_block_bad(struct nand_chip *chip, loff_t ofs)
 │           BIT(5:4) ECC    ECC状态        │
 └──────────────────────────────────────────┘</code></pre>
 
-<h3>2.11 时钟频率：Datasheet 标称 vs SoC 实际提供</h3>
+<h3 id="211-时钟频率datasheet-标称-vs-soc-实际提供">2.11 时钟频率：Datasheet 标称 vs SoC 实际提供</h3>
 
 <h4>2.11.1 三层频率约束关系</h4>
 
@@ -2238,7 +2238,7 @@ cat /sys/kernel/debug/tracing/trace_pipe
 
 <hr>
 
-<h3>3.1 源码目录结构</h3>
+<h3 id="31-源码目录结构" >3.1 源码目录结构</h3>
 
 <pre><code>drivers/mtd/
 ├── mtdcore.c           # MTD 核心层: 设备注册/管理
@@ -2273,7 +2273,7 @@ cat /sys/kernel/debug/tracing/trace_pipe
 ├── tests/              # MTD 测试模块
 └── ubi/                # UBI (Unsorted Block Images) 层</code></pre>
 
-<h3>3.2 软件架构层次</h3>
+<h3 id="32-软件架构层次" >3.2 软件架构层次</h3>
 
 <pre><code>┌─────────────────────────────────────────────┐
 │           用户空间 (User Space)               │
@@ -2299,7 +2299,7 @@ cat /sys/kernel/debug/tracing/trace_pipe
 │    硬件寄存器操作 | DMA传输                    │
 └─────────────────────────────────────────────┘</code></pre>
 
-<h3>3.3 SPI NAND 核心操作流程</h3>
+<h3 id="33-spi-nand-核心操作流程" >3.3 SPI NAND 核心操作流程</h3>
 
 <h4>3.3.1 Probe 流程</h4>
 
@@ -2387,7 +2387,7 @@ cat /sys/kernel/debug/tracing/trace_pipe
 
 <h2>4. NAND Flash 与 MTD 驱动框架及数据结构</h2>
 
-<h3>4.1 核心数据结构关系图</h3>
+<h3 id="41-核心数据结构关系图" >4.1 核心数据结构关系图</h3>
 
 <pre><code>┌──────────────────────────────────────────────────────────────┐
 │                     struct spinand_device                      │
@@ -2419,7 +2419,7 @@ cat /sys/kernel/debug/tracing/trace_pipe
 │  bool cont_read_possible         // 是否支持连续读               │
 └──────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>4.2 MTD 核心数据结构</h3>
+<h3 id="42-mtd-核心数据结构" >4.2 MTD 核心数据结构</h3>
 
 <pre><code class="language-c">/* include/linux/mtd/mtd.h */
 struct mtd_info {
@@ -2464,7 +2464,7 @@ struct mtd_info {
     struct mtd_part part;            // 分区信息 (offset/size)
 };</code></pre>
 
-<h3>4.3 NAND 设备数据结构</h3>
+<h3 id="43-nand-设备数据结构" >4.3 NAND 设备数据结构</h3>
 
 <pre><code class="language-c">/* include/linux/mtd/nand.h */
 struct nand_device {
@@ -2506,7 +2506,7 @@ struct nand_page_io_req {
     bool continuous;                 // 是否连续读模式
 };</code></pre>
 
-<h3>4.4 ECC 引擎数据结构</h3>
+<h3 id="44-ecc-引擎数据结构" >4.4 ECC 引擎数据结构</h3>
 
 <pre><code class="language-c">/* include/linux/mtd/nand.h */
 struct nand_ecc {
@@ -2533,7 +2533,7 @@ struct nand_ecc_engine_ops {
     int (*finish_io_req)(struct nand_device *, struct nand_page_io_req *);  // IO后处理
 };</code></pre>
 
-<h3>4.5 SPI NAND 芯片描述结构</h3>
+<h3 id="45-spi-nand-芯片描述结构" >4.5 SPI NAND 芯片描述结构</h3>
 
 <pre><code class="language-c">/* include/linux/mtd/spinand.h */
 struct spinand_info {
@@ -2561,7 +2561,7 @@ struct spinand_info {
 
 <h2>5. 坏块处理机制与流程</h2>
 
-<h3>5.1 坏块类型</h3>
+<h3 id="51-坏块类型" >5.1 坏块类型</h3>
 
 <table>
 <thead><tr>
@@ -2587,7 +2587,7 @@ struct spinand_info {
 </tr>
 </tbody></table>
 
-<h3>5.2 BBT (Bad Block Table) 实现</h3>
+<h3 id="52-bbt-bad-block-table-实现" >5.2 BBT (Bad Block Table) 实现</h3>
 
 <pre><code class="language-c">/* drivers/mtd/nand/bbt.c */
 
@@ -2605,7 +2605,7 @@ enum nand_bbt_block_status {
     NAND_BBT_BLOCK_FACTORY_BAD = 4,    // 出厂坏块
 };</code></pre>
 
-<h3>5.3 坏块检测流程</h3>
+<h3 id="53-坏块检测流程" >5.3 坏块检测流程</h3>
 
 <pre><code>spinand_mtd_block_isbad(mtd, offs)
   └── nanddev_isbad(nand, &amp;pos)
@@ -2641,7 +2641,7 @@ enum nand_bbt_block_status {
     return false;
 }</code></pre>
 
-<h3>5.4 坏块标记流程</h3>
+<h3 id="54-坏块标记流程" >5.4 坏块标记流程</h3>
 
 <pre><code>spinand_mtd_block_markbad(mtd, offs)
   └── nanddev_markbad(nand, &amp;pos)
@@ -2653,7 +2653,7 @@ enum nand_bbt_block_status {
       ├── nanddev_bbt_update()        ← 同步 BBT (当前为 NOP)
       └── mtd-&gt;ecc_stats.badblocks++ ← 更新统计</code></pre>
 
-<h3>5.5 擦除时的坏块保护</h3>
+<h3 id="55-擦除时的坏块保护" >5.5 擦除时的坏块保护</h3>
 
 <pre><code class="language-c">/* drivers/mtd/nand/core.c */
 static int nanddev_erase(struct nand_device *nand, const struct nand_pos *pos)
@@ -2667,7 +2667,7 @@ static int nanddev_erase(struct nand_device *nand, const struct nand_pos *pos)
     return nand-&gt;ops-&gt;erase(nand, pos);
 }</code></pre>
 
-<h3>5.6 BBT 惰性加载策略</h3>
+<h3 id="56-bbt-惰性加载策略" >5.6 BBT 惰性加载策略</h3>
 
 <p>SPI NAND 采用<strong>惰性加载 (Lazy Loading)</strong> 策略:</p>
 <ul>
@@ -2677,7 +2677,7 @@ static int nanddev_erase(struct nand_device *nand, const struct nand_pos *pos)
 <li>这避免了启动时全扫描的延迟</li>
 </ul>
 
-<h3>5.7 坏块池 (Bad Block Reserve) 与 BMT (Bad Block Management Table)</h3>
+<h3 id="57-坏块池-bad-block-reserve-与-bmt-bad-block-management-table" >5.7 坏块池 (Bad Block Reserve) 与 BMT (Bad Block Management Table)</h3>
 
 <h4>5.7.1 概念澄清</h4>
 
@@ -3015,7 +3015,7 @@ struct nand_bbt_descr {
 
 <h2>6. Flash 经典测试 Case</h2>
 
-<h3>6.1 内核自带 MTD 测试模块</h3>
+<h3 id="61-内核自带-mtd-测试模块" >6.1 内核自带 MTD 测试模块</h3>
 
 <p>位于 <code>drivers/mtd/tests/</code>:</p>
 
@@ -3073,7 +3073,7 @@ struct nand_bbt_descr {
 </tr>
 </tbody></table>
 
-<h3>6.2 使用方法</h3>
+<h3 id="62-使用方法" >6.2 使用方法</h3>
 
 <pre><code class="language-bash"># 加载测试模块 (指定设备号)
 insmod /lib/modules/$(uname -r)/kernel/drivers/mtd/tests/mtd_stresstest.ko dev=0 count=1000
@@ -3084,7 +3084,7 @@ insmod /lib/modules/$(uname -r)/kernel/drivers/mtd/tests/mtd_speedtest.ko dev=0
 # 查看测试结果
 dmesg | tail -50</code></pre>
 
-<h3>6.3 用户空间测试工具 (mtd-utils)</h3>
+<h3 id="63-用户空间测试工具-mtd-utils" >6.3 用户空间测试工具 (mtd-utils)</h3>
 
 <pre><code class="language-bash"># 基本信息查看
 mtdinfo /dev/mtd0
@@ -3110,7 +3110,7 @@ ubiformat /dev/mtd0
 ubiattach -m 0
 ubimkvol /dev/ubi0 -N test -m</code></pre>
 
-<h3>6.4 典型测试场景</h3>
+<h3 id="64-典型测试场景" >6.4 典型测试场景</h3>
 
 <pre><code class="language-bash">#!/bin/bash
 # Flash 综合测试脚本
@@ -3148,7 +3148,7 @@ cat /sys/class/mtd/mtd${MTD_NUM}/bad_blocks</code></pre>
 
 <h2>7. 如何适配一个新的 Flash</h2>
 
-<h3>7.1 适配 SPI NAND 步骤</h3>
+<h3 id="71-适配-spi-nand-步骤" >7.1 适配 SPI NAND 步骤</h3>
 
 <h4>Step 1: 获取芯片 datasheet 关键参数</h4>
 
@@ -3307,7 +3307,7 @@ const struct spinand_manufacturer newvendor_spinand_manufacturer = {
     };
 };</code></pre>
 
-<h3>7.2 适配检查清单</h3>
+<h3 id="72-适配检查清单" >7.2 适配检查清单</h3>
 
 <ul>
 <li class="task-list-item"><input type="checkbox" disabled >READ_ID 方法正确 (OPCODE/OPCODE_ADDR/OPCODE_DUMMY)</li>
@@ -3326,7 +3326,7 @@ const struct spinand_manufacturer newvendor_spinand_manufacturer = {
 
 <h2>8. QEMU 上测试 Flash 特性的 Case 和驱动代码</h2>
 
-<h3>8.1 QEMU Flash 模拟支持</h3>
+<h3 id="81-qemu-flash-模拟支持" >8.1 QEMU Flash 模拟支持</h3>
 
 <p>QEMU 内置了多种 Flash 模拟:</p>
 <ul>
@@ -3335,7 +3335,7 @@ const struct spinand_manufacturer newvendor_spinand_manufacturer = {
 <li><strong>NAND Flash</strong>: 通过 <code>nand</code> 设备模拟 (限 Raw NAND)</li>
 </ul>
 
-<h3>8.2 QEMU 启动配置</h3>
+<h3 id="82-qemu-启动配置" >8.2 QEMU 启动配置</h3>
 
 <pre><code class="language-bash">#!/bin/bash
 # 启动 QEMU 并挂载模拟 Flash
@@ -3353,7 +3353,7 @@ qemu-system-aarch64 \
     -drive if=pflash,format=raw,file=flash.img \
     -m 1024M</code></pre>
 
-<h3>8.3 使用 mtd_nandsim 模拟 NAND Flash</h3>
+<h3 id="83-使用-mtd_nandsim-模拟-nand-flash" >8.3 使用 mtd_nandsim 模拟 NAND Flash</h3>
 
 <p>Linux 内核自带 NAND 模拟器 <code>nandsim</code>:</p>
 
@@ -3373,7 +3373,7 @@ insmod mtd_oobtest.ko dev=0
 insmod mtd_speedtest.ko dev=0
 insmod mtd_pagetest.ko dev=0</code></pre>
 
-<h3>8.4 QEMU + nandsim 测试脚本</h3>
+<h3 id="84-qemu--nandsim-测试脚本">8.4 QEMU + nandsim 测试脚本</h3>
 
 <pre><code class="language-bash">#!/bin/bash
 # qemu_flash_test.sh - QEMU 环境下的 Flash 测试脚本
@@ -3459,7 +3459,7 @@ rmmod nandsim 2&gt;/dev/null || true
 
 echo &quot;===== Flash 测试结束 =====&quot;</code></pre>
 
-<h3>8.5 模拟坏块测试</h3>
+<h3 id="85-模拟坏块测试" >8.5 模拟坏块测试</h3>
 
 <pre><code class="language-bash"># nandsim 支持注入坏块
 # weakpages 参数模拟弱页 (写入后会产生位翻转)
@@ -3479,7 +3479,7 @@ modprobe nandsim first_id_byte=0x20 second_id_byte=0xaa \
 <blockquote><strong>注意</strong>: BootROM 是烧录在 SoC 内部 ROM 中的固件，不在 Linux 内核源码中。<br>
 本章内容基于各 SoC 厂商公开文档 (Allwinner, Rockchip, MediaTek, Qualcomm, Samsung 等) 的通用原理总结。</blockquote>
 
-<h3>9.1 上电启动全景</h3>
+<h3 id="91-上电启动全景" >9.1 上电启动全景</h3>
 
 <pre><code> SoC 上电
    │
@@ -3517,7 +3517,7 @@ modprobe nandsim first_id_byte=0x20 second_id_byte=0xaa \
 │   3. 跳转到 Linux 内核                                          │
 └──────────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>9.2 BootROM 如何识别外部 Flash</h3>
+<h3 id="92-bootrom-如何识别外部-flash" >9.2 BootROM 如何识别外部 Flash</h3>
 
 <h4>9.2.1 启动介质选择</h4>
 
@@ -3741,7 +3741,7 @@ Parallel NAND 的 ID 字节可以部分解码:
   - SPL 加载后再初始化 DDR、切换到高速模式
   - 完整的 Flash 能力识别和优化由 U-Boot/Linux 完成</code></pre>
 
-<h3>9.3 BootROM 如何读取 Flash 数据</h3>
+<h3 id="93-bootrom-如何读取-flash-数据" >9.3 BootROM 如何读取 Flash 数据</h3>
 
 <h4>9.3.1 SPI NAND 读取命令序列</h4>
 
@@ -3831,7 +3831,7 @@ BootROM 验证流程:
   6. (Secure Boot) 验证 RSA/ECDSA 签名
   7. 全部通过 → 跳转到 Load Address 执行</code></pre>
 
-<h3>9.4 BootROM 碰到坏块怎么处理</h3>
+<h3 id="94-bootrom-碰到坏块怎么处理" >9.4 BootROM 碰到坏块怎么处理</h3>
 
 <p>这是最关键的部分。BootROM 的坏块处理<strong>极其简化</strong>，与 Linux 内核的完整 BBT 机制完全不同。</p>
 
@@ -4051,7 +4051,7 @@ DBBT (Discovered Bad Block Table):
 │  - 可靠性依赖于多份拷贝                                        │
 └────────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>9.5 BootROM vs Linux 内核 — 坏块处理对比</h3>
+<h3 id="95-bootrom-vs-linux-内核--坏块处理对比">9.5 BootROM vs Linux 内核 — 坏块处理对比</h3>
 
 <table>
 <thead><tr>
@@ -4117,7 +4117,7 @@ DBBT (Discovered Bad Block Table):
 </tr>
 </tbody></table>
 
-<h3>9.6 量产烧录时的坏块处理</h3>
+<h3 id="96-量产烧录时的坏块处理" >9.6 量产烧录时的坏块处理</h3>
 
 <pre><code>量产时如何把 SPL/U-Boot 正确烧录到有坏块的 Flash 上:
 
@@ -4150,7 +4150,7 @@ DBBT (Discovered Bad Block Table):
      - MTK: 写入 BMT
      - 其他: 依赖运行时 BBT 扫描</code></pre>
 
-<h3>9.7 如果 Block 0 本身就是坏块怎么办</h3>
+<h3 id="97-如果-block-0-本身就是坏块怎么办" >9.7 如果 Block 0 本身就是坏块怎么办</h3>
 
 <pre><code>这是最极端的场景, 各厂商的处理方式:
 
@@ -4184,7 +4184,7 @@ DBBT (Discovered Bad Block Table):
 
 <h2>10. 面试问题与答案</h2>
 
-<h3>Q1: NOR Flash 和 NAND Flash 的区别是什么？</h3>
+<h3 id="q1-nor-flash-和-nand-flash-的区别是什么" >Q1: NOR Flash 和 NAND Flash 的区别是什么？</h3>
 
 <p><strong>答</strong>: </p>
 
@@ -4242,7 +4242,7 @@ DBBT (Discovered Bad Block Table):
 </tr>
 </tbody></table>
 
-<h3>Q2: SPI NAND 的读取操作分为哪几步？为什么需要两步？</h3>
+<h3 id="q2-spi-nand-的读取操作分为哪几步为什么需要两步">Q2: SPI NAND 的读取操作分为哪几步？为什么需要两步？</h3>
 
 <p><strong>答</strong>: SPI NAND 读取分为两步:</p>
 
@@ -4258,7 +4258,7 @@ DBBT (Discovered Bad Block Table):
 <li>页缓存作为中间缓冲, 允许用 Dual/Quad SPI 高速读出</li>
 </ul>
 
-<h3>Q3: 什么是 ECC？SPI NAND 支持哪些 ECC 方式？</h3>
+<h3 id="q3-什么是-eccspi-nand-支持哪些-ecc-方式">Q3: 什么是 ECC？SPI NAND 支持哪些 ECC 方式？</h3>
 
 <p><strong>答</strong>: ECC (Error Correction Code) 是纠错码, 用于检测和纠正 Flash 存储位翻转。</p>
 
@@ -4272,7 +4272,7 @@ DBBT (Discovered Bad Block Table):
 
 <p>典型 ECC 能力: 1-bit/512B (Hamming), 4-bit/512B, 8-bit/512B (BCH)</p>
 
-<h3>Q4: NAND Flash 为什么会有坏块？如何管理？</h3>
+<h3 id="q4-nand-flash-为什么会有坏块如何管理">Q4: NAND Flash 为什么会有坏块？如何管理？</h3>
 
 <p><strong>答</strong>: </p>
 
@@ -4292,7 +4292,7 @@ DBBT (Discovered Bad Block Table):
 
 <p><strong>内核实现</strong>: <code>nanddev_isbad()</code> 先查 BBT 缓存, 未命中则读硬件标记并更新缓存 (惰性加载)</p>
 
-<h3>Q5: MTD 子系统的层次结构是怎样的？</h3>
+<h3 id="q5-mtd-子系统的层次结构是怎样的" >Q5: MTD 子系统的层次结构是怎样的？</h3>
 
 <p><strong>答</strong>:</p>
 <pre><code>用户空间: /dev/mtdN (字符设备) | /dev/mtdblockN (块设备)
@@ -4307,7 +4307,7 @@ SPI NAND/Raw NAND/SPI NOR: 协议特定实现
    │
 控制器驱动: 硬件操作</code></pre>
 
-<h3>Q6: <code>mtd_info</code> 结构中 <code>erasesize</code> 和 <code>writesize</code> 分别代表什么？</h3>
+<h3 id="q6-mtd_info-结构中-erasesize-和-writesize-分别代表什么" >Q6: <code>mtd_info</code> 结构中 <code>erasesize</code> 和 <code>writesize</code> 分别代表什么？</h3>
 
 <p><strong>答</strong>:</p>
 <ul>
@@ -4317,7 +4317,7 @@ SPI NAND/Raw NAND/SPI NOR: 协议特定实现
 
 <p>NAND Flash 必须先擦后写, 擦除以 Block 为单位, 写入以 Page 为单位。不能对单个 Page 擦除, 也不能在 Block 中只擦除部分 Page。</p>
 
-<h3>Q7: SPI Flash 支持的 Quad/Dual 模式有什么区别？命名含义是什么？</h3>
+<h3 id="q7-spi-flash-支持的-quaddual-模式有什么区别命名含义是什么">Q7: SPI Flash 支持的 Quad/Dual 模式有什么区别？命名含义是什么？</h3>
 
 <p><strong>答</strong>: 以 <code>1S-1S-4S</code> 为例:</p>
 <ul>
@@ -4336,7 +4336,7 @@ SPI NAND/Raw NAND/SPI NOR: 协议特定实现
 <li><code>1S-1D-4D</code>: DTR 四线 (最快之一)</li>
 </ul>
 
-<h3>Q8: 如何在 Linux 内核中为一款新的 SPI NAND Flash 添加支持？</h3>
+<h3 id="q8-如何在-linux-内核中为一款新的-spi-nand-flash-添加支持" >Q8: 如何在 Linux 内核中为一款新的 SPI NAND Flash 添加支持？</h3>
 
 <p><strong>答</strong>: 核心步骤:</p>
 
@@ -4353,7 +4353,7 @@ SPI NAND/Raw NAND/SPI NOR: 协议特定实现
 
 <p><strong>关键宏</strong>: <code>SPINAND_INFO()</code>, <code>NAND_MEMORG()</code>, <code>NAND_ECCREQ()</code>, <code>SPINAND_ID()</code></p>
 
-<h3>Q9: OOB (Out-Of-Band) 区域是做什么的？</h3>
+<h3 id="q9-oob-out-of-band-区域是做什么的" >Q9: OOB (Out-Of-Band) 区域是做什么的？</h3>
 
 <p><strong>答</strong>: OOB 是每个 NAND 页附带的额外存储区域, 用途:</p>
 
@@ -4373,7 +4373,7 @@ SPI NAND/Raw NAND/SPI NOR: 协议特定实现
 <li><code>MTD_OPS_RAW</code>: 原始访问 (包含 ECC 区域)</li>
 </ul>
 
-<h3>Q10: 什么是磨损均衡 (Wear Leveling)？为什么 NAND Flash 需要它？</h3>
+<h3 id="q10-什么是磨损均衡-wear-leveling为什么-nand-flash-需要它">Q10: 什么是磨损均衡 (Wear Leveling)？为什么 NAND Flash 需要它？</h3>
 
 <p><strong>答</strong>: NAND Flash 每个 Block 的擦写次数有限 (SLC: ~10万次, MLC: ~1万次)。如果总是擦写同一个 Block, 它会很快耗尽寿命, 而其他 Block 可能几乎未被使用。</p>
 
@@ -4388,7 +4388,7 @@ SPI NAND/Raw NAND/SPI NOR: 协议特定实现
 <li><strong>UBIFS</strong>: 基于 UBI 的文件系统, 直接受益于磨损均衡</li>
 </ul>
 
-<h3>Q11: SPI NAND 和 Raw NAND 的区别？</h3>
+<h3 id="q11-spi-nand-和-raw-nand-的区别" >Q11: SPI NAND 和 Raw NAND 的区别？</h3>
 
 <p><strong>答</strong>:</p>
 
@@ -4441,7 +4441,7 @@ SPI NAND/Raw NAND/SPI NOR: 协议特定实现
 </tr>
 </tbody></table>
 
-<h3>Q12: 描述一下 <code>spinand_probe()</code> 函数的完整流程。</h3>
+<h3 id="q12-描述一下-spinand_probe-函数的完整流程" >Q12: 描述一下 <code>spinand_probe()</code> 函数的完整流程。</h3>
 
 <p><strong>答</strong>: (参见 3.3.1 节的详细流程图)</p>
 

@@ -493,7 +493,7 @@ hr {
 
 <h2>1. Ethernet PHY 接口类型总结</h2>
 
-<h3>1.1 内核定义的 PHY 接口类型枚举</h3>
+<h3 id="11-内核定义的-phy-接口类型枚举" >1.1 内核定义的 PHY 接口类型枚举</h3>
 
 <p>内核在 <code>include/linux/phy.h</code> 中定义了 <code>phy_interface_t</code> 枚举，共 <strong>39 种</strong>接口模式（含 <code>NA</code> 和 <code>MAX</code>）：</p>
 
@@ -539,7 +539,7 @@ hr {
     PHY_INTERFACE_MODE_MAX,          // 边界标记
 } phy_interface_t;</code></pre>
 
-<h3>1.2 接口类型分类对比表</h3>
+<h3 id="12-接口类型分类对比表" >1.2 接口类型分类对比表</h3>
 
 <table>
 <thead><tr>
@@ -808,7 +808,7 @@ hr {
 
 <p>记忆规律：MII = Media Independent Interface，R = Reduced，S = Serial，G = Gigabit，XG = 10 Gigabit，Q = Quad（4 路），P = Penta（5 路），U = Universal。按这个规则，RGMII、QSGMII、USXGMII 这类名称可以直接按前后缀拆开记。</p>
 
-<h3>1.3 RGMII 延迟变体说明</h3>
+<h3 id="13-rgmii-延迟变体说明" >1.3 RGMII 延迟变体说明</h3>
 
 <p>RGMII 接口使用 DDR（双沿采样），数据在时钟的上升沿和下降沿同时变化，需要 <strong>2ns 延迟</strong>（内部或外部）来对齐：</p>
 
@@ -846,7 +846,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>1.4 MAC-PHY 接口速率适应模式分析</h3>
+<h3 id="14-mac-phy-接口速率适应模式分析" >1.4 MAC-PHY 接口速率适应模式分析</h3>
 
 <p>当链路协商的实际速率低于接口的原生速率时（例如 2500Base-X 接口但链路速率为 100Mbps），MAC 和 PHY 之间需要一种机制来适配速率差异。根据接口类型的不同，分为 <strong>原生多速率自适应</strong> 和 <strong>需要速率匹配（Rate Matching）</strong> 两种情况。</p>
 
@@ -1095,7 +1095,7 @@ static int aqr_gen2_get_rate_matching(struct phy_device *phydev,
 
 <h2>2. Ethernet 软件框架分析</h2>
 
-<h3>2.1 Linux Ethernet 整体分层架构</h3>
+<h3 id="21-linux-ethernet-整体分层架构" >2.1 Linux Ethernet 整体分层架构</h3>
 
 <pre><code>┌──────────────────────────────────────────────┐
 │              用户空间 (User Space)              │
@@ -1131,7 +1131,7 @@ static int aqr_gen2_get_rate_matching(struct phy_device *phydev,
 
 <p><img src="image/ethernet_phy_software_arch.svg" alt="Linux Ethernet PHY 软件架构全景图"></p>
 
-<h3>2.2 关键数据结构</h3>
+<h3 id="22-关键数据结构" >2.2 关键数据结构</h3>
 
 <h4>2.2.1 <code>struct net_device_ops</code>（MAC 驱动操作集）</h4>
 
@@ -1265,7 +1265,7 @@ struct phylink_mac_ops {
                              bool tx_clk_stop);
 };</code></pre>
 
-<h3>2.3 PHY 状态机</h3>
+<h3 id="23-phy-状态机" >2.3 PHY 状态机</h3>
 
 <pre><code>                      ┌──────────┐
                       │   DOWN   │  &lt;── 初始/关闭状态
@@ -1289,7 +1289,7 @@ struct phylink_mac_ops {
               │ phy_stop()
               └────► DOWN</code></pre>
 
-<h3>2.4 数据收发流程（简化）</h3>
+<h3 id="24-数据收发流程简化" >2.4 数据收发流程（简化）</h3>
 
 <pre><code>发送路径 (TX):
   应用层 send() → socket → TCP/IP → dev_queue_xmit()
@@ -1300,7 +1300,7 @@ struct phylink_mac_ops {
   → napi_gro_receive() → netif_receive_skb()
   → 协议栈 → socket → 应用层 recv()</code></pre>
 
-<h3>2.5 MDIO 总线通信</h3>
+<h3 id="25-mdio-总线通信" >2.5 MDIO 总线通信</h3>
 
 <pre><code>MAC ──── MDIO Bus ──── PHY0 (addr=0)
               │──────── PHY1 (addr=1)
@@ -1313,7 +1313,7 @@ MDIO 协议：
 - Clause 22: 5位寄存器地址空间（0-31），适用于1G以下
 - Clause 45: 扩展寻址（Device + Register），适用于多千兆/万兆</code></pre>
 
-<h3>2.6 EEE（Energy Efficient Ethernet）详解</h3>
+<h3 id="26-eeeenergy-efficient-ethernet详解" >2.6 EEE（Energy Efficient Ethernet）详解</h3>
 
 <h4>2.6.1 EEE 概述</h4>
 
@@ -1860,7 +1860,7 @@ struct phylink_config {
                   ├─ pcs_enable_eee()    // PCS 侧 EEE 启用
                   └─ mac_enable_tx_lpi() // MAC 侧 LPI 生成启用</code></pre>
 
-<h3>2.7 PHY 速率协商结果解析</h3>
+<h3 id="27-phy-速率协商结果解析" >2.7 PHY 速率协商结果解析</h3>
 
 <h4>2.7.1 自协商结果确定流程</h4>
 
@@ -3139,7 +3139,7 @@ ethtool eth0
 ethtool -S eth0
 dmesg | grep -i &quot;link\|phy\|duplex\|master\|slave\|downshift&quot;</code></pre>
 
-<h3>2.8 PHY Address 与 PHY ID 详解</h3>
+<h3 id="28-phy-address-与-phy-id-详解" >2.8 PHY Address 与 PHY ID 详解</h3>
 
 <p>PHY Address 和 PHY ID 是 PHY 设备管理的两个核心概念，分别解决<strong>"如何找到 PHY"</strong>和<strong>"PHY 是什么型号"</strong>两个问题。</p>
 
@@ -3872,7 +3872,7 @@ cat /sys/kernel/debug/mdio_bus/stmmac-0/0   # PHY addr 0 的信息</code></pre>
 
 <h2>3. 1G/2.5G/5G/10G PHY 协议规范</h2>
 
-<h3>3.1 IEEE 802.3 标准总览</h3>
+<h3 id="31-ieee-8023-标准总览" >3.1 IEEE 802.3 标准总览</h3>
 
 <table>
 <thead><tr>
@@ -3998,7 +3998,7 @@ cat /sys/kernel/debug/mdio_bus/stmmac-0/0   # PHY addr 0 的信息</code></pre>
 </tr>
 </tbody></table>
 
-<h3>3.2 关键规范说明</h3>
+<h3 id="32-关键规范说明" >3.2 关键规范说明</h3>
 
 <h4>1000BASE-T (IEEE 802.3ab)</h4>
 <ul>
@@ -4025,7 +4025,7 @@ cat /sys/kernel/debug/mdio_bus/stmmac-0/0   # PHY addr 0 的信息</code></pre>
 <li>2.5G: 200M symbols/s, 5G: 400M symbols/s</li>
 </ul>
 
-<h3>3.3 Clause 22 vs Clause 45 MDIO</h3>
+<h3 id="33-clause-22-vs-clause-45-mdio" >3.3 Clause 22 vs Clause 45 MDIO</h3>
 
 <table>
 <thead><tr>
@@ -4065,7 +4065,7 @@ cat /sys/kernel/debug/mdio_bus/stmmac-0/0   # PHY addr 0 的信息</code></pre>
 
 <h2>4. PHY 驱动案例分析</h2>
 
-<h3>4.1 Realtek RTL8211F — 1G PHY 驱动分析</h3>
+<h3 id="41-realtek-rtl8211f--1g-phy-驱动分析" >4.1 Realtek RTL8211F — 1G PHY 驱动分析</h3>
 
 <p><strong>源码位置</strong>: <code>drivers/net/phy/realtek/realtek_main.c</code></p>
 
@@ -4133,7 +4133,7 @@ static int rtl821x_write_page(struct phy_device *phydev, int page) {
     return __phy_write(phydev, 0x1f, page);  // 切换到目标页
 }</code></pre>
 
-<h3>4.2 Aquantia AQR107 — 10G PHY 驱动分析</h3>
+<h3 id="42-aquantia-aqr107--10g-phy-驱动分析" >4.2 Aquantia AQR107 — 10G PHY 驱动分析</h3>
 
 <p><strong>源码位置</strong>: <code>drivers/net/phy/aquantia/aquantia_main.c</code></p>
 
@@ -4182,7 +4182,7 @@ static int rtl821x_write_page(struct phy_device *phydev, int page) {
 // 3 = USXGMII, 4 = XAUI
 // 6 = SGMII, 7 = RXAUI</code></pre>
 
-<h3>4.3 Realtek RTL822x 系列 — 2.5G PHY</h3>
+<h3 id="43-realtek-rtl822x-系列--25g-phy" >4.3 Realtek RTL822x 系列 — 2.5G PHY</h3>
 
 <pre><code class="language-c">// RTL8226/RTL8221B 2.5G PHY
 {
@@ -4202,7 +4202,7 @@ static int rtl821x_write_page(struct phy_device *phydev, int page) {
     .read_status    = rtl822x_read_status,
 },</code></pre>
 
-<h3>4.4 Marvell 88X3310 — 10G 多速率 PHY</h3>
+<h3 id="44-marvell-88x3310--10g-多速率-phy" >4.4 Marvell 88X3310 — 10G 多速率 PHY</h3>
 
 <p><strong>源码位置</strong>: <code>drivers/net/phy/marvell10g.c</code></p>
 
@@ -4215,7 +4215,7 @@ static int rtl821x_write_page(struct phy_device *phydev, int page) {
 
 <h2>5. 1G Ethernet 通用寄存器详解</h2>
 
-<h3>5.1 IEEE 802.3 Clause 22 标准寄存器（适用于所有兼容 PHY）</h3>
+<h3 id="51-ieee-8023-clause-22-标准寄存器适用于所有兼容-phy" >5.1 IEEE 802.3 Clause 22 标准寄存器（适用于所有兼容 PHY）</h3>
 
 <p>来源：<code>include/uapi/linux/mii.h</code></p>
 
@@ -4301,7 +4301,7 @@ static int rtl821x_write_page(struct phy_device *phydev, int page) {
 </tr>
 </tbody></table>
 
-<h3>5.2 BMCR — 基本模式控制寄存器 (Reg 0x00)</h3>
+<h3 id="52-bmcr--基本模式控制寄存器-reg-0x00" >5.2 BMCR — 基本模式控制寄存器 (Reg 0x00)</h3>
 
 <pre><code>Bit 15: RESET        = 1 → 软复位（自动清零）
 Bit 14: LOOPBACK     = 1 → 启用环回模式
@@ -4320,7 +4320,7 @@ Bits[5:0]: 保留
   Bit6=0, Bit13=1 → 100Mbps
   Bit6=1, Bit13=0 → 1000Mbps</code></pre>
 
-<h3>5.3 BMSR — 基本模式状态寄存器 (Reg 0x01)</h3>
+<h3 id="53-bmsr--基本模式状态寄存器-reg-0x01" >5.3 BMSR — 基本模式状态寄存器 (Reg 0x01)</h3>
 
 <pre><code>Bit 15: 100BASE4      = 1 → 支持 100BASE-T4
 Bit 14: 100FULL       = 1 → 支持 100BASE-TX 全双工
@@ -4339,7 +4339,7 @@ Bit  0: ERCAP         = 1 → 支持扩展寄存器
   一旦链路断开，该位变为 0 并保持，直到被读取后才会反映当前状态。
   因此需要连续读两次才能获得实时链路状态。</code></pre>
 
-<h3>5.4 PHYSID1/PHYSID2 — PHY 标识寄存器 (Reg 0x02/0x03)</h3>
+<h3 id="54-physid1physid2--phy-标识寄存器-reg-0x020x03" >5.4 PHYSID1/PHYSID2 — PHY 标识寄存器 (Reg 0x02/0x03)</h3>
 
 <pre><code>Reg 0x02 (PHYSID1): OUI 高位 [3:18]
 Reg 0x03 (PHYSID2):
@@ -4352,7 +4352,7 @@ Reg 0x03 (PHYSID2):
   RTL8211F: 0x001cc916
   AQR107:   0x03a1b4e0</code></pre>
 
-<h3>5.5 ADVERTISE — 自协商通告寄存器 (Reg 0x04)</h3>
+<h3 id="55-advertise--自协商通告寄存器-reg-0x04" >5.5 ADVERTISE — 自协商通告寄存器 (Reg 0x04)</h3>
 
 <pre><code>Bit 15: NPAGE        = 1 → 支持下一页
 Bit 14: LPACK        = 1 → 已收到链路伙伴应答
@@ -4366,11 +4366,11 @@ Bit  6: 10FULL       = 1 → 通告 10Mbps 全双工
 Bit  5: 10HALF       = 1 → 通告 10Mbps 半双工
 Bits[4:0]: 选择器字段 = 00001 (IEEE 802.3)</code></pre>
 
-<h3>5.6 LPA — 链路伙伴能力寄存器 (Reg 0x05)</h3>
+<h3 id="56-lpa--链路伙伴能力寄存器-reg-0x05" >5.6 LPA — 链路伙伴能力寄存器 (Reg 0x05)</h3>
 
 <p>格式与 ADVERTISE 相同，但反映的是<strong>对端设备通告的能力</strong>。</p>
 
-<h3>5.7 CTRL1000 — 1000BASE-T 控制寄存器 (Reg 0x09)</h3>
+<h3 id="57-ctrl1000--1000base-t-控制寄存器-reg-0x09">5.7 CTRL1000 — 1000BASE-T 控制寄存器 (Reg 0x09)</h3>
 
 <pre><code>Bit 12: ENABLE_MASTER = 1 → 启用手动 Master/Slave 配置
 Bit 11: AS_MASTER     = 1 → 配置为 Master
@@ -4378,7 +4378,7 @@ Bit 10: PREFER_MASTER = 1 → 偏好 Master 角色
 Bit  9: 1000FULL      = 1 → 通告 1000BASE-T 全双工
 Bit  8: 1000HALF      = 1 → 通告 1000BASE-T 半双工</code></pre>
 
-<h3>5.8 STAT1000 — 1000BASE-T 状态寄存器 (Reg 0x0a)</h3>
+<h3 id="58-stat1000--1000base-t-状态寄存器-reg-0x0a">5.8 STAT1000 — 1000BASE-T 状态寄存器 (Reg 0x0a)</h3>
 
 <pre><code>Bit 15: MSFAIL        = 1 → Master/Slave 协商失败
 Bit 14: MSRES         = 1 → 当前为 Master, 0 → Slave
@@ -4387,7 +4387,7 @@ Bit 12: REMRXOK       = 1 → 远端接收器状态 OK
 Bit 11: 1000FULL      = 1 → 对端支持 1000BASE-T 全双工
 Bit 10: 1000HALF      = 1 → 对端支持 1000BASE-T 半双工</code></pre>
 
-<h3>5.9 MMD 间接访问寄存器 (Reg 0x0d/0x0e)</h3>
+<h3 id="59-mmd-间接访问寄存器-reg-0x0d0x0e">5.9 MMD 间接访问寄存器 (Reg 0x0d/0x0e)</h3>
 
 <p>用于 <strong>Clause 22</strong> PHY 间接访问 <strong>Clause 45</strong> 寄存器空间：</p>
 
@@ -4402,7 +4402,7 @@ Bit 10: 1000HALF      = 1 → 对端支持 1000BASE-T 半双工</code></pre>
 Reg 0x0e (MMD_DATA):
   Bits[15:0]: 地址或数据</code></pre>
 
-<h3>5.10 SGMII 带内自协商寄存器</h3>
+<h3 id="510-sgmii-带内自协商寄存器" >5.10 SGMII 带内自协商寄存器</h3>
 
 <pre><code class="language-c">#define ADVERTISE_SGMII         0x0001  // MAC 支持 SGMII
 #define LPA_SGMII               0x0001  // PHY 支持 SGMII
@@ -4416,7 +4416,7 @@ Reg 0x0e (MMD_DATA):
 
 <h2>6. PHY 硬件内部物理设计</h2>
 
-<h3>6.1 1G PHY 内部架构（以 RTL8211F 为例）</h3>
+<h3 id="61-1g-phy-内部架构以-rtl8211f-为例">6.1 1G PHY 内部架构（以 RTL8211F 为例）</h3>
 
 <pre><code>                        ┌─────────────────────────────────┐
                         │         RTL8211F PHY             │
@@ -4448,7 +4448,7 @@ Reg 0x0e (MMD_DATA):
                          │  └──────┘                        │
                          └─────────────────────────────────┘</code></pre>
 
-<h3>6.2 各功能模块说明</h3>
+<h3 id="62-各功能模块说明" >6.2 各功能模块说明</h3>
 
 <table>
 <thead><tr>
@@ -4504,7 +4504,7 @@ Reg 0x0e (MMD_DATA):
 </tr>
 </tbody></table>
 
-<h3>6.3 10G PHY 内部架构差异</h3>
+<h3 id="63-10g-phy-内部架构差异" >6.3 10G PHY 内部架构差异</h3>
 
 <p>10G PHY（如 AQR107）相比 1G PHY 增加了：</p>
 
@@ -4534,7 +4534,7 @@ Reg 0x0e (MMD_DATA):
 - 固件加载: 需要从外部 Flash 或主机加载 firmware
 - 多通道 DSP: 4对差分线的回声消除和 NEXT/FEXT 串扰消除</code></pre>
 
-<h3>6.4 PHY 供电设计</h3>
+<h3 id="64-phy-供电设计" >6.4 PHY 供电设计</h3>
 
 <table>
 <thead><tr>
@@ -4569,7 +4569,7 @@ Reg 0x0e (MMD_DATA):
 
 <h2>7. 面试常见问题与答案</h2>
 
-<h3>Q1: MII、RMII、GMII、RGMII、SGMII 各有什么区别？</h3>
+<h3 id="q1-miirmiigmiirgmiisgmii-各有什么区别">Q1: MII、RMII、GMII、RGMII、SGMII 各有什么区别？</h3>
 
 <p><strong>答</strong>：这些都是 MAC 与 PHY 之间的接口标准：</p>
 
@@ -4625,7 +4625,7 @@ Reg 0x0e (MMD_DATA):
 </tr>
 </tbody></table>
 
-<h3>Q2: RGMII 为什么需要延迟？如何配置？</h3>
+<h3 id="q2-rgmii-为什么需要延迟如何配置">Q2: RGMII 为什么需要延迟？如何配置？</h3>
 
 <p><strong>答</strong>：RGMII 使用 DDR（双沿采样），数据在时钟边沿同时变化。接收端需要在数据稳定的窗口采样，因此需要约 <strong>2ns</strong> 的延迟使时钟边沿落在数据眼图中间。</p>
 
@@ -4636,7 +4636,7 @@ Reg 0x0e (MMD_DATA):
 <li><strong>PCB 走线延迟</strong>：通过蛇形走线实现，设备树指定 <code>rgmii</code></li>
 </ol>
 
-<h3>Q3: PHY 的自协商过程是怎样的？协商结果如何确定？</h3>
+<h3 id="q3-phy-的自协商过程是怎样的协商结果如何确定">Q3: PHY 的自协商过程是怎样的？协商结果如何确定？</h3>
 
 <p><strong>答</strong>：1000BASE-T 自协商（Clause 28）流程：</p>
 
@@ -4655,7 +4655,7 @@ Reg 0x0e (MMD_DATA):
 
 <p>如果 PHY 因线缆质量差等原因实际运行速率低于协商速率，内核会通过 <code>phy_check_downshift()</code> 发出 <strong>Downshift 警告</strong>。</p>
 
-<h3>Q4: 如何判断链路已经 UP？</h3>
+<h3 id="q4-如何判断链路已经-up" >Q4: 如何判断链路已经 UP？</h3>
 
 <p><strong>答</strong>：</p>
 <pre><code class="language-c">// 方法 1：读 BMSR 寄存器
@@ -4667,7 +4667,7 @@ link_up = (val &amp; BMSR_LSTATUS) != 0;
 // 方法 2：使用 genphy_read_status()
 // 内核 PHY 框架自动处理</code></pre>
 
-<h3>Q5: Clause 22 和 Clause 45 MDIO 有什么区别？</h3>
+<h3 id="q5-clause-22-和-clause-45-mdio-有什么区别" >Q5: Clause 22 和 Clause 45 MDIO 有什么区别？</h3>
 
 <p><strong>答</strong>：</p>
 <ul>
@@ -4676,7 +4676,7 @@ link_up = (val &amp; BMSR_LSTATUS) != 0;
 <li>Clause 22 PHY 可通过 <strong>MMD 间接访问</strong>（寄存器 0x0d/0x0e）访问 Clause 45 寄存器空间</li>
 </ul>
 
-<h3>Q6: 什么是 MDIO 总线？一条总线能挂多少个 PHY？</h3>
+<h3 id="q6-什么是-mdio-总线一条总线能挂多少个-phy">Q6: 什么是 MDIO 总线？一条总线能挂多少个 PHY？</h3>
 
 <p><strong>答</strong>：</p>
 <ul>
@@ -4686,7 +4686,7 @@ link_up = (val &amp; BMSR_LSTATUS) != 0;
 <li>可以通过 MDIO MUX 扩展</li>
 </ul>
 
-<h3>Q7: PHY 驱动的 probe 流程是怎样的？</h3>
+<h3 id="q7-phy-驱动的-probe-流程是怎样的" >Q7: PHY 驱动的 probe 流程是怎样的？</h3>
 
 <p><strong>答</strong>：</p>
 <ol>
@@ -4698,7 +4698,7 @@ link_up = (val &amp; BMSR_LSTATUS) != 0;
 <li>调用 <code>phy_driver->config_init()</code> 配置硬件</li>
 </ol>
 
-<h3>Q8: 什么是 EEE（Energy Efficient Ethernet）？</h3>
+<h3 id="q8-什么是-eeeenergy-efficient-ethernet">Q8: 什么是 EEE（Energy Efficient Ethernet）？</h3>
 
 <p><strong>答</strong>：IEEE 802.3az 标准，在链路空闲时进入低功耗模式（LPI - Low Power Idle）：</p>
 <ul>
@@ -4708,7 +4708,7 @@ link_up = (val &amp; BMSR_LSTATUS) != 0;
 <li>内核通过 <code>advertising_eee</code> 和 <code>enable_tx_lpi</code> 控制</li>
 </ul>
 
-<h3>Q9: PHY 中断模式和轮询模式的区别？</h3>
+<h3 id="q9-phy-中断模式和轮询模式的区别" >Q9: PHY 中断模式和轮询模式的区别？</h3>
 
 <p><strong>答</strong>：</p>
 <ul>
@@ -4717,7 +4717,7 @@ link_up = (val &amp; BMSR_LSTATUS) != 0;
 <li>内核通过 <code>phydev->irq</code> 决定：<code>PHY_POLL</code>(-1) 表示轮询，其他值表示中断</li>
 </ul>
 
-<h3>Q10: MAC 和 PHY 之间如何实现速率协商同步？</h3>
+<h3 id="q10-mac-和-phy-之间如何实现速率协商同步" >Q10: MAC 和 PHY 之间如何实现速率协商同步？</h3>
 
 <p><strong>答</strong>：</p>
 <ol>
@@ -4732,11 +4732,11 @@ link_up = (val &amp; BMSR_LSTATUS) != 0;
 
 <h2>8. QEMU 实践实验</h2>
 
-<h3>实验环境准备</h3>
+<h3 id="实验环境准备" >实验环境准备</h3>
 
 <p>QEMU 默认的网络后端使用 <code>e1000</code>/<code>virtio-net</code> 等虚拟网卡，不包含真实 PHY 硬件。但我们可以通过以下方式实践以太网相关知识：</p>
 
-<h3>实验 1：探索虚拟网卡的 MII/PHY 寄存器</h3>
+<h3 id="实验-1探索虚拟网卡的-miiphy-寄存器">实验 1：探索虚拟网卡的 MII/PHY 寄存器</h3>
 
 <pre><code class="language-bash"># 启动 QEMU (ARM64)
 qemu-system-aarch64 \
@@ -4763,7 +4763,7 @@ cat /sys/class/net/eth0/phydev/phy_id   # PHY ID
 ls -la /sys/class/net/eth0/phydev/
 cat /sys/class/net/eth0/phydev/phy_interface</code></pre>
 
-<h3>实验 2：使用 ethtool 观察自协商过程</h3>
+<h3 id="实验-2使用-ethtool-观察自协商过程">实验 2：使用 ethtool 观察自协商过程</h3>
 
 <pre><code class="language-bash"># 查看当前协商结果
 ethtool eth0
@@ -4783,7 +4783,7 @@ watch -n 1 &quot;ethtool eth0 | grep -E &#x27;Speed|Link|Auto&#x27;&quot;
 # 查看 EEE 状态
 ethtool --show-eee eth0</code></pre>
 
-<h3>实验 3：MDIO 总线和 PHY 设备树探索</h3>
+<h3 id="实验-3mdio-总线和-phy-设备树探索">实验 3：MDIO 总线和 PHY 设备树探索</h3>
 
 <pre><code class="language-bash"># 在内核启动后查看 MDIO 设备
 ls /sys/bus/mdio_bus/devices/
@@ -4799,7 +4799,7 @@ done
 # 查看已加载的 PHY 驱动
 ls /sys/bus/mdio_bus/drivers/</code></pre>
 
-<h3>实验 4：编写简单的 PHY 寄存器读取内核模块</h3>
+<h3 id="实验-4编写简单的-phy-寄存器读取内核模块">实验 4：编写简单的 PHY 寄存器读取内核模块</h3>
 
 <pre><code class="language-c">/* phy_reg_reader.c - 简单的 PHY 寄存器读取模块 */
 #include &lt;linux/module.h&gt;
@@ -4915,7 +4915,7 @@ dmesg | tail -50
 # 卸载
 rmmod phy_reg_reader</code></pre>
 
-<h3>实验 5：使用 QEMU TAP 网络实现双机通信</h3>
+<h3 id="实验-5使用-qemu-tap-网络实现双机通信">实验 5：使用 QEMU TAP 网络实现双机通信</h3>
 
 <pre><code class="language-bash"># 主机端创建 TAP 设备
 sudo ip tuntap add dev tap0 mode tap
@@ -4938,7 +4938,7 @@ ping 192.168.100.1
 # 使用 tcpdump 抓包观察 ARP/ICMP
 tcpdump -i eth0 -n -v</code></pre>
 
-<h3>实验 6：PHY 状态机观察</h3>
+<h3 id="实验-6phy-状态机观察">实验 6：PHY 状态机观察</h3>
 
 <pre><code class="language-bash"># 在 Guest 中观察 PHY 状态变化
 watch -n 1 &quot;cat /sys/class/net/eth0/operstate &amp;&amp; \
@@ -4956,7 +4956,7 @@ dmesg | grep -i &quot;phy\|link\|carrier&quot;
 # 查看 PHY 统计
 cat /sys/class/net/eth0/statistics/*</code></pre>
 
-<h3>实验 7：使用 devmem 直接访问 MAC/PHY 寄存器（QEMU virt 平台）</h3>
+<h3 id="实验-7使用-devmem-直接访问-macphy-寄存器qemu-virt-平台">实验 7：使用 devmem 直接访问 MAC/PHY 寄存器（QEMU virt 平台）</h3>
 
 <pre><code class="language-bash"># 注意：此实验依赖具体平台的 MAC 基地址
 # 在 QEMU virt 平台 e1000 的情况下
@@ -4969,7 +4969,7 @@ cat /proc/iomem | grep -i eth
 # 读取 MAC 控制寄存器
 devmem2 &lt;BAR_ADDR+offset&gt; w</code></pre>
 
-<h3>实验 8：编写简单的 MDIO 用户空间访问程序</h3>
+<h3 id="实验-8编写简单的-mdio-用户空间访问程序">实验 8：编写简单的 MDIO 用户空间访问程序</h3>
 
 <pre><code class="language-c">/* mdio_tool.c - 通过 ioctl 访问 PHY 寄存器 */
 #include &lt;stdio.h&gt;
@@ -5061,7 +5061,7 @@ done
 
 <h2>附录</h2>
 
-<h3>A. 常用内核源码路径</h3>
+<h3 id="a-常用内核源码路径">A. 常用内核源码路径</h3>
 
 <table>
 <thead><tr>
@@ -5127,7 +5127,7 @@ done
 </tr>
 </tbody></table>
 
-<h3>B. 设备树 PHY 配置示例</h3>
+<h3 id="b-设备树-phy-配置示例">B. 设备树 PHY 配置示例</h3>
 
 <pre><code class="language-dts">&amp;mdio {
     phy0: ethernet-phy@0 {
@@ -5144,7 +5144,7 @@ done
     status = &quot;okay&quot;;
 };</code></pre>
 
-<h3>C. 参考文档</h3>
+<h3 id="c-参考文档">C. 参考文档</h3>
 
 <ul>
 <li>IEEE 802.3-2022 标准</li>

@@ -456,7 +456,7 @@ hr {
       <li class="toc-chapter">
         <div class="toc-chapter-header"><span class="arrow">▶</span> 第5课：运行时中断路径的关键算法</div>
         <ul class="toc-chapter-items">
-          <li><a href="#51-intid-分类算法<strong>get_intid_range">5.1 INTID 分类算法：get_intid_range()</a></li>
+          <li><a href="#51-intid-分类算法get_intid_range">5.1 INTID 分类算法：get_intid_range()</a></li>
           <li><a href="#52-寄存器地址换算convert_offset_index">5.2 寄存器地址换算：convert_offset_index()</a></li>
           <li><a href="#53-ackeoideactivate-路径">5.3 ACK/EOI/Deactivate 路径</a></li>
           <li><a href="#54-中断路由算法gic_set_affinity">5.4 中断路由算法：gic_set_affinity()</a></li>
@@ -642,7 +642,7 @@ hr {
 
 <h2>第0课：GICv3 架构总图</h2>
 
-<h3>0.1 硬件组件图</h3>
+<h3 id="01-硬件组件图" >0.1 硬件组件图</h3>
 
 <pre><code class="language-text">设备/外设 ──&gt; SPI/ESPI ───────┐
                                │
@@ -657,7 +657,7 @@ PCIe/MSI ─&gt; ITS -&gt; LPI ────┴──&gt; GIC 逻辑 ──&gt; C
 - ITS 负责 MSI/LPI 翻译
 - GICv4 再往上扩展出 vLPI / vPE</code></pre>
 
-<h3>0.1.1 Distributor、Redistributor、CPU Interface 三者从架构上分别代表什么</h3>
+<h3 id="011-distributorredistributorcpu-interface-三者从架构上分别代表什么">0.1.1 Distributor、Redistributor、CPU Interface 三者从架构上分别代表什么</h3>
 
 <p>这三个名字如果只按“寄存器块”去记，很容易越学越乱。更准确的理解方式是：它们代表 <strong>三个不同层次的中断职责分工</strong>。</p>
 
@@ -680,7 +680,7 @@ PCIe/MSI ─&gt; ITS -&gt; LPI ────┴──&gt; GIC 逻辑 ──&gt; C
 Redistributor 管每核本地
 CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
-<h3>0.1.2 Distributor 的架构意义</h3>
+<h3 id="012-distributor-的架构意义" >0.1.2 Distributor 的架构意义</h3>
 
 <p>Distributor 站在 <strong>整个 SoC/系统</strong> 的视角看中断。</p>
 
@@ -710,7 +710,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <p>本质上都是在研究 Distributor 这一层。</p>
 
-<h3>0.1.3 Redistributor 的架构意义</h3>
+<h3 id="013-redistributor-的架构意义" >0.1.3 Redistributor 的架构意义</h3>
 
 <p>Redistributor 是 GICv3 相比 GICv2 最关键的架构拆分之一。</p>
 
@@ -740,7 +740,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 <li>ITS/LPI 最终也要落回某个 Redistributor。</li>
 </ol>
 
-<h3>0.1.4 CPU Interface 的架构意义</h3>
+<h3 id="014-cpu-interface-的架构意义" >0.1.4 CPU Interface 的架构意义</h3>
 
 <p>CPU Interface 不是“大而全的配置中心”，而是 <strong>GIC 和 CPU 核心之间真正发生中断握手的那一层</strong>。</p>
 
@@ -773,7 +773,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 <li><code>ICC_IGRPEN1_EL1</code></li>
 </ol>
 
-<h3>0.1.5 为什么架构上必须拆成这三层</h3>
+<h3 id="015-为什么架构上必须拆成这三层" >0.1.5 为什么架构上必须拆成这三层</h3>
 
 <p>如果不拆，所有共享中断、本地中断、优先级交付都堆在一个全局块里，多核扩展、LPI、虚拟化都会变得非常笨重。</p>
 
@@ -787,7 +787,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <p>所以这不是“为了寄存器分类好看”，而是 GICv3 为了多核扩展、LPI/ITS 和更复杂的优先级语义做的架构分层。</p>
 
-<h3>0.1.6 三者在一条中断路径里怎么协作</h3>
+<h3 id="016-三者在一条中断路径里怎么协作" >0.1.6 三者在一条中断路径里怎么协作</h3>
 
 <h4>情况一：共享 SPI 中断</h4>
 
@@ -819,7 +819,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <p>这里最该记住的是：<strong>ITS 负责翻译，Redistributor 负责本地落点，CPU Interface 负责最终交付。</strong></p>
 
-<h3>0.1.7 站在普通世界 Linux 视角，三者各自最常对应什么问题</h3>
+<h3 id="017-站在普通世界-linux-视角三者各自最常对应什么问题">0.1.7 站在普通世界 Linux 视角，三者各自最常对应什么问题</h3>
 
 <p>如果你的研究视角是普通世界 Linux，可以把三者直接对应到三类常见问题：</p>
 
@@ -846,7 +846,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <p>混成同一个层次的问题。</p>
 
-<h3>0.2 中断类型一定要先分清</h3>
+<h3 id="02-中断类型一定要先分清" >0.2 中断类型一定要先分清</h3>
 
 <p>在当前源码里，<code>drivers/irqchip/irq-gic-v3.c</code> 通过 <code>__get_intid_range()</code> 把中断分成：</p>
 
@@ -868,7 +868,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 <li>是否走 ITS/LPI 特殊路径。</li>
 </ol>
 
-<h3>0.3 GICv3 的四状态模型</h3>
+<h3 id="03-gicv3-的四状态模型" >0.3 GICv3 的四状态模型</h3>
 
 <p>阅读 <code>arm64-reference/gic/IHI0069H_b_gic_architecture_specification.pdf</code> 时，必须把中断状态机和 Linux 路径对上：</p>
 
@@ -889,7 +889,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <p>当前内核默认优先使用 <strong>EOI mode 1</strong>，也就是把 <strong>priority drop</strong> 和 <strong>deactivate</strong> 拆开。这在 <code>supports_deactivate_key</code>、<code>gic_eoimode1_chip</code>、<code>gic_eoimode1_eoi_irq()</code> 里体现得很清楚。</p>
 
-<h3>0.4 架构文档与源码对照阅读法</h3>
+<h3 id="04-架构文档与源码对照阅读法" >0.4 架构文档与源码对照阅读法</h3>
 
 <p>你当前目录 <code>arm64-reference/gic</code> 下的 PDF 建议这样用：</p>
 
@@ -924,7 +924,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <p>如果不先掌握 IRQ core，看 GIC 驱动一定会陷入“读得懂寄存器，读不懂框架”。</p>
 
-<h3>1.1 <code>irq_desc</code></h3>
+<h3 id="11-irq_desc" >1.1 <code>irq_desc</code></h3>
 
 <p>定义在 <code>include/linux/irqdesc.h</code>。</p>
 
@@ -940,7 +940,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <p>一句话理解：<strong><code>irq_desc</code> 是 Linux 中断对象本体</strong>。</p>
 
-<h3>1.2 <code>irq_data</code></h3>
+<h3 id="12-irq_data" >1.2 <code>irq_data</code></h3>
 
 <p>定义在 <code>include/linux/irq.h</code>。</p>
 
@@ -956,7 +956,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <p>一句话理解：<strong><code>irq_data</code> 是 Linux IRQ 与硬件控制器之间的桥</strong>。</p>
 
-<h3>1.3 <code>irq_chip</code></h3>
+<h3 id="13-irq_chip" >1.3 <code>irq_chip</code></h3>
 
 <p>它定义控制器可做的动作，例如：</p>
 
@@ -981,7 +981,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <p>一句话理解：<strong><code>irq_chip</code> 是硬件控制器的虚函数表</strong>。</p>
 
-<h3>1.4 <code>irq_domain</code></h3>
+<h3 id="14-irq_domain" >1.4 <code>irq_domain</code></h3>
 
 <p>定义在 <code>include/linux/irqdomain.h</code>。</p>
 
@@ -1001,7 +1001,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <p>一句话理解：<strong><code>irq_domain</code> 是 Linux 里“中断命名空间”的翻译层</strong>。</p>
 
-<h3>1.4.1 把“设备树里的中断描述”变成 <code>irq_desc</code>：最短静态建链图</h3>
+<h3 id="141-把设备树里的中断描述变成-irq_desc最短静态建链图">1.4.1 把“设备树里的中断描述”变成 <code>irq_desc</code>：最短静态建链图</h3>
 
 <p>如果你总觉得 <code>irq_domain</code> 很抽象，最有效的办法不是死记结构体，而是把“控制器先注册自己”和“设备再来申请映射”这两条线分开看。</p>
 
@@ -1045,7 +1045,7 @@ CPU Interface 负责最后把中断真正送进 CPU</code></pre>
 
 <h2>第2课：ARM64 从异常入口走到 GIC 驱动</h2>
 
-<h3>2.1 异常向量表内容</h3>
+<h3 id="21-异常向量表内容" >2.1 异常向量表内容</h3>
 
 <p>ARM64 中断研究如果不先看 <code>arch/arm64/kernel/entry.S</code> 里的向量表，后面所有“IRQ 从哪里来”都会是悬空的。</p>
 
@@ -1124,7 +1124,7 @@ SYM_CODE_END(vectors)</code></pre>
 
 <p>在 Linux ARM64 主线里，内核正常运行基本都在 <code>EL1h</code> 语义下，也就是用内核自己的栈，所以 <code>EL1t</code> 更多是架构上完整保留的入口，而不是你平时最常踩到的主路径。</p>
 
-<h3>2.2 <code>kernel_ventry</code> 和 <code>entry_handler</code> 宏展开后的真实含义</h3>
+<h3 id="22-kernel_ventry-和-entry_handler-宏展开后的真实含义" >2.2 <code>kernel_ventry</code> 和 <code>entry_handler</code> 宏展开后的真实含义</h3>
 
 <p>向量表项不是简单的函数指针。每个向量槽位本质上都是 <code>kernel_ventry</code> 宏展开出来的一小段入口汇编，它负责：</p>
 
@@ -1547,7 +1547,7 @@ exit_to_kernel_mode(regs, state);</code></pre>
 
 <p>如果这几个值你在 GDB 里都能对上，就说明你已经不是“看懂结构图”，而是已经真正把 <code>entry_handler -> kernel_entry -> el1h_64_irq_handler</code> 这段吃透了。</p>
 
-<h3>2.3 入口总链路</h3>
+<h3 id="23-入口总链路" >2.3 入口总链路</h3>
 
 <p>当前源码里的关键路径是：</p>
 
@@ -1565,7 +1565,7 @@ exit_to_kernel_mode(regs, state);</code></pre>
   -&gt; handle_fasteoi_irq() / handle_percpu_devid_irq()
   -&gt; action-&gt;handler()</code></pre>
 
-<h3>2.4 关键源码点</h3>
+<h3 id="24-关键源码点" >2.4 关键源码点</h3>
 
 <ol>
 <li><code>arch/arm64/kernel/entry-common.c</code></li>
@@ -1584,7 +1584,7 @@ exit_to_kernel_mode(regs, state);</code></pre>
 </ol>
 <p>   <code>generic_handle_domain_irq()</code> 用 <code>irq_resolve_mapping(domain, hwirq)</code> 找到 desc，然后进入 flow handler。</p>
 
-<h3>2.5 NMI/Pseudo-NMI 特殊路径</h3>
+<h3 id="25-nmipseudo-nmi-特殊路径">2.5 NMI/Pseudo-NMI 特殊路径</h3>
 
 <p>GICv3 在 ARM64 上支持 pseudo-NMI 的关键点：</p>
 
@@ -1597,7 +1597,7 @@ exit_to_kernel_mode(regs, state);</code></pre>
 
 <p>这里的本质是：<strong>同一个 GIC CPU interface，通过优先级空间和 PMR/RPR 机制，把 NMI 语义模拟出来</strong>。这部分一定要同时看架构文档里的优先级模型和 <code>gic_prio_init()</code> 的实现。</p>
 
-<h3>2.6 Pseudo-NMI 专题</h3>
+<h3 id="26-pseudo-nmi-专题" >2.6 Pseudo-NMI 专题</h3>
 
 <p>Pseudo-NMI 是 ARM64 上一个非常值得单独研究的点，因为它不是“多一种中断类型”，而是 <strong>利用 GICv3 的优先级屏蔽能力，把普通 Group1 interrupt 中的一部分提升成 NMI-like 语义</strong>。</p>
 
@@ -1849,7 +1849,7 @@ irq_set_nmi()
 <li>Group0 更多是 Linux 收不到中断时才需要怀疑的边界条件。</li>
 </ol>
 
-<h3>2.6.16 FIQ 和 IRQ：区别、联系，以及在内核代码里的具体实现</h3>
+<h3 id="2616-fiq-和-irq区别联系以及在内核代码里的具体实现">2.6.16 FIQ 和 IRQ：区别、联系，以及在内核代码里的具体实现</h3>
 
 <p>FIQ 和 IRQ 是 ARM 架构异常模型里两类不同的异常入口，但在你当前这个 <strong>普通世界 Linux + ARM64 + GICv3</strong> 的研究任务里，它们的实际地位并不对称。</p>
 
@@ -2151,7 +2151,7 @@ pseudo-NMI 主线
 </ol>
 <p>    架构上存在，但对当前 GICv3 普通世界主线通常是边缘路径，除非平台显式注册。</p>
 
-<h3>2.7 Linux 中断处理全景：Hardirq / Softirq / Tasklet / Threaded IRQ</h3>
+<h3 id="27-linux-中断处理全景hardirq--softirq--tasklet--threaded-irq">2.7 Linux 中断处理全景：Hardirq / Softirq / Tasklet / Threaded IRQ</h3>
 
 <p>研究 GICv3 很容易把注意力全部放在 top half，也就是“硬中断来了以后怎么 ack/eoi”。但 Linux 真正完整的处理中断模型，至少包含四层。</p>
 
@@ -2313,7 +2313,7 @@ Threaded IRQ
 
 <p>对于 GICv3 研究，这个分层非常重要，因为 GIC 驱动基本只直接负责 hardirq 这一层；而驱动作者真正写业务处理时，往往是在 threaded IRQ、softirq 或 tasklet 里完成后续动作。</p>
 
-<h3>2.8 中断与同步：真正容易出错的部分</h3>
+<h3 id="28-中断与同步真正容易出错的部分">2.8 中断与同步：真正容易出错的部分</h3>
 
 <p>GICv3 研究如果不进入同步问题，最后很容易只得到“流程图理解”，但一到真实驱动或并发 bug 就完全失效。</p>
 
@@ -2461,7 +2461,7 @@ Threaded IRQ
 
 <h2>第3课：GICv3 初始化总流程</h2>
 
-<h3>3.1 Device Tree/ACPI 初始化入口</h3>
+<h3 id="31-device-treeacpi-初始化入口">3.1 Device Tree/ACPI 初始化入口</h3>
 
 <p>当前源码里有两条主入口：</p>
 
@@ -2485,7 +2485,7 @@ Threaded IRQ
   -&gt; gic_cpu_pm_init()
   -&gt; its_init() / gicv2m_init()</code></pre>
 
-<h3>3.1.1 如果从设备树 bring-up 角度看，最容易记住的入口链</h3>
+<h3 id="311-如果从设备树-bring-up-角度看最容易记住的入口链">3.1.1 如果从设备树 bring-up 角度看，最容易记住的入口链</h3>
 
 <p>把 GICv3 初始化只背成 <code>gic_init_bases()</code> 还不够，因为工程上很多问题其实卡在它之前。</p>
 
@@ -2510,7 +2510,7 @@ Threaded IRQ
 <li><code>gic_init_bases()</code> 之后才异常，才开始进入 domain、ICC sysreg、ITS 这些更靠后的问题。</li>
 </ol>
 
-<h3>3.2 Distributor 初始化：<code>gic_dist_init()</code></h3>
+<h3 id="32-distributor-初始化gic_dist_init">3.2 Distributor 初始化：<code>gic_dist_init()</code></h3>
 
 <p>这里完成的是全局中断面配置：</p>
 
@@ -2530,7 +2530,7 @@ Threaded IRQ
 <li><strong>SPI/ESPI 路由在 GICD，SGI/PPI/EPPI 在 GICR</strong>。</li>
 </ol>
 
-<h3>3.3 Redistributor 初始化：<code>gic_populate_rdist()</code> + <code>gic_cpu_init()</code></h3>
+<h3 id="33-redistributor-初始化gic_populate_rdist--gic_cpu_init">3.3 Redistributor 初始化：<code>gic_populate_rdist()</code> + <code>gic_cpu_init()</code></h3>
 
 <p>GICv3 的 per-CPU 本地初始化核心就是找到“当前 CPU 对应的 GICR”。</p>
 
@@ -2545,7 +2545,7 @@ Threaded IRQ
 <li><code>gic_cpu_sys_reg_init()</code> 初始化 ICC system registers。</li>
 </ol>
 
-<h3>3.4 CPU Interface 初始化：<code>gic_cpu_sys_reg_init()</code></h3>
+<h3 id="34-cpu-interface-初始化gic_cpu_sys_reg_init">3.4 CPU Interface 初始化：<code>gic_cpu_sys_reg_init()</code></h3>
 
 <p>这部分是理解 GICv3 的关键：</p>
 
@@ -2559,7 +2559,7 @@ Threaded IRQ
 
 <p>这一步完成后，CPU 才真正能从系统寄存器接口接收 GICv3 中断。</p>
 
-<h3>3.5 把三层寄存器配置串起来看：到底要配哪些寄存器</h3>
+<h3 id="35-把三层寄存器配置串起来看到底要配哪些寄存器">3.5 把三层寄存器配置串起来看：到底要配哪些寄存器</h3>
 
 <p>前面讲了三层的架构意义，这里把问题落到最实用的层面：<strong>初始化时这三层到底各要配置哪些寄存器，为什么要配，当前源码是怎么配的。</strong></p>
 
@@ -3706,7 +3706,7 @@ LPI
 
 <h2>第4课：核心数据结构必须建立对象图</h2>
 
-<h3>4.1 GICv3 核心对象图</h3>
+<h3 id="41-gicv3-核心对象图" >4.1 GICv3 核心对象图</h3>
 
 <pre><code class="language-text">gic_chip_data
   |- dist_base / dist_phys_base
@@ -3723,7 +3723,7 @@ LPI
   |- domain
   |- flags / has_rss / ppi_nr</code></pre>
 
-<h3>4.2 <code>struct gic_chip_data</code></h3>
+<h3 id="42-struct-gic_chip_data" >4.2 <code>struct gic_chip_data</code></h3>
 
 <p>作用：<strong>整个 GIC 控制器实例的全局状态</strong>。</p>
 
@@ -3738,7 +3738,7 @@ LPI
 <li><code>ppi_descs</code>：partitioned PPI 描述。</li>
 </ol>
 
-<h3>4.3 <code>struct rdists</code></h3>
+<h3 id="43-struct-rdists" >4.3 <code>struct rdists</code></h3>
 
 <p>定义在 <code>include/linux/irqchip/arm-gic-v3.h</code>。</p>
 
@@ -3752,7 +3752,7 @@ LPI
 <li><code>has_direct_lpi</code>：是否支持 direct LPI invalidation。</li>
 </ol>
 
-<h3>4.4 ITS 核心结构</h3>
+<h3 id="44-its-核心结构" >4.4 ITS 核心结构</h3>
 
 <p>ITS 相关最重要的结构体在 <code>irq-gic-v3-its.c</code>：</p>
 
@@ -3781,7 +3781,7 @@ LPI
 </ol>
 <p>   硬件真正消费的 4x64-bit 命令块。</p>
 
-<h3>4.5 关系要这样记</h3>
+<h3 id="45-关系要这样记" >4.5 关系要这样记</h3>
 
 <pre><code class="language-text">一个 ITS 节点 its_node
   -&gt; 管多个 its_device
@@ -3796,7 +3796,7 @@ LPI
 
 <p>这一课是源码研究的核心，因为这里把数据结构、寄存器和并发语义全部串起来了。</p>
 
-<h3>5.1 INTID 分类算法：<code>__get_intid_range()</code></h3>
+<h3 id="51-intid-分类算法get_intid_range">5.1 INTID 分类算法：<code>__get_intid_range()</code></h3>
 
 <p>特点：</p>
 
@@ -3808,7 +3808,7 @@ LPI
 
 <p>这是整个 GICv3 驱动里最基础的“分流器”。</p>
 
-<h3>5.2 寄存器地址换算：<code>convert_offset_index()</code></h3>
+<h3 id="52-寄存器地址换算convert_offset_index">5.2 寄存器地址换算：<code>convert_offset_index()</code></h3>
 
 <p>难点在扩展中断：</p>
 
@@ -3819,7 +3819,7 @@ LPI
 
 <p>这就是典型的“架构抽象不规整，软件做统一归一化”的代码。</p>
 
-<h3>5.3 ACK/EOI/Deactivate 路径</h3>
+<h3 id="53-ackeoideactivate-路径">5.3 ACK/EOI/Deactivate 路径</h3>
 
 <p>运行时最关键路径：</p>
 
@@ -3838,7 +3838,7 @@ LPI
 <li>对 forwarded-to-vcpu 的中断，deactivate 逻辑又不同。</li>
 </ol>
 
-<h3>5.4 中断路由算法：<code>gic_set_affinity()</code></h3>
+<h3 id="54-中断路由算法gic_set_affinity">5.4 中断路由算法：<code>gic_set_affinity()</code></h3>
 
 <p>SPI/ESPI 的 affinity 设置路径：</p>
 
@@ -3852,7 +3852,7 @@ LPI
 
 <p>复杂度是 $O(1)$，但必须满足硬件时序：<strong>改路由前后要处理 enable 状态和 RWP 同步</strong>。</p>
 
-<h3>5.5 SGI 目标列表算法：<code>gic_compute_target_list()</code></h3>
+<h3 id="55-sgi-目标列表算法gic_compute_target_list">5.5 SGI 目标列表算法：<code>gic_compute_target_list()</code></h3>
 
 <p>这是研究 IPI 必看的函数。</p>
 
@@ -3866,7 +3866,7 @@ LPI
 
 <p>本质：<strong>GICv3 的 SGI 发送不是“遍历每个 CPU 单播”，而是“按 affinity cluster 压缩发送”</strong>。</p>
 
-<h3>5.6 ITS LPI 分配算法</h3>
+<h3 id="56-its-lpi-分配算法" >5.6 ITS LPI 分配算法</h3>
 
 <p>ITS 里最漂亮的一段算法是 LPI allocator。</p>
 
@@ -3893,7 +3893,7 @@ LPI
 
 <p>这不是最复杂的分配器，但对于“释放少、分配多”的 MSI/LPI 场景非常合适。</p>
 
-<h3>5.7 ITS 命令队列算法</h3>
+<h3 id="57-its-命令队列算法" >5.7 ITS 命令队列算法</h3>
 
 <p>ITS 命令队列是一个 ring buffer：</p>
 
@@ -3912,7 +3912,7 @@ LPI
 <li><strong>必要时补一个 SYNC/VSYNC 保证命令完成语义</strong></li>
 </ol>
 
-<h3>5.8 ITS 负载均衡算法：<code>its_select_cpu()</code></h3>
+<h3 id="58-its-负载均衡算法its_select_cpu">5.8 ITS 负载均衡算法：<code>its_select_cpu()</code></h3>
 
 <p>ITS 给 LPI 选目标 CPU 时，不是随便找一个在线核，而是：</p>
 
@@ -3928,7 +3928,7 @@ LPI
 
 <h2>第6课：GICv3 的 IRQ domain 实现</h2>
 
-<h3>6.1 顶层 GIC domain</h3>
+<h3 id="61-顶层-gic-domain" >6.1 顶层 GIC domain</h3>
 
 <p><code>gic_irq_domain_ops</code> 实现了四个关键动作：</p>
 
@@ -3939,7 +3939,7 @@ LPI
 <li><code>select</code></li>
 </ol>
 
-<h3>6.2 <code>gic_irq_domain_translate()</code> 很重要</h3>
+<h3 id="62-gic_irq_domain_translate-很重要" >6.2 <code>gic_irq_domain_translate()</code> 很重要</h3>
 
 <p>它负责把不同来源的中断描述翻译成 hwirq：</p>
 
@@ -3953,7 +3953,7 @@ LPI
 
 <p>这说明 <strong>IRQ domain 并不是只做“编号映射”，它还承担了固件语义翻译</strong>。</p>
 
-<h3>6.3 <code>gic_irq_domain_map()</code> 把 hwirq 绑定到 flow handler</h3>
+<h3 id="63-gic_irq_domain_map-把-hwirq-绑定到-flow-handler" >6.3 <code>gic_irq_domain_map()</code> 把 hwirq 绑定到 flow handler</h3>
 
 <p>映射规则：</p>
 
@@ -3978,7 +3978,7 @@ LPI
 
 <h2>第7课：ITS/LPI/MSI 是第二战场</h2>
 
-<h3>7.1 必须先建立翻译模型</h3>
+<h3 id="71-必须先建立翻译模型" >7.1 必须先建立翻译模型</h3>
 
 <pre><code class="language-text">MSI 写事务
   -&gt; ITS_TRANSLATER
@@ -3990,7 +3990,7 @@ LPI
 
 <p>GICv3 的 ITS 研究，本质上是在研究一个“中断地址翻译与投递引擎”。</p>
 
-<h3>7.2 ITS 初始化主线</h3>
+<h3 id="72-its-初始化主线" >7.2 ITS 初始化主线</h3>
 
 <p>主线在 <code>its_init()</code>：</p>
 
@@ -4004,7 +4004,7 @@ LPI
 <li>CPU online 时执行 <code>its_cpu_init()</code>、<code>its_cpu_init_lpis()</code>、<code>its_cpu_init_collections()</code>。</li>
 </ol>
 
-<h3>7.3 LPI 两张表</h3>
+<h3 id="73-lpi-两张表" >7.3 LPI 两张表</h3>
 
 <ol>
 <li><strong>PROPBASE</strong>：每个 LPI 一个配置字节，记录优先级、使能、Group1 属性。</li>
@@ -4020,7 +4020,7 @@ LPI
 <li><code>lpi_update_config()</code></li>
 </ol>
 
-<h3>7.4 MSI domain 层次</h3>
+<h3 id="74-msi-domain-层次" >7.4 MSI domain 层次</h3>
 
 <p>ITS 不是直接给设备 IRQ，而是在 GIC parent domain 上叠加一个 MSI domain：</p>
 
@@ -4032,7 +4032,7 @@ LPI
 
 <p>所以 ITS 学习时一定要理解 <strong>hierarchical irq_domain</strong>。</p>
 
-<h3>7.5 最关键的 ITS 命令</h3>
+<h3 id="75-最关键的-its-命令" >7.5 最关键的 ITS 命令</h3>
 
 <ol>
 <li><code>MAPD</code>：映射 DeviceID 到 ITT。</li>
@@ -4052,7 +4052,7 @@ LPI
 
 <h2>第8课：GICv4 是高级专题，但必须知道边界</h2>
 
-<h3>8.1 GICv4 解决的核心问题</h3>
+<h3 id="81-gicv4-解决的核心问题" >8.1 GICv4 解决的核心问题</h3>
 
 <p>它不是“又多了几条命令”，而是：</p>
 
@@ -4061,7 +4061,7 @@ LPI
 <li>减少 hypervisor 在虚拟中断注入路径上的软件参与。</li>
 </ol>
 
-<h3>8.2 三个核心对象</h3>
+<h3 id="82-三个核心对象" >8.2 三个核心对象</h3>
 
 <ol>
 <li><code>vLPI</code>：guest 可见的虚拟 LPI。</li>
@@ -4069,7 +4069,7 @@ LPI
 <li><code>doorbell</code>：当 vPE 不在当前运行状态时，用 doorbell LPI 提醒 hypervisor。</li>
 </ol>
 
-<h3>8.3 当前源码中的体现</h3>
+<h3 id="83-当前源码中的体现" >8.3 当前源码中的体现</h3>
 
 <ol>
 <li><code>drivers/irqchip/irq-gic-v4.c</code> 提供 hypervisor 友好的接口封装。</li>
@@ -4089,7 +4089,7 @@ LPI
 
 <h2>第9课：按源码文件建立研究地图</h2>
 
-<h3>9.1 必读源码优先级</h3>
+<h3 id="91-必读源码优先级" >9.1 必读源码优先级</h3>
 
 <p><strong>第一层：必须完全读懂</strong></p>
 
@@ -4114,7 +4114,7 @@ LPI
 <li><code>drivers/irqchip/irq-gic-common.h</code></li>
 </ol>
 
-<h3>9.2 推荐阅读顺序</h3>
+<h3 id="92-推荐阅读顺序" >9.2 推荐阅读顺序</h3>
 
 <ol>
 <li><code>include/linux/irq.h</code></li>
@@ -4230,7 +4230,7 @@ LPI
 
 <h2>第11课：结合你当前仓库的实操建议</h2>
 
-<h3>11.1 启动环境建议</h3>
+<h3 id="111-启动环境建议" >11.1 启动环境建议</h3>
 
 <p>当前仓库已有 <code>launch.sh</code>，可以直接作为 ARM64 QEMU 启动入口。但如果你要严肃研究 GICv3，建议显式确认 QEMU 使用 GICv3，而不是依赖默认值。</p>
 
@@ -4242,7 +4242,7 @@ LPI
 <li>如果要研究 ITS，平台和 QEMU 机型要确保真的暴露 ITS 能力。</li>
 </ol>
 
-<h3>11.2 最实用的实验命令</h3>
+<h3 id="112-最实用的实验命令" >11.2 最实用的实验命令</h3>
 
 <h4>实验1：确认 GICv3 初始化结果</h4>
 
@@ -4308,7 +4308,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 
 <p>这样你可以把“汇编入口”和“驱动入口”真正接起来。</p>
 
-<h3>11.3 研究 ITS 的实验切入点</h3>
+<h3 id="113-研究-its-的实验切入点" >11.3 研究 ITS 的实验切入点</h3>
 
 <p>如果平台支持 ITS，建议按这个顺序验证：</p>
 
@@ -4319,11 +4319,11 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 <li>跟踪 <code>its_irq_compose_msi_msg()</code>、<code>its_set_affinity()</code>、<code>its_send_mapti()</code>、<code>its_send_inv()</code>。</li>
 </ol>
 
-<h3>11.4 结合 QEMU 的分组实验设计</h3>
+<h3 id="114-结合-qemu-的分组实验设计" >11.4 结合 QEMU 的分组实验设计</h3>
 
 <p>下面这几组实验按“侵入性从低到高”排序。前两组可以直接复用你当前仓库里的 <code>launch.sh</code> 思路，后面几组需要调整 QEMU 参数，但都围绕当前源码主线设计。</p>
 
-<h3>实验组A：最小化 GICv3 启动确认实验</h3>
+<h3 id="实验组a最小化-gicv3-启动确认实验">实验组A：最小化 GICv3 启动确认实验</h3>
 
 <h4>目标</h4>
 
@@ -4374,7 +4374,7 @@ cat /proc/interrupts</code></pre>
 
 <p>这组实验主要解决一个问题：<strong>你看到的日志和你读的初始化源码是否一一对应</strong>。</p>
 
-<h3>实验组A-1：Pseudo-NMI 启用验证实验</h3>
+<h3 id="实验组a-1pseudo-nmi-启用验证实验">实验组A-1：Pseudo-NMI 启用验证实验</h3>
 
 <h4>目标</h4>
 
@@ -4450,7 +4450,7 @@ b generic_handle_domain_nmi</code></pre>
 
 <hr>
 
-<h3>实验组B：PPI 路径实验，盯住本地 timer 中断</h3>
+<h3 id="实验组bppi-路径实验盯住本地-timer-中断">实验组B：PPI 路径实验，盯住本地 timer 中断</h3>
 
 <h4>目标</h4>
 
@@ -4510,7 +4510,7 @@ done</code></pre>
 
 <hr>
 
-<h3>实验组C：SPI 路径实验，观察共享设备中断和 affinity 迁移</h3>
+<h3 id="实验组cspi-路径实验观察共享设备中断和-affinity-迁移">实验组C：SPI 路径实验，观察共享设备中断和 affinity 迁移</h3>
 
 <h4>目标</h4>
 
@@ -4588,7 +4588,7 @@ done</code></pre>
 
 <hr>
 
-<h3>实验组D：IPI/SGI 路径实验，观察核间中断</h3>
+<h3 id="实验组dipisgi-路径实验观察核间中断">实验组D：IPI/SGI 路径实验，观察核间中断</h3>
 
 <h4>目标</h4>
 
@@ -4650,7 +4650,7 @@ echo 1 &gt; /sys/devices/system/cpu/cpu3/online</code></pre>
 
 <hr>
 
-<h3>实验组E：ITS/LPI/MSI 进阶实验</h3>
+<h3 id="实验组eitslpimsi-进阶实验">实验组E：ITS/LPI/MSI 进阶实验</h3>
 
 <h4>目标</h4>
 
@@ -4729,7 +4729,7 @@ cat /proc/interrupts</code></pre>
 
 <hr>
 
-<h3>实验组F：GDB 单步实验，从异常入口走到 flow handler</h3>
+<h3 id="实验组fgdb-单步实验从异常入口走到-flow-handler">实验组F：GDB 单步实验，从异常入口走到 flow handler</h3>
 
 <h4>目标</h4>
 
@@ -5116,7 +5116,7 @@ c</code></pre>
 
 <hr>
 
-<h3>11.5 一个建议的实验顺序</h3>
+<h3 id="115-一个建议的实验顺序" >11.5 一个建议的实验顺序</h3>
 
 <p>如果你想把这些实验变成一条清晰的学习路径，我建议按下面顺序执行：</p>
 
@@ -5137,7 +5137,7 @@ c</code></pre>
 
 <p>如果你把这份文档涉及的内容真正吃透，收益不只是“知道 GICv3 怎么工作”，而是能解决一批非常典型、非常工程化的问题。</p>
 
-<h3>12.1 能判断问题到底在架构层、IRQ core 层，还是驱动层</h3>
+<h3 id="121-能判断问题到底在架构层irq-core-层还是驱动层">12.1 能判断问题到底在架构层、IRQ core 层，还是驱动层</h3>
 
 <p>很多中断问题的第一现场都长得很像：</p>
 
@@ -5159,7 +5159,7 @@ c</code></pre>
 
 <p>这一步非常重要，因为它决定你后面查的是 <code>entry.S</code>、<code>irq-gic-v3.c</code>、<code>kernel/irq/*</code>，还是具体设备驱动。</p>
 
-<h3>12.2 能解释“为什么中断只在某个 CPU 上跑”</h3>
+<h3 id="122-能解释为什么中断只在某个-cpu-上跑">12.2 能解释“为什么中断只在某个 CPU 上跑”</h3>
 
 <p>这类问题在实际系统里非常常见。学完后你可以准确分辨：</p>
 
@@ -5173,7 +5173,7 @@ c</code></pre>
 
 <p>这意味着你不会再把所有“中断绑核失败”都归因成同一种故障。</p>
 
-<h3>12.3 能解释“为什么改了 affinity 但流量/中断没有按预期迁移”</h3>
+<h3 id="123-能解释为什么改了-affinity-但流量中断没有按预期迁移">12.3 能解释“为什么改了 affinity 但流量/中断没有按预期迁移”</h3>
 
 <p>这类问题的根源通常不止一个：</p>
 
@@ -5186,7 +5186,7 @@ c</code></pre>
 
 <p>理解 GICv3 + IRQ core + softirq 之后，你会知道：<strong>“改硬中断 CPU”只是第一步，真正要看的是中断、软中断、协议栈、应用线程四层是否一起迁移。</strong></p>
 
-<h3>12.4 能区分 hardirq 高、softirq 高、ksoftirqd 高、threaded irq 卡住这几类不同现场</h3>
+<h3 id="124-能区分-hardirq-高softirq-高ksoftirqd-高threaded-irq-卡住这几类不同现场">12.4 能区分 hardirq 高、softirq 高、ksoftirqd 高、threaded irq 卡住这几类不同现场</h3>
 
 <p>这些现象表面上都可能表现为 “CPU 很高” 或 “网络/块 IO 很慢”，但本质完全不同：</p>
 
@@ -5199,7 +5199,7 @@ c</code></pre>
 
 <p>这四类问题的解决方法完全不同。学完后你会先分型，再下手，而不是一上来就改 affinity 或盲目调参数。</p>
 
-<h3>12.5 能解释“为什么某类中断根本不能像预期那样绑核”</h3>
+<h3 id="125-能解释为什么某类中断根本不能像预期那样绑核">12.5 能解释“为什么某类中断根本不能像预期那样绑核”</h3>
 
 <p>这是经典误区。学完后你会很快排除以下情况：</p>
 
@@ -5210,7 +5210,7 @@ c</code></pre>
 <li>某些平台因为安全态/固件/erratum，实际路由行为受限。</li>
 </ol>
 
-<h3>12.6 能处理 ITS/MSI/LPI 相关的“看起来像普通 SPI，其实不是”的问题</h3>
+<h3 id="126-能处理-itsmsilpi-相关的看起来像普通-spi其实不是的问题">12.6 能处理 ITS/MSI/LPI 相关的“看起来像普通 SPI，其实不是”的问题</h3>
 
 <p>这类问题特别容易误判。学完 ITS 之后，你能区分：</p>
 
@@ -5221,7 +5221,7 @@ c</code></pre>
 <li>中断号和 delivery path 为什么和传统 SPI 完全不同。</li>
 </ol>
 
-<h3>12.7 能把性能问题和同步问题联系起来看</h3>
+<h3 id="127-能把性能问题和同步问题联系起来看" >12.7 能把性能问题和同步问题联系起来看</h3>
 
 <p>很多经典性能 bug 的本质其实是同步模型不对，例如：</p>
 
@@ -5240,7 +5240,7 @@ c</code></pre>
 
 <p>这一节不讲抽象原理，专门讲一组线上和实验室里最常见、也最容易误判的 IRQ 问题，并给出一套真正能落地的 debug 方案。</p>
 
-<h3>13.0 一套真正能落地的 IRQ Debug 方案</h3>
+<h3 id="130-一套真正能落地的-irq-debug-方案" >13.0 一套真正能落地的 IRQ Debug 方案</h3>
 
 <p>很多人调 IRQ 问题时，一上来就：</p>
 
@@ -5547,7 +5547,7 @@ echo 1 &gt; /sys/kernel/tracing/tracing_on</code></pre>
 <li><strong>GDB 负责钉现场。</strong></li>
 </ol>
 
-<h3>13.1 经典问题一：中断绑定 CPU</h3>
+<h3 id="131-经典问题一中断绑定-cpu">13.1 经典问题一：中断绑定 CPU</h3>
 
 <h4>13.1.1 典型症状</h4>
 
@@ -5633,7 +5633,7 @@ cat /proc/softirqs</code></pre>
 
 <p>这正是“只懂中断号，不懂中断全路径”的典型后果。</p>
 
-<h3>13.2 经典问题二：softirq 过高</h3>
+<h3 id="132-经典问题二softirq-过高">13.2 经典问题二：softirq 过高</h3>
 
 <h4>13.2.1 典型症状</h4>
 
@@ -5751,7 +5751,7 @@ echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable</code></pre>
 
 <p>串成一条完整链。</p>
 
-<h3>13.3 中断绑核和 softirq 过高，正确的整体处置思路</h3>
+<h3 id="133-中断绑核和-softirq-过高正确的整体处置思路">13.3 中断绑核和 softirq 过高，正确的整体处置思路</h3>
 
 <p>这两个问题经常一起出现，正确思路不是分开治，而是按层推进：</p>
 
@@ -5772,7 +5772,7 @@ echo 1 &gt; /sys/kernel/tracing/events/irq/irq_handler_exit/enable</code></pre>
 
 <p>这条链只要有一层没跟上，最终热点就还会留在原来的 CPU 上。</p>
 
-<h3>13.4 一条最实用的现场排查清单</h3>
+<h3 id="134-一条最实用的现场排查清单" >13.4 一条最实用的现场排查清单</h3>
 
 <p>遇到“中断绑定 CPU”或“softirq 过高”，可以直接按下面顺序做：</p>
 
@@ -5793,7 +5793,7 @@ cat /proc/irq/&lt;irq&gt;/effective_affinity_list</code></pre>
 
 <p>做完这四步，绝大多数经典问题都不会再是“毫无抓手”的状态。</p>
 
-<h3>13.5 用 QEMU 复现“中断绑定 CPU”问题</h3>
+<h3 id="135-用-qemu-复现中断绑定-cpu问题">13.5 用 QEMU 复现“中断绑定 CPU”问题</h3>
 
 <p>这一组实验的目的不是证明 affinity 接口存在，而是要把下面这条链真正观察出来：</p>
 
@@ -5889,7 +5889,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 
 <p>这个实验的价值在于：<strong>你会看到“改中断 CPU”和“改完整数据路径 CPU”不是一回事。</strong></p>
 
-<h3>13.6 用 QEMU 复现“softirq 过高”问题</h3>
+<h3 id="136-用-qemu-复现softirq-过高问题">13.6 用 QEMU 复现“softirq 过高”问题</h3>
 
 <p>softirq 过高最适合做网络收包场景，因为 <code>NET_RX</code> 是最常见也最典型的高 softirq 来源。</p>
 
@@ -5972,7 +5972,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 
 <p>也就是说，softirq 高往往是上游硬中断和队列拓扑问题的结果，不是独立故障。</p>
 
-<h3>13.7 经典问题的源码定位清单</h3>
+<h3 id="137-经典问题的源码定位清单" >13.7 经典问题的源码定位清单</h3>
 
 <p>如果你在线上或实验室遇到这两类问题，最值得优先看的源码位置如下。</p>
 
@@ -6035,7 +6035,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 
 <p>只看其中一条线，通常都会误判。</p>
 
-<h3>13.8 处理这类问题的一条总原则</h3>
+<h3 id="138-处理这类问题的一条总原则" >13.8 处理这类问题的一条总原则</h3>
 
 <p>遇到“绑核”和“softirq 高”这类问题时，先不要急着改参数。更高效的方法是先回答三个问题：</p>
 
@@ -6047,7 +6047,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 
 <p>当这三个问题答清楚后，改 affinity、改队列、改 softirq 预算、改线程绑核，才会是有方向的动作，而不是碰运气。</p>
 
-<h3>13.9 经典问题三：关中断时间过长</h3>
+<h3 id="139-经典问题三关中断时间过长">13.9 经典问题三：关中断时间过长</h3>
 
 <p>这类问题在 ARM64/GICv3 系统里非常典型，因为它不一定直接表现成 “某条 IRQ 有问题”，却会带来明显的系统时延抖动、丢实时性、timer 漂移、网络吞吐下降甚至 watchdog 告警。</p>
 
@@ -6203,7 +6203,7 @@ cat /sys/kernel/tracing/trace</code></pre>
 
 <p>如果你愿意进一步做“人为注入”，最直接的方法是在你自己控制的测试模块里，用 <code>local_irq_disable()</code> 包住一个短暂 busy loop，再用 <code>irqsoff</code> tracer 验证它如何被记录。这个实验不代表正确写法，但非常适合理解工具输出格式。</p>
 
-<h3>13.10 经典问题四：中断上下文里出现 loop、风暴或反复 pending</h3>
+<h3 id="1310-经典问题四中断上下文里出现-loop风暴或反复-pending">13.10 经典问题四：中断上下文里出现 loop、风暴或反复 pending</h3>
 
 <p>用户口中的“中断里 loop”通常不是一个精确定义，但在线上现场里大多对应下面几类问题：</p>
 
@@ -6608,7 +6608,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 
 <p>一句话：<strong>去抖靠硬件/驱动，止风暴靠正确清源和正确 flow，IRQ core 负责最后兜底。</strong></p>
 
-<h3>13.11 这几类问题的实战判断口诀</h3>
+<h3 id="1311-这几类问题的实战判断口诀" >13.11 这几类问题的实战判断口诀</h3>
 
 <p>如果现场是“系统变卡但中断计数不夸张”，优先怀疑：</p>
 
@@ -6627,7 +6627,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 
 <p>这两个方向分清楚，排查效率会高很多。</p>
 
-<h3>13.12 把源码读成闭环的一份函数级阅读地图</h3>
+<h3 id="1312-把源码读成闭环的一份函数级阅读地图" >13.12 把源码读成闭环的一份函数级阅读地图</h3>
 
 <p>如果你希望把这一整章真正读透，不建议在源码里漫无目的跳转。更高效的方法，是按下面四条函数链一口气读通。</p>
 
@@ -6742,7 +6742,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 
 <p>如果你始终这样读，GICv3 中断子系统就不会再是“很多文件很多寄存器”，而会变成一套有明确边界和失效模式的分层系统。</p>
 
-<h3>13.13 常用 IRQ 经典问题总表</h3>
+<h3 id="1313-常用-irq-经典问题总表" >13.13 常用 IRQ 经典问题总表</h3>
 
 <p>如果你不想每次都从整章重读，下面这张表就是一份实战速查卡。</p>
 
@@ -6841,7 +6841,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 
 <h2>第14课：最值得你亲手画的三张图</h2>
 
-<h3>图1：从异常向量到设备 ISR 的调用链</h3>
+<h3 id="图1从异常向量到设备-isr-的调用链">图1：从异常向量到设备 ISR 的调用链</h3>
 
 <pre><code class="language-text">el1h_64_irq_handler
   -&gt; el1_interrupt
@@ -6852,7 +6852,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
   -&gt; handle_fasteoi_irq / handle_percpu_devid_irq
   -&gt; 驱动 handler</code></pre>
 
-<h3>图2：GICv3 初始化对象图</h3>
+<h3 id="图2gicv3-初始化对象图">图2：GICv3 初始化对象图</h3>
 
 <pre><code class="language-text">DT/ACPI
   -&gt; gic_of_init / gic_acpi_init
@@ -6864,7 +6864,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
   -&gt; SMP/IPI 初始化
   -&gt; ITS 初始化</code></pre>
 
-<h3>图3：ITS 翻译图</h3>
+<h3 id="图3its-翻译图">图3：ITS 翻译图</h3>
 
 <pre><code class="language-text">MSI write
   -&gt; ITS_TRANSLATER
@@ -6881,11 +6881,11 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 
 <h2>总总结：顶级内核工程师视角下的 GICv3 研究结论</h2>
 
-<h3>结论1：GICv3 的本质不是寄存器集合，而是“分层中断路由系统”</h3>
+<h3 id="结论1gicv3-的本质不是寄存器集合而是分层中断路由系统">结论1：GICv3 的本质不是寄存器集合，而是“分层中断路由系统”</h3>
 
 <p>它由 GICD、GICR、ICC sysregs、ITS 共同组成。Linux 再在其上叠加 <code>irq_domain</code> 和 <code>irq_chip</code>，把硬件对象转成统一的软件抽象。</p>
 
-<h3>结论2：研究 GICv3 最容易走偏的地方，是只盯寄存器，不盯 IRQ core</h3>
+<h3 id="结论2研究-gicv3-最容易走偏的地方是只盯寄存器不盯-irq-core">结论2：研究 GICv3 最容易走偏的地方，是只盯寄存器，不盯 IRQ core</h3>
 
 <p>真正决定 Linux 中断行为的，不止是 <code>ICC_IAR1_EL1</code> 和 <code>ICC_EOIR1_EL1</code>，而是：</p>
 
@@ -6895,7 +6895,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 <li><code>irq_chip</code> 在什么时机 mask/unmask/eoi/deactivate。</li>
 </ol>
 
-<h3>结论3：GICv3 真正复杂的部分，不是普通 SPI/PPI，而是 ITS/LPI/GICv4</h3>
+<h3 id="结论3gicv3-真正复杂的部分不是普通-spippi而是-itslpigicv4">结论3：GICv3 真正复杂的部分，不是普通 SPI/PPI，而是 ITS/LPI/GICv4</h3>
 
 <p>普通中断路径相对直接，真正难点在：</p>
 
@@ -6906,7 +6906,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 <li>direct LPI、doorbell、VMOVP 这些虚拟化扩展。</li>
 </ol>
 
-<h3>结论4：算法层面最值得反复咀嚼的是四个点</h3>
+<h3 id="结论4算法层面最值得反复咀嚼的是四个点">结论4：算法层面最值得反复咀嚼的是四个点</h3>
 
 <ol>
 <li>INTID 分类与寄存器窗口换算。</li>
@@ -6915,7 +6915,7 @@ cat /sys/kernel/tracing/trace_pipe</code></pre>
 <li>ITS 命令 ring buffer 的生产者/消费者同步。</li>
 </ol>
 
-<h3>结论5：最有效的学习方式不是“看完所有源码”，而是“按路径验证源码”</h3>
+<h3 id="结论5最有效的学习方式不是看完所有源码而是按路径验证源码">结论5：最有效的学习方式不是“看完所有源码”，而是“按路径验证源码”</h3>
 
 <p>推荐固定方法：</p>
 

@@ -540,7 +540,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>Helper variables</h3>
+<h3 id="helper-variables" >Helper variables</h3>
 
 <table>
 <thead><tr>
@@ -700,7 +700,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>SLUB sysfs</h3>
+<h3 id="slub-sysfs" >SLUB sysfs</h3>
 
 <p>SLUB exposes per-cache attributes under <code>/sys/kernel/slab/<cache>/</code> when <code>CONFIG_SYSFS</code> is enabled (registered at mm/slub.c:351). Per-cache files include: <code>object_size</code>, <code>objs_per_slab</code>, <code>order</code>, <code>slab_size</code>, <code>partial</code>, <code>cpu_slabs</code>, <code>shrink</code>, <code>aliases</code>, <code>align</code>, etc.</p>
 
@@ -710,7 +710,7 @@ hr {
 
 <p>Exposed via sysfs under <code>/sys/kernel/mm/transparent_hugepage/</code>.</p>
 
-<h3>Global THP attributes (mm/huge_memory.c)</h3>
+<h3 id="global-thp-attributes-mmhuge_memoryc">Global THP attributes (mm/huge_memory.c)</h3>
 
 <table>
 <thead><tr>
@@ -764,7 +764,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>Per-THP-size attributes (<code>/sys/kernel/mm/transparent_hugepage/hugepages-*kB/</code>)</h3>
+<h3 id="per-thp-size-attributes-syskernelmmtransparent_hugepagehugepages-kb">Per-THP-size attributes (<code>/sys/kernel/mm/transparent_hugepage/hugepages-*kB/</code>)</h3>
 
 <table>
 <thead><tr>
@@ -786,7 +786,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>khugepaged tunables (<code>/sys/kernel/mm/transparent_hugepage/khugepaged/</code>)</h3>
+<h3 id="khugepaged-tunables-syskernelmmtransparent_hugepagekhugepaged">khugepaged tunables (<code>/sys/kernel/mm/transparent_hugepage/khugepaged/</code>)</h3>
 
 <table>
 <thead><tr>
@@ -869,7 +869,7 @@ hr {
 
 <h2>6. CMA (Contiguous Memory Allocator) Params</h2>
 
-<h3>Boot command line (kernel/dma/contiguous.c)</h3>
+<h3 id="boot-command-line-kerneldmacontiguousc">Boot command line (kernel/dma/contiguous.c)</h3>
 
 <table>
 <thead><tr>
@@ -896,7 +896,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>Kconfig defaults</h3>
+<h3 id="kconfig-defaults" >Kconfig defaults</h3>
 
 <table>
 <thead><tr>
@@ -914,7 +914,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>CMA sysfs</h3>
+<h3 id="cma-sysfs" >CMA sysfs</h3>
 
 <p>Each CMA area has sysfs stats under <code>/sys/kernel/mm/cma/<name>/</code> (registered in mm/cma_sysfs.c) exposing <code>alloc_pages_success</code>, <code>alloc_pages_fail</code>, <code>release_pages_success</code>.</p>
 
@@ -1149,7 +1149,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>KSM read-only stats (also in <code>/sys/kernel/mm/ksm/</code>)</h3>
+<h3 id="ksm-read-only-stats-also-in-syskernelmmksm">KSM read-only stats (also in <code>/sys/kernel/mm/ksm/</code>)</h3>
 
 <table>
 <thead><tr>
@@ -1317,7 +1317,7 @@ hr {
 
 <h2>Quick Reference: All Tunable Interfaces by Type</h2>
 
-<h3>Boot Command Line Parameters</h3>
+<h3 id="boot-command-line-parameters" >Boot Command Line Parameters</h3>
 <table>
 <thead><tr>
 <th>Param</th>
@@ -1354,7 +1354,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3><code>/proc/sys/vm/</code> Sysctls</h3>
+<h3 id="procsysvm-sysctls"><code>/proc/sys/vm/</code> Sysctls</h3>
 <table>
 <thead><tr>
 <th>Tunable</th>
@@ -1423,7 +1423,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3><code>/sys/kernel/mm/transparent_hugepage/</code></h3>
+<h3 id="syskernelmmtransparent_hugepage"><code>/sys/kernel/mm/transparent_hugepage/</code></h3>
 <table>
 <thead><tr>
 <th>File</th>
@@ -1484,7 +1484,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3><code>/sys/kernel/mm/ksm/</code></h3>
+<h3 id="syskernelmmksm"><code>/sys/kernel/mm/ksm/</code></h3>
 <table>
 <thead><tr>
 <th>File</th>
@@ -1545,7 +1545,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3><code>/sys/module/zswap/parameters/</code></h3>
+<h3 id="sysmodulezswapparameters"><code>/sys/module/zswap/parameters/</code></h3>
 <table>
 <thead><tr>
 <th>File</th>
@@ -1574,7 +1574,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>Memory Cgroup (cgroupv2 <code>memory.*</code>)</h3>
+<h3 id="memory-cgroup-cgroupv2-memory" >Memory Cgroup (cgroupv2 <code>memory.*</code>)</h3>
 <table>
 <thead><tr>
 <th>File</th>
@@ -1607,7 +1607,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>Compile-Time Only</h3>
+<h3 id="compile-time-only" >Compile-Time Only</h3>
 <table>
 <thead><tr>
 <th>Config</th>

@@ -451,7 +451,7 @@ hr {
 
 <h2>一、ARM64 架构下内核同步关键接口</h2>
 
-<h3>1.1 原子操作 (Atomic Operations)</h3>
+<h3 id="11-原子操作-atomic-operations" >1.1 原子操作 (Atomic Operations)</h3>
 
 <p><strong>源码</strong>: <code>arch/arm64/include/asm/atomic.h</code>, <code>arch/arm64/include/asm/atomic_ll_sc.h</code>, <code>arch/arm64/include/asm/atomic_lse.h</code></p>
 
@@ -579,7 +579,7 @@ hr {
 
 <hr>
 
-<h3>1.2 内存屏障 (Memory Barriers)</h3>
+<h3 id="12-内存屏障-memory-barriers" >1.2 内存屏障 (Memory Barriers)</h3>
 
 <p><strong>源码</strong>: <code>arch/arm64/include/asm/barrier.h</code></p>
 
@@ -680,7 +680,7 @@ hr {
 
 <hr>
 
-<h3>1.3 自旋锁 (Spinlock / qspinlock)</h3>
+<h3 id="13-自旋锁-spinlock--qspinlock" >1.3 自旋锁 (Spinlock / qspinlock)</h3>
 
 <p><strong>源码</strong>: <code>include/asm-generic/qspinlock_types.h</code>, <code>include/asm-generic/qspinlock.h</code>, <code>kernel/locking/qspinlock.c</code></p>
 
@@ -756,7 +756,7 @@ MCS Queue:  入队到 per-CPU MCS 节点链表
 
 <hr>
 
-<h3>1.4 读写自旋锁 (Read-Write Spinlock)</h3>
+<h3 id="14-读写自旋锁-read-write-spinlock" >1.4 读写自旋锁 (Read-Write Spinlock)</h3>
 
 <p><strong>源码</strong>: <code>include/linux/rwlock.h</code>, <code>include/asm-generic/qrwlock.h</code></p>
 
@@ -807,7 +807,7 @@ MCS Queue:  入队到 per-CPU MCS 节点链表
 
 <hr>
 
-<h3>1.5 互斥锁 (Mutex)</h3>
+<h3 id="15-互斥锁-mutex" >1.5 互斥锁 (Mutex)</h3>
 
 <p><strong>源码</strong>: <code>include/linux/mutex_types.h</code>, <code>kernel/locking/mutex.c</code></p>
 
@@ -884,7 +884,7 @@ MCS Queue:  入队到 per-CPU MCS 节点链表
 
 <hr>
 
-<h3>1.6 读写信号量 (Read-Write Semaphore)</h3>
+<h3 id="16-读写信号量-read-write-semaphore" >1.6 读写信号量 (Read-Write Semaphore)</h3>
 
 <p><strong>源码</strong>: <code>include/linux/rwsem.h</code>, <code>kernel/locking/rwsem.c</code></p>
 
@@ -938,7 +938,7 @@ MCS Queue:  入队到 per-CPU MCS 节点链表
 
 <hr>
 
-<h3>1.7 计数信号量 (Semaphore)</h3>
+<h3 id="17-计数信号量-semaphore" >1.7 计数信号量 (Semaphore)</h3>
 
 <p><strong>源码</strong>: <code>include/linux/semaphore.h</code>, <code>kernel/locking/semaphore.c</code></p>
 
@@ -992,7 +992,7 @@ MCS Queue:  入队到 per-CPU MCS 节点链表
 
 <hr>
 
-<h3>1.8 完成量 (Completion)</h3>
+<h3 id="18-完成量-completion" >1.8 完成量 (Completion)</h3>
 
 <p><strong>源码</strong>: <code>include/linux/completion.h</code>, <code>kernel/sched/completion.c</code></p>
 
@@ -1068,7 +1068,7 @@ complete(&amp;setup_done);</code></pre>
 
 <hr>
 
-<h3>1.9 RCU (Read-Copy-Update)</h3>
+<h3 id="19-rcu-read-copy-update" >1.9 RCU (Read-Copy-Update)</h3>
 
 <p><strong>源码</strong>: <code>include/linux/rcupdate.h</code>, <code>kernel/rcu/</code></p>
 
@@ -1140,7 +1140,7 @@ rcu_read_unlock()               modify(new);
 
 <hr>
 
-<h3>1.10 Per-CPU 变量与操作</h3>
+<h3 id="110-per-cpu-变量与操作" >1.10 Per-CPU 变量与操作</h3>
 
 <p><strong>源码</strong>: <code>arch/arm64/include/asm/percpu.h</code></p>
 
@@ -1203,7 +1203,7 @@ ldadd val, tmp, [ptr]     // 硬件原子加法
 
 <hr>
 
-<h3>1.11 同步机制选型对比</h3>
+<h3 id="111-同步机制选型对比" >1.11 同步机制选型对比</h3>
 
 <table>
 <thead><tr>
@@ -1283,7 +1283,7 @@ ldadd val, tmp, [ptr]     // 硬件原子加法
 
 <h2>二、内核软中断的实现与原理</h2>
 
-<h3>2.1 软中断概述</h3>
+<h3 id="21-软中断概述" >2.1 软中断概述</h3>
 
 <p>软中断 (softirq) 是 Linux 内核延迟处理机制的基础层，用于将硬中断中不紧急的工作推迟到更安全的上下文中执行。</p>
 
@@ -1295,7 +1295,7 @@ ldadd val, tmp, [ptr]     // 硬件原子加法
 <li>优先级高于进程上下文，低于硬中断</li>
 </ul>
 
-<h3>2.2 软中断向量表</h3>
+<h3 id="22-软中断向量表" >2.2 软中断向量表</h3>
 
 <p><strong>源码</strong>: <code>include/linux/interrupt.h</code></p>
 
@@ -1315,7 +1315,7 @@ ldadd val, tmp, [ptr]     // 硬件原子加法
 
 <p>优先级从 0 (最高) 到 9 (最低)，处理时按序号顺序执行。</p>
 
-<h3>2.3 核心数据结构</h3>
+<h3 id="23-核心数据结构" >2.3 核心数据结构</h3>
 
 <pre><code class="language-c">// 软中断处理函数
 struct softirq_action {
@@ -1331,7 +1331,7 @@ typedef struct {
     // ...
 } irq_cpustat_t;</code></pre>
 
-<h3>2.4 软中断触发机制</h3>
+<h3 id="24-软中断触发机制" >2.4 软中断触发机制</h3>
 
 <h4>raise_softirq()</h4>
 
@@ -1359,7 +1359,7 @@ inline void raise_softirq_irqoff(unsigned int nr)
 <li><strong>ksoftirqd 线程</strong>: 当软中断积压时由内核线程处理</li>
 </ol>
 
-<h3>2.5 软中断执行流程</h3>
+<h3 id="25-软中断执行流程" >2.5 软中断执行流程</h3>
 
 <h4><code>__do_softirq()</code> 核心处理</h4>
 
@@ -1383,7 +1383,7 @@ inline void raise_softirq_irqoff(unsigned int nr)
     → if (!in_interrupt() &amp;&amp; local_softirq_pending())
         → __do_softirq()</code></pre>
 
-<h3>2.6 ksoftirqd 内核线程</h3>
+<h3 id="26-ksoftirqd-内核线程" >2.6 ksoftirqd 内核线程</h3>
 
 <p>每个 CPU 都有一个 <code>ksoftirqd/N</code> 内核线程，用于处理积压的软中断：</p>
 
@@ -1407,7 +1407,7 @@ static void run_ksoftirqd(unsigned int cpu)
 <li><code>raise_softirq()</code> 在进程上下文中调用</li>
 </ul>
 
-<h3>2.7 Tasklet 机制</h3>
+<h3 id="27-tasklet-机制" >2.7 Tasklet 机制</h3>
 
 <p>Tasklet 是基于软中断实现的更灵活的延迟处理机制。</p>
 
@@ -1505,7 +1505,7 @@ static void run_ksoftirqd(unsigned int cpu)
 </tr>
 </tbody></table>
 
-<h4>Tasklet 关键特性</h4>
+<h4 id="27-tasklet-机制">Tasklet 关键特性</h4>
 
 <ul>
 <li><strong>同一 tasklet 不会并发执行</strong> (TASKLET_STATE_RUN 保证 SMP 序列化)</li>
@@ -1514,7 +1514,7 @@ static void run_ksoftirqd(unsigned int cpu)
 <li>比直接注册软中断更灵活（可动态创建）</li>
 </ul>
 
-<h3>2.8 硬中断与软中断的关系</h3>
+<h3 id="28-硬中断与软中断的关系" >2.8 硬中断与软中断的关系</h3>
 
 <pre><code>┌─────────────────────────────────────────────────────┐
 │                    进程上下文                          │
@@ -1580,7 +1580,7 @@ static void run_ksoftirqd(unsigned int cpu)
 
 <h2>三、Workqueue、Tasklet 与内核线程的区别</h2>
 
-<h3>3.1 Workqueue (工作队列)</h3>
+<h3 id="31-workqueue-工作队列" >3.1 Workqueue (工作队列)</h3>
 
 <p><strong>源码</strong>: <code>kernel/workqueue.c</code>, <code>include/linux/workqueue.h</code></p>
 
@@ -1771,7 +1771,7 @@ create_singlethread_workqueue(name)</code></pre>
 
 <hr>
 
-<h3>3.2 Tasklet (小任务)</h3>
+<h3 id="32-tasklet-小任务" >3.2 Tasklet (小任务)</h3>
 
 <p>(详见 <a href="#27-tasklet-机制">2.7 Tasklet 机制</a>)</p>
 
@@ -1786,7 +1786,7 @@ create_singlethread_workqueue(name)</code></pre>
 
 <hr>
 
-<h3>3.3 Kernel Thread (内核线程)</h3>
+<h3 id="33-kernel-thread-内核线程" >3.3 Kernel Thread (内核线程)</h3>
 
 <p><strong>源码</strong>: <code>kernel/kthread.c</code>, <code>include/linux/kthread.h</code></p>
 
@@ -1876,7 +1876,7 @@ kthread_destroy_worker(worker)            // 销毁</code></pre>
 
 <hr>
 
-<h3>3.4 三者对比总结</h3>
+<h3 id="34-三者对比总结" >3.4 三者对比总结</h3>
 
 <table>
 <thead><tr>
@@ -1954,7 +1954,7 @@ kthread_destroy_worker(worker)            // 销毁</code></pre>
 </tr>
 </tbody></table>
 
-<h3>3.5 选型指南</h3>
+<h3 id="35-选型指南" >3.5 选型指南</h3>
 
 <pre><code>需要延迟执行一些工作？
 │
@@ -1977,7 +1977,7 @@ kthread_destroy_worker(worker)            // 销毁</code></pre>
 
 <h2>四、内核通信机制</h2>
 
-<h3>4.1 进程间通信 (IPC) 概览</h3>
+<h3 id="41-进程间通信-ipc-概览" >4.1 进程间通信 (IPC) 概览</h3>
 
 <pre><code>┌────────────────────────────────────────────────────────────┐
 │                     Linux 通信机制分类                        │
@@ -1997,7 +1997,7 @@ kthread_destroy_worker(worker)            // 销毁</code></pre>
 │ Eventfd       │                  │                            │
 └──────────────┴─────────────────┴───────────────────────────┘</code></pre>
 
-<h3>4.2 信号 (Signals)</h3>
+<h3 id="42-信号-signals" >4.2 信号 (Signals)</h3>
 
 <p><strong>源码</strong>: <code>kernel/signal.c</code>, <code>include/linux/signal.h</code></p>
 
@@ -2064,7 +2064,7 @@ struct k_sigaction {
 
 <hr>
 
-<h3>4.3 管道与 FIFO (Pipes)</h3>
+<h3 id="43-管道与-fifo-pipes" >4.3 管道与 FIFO (Pipes)</h3>
 
 <p><strong>源码</strong>: <code>fs/pipe.c</code>, <code>include/linux/pipe_fs_i.h</code></p>
 
@@ -2096,7 +2096,7 @@ struct pipe_buffer {
 
 <hr>
 
-<h3>4.4 System V IPC</h3>
+<h3 id="44-system-v-ipc" >4.4 System V IPC</h3>
 
 <h4>4.4.1 消息队列 (Message Queue)</h4>
 
@@ -2162,7 +2162,7 @@ struct sem {
 
 <hr>
 
-<h3>4.5 POSIX 消息队列</h3>
+<h3 id="45-posix-消息队列" >4.5 POSIX 消息队列</h3>
 
 <p><strong>源码</strong>: <code>ipc/mqueue.c</code></p>
 
@@ -2214,7 +2214,7 @@ struct sem {
 
 <hr>
 
-<h3>4.6 Socket 套接字</h3>
+<h3 id="46-socket-套接字" >4.6 Socket 套接字</h3>
 
 <p><strong>源码</strong>: <code>net/socket.c</code>, <code>include/linux/net.h</code></p>
 
@@ -2256,7 +2256,7 @@ struct sem {
 
 <hr>
 
-<h3>4.7 Netlink</h3>
+<h3 id="47-netlink" >4.7 Netlink</h3>
 
 <p><strong>源码</strong>: <code>net/netlink/af_netlink.c</code>, <code>include/linux/netlink.h</code></p>
 
@@ -2349,7 +2349,7 @@ struct netlink_kernel_cfg {
 
 <hr>
 
-<h3>4.8 Futex (快速用户态互斥)</h3>
+<h3 id="48-futex-快速用户态互斥" >4.8 Futex (快速用户态互斥)</h3>
 
 <p><strong>源码</strong>: <code>kernel/futex/</code> (core.c, syscalls.c, waitwake.c, pi.c, requeue.c)</p>
 
@@ -2427,7 +2427,7 @@ struct futex_q {
 
 <hr>
 
-<h3>4.9 Eventfd / Signalfd / Timerfd</h3>
+<h3 id="49-eventfd--signalfd--timerfd" >4.9 Eventfd / Signalfd / Timerfd</h3>
 
 <h4>Eventfd</h4>
 
@@ -2497,7 +2497,7 @@ struct futex_q {
 
 <hr>
 
-<h3>4.10 Procfs / Sysfs</h3>
+<h3 id="410-procfs--sysfs" >4.10 Procfs / Sysfs</h3>
 
 <h4>Procfs (<code>/proc</code>)</h4>
 
@@ -2573,7 +2573,7 @@ struct futex_q {
 
 <hr>
 
-<h3>4.11 通知链 (Notifier Chains)</h3>
+<h3 id="411-通知链-notifier-chains" >4.11 通知链 (Notifier Chains)</h3>
 
 <p><strong>源码</strong>: <code>kernel/notifier.c</code>, <code>include/linux/notifier.h</code></p>
 
@@ -2673,7 +2673,7 @@ xxx_notifier_call_chain(head, val, data);</code></pre>
 
 <hr>
 
-<h3>4.12 通信机制总结对比</h3>
+<h3 id="412-通信机制总结对比" >4.12 通信机制总结对比</h3>
 
 <table>
 <thead><tr>

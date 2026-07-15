@@ -676,7 +676,7 @@ hr {
 <li>Repeated START：不发 STOP，直接重新发 START，可用于寄存器地址写后立即读。</li>
 </ul>
 
-<h3>I2C 协议规范波形图</h3>
+<h3 id="i2c-协议规范波形图" >I2C 协议规范波形图</h3>
 
 <p>下面的图是协议级概念波形图，重点用于说明帧结构和边沿语义，不表示精确纳秒级比例。</p>
 
@@ -692,7 +692,7 @@ hr {
 <li>Repeated START：在不发 STOP 的情况下重新发起一次 START，用于典型“写寄存器地址再读数据”的组合事务。</li>
 </ul>
 
-<h3>I2C 进阶波形图</h3>
+<h3 id="i2c-进阶波形图" >I2C 进阶波形图</h3>
 
 <p>为了对应规范里更容易被问到、也更容易在驱动实现里出问题的部分，再补 3 个进阶场景：10-bit 地址、clock stretching、multi-master arbitration。</p>
 
@@ -770,7 +770,7 @@ hr {
 <li>CCC：如 ENEC、DISEC、RSTDAA、ENTDAA、SETDASA、GETPID、GETBCR、GETDCR。</li>
 </ul>
 
-<h3>I3C 协议规范波形图</h3>
+<h3 id="i3c-协议规范波形图" >I3C 协议规范波形图</h3>
 
 <p>下面的图同样是协议级概念图，重点突出 I3C 相比 I2C 多出来的控制平面：CCC、DAA、IBI，以及 open-drain 到 push-pull 的阶段切换。</p>
 
@@ -786,7 +786,7 @@ hr {
 <li>Mixed Bus：总线初始化、仲裁和兼容阶段仍要照顾 legacy I2C 设备，因此 I3C 不是全程 push-pull。</li>
 </ul>
 
-<h3>I3C 进阶波形图</h3>
+<h3 id="i3c-进阶波形图" >I3C 进阶波形图</h3>
 
 <p>I3C 更容易混淆的点不在普通读写，而在总线管理动作，因此进阶图重点补 3 类：CCC 读事务、Hot-Join、mixed-bus 的 open-drain 到 push-pull 切换。</p>
 
@@ -800,7 +800,7 @@ hr {
 <li>Mixed Bus Transition：在兼容 legacy I2C 设备的场景下，I3C 不同阶段的驱动方式不同，驱动和硬件设计都必须考虑这个切换点。</li>
 </ul>
 
-<h3>波形到驱动实现的关注点</h3>
+<h3 id="波形到驱动实现的关注点" >波形到驱动实现的关注点</h3>
 
 <p>只会看协议波形还不够，真正写 Linux 控制器驱动或设备驱动时，要把这些波形事件映射成明确的软件状态、错误路径和中断处理。</p>
 
@@ -1006,7 +1006,7 @@ hr {
 
 <h2>4.2 I2C 关键数据结构</h2>
 
-<h3><code>struct i2c_adapter</code></h3>
+<h3 id="struct-i2c_adapter" ><code>struct i2c_adapter</code></h3>
 
 <p>这是“总线控制器实例”的核心对象，重要字段包括：</p>
 
@@ -1024,7 +1024,7 @@ hr {
 
 <p>理解上，<code>i2c_adapter</code> 就是 Linux 内核中“这条 I2C 总线”的软件代表。</p>
 
-<h3><code>struct i2c_client</code></h3>
+<h3 id="struct-i2c_client" ><code>struct i2c_client</code></h3>
 
 <p>这是“挂在某条总线上的设备实例”。重要字段：</p>
 
@@ -1038,7 +1038,7 @@ hr {
 <li><code>slave_cb</code>：若以 slave backend 形式存在，回调入口在这里。</li>
 </ul>
 
-<h3><code>struct i2c_driver</code></h3>
+<h3 id="struct-i2c_driver" ><code>struct i2c_driver</code></h3>
 
 <p>这是设备驱动对象。重要字段：</p>
 
@@ -1050,7 +1050,7 @@ hr {
 <li><code>driver</code>：嵌入的通用 <code>device_driver</code>。</li>
 </ul>
 
-<h3><code>struct i2c_algorithm</code></h3>
+<h3 id="struct-i2c_algorithm" ><code>struct i2c_algorithm</code></h3>
 
 <p>这是控制器能力抽象层。重要字段：</p>
 
@@ -1061,7 +1061,7 @@ hr {
 <li><code>reg_target</code> / <code>unreg_target</code>，旧名字是 <code>reg_slave</code> / <code>unreg_slave</code>。</li>
 </ul>
 
-<h3><code>struct i2c_msg</code></h3>
+<h3 id="struct-i2c_msg" ><code>struct i2c_msg</code></h3>
 
 <p>这是单个 I2C 传输消息描述。核心是：</p>
 
@@ -1074,7 +1074,7 @@ hr {
 
 <p>用户和驱动常见“组合消息”就是多个 <code>i2c_msg</code> 组成的一次 transfer，例如“写寄存器地址 + repeated start + 读数据”。</p>
 
-<h3><code>struct i2c_bus_recovery_info</code></h3>
+<h3 id="struct-i2c_bus_recovery_info" ><code>struct i2c_bus_recovery_info</code></h3>
 
 <p>这是 I2C 总线卡死恢复的关键结构。重要字段：</p>
 
@@ -1150,7 +1150,7 @@ hr {
 
 <p>这是当前编辑器打开的文件，对应 Cadence I2C 控制器驱动。</p>
 
-<h3>核心私有结构 <code>struct cdns_i2c</code></h3>
+<h3 id="核心私有结构-struct-cdns_i2c" >核心私有结构 <code>struct cdns_i2c</code></h3>
 
 <p>这是该驱动的中心对象，里面包含：</p>
 
@@ -1175,7 +1175,7 @@ hr {
 <li>一半是传输进行中的软件状态机。</li>
 </ul>
 
-<h3>功能入口</h3>
+<h3 id="功能入口" >功能入口</h3>
 
 <p>Cadence 驱动通过 <code>cdns_i2c_algo</code> 绑定到 I2C core：</p>
 
@@ -1195,7 +1195,7 @@ hr {
 <li>slave backend 注册。</li>
 </ul>
 
-<h3>master 传输主路径</h3>
+<h3 id="master-传输主路径" >master 传输主路径</h3>
 
 <p>master 传输主路径是：</p>
 
@@ -1217,7 +1217,7 @@ hr {
 <li>同时提供中断模式和 atomic 轮询模式。</li>
 </ul>
 
-<h3>slave 模式路径</h3>
+<h3 id="slave-模式路径" >slave 模式路径</h3>
 
 <p>slave 模式下的核心流程：</p>
 
@@ -1232,7 +1232,7 @@ hr {
 
 <p>这与 <code>Documentation/i2c/slave-interface.rst</code> 的框架严格一致。</p>
 
-<h3>该驱动体现出的工程要点</h3>
+<h3 id="该驱动体现出的工程要点" >该驱动体现出的工程要点</h3>
 
 <ul>
 <li>当前驱动不是“只支持 slave”，而是“以 master 为主，同时兼容 slave backend”。</li>
@@ -1308,7 +1308,7 @@ hr {
 
 <h2>5.2 I3C 关键数据结构</h2>
 
-<h3><code>struct i3c_master_controller</code></h3>
+<h3 id="struct-i3c_master_controller" ><code>struct i3c_master_controller</code></h3>
 
 <p>这是 I3C 主控制器对象。重要字段：</p>
 
@@ -1325,7 +1325,7 @@ hr {
 
 <p>这个结构说明：I3C master 自己同时向 Linux 暴露 I2C 和 I3C 两种访问面。</p>
 
-<h3><code>struct i3c_master_controller_ops</code></h3>
+<h3 id="struct-i3c_master_controller_ops" ><code>struct i3c_master_controller_ops</code></h3>
 
 <p>这是 I3C 控制器驱动的核心接口集。重要字段：</p>
 
@@ -1349,7 +1349,7 @@ hr {
 <li>legacy I2C 设备。</li>
 </ul>
 
-<h3><code>struct i3c_bus</code></h3>
+<h3 id="struct-i3c_bus" ><code>struct i3c_bus</code></h3>
 
 <p>表示整条 I3C 总线。重要字段：</p>
 
@@ -1364,7 +1364,7 @@ hr {
 
 <p>这说明 I3C core 管的是“总线全局状态机”，不是局部消息队列。</p>
 
-<h3><code>struct i3c_dev_desc</code> 与 <code>struct i2c_dev_desc</code></h3>
+<h3 id="struct-i3c_dev_desc-与-struct-i2c_dev_desc" ><code>struct i3c_dev_desc</code> 与 <code>struct i2c_dev_desc</code></h3>
 
 <p>这两个结构是 I3C 总线上的内部设备描述符：</p>
 
@@ -1375,7 +1375,7 @@ hr {
 
 <p>这两个结构共享 <code>struct i3c_i2c_dev_desc common</code>，体现出 I3C core 统一管理混合总线设备的设计。</p>
 
-<h3><code>struct i3c_device_info</code></h3>
+<h3 id="struct-i3c_device_info" ><code>struct i3c_device_info</code></h3>
 
 <p>描述设备能力信息：</p>
 
@@ -1392,7 +1392,7 @@ hr {
 
 <p>这相当于 I3C 设备的“能力快照”。</p>
 
-<h3><code>struct i3c_priv_xfer</code></h3>
+<h3 id="struct-i3c_priv_xfer" ><code>struct i3c_priv_xfer</code></h3>
 
 <p>这是 I3C private SDR 传输描述，重要字段：</p>
 
@@ -1404,7 +1404,7 @@ hr {
 <li><code>err</code></li>
 </ul>
 
-<h3><code>struct i3c_driver</code></h3>
+<h3 id="struct-i3c_driver" ><code>struct i3c_driver</code></h3>
 
 <p>I3C 设备驱动对象，核心字段比较简洁：</p>
 
@@ -1452,7 +1452,7 @@ hr {
 
 <p>Cadence I3C master 驱动是当前树里最值得对照 <code>i2c-cadence.c</code> 一起看的文件。</p>
 
-<h3>它承担的职责</h3>
+<h3 id="它承担的职责" >它承担的职责</h3>
 
 <ul>
 <li>初始化 I3C 总线模式与时钟。</li>
@@ -1465,7 +1465,7 @@ hr {
 <li>处理中断与 Hot-Join workqueue。</li>
 </ul>
 
-<h3><code>cdns_i3c_master_ops</code></h3>
+<h3 id="cdns_i3c_master_ops" ><code>cdns_i3c_master_ops</code></h3>
 
 <p>Cadence I3C 驱动向 I3C core 暴露的 <code>ops</code> 包括：</p>
 
@@ -1484,7 +1484,7 @@ hr {
 
 <p>这说明它不是简单控制器驱动，而是 I3C 总线管理者。</p>
 
-<h3>bus init 逻辑</h3>
+<h3 id="bus-init-逻辑" >bus init 逻辑</h3>
 
 <p>Cadence I3C 驱动在 <code>bus_init()</code> 里做了几件关键事情：</p>
 
@@ -1499,7 +1499,7 @@ hr {
 
 <p>这与 I2C 控制器初始化相比，明显多出“总线拓扑与协议模式配置”这一层。</p>
 
-<h3>IBI 处理路径</h3>
+<h3 id="ibi-处理路径" >IBI 处理路径</h3>
 
 <p>Cadence I3C 驱动的 IBI 处理路径体现了 I3C 与 I2C 最本质的软件差异。</p>
 
@@ -1517,7 +1517,7 @@ hr {
 
 <p>这是一套完整的“事件驱动协议栈”，而 I2C 通常没有这个层次。</p>
 
-<h3>probe 路径</h3>
+<h3 id="probe-路径" >probe 路径</h3>
 
 <p>Cadence I3C probe 过程包括：</p>
 
@@ -1611,7 +1611,7 @@ hr {
 
 <h2>7.1 I2C client 的软件模拟方法</h2>
 
-<h3>方法 A：<code>i2c-stub</code> 模拟外设</h3>
+<h3 id="方法-ai2c-stub-模拟外设">方法 A：<code>i2c-stub</code> 模拟外设</h3>
 
 <p>这是最轻量的方法。</p>
 
@@ -1640,7 +1640,7 @@ hr {
 <li>非常适合 probe、寄存器读写、错误路径验证。</li>
 </ul>
 
-<h3>方法 B：QEMU I2C 设备模型模拟外设</h3>
+<h3 id="方法-bqemu-i2c-设备模型模拟外设">方法 B：QEMU I2C 设备模型模拟外设</h3>
 
 <p>适用场景：</p>
 
@@ -1660,7 +1660,7 @@ hr {
 
 <p>从 Linux guest 的视角，它们就是普通外设。你的 <code>i2c_client</code> 驱动无需知道自己运行在 QEMU。</p>
 
-<h3>方法 C：<code>i2c-gpio</code> + 对端 MCU/FPGA/逻辑分析器</h3>
+<h3 id="方法-ci2c-gpio--对端-mcufpga逻辑分析器">方法 C：<code>i2c-gpio</code> + 对端 MCU/FPGA/逻辑分析器</h3>
 
 <p>适合：</p>
 
@@ -1676,7 +1676,7 @@ hr {
 
 <p>当前可行方法主要有 4 种。</p>
 
-<h3>方法 A：基于新版本 QEMU 的 I3C target 模型</h3>
+<h3 id="方法-a基于新版本-qemu-的-i3c-target-模型">方法 A：基于新版本 QEMU 的 I3C target 模型</h3>
 
 <p>这是最接近“纯软件外设”的方法。</p>
 
@@ -1697,7 +1697,7 @@ hr {
 <li>适合验证 Linux guest 中的 I3C controller driver 和 I3C device driver。</li>
 </ul>
 
-<h3>方法 B：写一个“测试用 I3C target 模型”在 QEMU 中作为外设</h3>
+<h3 id="方法-b写一个测试用-i3c-target-模型在-qemu-中作为外设">方法 B：写一个“测试用 I3C target 模型”在 QEMU 中作为外设</h3>
 
 <p>这是面向体系验证的最佳方案。</p>
 
@@ -1711,7 +1711,7 @@ hr {
 
 <p>这样 guest 里的 <code>struct i3c_driver</code> 就可以直接和它对接。</p>
 
-<h3>方法 C：内核中写“假 master controller”做协议单元测试</h3>
+<h3 id="方法-c内核中写假-master-controller做协议单元测试">方法 C：内核中写“假 master controller”做协议单元测试</h3>
 
 <p>适合：</p>
 
@@ -1730,7 +1730,7 @@ hr {
 
 <p>这更像 KUnit/fake HCD 路线，而不是总线真实仿真。</p>
 
-<h3>方法 D：双模器件用 <code>i3c_i2c_driver_register()</code> 先走 I2C 验证</h3>
+<h3 id="方法-d双模器件用-i3c_i2c_driver_register-先走-i2c-验证">方法 D：双模器件用 <code>i3c_i2c_driver_register()</code> 先走 I2C 验证</h3>
 
 <p>若你的器件同时支持 I2C/I3C，可先：</p>
 
@@ -1895,7 +1895,7 @@ MODULE_LICENSE(&quot;GPL&quot;);</code></pre>
 <li>QEMU 自己还有 <code>tests/qtest/bcm2835-i2c-test.c</code>、<code>tmp105-test.c</code>、<code>ds1338-test.c</code> 等测试样例。</li>
 </ul>
 
-<h3>实验 1：QEMU + 现成 I2C 设备 + guest 用户态验证</h3>
+<h3 id="实验-1qemu--现成-i2c-设备--guest-用户态验证">实验 1：QEMU + 现成 I2C 设备 + guest 用户态验证</h3>
 
 <p>实验目标：</p>
 
@@ -1926,7 +1926,7 @@ i2ctransfer -y 0 w1@0x50 0x00 r16</code></pre>
 <li><code>i2cdetect</code> 能看到虚拟器件地址。</li>
 </ul>
 
-<h3>实验 2：QEMU + 你的 I2C client 驱动</h3>
+<h3 id="实验-2qemu--你的-i2c-client-驱动">实验 2：QEMU + 你的 I2C client 驱动</h3>
 
 <p>做法：</p>
 
@@ -1939,7 +1939,7 @@ i2ctransfer -y 0 w1@0x50 0x00 r16</code></pre>
 
 <p>这是测试 I2C client 驱动最推荐的方法之一。</p>
 
-<h3>实验 3：QEMU 板级代码中添加一个 I2C 设备</h3>
+<h3 id="实验-3qemu-板级代码中添加一个-i2c-设备">实验 3：QEMU 板级代码中添加一个 I2C 设备</h3>
 
 <p>基于上游 QEMU 的常见写法，板级代码里通常是这样挂载 I2C 设备：</p>
 
@@ -1974,7 +1974,7 @@ i3ctransfer -d /dev/bus/i3c/5-1234567890ab -r 8</code></pre>
 <li>但它不像 I2C 那样“几乎所有发行版自带的 QEMU 都现成可用”。</li>
 </ul>
 
-<h3>实验 4：新版 QEMU + AST2600 + mock-i3c-target</h3>
+<h3 id="实验-4新版-qemu--ast2600--mock-i3c-target">实验 4：新版 QEMU + AST2600 + mock-i3c-target</h3>
 
 <p>实验目标：</p>
 
@@ -2011,7 +2011,7 @@ i3c_target_create_simple(bus,
 <li>实际板级集成时，可能还要补充设备属性、IBI magic number、machine wiring。</li>
 </ul>
 
-<h3>实验 5：Linux guest 中的 I3C 设备驱动验证</h3>
+<h3 id="实验-5linux-guest-中的-i3c-设备驱动验证">实验 5：Linux guest 中的 I3C 设备驱动验证</h3>
 
 <p>推荐做法：</p>
 
@@ -2030,7 +2030,7 @@ i3c_target_create_simple(bus,
 <li>DAA 后的动态地址是否稳定。</li>
 </ul>
 
-<h3>实验 6：若你的 QEMU 版本没有 I3C</h3>
+<h3 id="实验-6若你的-qemu-版本没有-i3c">实验 6：若你的 QEMU 版本没有 I3C</h3>
 
 <p>这是现实中很常见的情况。</p>
 
@@ -2046,7 +2046,7 @@ i3c_target_create_simple(bus,
 
 <h2>9.1 I2C 最小实验清单</h2>
 
-<h3>实验 A：<code>i2c-stub</code> 纯软件仿真</h3>
+<h3 id="实验-ai2c-stub-纯软件仿真">实验 A：<code>i2c-stub</code> 纯软件仿真</h3>
 
 <pre><code class="language-bash">modprobe i2c-stub chip_addr=0x50
 i2cdetect -l
@@ -2055,7 +2055,7 @@ i2cget -y &lt;busnum&gt; 0x50 0x00</code></pre>
 
 <p>你可以在此基础上加载自己的 <code>i2c_client</code> 驱动。</p>
 
-<h3>实验 B：slave EEPROM backend</h3>
+<h3 id="实验-bslave-eeprom-backend">实验 B：slave EEPROM backend</h3>
 
 <pre><code class="language-bash">echo slave-24c02 0x1064 &gt; /sys/bus/i2c/devices/i2c-1/new_device</code></pre>
 
@@ -2066,7 +2066,7 @@ i2cget -y &lt;busnum&gt; 0x50 0x00</code></pre>
 <li>这个方法适合验证 controller 的 slave mode + backend 逻辑。</li>
 </ul>
 
-<h3>实验 C：i2c-gpio</h3>
+<h3 id="实验-ci2c-gpio">实验 C：i2c-gpio</h3>
 
 <p>适合验证：</p>
 
@@ -2078,7 +2078,7 @@ i2cget -y &lt;busnum&gt; 0x50 0x00</code></pre>
 
 <h2>9.2 I3C 最小实验清单</h2>
 
-<h3>实验 D：I3C guest 驱动</h3>
+<h3 id="实验-di3c-guest-驱动">实验 D：I3C guest 驱动</h3>
 
 <p>把最小 <code>demo_i3c_driver</code> 编进内核或模块，验证：</p>
 
@@ -2088,7 +2088,7 @@ i2cget -y &lt;busnum&gt; 0x50 0x00</code></pre>
 <li>IBI handler</li>
 </ul>
 
-<h3>实验 E：新版 QEMU <code>mock-i3c-target</code></h3>
+<h3 id="实验-e新版-qemu-mock-i3c-target">实验 E：新版 QEMU <code>mock-i3c-target</code></h3>
 
 <p>验证：</p>
 
@@ -2103,7 +2103,7 @@ i2cget -y &lt;busnum&gt; 0x50 0x00</code></pre>
 
 <p>这一节的目标不是讲协议定义，而是讲出问题时怎么把逻辑分析仪、内核日志和驱动代码三者对上。</p>
 
-<h3>9.3.1 I2C 抓波形排障方法</h3>
+<h3 id="931-i2c-抓波形排障方法" >9.3.1 I2C 抓波形排障方法</h3>
 
 <p>建议最少同时观察 4 类信息：</p>
 
@@ -2147,7 +2147,7 @@ i2cget -y &lt;busnum&gt; 0x50 0x00</code></pre>
 </ul>
 <p>	定位：先查 clock stretching，再查中断丢失、FIFO 阈值和 runtime PM 切换。</p>
 
-<h3>9.3.2 I3C 抓波形排障方法</h3>
+<h3 id="932-i3c-抓波形排障方法" >9.3.2 I3C 抓波形排障方法</h3>
 
 <p>I3C 不能只按 I2C 的思路抓，因为除了私有读写，还要看 CCC、DAA、IBI、Hot-Join 等管理流量。</p>
 
@@ -2183,7 +2183,7 @@ i2cget -y &lt;busnum&gt; 0x50 0x00</code></pre>
 </ul>
 <p>	定位：重点查控制器驱动是否把 Hot-Join 放到独立 workqueue 或维护流程里处理，而不是只在初次枚举阶段考虑设备列表。</p>
 
-<h3>9.3.3 抓波形时最容易犯的错误</h3>
+<h3 id="933-抓波形时最容易犯的错误" >9.3.3 抓波形时最容易犯的错误</h3>
 
 <ul>
 <li>只看用户态返回码，不看真实波形，结果把协议问题误判成软件问题。</li>

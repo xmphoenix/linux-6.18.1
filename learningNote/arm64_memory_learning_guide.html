@@ -397,11 +397,11 @@ hr {
           <li><a href="#03-原理图三阶段页表演进">0.3 原理图：三阶段页表演进</a></li>
           <li><a href="#04-五个页表目录及其生命周期">0.4 五个页表目录及其生命周期</a></li>
           <li><a href="#05-代码逐行解析primary_entryarcharm64kernelheads85">0.5 代码逐行解析：primary_entry（arch/arm64/kernel/head.S:85）</a></li>
-          <li><a href="#06-代码逐行解析<strong>cpu_setuparcharm64mmprocs465">0.6 代码逐行解析：cpu_setup（arch/arm64/mm/proc.S:465）</a></li>
-          <li><a href="#07-代码逐行解析<strong>primary_switch--</strong>enable_mmu">0.7 代码逐行解析：primary_switch + enable_mmu</a></li>
+          <li><a href="#06-代码逐行解析cpu_setuparcharm64mmprocs465">0.6 代码逐行解析：cpu_setup（arch/arm64/mm/proc.S:465）</a></li>
+          <li><a href="#07-代码逐行解析primary_switch--enable_mmu">0.7 代码逐行解析：primary_switch + enable_mmu</a></li>
           <li><a href="#08-代码解析early_map_kernelarcharm64kernelpimap_kernelc241">0.8 代码解析：early_map_kernel（arch/arm64/kernel/pi/map_kernel.c:241）</a></li>
           <li><a href="#09-代码解析map_kernel--按段精细映射">0.9 代码解析：map_kernel — 按段精细映射</a></li>
-          <li><a href="#010-代码解析<strong>primary_switched-→-start_kernel-的过渡">0.10 代码解析：primary_switched → start_kernel 的过渡</a></li>
+          <li><a href="#010-代码解析primary_switched-→-start_kernel-的过渡">0.10 代码解析：primary_switched → start_kernel 的过渡</a></li>
           <li><a href="#011-代码解析paging_init--最终页表">0.11 代码解析：paging_init — 最终页表</a></li>
           <li><a href="#012-关键时刻图ttbr0--ttbr1-切换时间线">0.12 关键时刻图：TTBR0 / TTBR1 切换时间线</a></li>
           <li><a href="#013-create_init_idmap-的递归建表算法pimap_rangec">0.13 create_init_idmap 的递归建表算法（pi/map_range.c）</a></li>
@@ -566,11 +566,11 @@ hr {
 
 <h2>第0课：head.S → start_kernel 早期内存映射（3天）</h2>
 
-<h3>0.1 学习目标</h3>
+<h3 id="01-学习目标" >0.1 学习目标</h3>
 
 <p>理解 ARM64 Linux 内核从上电到进入 C 语言世界的完整内存映射建立过程。从 <code>head.S</code> 汇编入口到 <code>start_kernel()</code>，再到 <code>setup_arch()</code> 中 <code>paging_init()</code> 完成最终页表切换的全路径。</p>
 
-<h3>0.2 核心问题</h3>
+<h3 id="02-核心问题" >0.2 核心问题</h3>
 
 <blockquote><strong>内核镜像被 bootloader 加载到物理内存后，MMU 是关闭的（PA=VA），内核最终要运行在高地址虚拟空间（TTBR1），这个切换是怎么完成的？</strong></blockquote>
 
@@ -581,7 +581,7 @@ hr {
 <li><strong>阶段3</strong>（setup_arch → paging_init）：在 C 代码中用 swapper_pg_dir 建立最终的线性映射 + idmap</li>
 </ol>
 
-<h3>0.3 原理图：三阶段页表演进</h3>
+<h3 id="03-原理图三阶段页表演进">0.3 原理图：三阶段页表演进</h3>
 
 <pre><code> ┌──────────────────────────────────────────────────────────────────────────────────┐
  │                        ARM64 内核启动页表三阶段演进                               │
@@ -646,7 +646,7 @@ hr {
  │  └─────────────────────────────────────────────────────────────────────┘          │
  └──────────────────────────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>0.4 五个页表目录及其生命周期</h3>
+<h3 id="04-五个页表目录及其生命周期" >0.4 五个页表目录及其生命周期</h3>
 
 <pre><code> ┌────────────────────┬───────────────────────┬──────────────────────────────────────┐
  │ 页表目录名          │ 用途                  │ 生命周期                             │
@@ -720,7 +720,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>0.5 代码逐行解析：primary_entry（arch/arm64/kernel/head.S:85）</h3>
+<h3 id="05-代码逐行解析primary_entryarcharm64kernelheads85">0.5 代码逐行解析：primary_entry（arch/arm64/kernel/head.S:85）</h3>
 
 <pre><code class="language-asm"> ;;  寄存器约定（贯穿整个 boot 流程）：
  ;;  x19 = MMU 是否已开启（EFI stub 可能已开启 MMU）
@@ -756,7 +756,7 @@ hr {
      b    __primary_switch      ;; 跳入 MMU 开启 + 内核映射流程
  SYM_CODE_END(primary_entry)</code></pre>
 
-<h3>0.6 代码逐行解析：__cpu_setup（arch/arm64/mm/proc.S:465）</h3>
+<h3 id="06-代码逐行解析cpu_setuparcharm64mmprocs465">0.6 代码逐行解析：__cpu_setup（arch/arm64/mm/proc.S:465）</h3>
 
 <pre><code class="language-asm"> SYM_FUNC_START(__cpu_setup)
      tlbi vmalle1               ;; 清空所有 TLB 条目
@@ -787,7 +787,7 @@ hr {
      ret                        ;; 返回 head.S，x0 = SCTLR 值
  SYM_FUNC_END(__cpu_setup)</code></pre>
 
-<h3>0.7 代码逐行解析：<strong>primary_switch + </strong>enable_mmu</h3>
+<h3 id="07-代码逐行解析primary_switch--enable_mmu">0.7 代码逐行解析：<strong>primary_switch + </strong>enable_mmu</h3>
 
 <pre><code class="language-asm"> SYM_FUNC_START_LOCAL(__primary_switch)
      adrp x1, reserved_pg_dir           ;; x1 = TTBR1 临时空页表
@@ -827,7 +827,7 @@ hr {
      ret                               ;; 返回后 CPU 已在虚拟地址模式
  SYM_FUNC_END(__enable_mmu)</code></pre>
 
-<h3>0.8 代码解析：early_map_kernel（arch/arm64/kernel/pi/map_kernel.c:241）</h3>
+<h3 id="08-代码解析early_map_kernelarcharm64kernelpimap_kernelc241">0.8 代码解析：early_map_kernel（arch/arm64/kernel/pi/map_kernel.c:241）</h3>
 
 <pre><code class="language-c"> asmlinkage void __init early_map_kernel(u64 boot_status, phys_addr_t fdt)
  {
@@ -858,7 +858,7 @@ hr {
      map_kernel(kaslr_offset, va_base - pa_base, root_level);
  }</code></pre>
 
-<h3>0.9 代码解析：map_kernel — 按段精细映射</h3>
+<h3 id="09-代码解析map_kernel--按段精细映射">0.9 代码解析：map_kernel — 按段精细映射</h3>
 
 <pre><code class="language-c"> static void __init map_kernel(u64 kaslr_offset, u64 va_offset, int root_level)
  {
@@ -898,7 +898,7 @@ hr {
      idmap_cpu_replace_ttbr1((phys_addr_t)swapper_pg_dir);
  }</code></pre>
 
-<h3>0.10 代码解析：__primary_switched → start_kernel 的过渡</h3>
+<h3 id="010-代码解析primary_switched-→-start_kernel-的过渡">0.10 代码解析：__primary_switched → start_kernel 的过渡</h3>
 
 <pre><code class="language-asm"> SYM_FUNC_START_LOCAL(__primary_switched)
      ;; 此时已运行在虚拟地址空间（TTBR1 = swapper_pg_dir）
@@ -920,7 +920,7 @@ hr {
      ASM_BUG()                  ;; 不应返回
  SYM_FUNC_END(__primary_switched)</code></pre>
 
-<h3>0.11 代码解析：paging_init — 最终页表</h3>
+<h3 id="011-代码解析paging_init--最终页表">0.11 代码解析：paging_init — 最终页表</h3>
 
 <pre><code class="language-c"> /* setup_arch() 中调用顺序 (arch/arm64/kernel/setup.c:332-344) */
  void __init setup_arch(char **cmdline_p)
@@ -954,7 +954,7 @@ hr {
      //  _text→_etext, rodata, inittext, initdata, _data→_end
  }</code></pre>
 
-<h3>0.12 关键时刻图：TTBR0 / TTBR1 切换时间线</h3>
+<h3 id="012-关键时刻图ttbr0--ttbr1-切换时间线">0.12 关键时刻图：TTBR0 / TTBR1 切换时间线</h3>
 
 <pre><code> 时间 ──────────────────────────────────────────────────────────────────────────────►
 
@@ -977,7 +977,7 @@ hr {
  TTBR0: [init_idmap_pg_dir] ───────────────────────→ [zero_page]（最终闲置）
  TTBR1: [reserved_pg_dir] → [init_pg_dir] → [swapper_pg_dir] ═══════（永久使用）</code></pre>
 
-<h3>0.13 create_init_idmap 的递归建表算法（pi/map_range.c）</h3>
+<h3 id="013-create_init_idmap-的递归建表算法pimap_rangec">0.13 create_init_idmap 的递归建表算法（pi/map_range.c）</h3>
 
 <pre><code class="language-c"> /* 核心算法：递归按需分配页表页 */
  void map_range(phys_addr_t *pte, u64 start, u64 end, phys_addr_t pa,
@@ -1014,7 +1014,7 @@ hr {
 <li><strong><code><em>_pi</em></code> 前缀</strong>：Position Independent，链接时放在特殊段中，MMU off 时可调用</li>
 </ul>
 
-<h3>0.14 QEMU 实验 0.1：GDB 观察 MMU 开启瞬间</h3>
+<h3 id="014-qemu-实验-01gdb-观察-mmu-开启瞬间">0.14 QEMU 实验 0.1：GDB 观察 MMU 开启瞬间</h3>
 
 <pre><code class="language-bash"># 在 __enable_mmu 处设置断点：
 (gdb) hbreak *__enable_mmu
@@ -1046,7 +1046,7 @@ hr {
 (gdb) si
 # ★ 跳入后观察 PC 变化：从低地址 → 高地址</code></pre>
 
-<h3>0.15 QEMU 实验 0.2：GDB 跟踪页表切换</h3>
+<h3 id="015-qemu-实验-02gdb-跟踪页表切换">0.15 QEMU 实验 0.2：GDB 跟踪页表切换</h3>
 
 <pre><code class="language-bash"># 在 paging_init 前后对比 TTBR1
 (gdb) b paging_init
@@ -1066,7 +1066,7 @@ hr {
 (gdb) x/8gx &amp;swapper_pg_dir
 # map_mem 完成后应看到有效的 PGD 条目</code></pre>
 
-<h3>0.16 QEMU 实验 0.3：验证 kimage_voffset</h3>
+<h3 id="016-qemu-实验-03验证-kimage_voffset">0.16 QEMU 实验 0.3：验证 kimage_voffset</h3>
 
 <pre><code class="language-bash"># kimage_voffset = 内核虚拟地址 - 物理地址
 (gdb) b __primary_switched
@@ -1086,7 +1086,7 @@ hr {
 (gdb) p/x &amp;start_kernel - kimage_voffset
 # 结果应该在 QEMU 的 RAM 物理地址范围内（0x40000000+）</code></pre>
 
-<h3>0.17 检查清单</h3>
+<h3 id="017-检查清单" >0.17 检查清单</h3>
 
 <ul>
 <li class="task-list-item"><input type="checkbox" disabled >能画出 primary_entry → <strong>cpu_setup → </strong>primary_switch → <strong>enable_mmu → early_map_kernel → </strong>primary_switched → start_kernel 的完整调用链</li>
@@ -1103,15 +1103,15 @@ hr {
 
 <h2>第1课：ARM64 硬件基础（3天）</h2>
 
-<h3>1.1 学习目标</h3>
+<h3 id="11-学习目标" >1.1 学习目标</h3>
 
 <p>理解 ARM64 的 MMU、Cache、TLB 三大硬件单元如何协作完成地址翻译。</p>
 
-<h3>1.2 原理图：CPU 访问内存的硬件路径</h3>
+<h3 id="12-原理图cpu-访问内存的硬件路径">1.2 原理图：CPU 访问内存的硬件路径</h3>
 
 <p><img src="image/arm64_cpu_memory_access_path.svg" alt="CPU 访问内存的硬件路径" width="100%" /></p>
 
-<h3>1.3 ARM64 关键系统寄存器</h3>
+<h3 id="13-arm64-关键系统寄存器" >1.3 ARM64 关键系统寄存器</h3>
 
 <table>
 <thead><tr>
@@ -1152,7 +1152,7 @@ hr {
 </tr>
 </tbody></table>
 
-<h3>1.4 QEMU 实验 1.1：观察 MMU 开启时刻</h3>
+<h3 id="14-qemu-实验-11观察-mmu-开启时刻">1.4 QEMU 实验 1.1：观察 MMU 开启时刻</h3>
 
 <pre><code class="language-bash"># GDB 中：
 (gdb) break __primary_switch
@@ -1166,7 +1166,7 @@ hr {
 # 单步走过 MMU 开启点，观察地址空间切换
 (gdb) stepi</code></pre>
 
-<h3>1.5 QEMU 实验 1.2：查看 cache 参数</h3>
+<h3 id="15-qemu-实验-12查看-cache-参数">1.5 QEMU 实验 1.2：查看 cache 参数</h3>
 
 <pre><code class="language-bash"># 先看内核到底导出了哪些 cache leaf：
 ls -al /sys/devices/system/cpu/cpu0/cache/
@@ -1261,7 +1261,7 @@ od -An -tx4 /sys/firmware/devicetree/base/cpus/cpu@0/next-level-cache</code></pr
 <li>知道 ARM64 的 cache line 大小本质上还可以从 <code>CTR_EL0</code> 推导</li>
 </ol>
 
-<h3>1.6 关键概念检查清单</h3>
+<h3 id="16-关键概念检查清单" >1.6 关键概念检查清单</h3>
 
 <pre><code>☐ 为什么需要两个 TTBR？（用户/内核地址空间隔离）
 ☐ TLB miss 时硬件 Table Walker 自动遍历页表（ARM64 不需要软件参与正常翻译）
@@ -1273,11 +1273,11 @@ od -An -tx4 /sys/firmware/devicetree/base/cpus/cpu@0/next-level-cache</code></pr
 
 <h2>第2课：物理内存发现（2天）</h2>
 
-<h3>2.1 学习目标</h3>
+<h3 id="21-学习目标" >2.1 学习目标</h3>
 
 <p>理解从硬件上电到内核知道"有多少物理内存在哪里"的全过程。</p>
 
-<h3>2.2 原理图：内存发现流程</h3>
+<h3 id="22-原理图内存发现流程">2.2 原理图：内存发现流程</h3>
 
 <pre><code class="language-mermaid">graph LR
     A[&quot;硬件&lt;br/&gt;DDR控制器&quot;] --&gt; B[&quot;Bootloader&lt;br/&gt;(U-Boot)&quot;]
@@ -1290,7 +1290,7 @@ od -An -tx4 /sys/firmware/devicetree/base/cpus/cpu@0/next-level-cache</code></pr
     style E fill:#8BC34A,color:#000
     style F fill:#FF5722,color:#fff</code></pre>
 
-<h3>2.3 核心数据结构图</h3>
+<h3 id="23-核心数据结构图" >2.3 核心数据结构图</h3>
 
 <pre><code>struct memblock
 ├── struct memblock_type memory          ← 所有可用物理内存区间
@@ -1308,7 +1308,7 @@ od -An -tx4 /sys/firmware/devicetree/base/cpus/cpu@0/next-level-cache</code></pr
 
 空闲内存 = memory - reserved</code></pre>
 
-<h3>2.4 代码阅读顺序</h3>
+<h3 id="24-代码阅读顺序" >2.4 代码阅读顺序</h3>
 
 <pre><code>1. arch/arm64/kernel/setup.c:setup_arch()
      └─ arm64_memblock_init()      ← 填充 memblock
@@ -1320,7 +1320,7 @@ od -An -tx4 /sys/firmware/devicetree/base/cpus/cpu@0/next-level-cache</code></pr
      └─ memblock_reserve()         ← 标记保留区
      └─ memblock_free_all()        ← ★ 过渡到 buddy</code></pre>
 
-<h3>2.5 QEMU 实验 2.1：GDB 观察 memblock</h3>
+<h3 id="25-qemu-实验-21gdb-观察-memblock">2.5 QEMU 实验 2.1：GDB 观察 memblock</h3>
 
 <pre><code class="language-bash">(gdb) break start_kernel
 (gdb) continue
@@ -1333,7 +1333,7 @@ od -An -tx4 /sys/firmware/devicetree/base/cpus/cpu@0/next-level-cache</code></pr
 &gt; set $i = $i + 1
 &gt; end</code></pre>
 
-<h3>2.6 QEMU 实验 2.2：查看 memblock 调试输出</h3>
+<h3 id="26-qemu-实验-22查看-memblock-调试输出">2.6 QEMU 实验 2.2：查看 memblock 调试输出</h3>
 
 <pre><code class="language-bash"># 在内核启动参数中加入 memblock=debug
 # QEMU 命令行加入: -append &quot;... memblock=debug&quot;
@@ -1344,11 +1344,11 @@ dmesg | grep -i memblock | head -40</code></pre>
 
 <h2>第3课：ARM64 页表层级（当前配置为5级，5天，核心！）</h2>
 
-<h3>3.1 学习目标</h3>
+<h3 id="31-学习目标" >3.1 学习目标</h3>
 
 <p>彻底理解 ARM64 在当前配置下的页表层级，能手动从 VA 推算出 PA，并区分主内核映射的 5 级页表与早期 idmap 的 48-bit 4 级页表。</p>
 
-<h3>3.2 原理图：虚拟地址拆分（VA_BITS=52，4KB页）</h3>
+<h3 id="32-原理图虚拟地址拆分va_bits524kb页">3.2 原理图：虚拟地址拆分（VA_BITS=52，4KB页）</h3>
 
 <pre><code> 63        52 51   48 47    39 38    30 29    21 20    12 11      0
 ┌────────────┬───────┬────────┬────────┬────────┬────────┬──────────┐
@@ -1362,7 +1362,7 @@ dmesg | grep -i memblock | head -40</code></pre>
 
 <p>说明：上图对应本文开头给出的当前主内核映射配置。早期 <code>idmap</code> 因为 <code>IDMAP_VA_BITS=48</code>，所以不需要 <code>P4D</code> 这一层。</p>
 
-<h3>3.3 原理图：五级翻译流程（主内核映射）</h3>
+<h3 id="33-原理图五级翻译流程主内核映射">3.3 原理图：五级翻译流程（主内核映射）</h3>
 
 <pre><code>            TTBRx_EL1（存顶级页表基址）
                 │
@@ -1409,7 +1409,7 @@ dmesg | grep -i memblock | head -40</code></pre>
 
 <p>补充：如果看的是 <code>init_idmap_pg_dir</code> / <code>idmap_pg_dir</code>，由于它们只覆盖 48-bit 地址空间，遍历时通常会直接看到 <code>PGD → PUD → PMD → PTE</code> 这类 4 级效果。</p>
 
-<h3>3.4 PTE 格式（ARM64 Stage 1，4KB 页，关键）</h3>
+<h3 id="34-pte-格式arm64-stage-14kb-页关键">3.4 PTE 格式（ARM64 Stage 1，4KB 页，关键）</h3>
 
 <pre><code> 63  55 54  52 51  50 49      12 11  10  9  8  7  6  5  4  2  1  0
 ┌─────┬──────┬──────┬───────────┬──┬────┬───┬───┬──┬───┬───┬────┬──┐
@@ -1432,7 +1432,7 @@ dmesg | grep -i memblock | head -40</code></pre>
                           │        └── nG=non-Global（ASID相关）
                           └── OA = Output Address（物理页帧地址）</code></pre>
 
-<h3>3.5 代码阅读顺序</h3>
+<h3 id="35-代码阅读顺序" >3.5 代码阅读顺序</h3>
 
 <pre><code>1. arch/arm64/include/asm/pgtable-hwdef.h   ← 硬件 PTE 位定义
 2. arch/arm64/include/asm/pgtable-types.h   ← pgd_t/pud_t/pmd_t/pte_t 类型
@@ -1440,7 +1440,7 @@ dmesg | grep -i memblock | head -40</code></pre>
 4. mm/memory.c: set_pte_at()                ← 写入 PTE 的通用入口
 5. arch/arm64/include/asm/tlbflush.h        ← TLB flush 操作</code></pre>
 
-<h3>3.6 QEMU 实验 3.1：GDB 手动遍历当前配置页表</h3>
+<h3 id="36-qemu-实验-31gdb-手动遍历当前配置页表">3.6 QEMU 实验 3.1：GDB 手动遍历当前配置页表</h3>
 
 <pre><code class="language-bash"># 假设目标用户态地址 addr = 0x400000（进程的 .text 段）
 (gdb) break do_page_fault
@@ -1472,7 +1472,7 @@ dmesg | grep -i memblock | head -40</code></pre>
 (gdb) set $pte_entry = $pte_base[$pte_idx]
 (gdb) printf &quot;PTE entry = %lx → PA = %lx\n&quot;, $pte_entry, ($pte_entry &amp; 0x0000FFFFFFFFF000UL)</code></pre>
 
-<h3>3.7 QEMU 实验 3.2：观察 AP 权限位</h3>
+<h3 id="37-qemu-实验-32观察-ap-权限位">3.7 QEMU 实验 3.2：观察 AP 权限位</h3>
 
 <pre><code class="language-bash"># 用户态程序写只读页 → 触发 Permission Fault
 # GDB 中：
@@ -1483,7 +1483,7 @@ dmesg | grep -i memblock | head -40</code></pre>
 # 观察 ESR 的 EC 字段 = 0x24 (Data Abort, lower EL)
 # 以及 ISS 中的 WnR 位（是否是写操作）</code></pre>
 
-<h3>3.8 检查清单</h3>
+<h3 id="38-检查清单" >3.8 检查清单</h3>
 
 <pre><code>☐ 能手写 VA → PGD_idx → PUD_idx → PMD_idx → PTE_idx → PA 的计算过程
 ☐ 理解 AP[2:1] 四种权限组合与 VM_READ/VM_WRITE/VM_EXEC 的映射关系
@@ -1495,7 +1495,7 @@ dmesg | grep -i memblock | head -40</code></pre>
 
 <h2>第4课：虚拟地址空间布局（3天）</h2>
 
-<h3>4.1 原理图：ARM64 完整虚拟地址空间</h3>
+<h3 id="41-原理图arm64-完整虚拟地址空间">4.1 原理图：ARM64 完整虚拟地址空间</h3>
 
 <pre><code>0x0000_0000_0000_0000  ────────────────────────────
 │                                                  │
@@ -1539,7 +1539,7 @@ dmesg | grep -i memblock | head -40</code></pre>
 │                                                  │
 0xFFFF_FFFF_FFFF_FFFF  ────────────────────────────</code></pre>
 
-<h3>4.2 QEMU 实验 4.1：在 GDB 中验证地址空间布局</h3>
+<h3 id="42-qemu-实验-41在-gdb-中验证地址空间布局">4.2 QEMU 实验 4.1：在 GDB 中验证地址空间布局</h3>
 
 <pre><code class="language-bash">(gdb) p/x PAGE_OFFSET
 (gdb) p/x MODULES_VADDR
@@ -1550,7 +1550,7 @@ dmesg | grep -i memblock | head -40</code></pre>
 (gdb) p/x current-&gt;mm-&gt;brk              # 堆当前位置
 (gdb) p/x current-&gt;mm-&gt;start_stack      # 栈起始</code></pre>
 
-<h3>4.3 QEMU 实验 4.2：用 /proc/PID/maps 验证</h3>
+<h3 id="43-qemu-实验-42用-procpidmaps-验证">4.3 QEMU 实验 4.2：用 /proc/PID/maps 验证</h3>
 
 <pre><code class="language-bash"># QEMU 内运行一个进程，查看其完整 VMA 列表：
 cat /proc/self/maps
@@ -1566,7 +1566,7 @@ cat /proc/self/maps
 
 <h2>第5课：struct page / folio（3天）</h2>
 
-<h3>5.1 原理图：struct page 的多态设计</h3>
+<h3 id="51-原理图struct-page-的多态设计">5.1 原理图：struct page 的多态设计</h3>
 
 <pre><code>                     struct page（64字节）
  ┌───────────────────────────────────────────────────┐
@@ -1602,7 +1602,7 @@ cat /proc/self/maps
  │  └──────────────────────────────────────────────┘ │
  └───────────────────────────────────────────────────┘</code></pre>
 
-<h3>5.2 QEMU 实验 5.1：GDB 观察不同状态的 page</h3>
+<h3 id="52-qemu-实验-51gdb-观察不同状态的-page">5.2 QEMU 实验 5.1：GDB 观察不同状态的 page</h3>
 
 <pre><code class="language-bash"># 1. 查看 buddy 空闲页
 (gdb) p sizeof(struct page)           # → 64
@@ -1626,7 +1626,7 @@ cat /proc/self/maps
 
 <h2>第6课：Buddy 伙伴系统（5天）</h2>
 
-<h3>6.1 原理图：Buddy 分配与合并</h3>
+<h3 id="61-原理图buddy-分配与合并">6.1 原理图：Buddy 分配与合并</h3>
 
 <pre><code>alloc_pages(order=2) 请求 4 页（2^2）：
 
@@ -1659,7 +1659,7 @@ free_pages(A4, order=2) 归还 4 页：
   PFN=0x100, order=2 → buddy = 0x100 ^ 0x4 = 0x104
   （PFN 的第 order 位取反）</code></pre>
 
-<h3>6.2 Migrate Type 分区</h3>
+<h3 id="62-migrate-type-分区" >6.2 Migrate Type 分区</h3>
 
 <pre><code>free_area[order].free_list[MIGRATE_TYPE]
 
@@ -1670,7 +1670,7 @@ free_pages(A4, order=2) 归还 4 页：
      fallback 顺序：
      MOVABLE → RECLAIMABLE → UNMOVABLE（最后手段，会产生外部碎片）</code></pre>
 
-<h3>6.3 代码阅读顺序</h3>
+<h3 id="63-代码阅读顺序" >6.3 代码阅读顺序</h3>
 
 <pre><code>1. mm/page_alloc.c: __alloc_pages()          ← 分配入口
 2. mm/page_alloc.c: get_page_from_freelist() ← 从 zone 的 free_area 取页
@@ -1678,7 +1678,7 @@ free_pages(A4, order=2) 归还 4 页：
 4. mm/page_alloc.c: __rmqueue()              ← 从链表摘下块
 5. include/linux/mmzone.h: struct free_area  ← 数据结构</code></pre>
 
-<h3>6.4 QEMU 实验 6.1：观察 buddyinfo</h3>
+<h3 id="64-qemu-实验-61观察-buddyinfo">6.4 QEMU 实验 6.1：观察 buddyinfo</h3>
 
 <pre><code class="language-bash"># QEMU 内：
 cat /proc/buddyinfo
@@ -1691,7 +1691,7 @@ cat /proc/buddyinfo
 # 可用总页数计算：
 # 1234×1 + 567×2 + 234×4 + 89×8 + 42×16 + 18×32 + 7×64 + 3×128 + 1×256</code></pre>
 
-<h3>6.5 QEMU 实验 6.2：GDB 观察分配拆分过程</h3>
+<h3 id="65-qemu-实验-62gdb-观察分配拆分过程">6.5 QEMU 实验 6.2：GDB 观察分配拆分过程</h3>
 
 <pre><code class="language-bash">(gdb) break __rmqueue_smallest
 (gdb) commands
@@ -1707,7 +1707,7 @@ cat /proc/buddyinfo
 
 <h2>第7课：SLUB 分配器（5天）</h2>
 
-<h3>7.1 原理图：SLUB 三级缓存架构</h3>
+<h3 id="71-原理图slub-三级缓存架构">7.1 原理图：SLUB 三级缓存架构</h3>
 
 <pre><code>kmem_cache_alloc() 调用：
 
@@ -1752,7 +1752,7 @@ Step 4: 向 Buddy 申请新 slab
 │  → freeze 为新的 cpu slab                  │
 └────────────────────────────────────────────┘</code></pre>
 
-<h3>7.2 QEMU 实验 7.1：追踪对象分配全路径</h3>
+<h3 id="72-qemu-实验-71追踪对象分配全路径">7.2 QEMU 实验 7.1：追踪对象分配全路径</h3>
 
 <pre><code class="language-bash"># GDB 中：
 (gdb) break __slab_alloc_node
@@ -1768,7 +1768,7 @@ Step 4: 向 Buddy 申请新 slab
 
 <h2>第8课：VMA 与 mmap（5天）</h2>
 
-<h3>8.1 原理图：进程 VMA 管理</h3>
+<h3 id="81-原理图进程-vma-管理">8.1 原理图：进程 VMA 管理</h3>
 
 <pre><code class="language-mermaid">graph TD
     subgraph &quot;mm_struct（进程地址空间）&quot;
@@ -1790,7 +1790,7 @@ Step 4: 向 Buddy 申请新 slab
     C --&gt;|&quot;vm_file = NULL&quot;| H[&quot;匿名映射&quot;]
     E --&gt;|&quot;vm_file = NULL&quot;| I[&quot;匿名映射&quot;]</code></pre>
 
-<h3>8.2 VMA 创建流程</h3>
+<h3 id="82-vma-创建流程" >8.2 VMA 创建流程</h3>
 
 <pre><code>用户态调用                    内核处理                         结果
 ─────────────────────────────────────────────────────────────
@@ -1808,7 +1808,7 @@ mmap(NULL, 64KB, ...)
                          注意！mmap 返回时 ★ 不分配物理页 ★
                          物理页等到真正访问时通过缺页异常分配（Demand Paging）</code></pre>
 
-<h3>8.3 QEMU 实验 8.1：strace 追踪 mmap</h3>
+<h3 id="83-qemu-实验-81strace-追踪-mmap">8.3 QEMU 实验 8.1：strace 追踪 mmap</h3>
 
 <pre><code class="language-bash"># QEMU 内：
 strace -e mmap,brk,munmap ls 2&gt;&amp;1 | head -30
@@ -1821,7 +1821,7 @@ strace -e mmap,brk,munmap ls 2&gt;&amp;1 | head -30
 
 <h2>第9课：缺页异常（5天，核心！）</h2>
 
-<h3>9.1 原理图：缺页异常全路径</h3>
+<h3 id="91-原理图缺页异常全路径">9.1 原理图：缺页异常全路径</h3>
 
 <pre><code class="language-mermaid">flowchart TD
     A[&quot;CPU 访问虚拟地址 VA&quot;] --&gt; B{&quot;MMU 翻译&lt;br/&gt;页表项存在？&quot;}
@@ -1871,7 +1871,7 @@ strace -e mmap,brk,munmap ls 2&gt;&amp;1 | head -30
     style S fill:#2196F3,color:#fff
     style Y fill:#FF9800,color:#fff</code></pre>
 
-<h3>9.2 QEMU 实验 9.1：追踪一次完整的缺页流程</h3>
+<h3 id="92-qemu-实验-91追踪一次完整的缺页流程">9.2 QEMU 实验 9.1：追踪一次完整的缺页流程</h3>
 
 <pre><code class="language-bash"># GDB 中设置条件断点：
 (gdb) break do_page_fault
@@ -1893,7 +1893,7 @@ strace -e mmap,brk,munmap ls 2&gt;&amp;1 | head -30
 
 # 在 QEMU 内运行任何程序，观察缺页流程</code></pre>
 
-<h3>9.3 QEMU 实验 9.2：验证 COW</h3>
+<h3 id="93-qemu-实验-92验证-cow">9.3 QEMU 实验 9.2：验证 COW</h3>
 
 <pre><code class="language-c">// cow_test.c — 在 QEMU 内编译运行
 #include &lt;stdio.h&gt;
@@ -1926,7 +1926,7 @@ int main() {
 
 <h2>第10课：页面回收（7天，最难）</h2>
 
-<h3>10.1 原理图：水位线触发机制</h3>
+<h3 id="101-原理图水位线触发机制">10.1 原理图：水位线触发机制</h3>
 
 <pre><code>Pages Free
   ▲
@@ -1951,7 +1951,7 @@ int main() {
   └──┴─────────────────────────────────────────────┘
   0</code></pre>
 
-<h3>10.2 原理图：LRU 链表状态机</h3>
+<h3 id="102-原理图lru-链表状态机">10.2 原理图：LRU 链表状态机</h3>
 
 <pre><code>      ┌─────────────────────────────────────────────────┐
       │                                                 │
@@ -1975,7 +1975,7 @@ int main() {
                      文件页：从磁盘读入
                      匿名页：alloc_pages() 新分配</code></pre>
 
-<h3>10.3 回收优先级</h3>
+<h3 id="103-回收优先级" >10.3 回收优先级</h3>
 
 <pre><code>回收扫描顺序（shrink_lruvec 中）：
 
@@ -1995,7 +1995,7 @@ swappiness 参数（0-200，默认60）：
   60  → 平衡
   200 → 积极 swap 匿名页</code></pre>
 
-<h3>10.4 代码阅读顺序</h3>
+<h3 id="104-代码阅读顺序" >10.4 代码阅读顺序</h3>
 
 <pre><code>1. mm/vmscan.c: kswapd()                ← 后台回收线程主循环
 2. mm/vmscan.c: balance_pgdat()         ← 判断是否需要回收
@@ -2006,7 +2006,7 @@ swappiness 参数（0-200，默认60）：
 7. mm/swap.c:   lru_cache_add()         ← 页面加入 LRU
 8. mm/workingset.c                      ← 访问热度跟踪</code></pre>
 
-<h3>10.5 QEMU 实验 10.1：触发并观察 kswapd 回收</h3>
+<h3 id="105-qemu-实验-101触发并观察-kswapd-回收">10.5 QEMU 实验 10.1：触发并观察 kswapd 回收</h3>
 
 <pre><code class="language-bash"># QEMU 内：
 
@@ -2042,7 +2042,7 @@ cat trace | tail -30
 # kswapd0-XX [000] mm_vmscan_kswapd_wake: nid=0 zid=2 order=0
 # kswapd0-XX [000] mm_vmscan_lru_shrink_inactive: ... nr_scanned=32 nr_reclaimed=28</code></pre>
 
-<h3>10.6 QEMU 实验 10.2：GDB 在回收路径打断点</h3>
+<h3 id="106-qemu-实验-102gdb-在回收路径打断点">10.6 QEMU 实验 10.2：GDB 在回收路径打断点</h3>
 
 <pre><code class="language-bash">(gdb) break kswapd
 (gdb) break shrink_lruvec
@@ -2062,7 +2062,7 @@ cat trace | tail -30
 
 <h2>第11课：高级主题（7天）</h2>
 
-<h3>11.1 THP 透明大页</h3>
+<h3 id="111-thp-透明大页" >11.1 THP 透明大页</h3>
 
 <pre><code>正常 4KB 页：                        THP 2MB 大页（PMD block entry）：
 
@@ -2075,7 +2075,7 @@ PGD → PUD → PMD → PTE → 4KB 页      PGD → PUD → PMD(block) → 2MB 
 好处：TLB 覆盖面 × 512，减少 TLB miss
 代价：需要物理连续 2MB 内存（compaction 碎片整理）</code></pre>
 
-<h3>11.2 CMA 连续内存分配器</h3>
+<h3 id="112-cma-连续内存分配器" >11.2 CMA 连续内存分配器</h3>
 
 <pre><code>CMA 与 Buddy 的关系：
 
@@ -2096,7 +2096,7 @@ CMA（Contiguous Memory Allocator）：
   │  └────────────────────────┘              │
   └──────────────────────────────────────────┘</code></pre>
 
-<h3>11.3 OOM Killer</h3>
+<h3 id="113-oom-killer" >11.3 OOM Killer</h3>
 
 <pre><code>内存耗尽判断流程：
 
@@ -2113,7 +2113,7 @@ alloc_pages() 失败
                 + /proc/PID/oom_score_adj 调整值（-1000 ~ 1000）
           → oom_kill_process()       ← 发送 SIGKILL</code></pre>
 
-<h3>11.4 QEMU 实验 11.1：触发 OOM</h3>
+<h3 id="114-qemu-实验-111触发-oom">11.4 QEMU 实验 11.1：触发 OOM</h3>
 
 <pre><code class="language-bash"># QEMU 内（1GB 内存）：
 # 写一个不断分配不释放的程序
@@ -2142,7 +2142,7 @@ dmesg | grep -i &quot;oom\|killed\|out of memory&quot;</code></pre>
 
 <h2>第12课：综合实战（5天）</h2>
 
-<h3>12.1 内核模块实验框架</h3>
+<h3 id="121-内核模块实验框架" >12.1 内核模块实验框架</h3>
 
 <pre><code class="language-c">// mm_lab.c — 内存管理实验模块
 #include &lt;linux/module.h&gt;
@@ -2193,7 +2193,7 @@ static int __init mm_lab_init(void)
 module_init(mm_lab_init);
 MODULE_LICENSE(&quot;GPL&quot;);</code></pre>
 
-<h3>12.2 Makefile</h3>
+<h3 id="122-makefile" >12.2 Makefile</h3>
 
 <pre><code class="language-makefile">obj-m := mm_lab.o
 KDIR := /lib/modules/$(shell uname -r)/build
@@ -2204,7 +2204,7 @@ all:
 clean:
 	make -C $(KDIR) M=$(PWD) clean</code></pre>
 
-<h3>12.3 完整监控脚本</h3>
+<h3 id="123-完整监控脚本" >12.3 完整监控脚本</h3>
 
 <pre><code class="language-bash">#!/bin/bash
 # mm_monitor.sh — 内存管理综合监控
@@ -2287,13 +2287,13 @@ done</code></pre>
 </tr>
 </tbody></table>
 
-<h3>每日学习模式</h3>
+<h3 id="每日学习模式" >每日学习模式</h3>
 
 <pre><code>上午 2小时：读代码 + 画结构图（理论）
 下午 2小时：QEMU + GDB 实验（实践）
 晚上 30分钟：用 GDB 验证一个关键数字（建立直觉）</code></pre>
 
-<h3>核心原则</h3>
+<h3 id="核心原则" >核心原则</h3>
 
 <pre><code>1. 先数据结构，后算法
    → 先 GDB 打出 sizeof()，再看代码逻辑

@@ -540,7 +540,7 @@ hr {
 
 <blockquote>源码位置: <code>kernel/bpf/Kconfig</code></blockquote>
 
-<h3>1.1 核心 Kconfig 选项</h3>
+<h3 id="11-核心-kconfig-选项" >1.1 核心 Kconfig 选项</h3>
 
 <table>
 <thead><tr>
@@ -583,7 +583,7 @@ hr {
     select NET_XGRESS if NET
     select PAGE_POOL if NET</code></pre>
 
-<h3>1.2 JIT 编译选项</h3>
+<h3 id="12-jit-编译选项" >1.2 JIT 编译选项</h3>
 
 <table>
 <thead><tr>
@@ -631,7 +631,7 @@ static u64 ___bpf_prog_run(u64 *regs, const struct bpf_insn *insn)
 }
 #endif</code></pre>
 
-<h3>1.3 安全与权限选项</h3>
+<h3 id="13-安全与权限选项" >1.3 安全与权限选项</h3>
 
 <table>
 <thead><tr>
@@ -654,7 +654,7 @@ static u64 ___bpf_prog_run(u64 *regs, const struct bpf_insn *insn)
 
 <p><code>BPF_LSM</code> 允许通过 BPF 程序实现动态 MAC（强制访问控制）和审计策略。</p>
 
-<h3>1.4 运行时 sysctl 开关</h3>
+<h3 id="14-运行时-sysctl-开关" >1.4 运行时 sysctl 开关</h3>
 
 <table>
 <thead><tr>
@@ -691,7 +691,7 @@ static u64 ___bpf_prog_run(u64 *regs, const struct bpf_insn *insn)
 int sysctl_unprivileged_bpf_disabled __read_mostly =
     IS_BUILTIN(CONFIG_BPF_UNPRIV_DEFAULT_OFF) ? 2 : 0;</code></pre>
 
-<h3>1.5 依赖关系总览</h3>
+<h3 id="15-依赖关系总览" >1.5 依赖关系总览</h3>
 
 <pre><code>CONFIG_BPF_SYSCALL ──select──&gt; CONFIG_BPF ──select──&gt; CRYPTO_LIB_SHA256
        │
@@ -709,7 +709,7 @@ int sysctl_unprivileged_bpf_disabled __read_mostly =
 
 <h2>2. eBPF 实现原理</h2>
 
-<h3>2.1 指令集架构 (ISA)</h3>
+<h3 id="21-指令集架构-isa" >2.1 指令集架构 (ISA)</h3>
 
 <blockquote>源码位置: <code>include/uapi/linux/bpf.h</code>, <code>include/uapi/linux/bpf_common.h</code></blockquote>
 
@@ -783,7 +783,7 @@ struct bpf_insn {
 #define BPF_LOAD_ACQ 0x100  /* load-acquire */
 #define BPF_STORE_REL 0x110 /* store-release */</code></pre>
 
-<h3>2.2 虚拟机寄存器模型</h3>
+<h3 id="22-虚拟机寄存器模型" >2.2 虚拟机寄存器模型</h3>
 
 <blockquote>源码位置: <code>include/uapi/linux/bpf.h</code>, <code>kernel/bpf/core.c</code></blockquote>
 
@@ -854,7 +854,7 @@ struct bpf_insn {
 /* include/linux/filter.h */
 #define MAX_BPF_STACK  512  /* BPF 程序最大可用栈空间 */</code></pre>
 
-<h3>2.3 程序加载流程</h3>
+<h3 id="23-程序加载流程" >2.3 程序加载流程</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/syscall.c</code> — <code>bpf_prog_load()</code> (L2859)</blockquote>
 
@@ -896,7 +896,7 @@ SYSCALL_DEFINE3(bpf) ──&gt; __sys_bpf(BPF_PROG_LOAD)
     bpf_prog_alloc_id(prog)          // 分配全局唯一 ID
     bpf_prog_new_fd(prog)            // 创建 fd 返回用户空间</code></pre>
 
-<h3>2.4 验证器 (Verifier)</h3>
+<h3 id="24-验证器-verifier" >2.4 验证器 (Verifier)</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/verifier.c</code> — <strong>24787 行</strong>，eBPF 子系统最大的单文件</blockquote>
 
@@ -987,7 +987,7 @@ const struct bpf_func_proto bpf_map_lookup_elem_proto = {
     .arg2_type  = ARG_PTR_TO_MAP_KEY,            // 第2参数: 指向Map Key的栈指针
 };</code></pre>
 
-<h3>2.5 解释器执行引擎</h3>
+<h3 id="25-解释器执行引擎" >2.5 解释器执行引擎</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/core.c</code> — <code>___bpf_prog_run()</code> (L1708)</blockquote>
 
@@ -1032,7 +1032,7 @@ static __always_inline u32 bpf_prog_run(const struct bpf_prog *prog,
     return __bpf_prog_run(prog, ctx, bpf_dispatcher_nop_func);
 }</code></pre>
 
-<h3>2.6 JIT 编译引擎 (ARM64)</h3>
+<h3 id="26-jit-编译引擎-arm64" >2.6 JIT 编译引擎 (ARM64)</h3>
 
 <blockquote>源码位置: <code>arch/arm64/net/bpf_jit_comp.c</code> — 3145 行</blockquote>
 
@@ -1107,7 +1107,7 @@ static const int bpf2a64[] = {
     return fp;
 }</code></pre>
 
-<h3>2.7 Helper 函数机制</h3>
+<h3 id="27-helper-函数机制" >2.7 Helper 函数机制</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/helpers.c</code> — 4442 行</blockquote>
 
@@ -1181,7 +1181,7 @@ const struct bpf_func_proto bpf_map_lookup_elem_proto = {
 </tr>
 </tbody></table>
 
-<h3>2.8 Map 数据结构</h3>
+<h3 id="28-map-数据结构" >2.8 Map 数据结构</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/hashtab.c</code>, <code>kernel/bpf/arraymap.c</code>, <code>kernel/bpf/ringbuf.c</code> 等</blockquote>
 
@@ -1259,7 +1259,7 @@ struct bpf_htab {
     char data[] __aligned(PAGE_SIZE); /* 数据环形缓冲区 */
 };</code></pre>
 
-<h3>2.9 BTF 类型信息</h3>
+<h3 id="29-btf-类型信息" >2.9 BTF 类型信息</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/btf.c</code> — 9579 行</blockquote>
 
@@ -1273,7 +1273,7 @@ struct bpf_htab {
 <li>启用 CO-RE (Compile Once, Run Everywhere) 能力</li>
 </ul>
 
-<h3>2.10 Trampoline 与动态挂载</h3>
+<h3 id="210-trampoline-与动态挂载" >2.10 Trampoline 与动态挂载</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/trampoline.c</code></blockquote>
 
@@ -1308,7 +1308,7 @@ static struct hlist_head trampoline_table[TRAMPOLINE_TABLE_SIZE];</code></pre>
 
 <p><img src="image/ebpf_architecture.svg" alt="eBPF 内核软件架构"></p>
 
-<h3>3.1 整体架构分层</h3>
+<h3 id="31-整体架构分层" >3.1 整体架构分层</h3>
 
 <pre><code>┌─────────────────────────────────────────────────────────────────────┐
 │                         用户空间 (User Space)                        │
@@ -1379,7 +1379,7 @@ static struct hlist_head trampoline_table[TRAMPOLINE_TABLE_SIZE];</code></pre>
 │  kernel/bpf/bpf_struct_ops.c — struct_ops（调度器等）                 │
 └─────────────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>3.2 核心数据结构关系</h3>
+<h3 id="32-核心数据结构关系" >3.2 核心数据结构关系</h3>
 
 <p><img src="image/ebpf_data_structures.svg" alt="eBPF 核心数据结构关系图"></p>
 
@@ -1419,7 +1419,7 @@ bpf_trampoline (蹦床)
     ├── progs_hlist[]        附加程序链 (fentry/fexit/fmod_ret)
     └── bpf_tramp_image      可执行蹦床镜像</code></pre>
 
-<h3>3.3 源码文件组织</h3>
+<h3 id="33-源码文件组织" >3.3 源码文件组织</h3>
 
 <p><strong>核心框架</strong> (<code>kernel/bpf/</code>):</p>
 
@@ -1753,7 +1753,7 @@ bpf_trampoline (蹦床)
 </tr>
 </tbody></table>
 
-<h3>3.4 程序类型与挂载点</h3>
+<h3 id="34-程序类型与挂载点" >3.4 程序类型与挂载点</h3>
 
 <blockquote>源码位置: <code>include/uapi/linux/bpf.h</code> — <code>enum bpf_prog_type</code>, <code>include/linux/bpf_types.h</code></blockquote>
 
@@ -1949,7 +1949,7 @@ static const struct bpf_map_ops * const bpf_map_types[] = {
     // ...
 };</code></pre>
 
-<h3>3.5 Map 类型体系</h3>
+<h3 id="35-map-类型体系" >3.5 Map 类型体系</h3>
 
 <p>Linux 6.18.1 支持 <strong>22+ 种 Map 类型</strong>:</p>
 
@@ -2113,7 +2113,7 @@ static const struct bpf_map_ops * const bpf_map_types[] = {
 </tr>
 </tbody></table>
 
-<h3>3.6 Link 抽象层</h3>
+<h3 id="36-link-抽象层" >3.6 Link 抽象层</h3>
 
 <p><code>bpf_link</code> 是 eBPF 程序与挂载点之间的<strong>生命周期管理对象</strong>:</p>
 
@@ -2219,7 +2219,7 @@ struct bpf_link_ops {
 </tr>
 </tbody></table>
 
-<h3>3.7 编译构建依赖</h3>
+<h3 id="37-编译构建依赖" >3.7 编译构建依赖</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/Makefile</code></blockquote>
 
@@ -2282,7 +2282,7 @@ CFLAGS_REMOVE_rqspinlock.o      = $(CC_FLAGS_FTRACE)</code></pre>
 <li>多个 BPF 关键路径文件通过 <code>CFLAGS_REMOVE_*</code> 排除 ftrace 插桩，防止 BPF 程序挂载在 ftrace 钩子时发生递归死锁</li>
 </ul>
 
-<h3>3.8 子系统初始化流程</h3>
+<h3 id="38-子系统初始化流程" >3.8 子系统初始化流程</h3>
 
 <p><img src="image/ebpf_subsystem_init.svg" alt="eBPF 子系统初始化流程"></p>
 
@@ -2847,7 +2847,7 @@ late_initcall(load);</code></pre>
 
 <h2>4. 如何生成一个 eBPF 程序</h2>
 
-<h3>4.1 eBPF 程序的生命周期</h3>
+<h3 id="41-ebpf-程序的生命周期" >4.1 eBPF 程序的生命周期</h3>
 
 <pre><code>  ┌─────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
   │  1. 编写      │    │  2. 编译      │    │  3. 加载      │    │  4. 挂载      │    │  5. 运行      │
@@ -2873,7 +2873,7 @@ late_initcall(load);</code></pre>
 <li><strong>销毁</strong>: 关闭文件描述符，引用归零后内核释放 BPF 程序和 Map 内存</li>
 </ol>
 
-<h3>4.2 开发工具链</h3>
+<h3 id="42-开发工具链" >4.2 开发工具链</h3>
 
 <table>
 <thead><tr>
@@ -2932,7 +2932,7 @@ bpftool btf dump file /sys/kernel/btf/vmlinux format c &gt; vmlinux.h
 # 或从自编译的 vmlinux
 bpftool btf dump file ./vmlinux format c &gt; vmlinux.h</code></pre>
 
-<h3>4.3 编写 eBPF 内核侧程序 (.bpf.c)</h3>
+<h3 id="43-编写-ebpf-内核侧程序-bpfc" >4.3 编写 eBPF 内核侧程序 (.bpf.c)</h3>
 
 <blockquote>源码示例: <code>samples/bpf/tracex1.bpf.c</code></blockquote>
 
@@ -3028,7 +3028,7 @@ int bpf_prog1(struct pt_regs *ctx)
 
 char LICENSE[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 
-<h3>4.4 编写用户空间加载程序</h3>
+<h3 id="44-编写用户空间加载程序" >4.4 编写用户空间加载程序</h3>
 
 <p>用户空间程序负责: 加载 <code>.bpf.o</code> → 附加到钩子 → 读取结果。</p>
 
@@ -3105,7 +3105,7 @@ bpf_program__attach()            附加到钩子
     ├── bpf(BPF_LINK_CREATE)     创建 Link
     └── 返回 bpf_link *</code></pre>
 
-<h3>4.5 编译流程详解</h3>
+<h3 id="45-编译流程详解" >4.5 编译流程详解</h3>
 
 <blockquote>源码参考: <code>samples/bpf/Makefile</code></blockquote>
 
@@ -3178,7 +3178,7 @@ bpftool gen skeleton my_prog.bpf.o name my_prog &gt; my_prog.skel.h
 #   my_prog__attach()
 #   my_prog__destroy()</code></pre>
 
-<h3>4.6 内核加载路径源码分析</h3>
+<h3 id="46-内核加载路径源码分析" >4.6 内核加载路径源码分析</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/syscall.c</code> — <code>bpf_prog_load()</code></blockquote>
 
@@ -3264,7 +3264,7 @@ bpftool gen skeleton my_prog.bpf.o name my_prog &gt; my_prog.skel.h
     /* ... 其他命令的字段 ... */
 };</code></pre>
 
-<h3>4.7 三种开发模式对比</h3>
+<h3 id="47-三种开发模式对比" >4.7 三种开发模式对比</h3>
 
 <table>
 <thead><tr>
@@ -3370,7 +3370,7 @@ int kprobe__do_sys_open(struct pt_regs *ctx) {
 &#x27;&#x27;&#x27;)
 b.trace_print()</code></pre>
 
-<h3>4.8 完整实例：kprobe 跟踪程序</h3>
+<h3 id="48-完整实例kprobe-跟踪程序" >4.8 完整实例：kprobe 跟踪程序</h3>
 
 <p>以下是一个基于内核源码 <code>samples/bpf/</code> 的完整开发流程:</p>
 
@@ -3480,7 +3480,7 @@ gcc -o trace_open trace_open.c -lbpf -lelf -lz</code></pre>
 # 5678   cat              /proc/cpuinfo
 # ...</code></pre>
 
-<h3>4.9 常见问题与调试</h3>
+<h3 id="49-常见问题与调试" >4.9 常见问题与调试</h3>
 
 <table>
 <thead><tr>
@@ -3558,7 +3558,7 @@ bpftool btf dump id &lt;BTF_ID&gt;
 echo 2 &gt; /proc/sys/net/core/bpf_jit_enable    # 1=JIT, 2=JIT+日志
 dmesg | grep -i bpf</code></pre>
 
-<h3>4.10 交叉编译 ARM64 libbpf.so</h3>
+<h3 id="410-交叉编译-arm64-libbpfso" >4.10 交叉编译 ARM64 libbpf.so</h3>
 
 <blockquote>源码位置: <code>tools/lib/bpf/</code>, <code>tools/scripts/Makefile.arch</code>, <code>tools/scripts/Makefile.include</code></blockquote>
 
@@ -3901,7 +3901,7 @@ file my_loader
 
 <blockquote>源码位置: <code>include/uapi/linux/bpf_common.h</code>, <code>include/uapi/linux/bpf.h</code>, <code>kernel/bpf/core.c</code></blockquote>
 
-<h3>5.1 指令编码格式</h3>
+<h3 id="51-指令编码格式" >5.1 指令编码格式</h3>
 
 <p>每条 eBPF 指令固定 <strong>64 位 (8 字节)</strong>，编码结构定义于 <code>struct bpf_insn</code>:</p>
 
@@ -3967,7 +3967,7 @@ struct bpf_insn {
 #define BPF_B   0x10   //  8 位 (byte)
 #define BPF_DW  0x18   // 64 位 (double-word, eBPF 扩展)</code></pre>
 
-<h3>5.2 ALU 算术逻辑指令</h3>
+<h3 id="52-alu-算术逻辑指令" >5.2 ALU 算术逻辑指令</h3>
 
 <h4>5.2.1 64 位 ALU 指令 (BPF_ALU64, class=0x07)</h4>
 
@@ -4575,7 +4575,7 @@ ALU64_END_TO_LE:
     case 64: DST = (__force u64) __swab64(DST); break;
     }</code></pre>
 
-<h3>5.3 内存访问指令</h3>
+<h3 id="53-内存访问指令" >5.3 内存访问指令</h3>
 
 <h4>5.3.1 加载指令 (LDX — 寄存器间接加载)</h4>
 
@@ -4900,7 +4900,7 @@ LD_IMM_DW:
 </tr>
 </tbody></table>
 
-<h3>5.4 跳转指令</h3>
+<h3 id="54-跳转指令" >5.4 跳转指令</h3>
 
 <h4>5.4.1 无条件跳转</h4>
 
@@ -5184,7 +5184,7 @@ BPF_JMP32_IMM(BPF_JNE, BPF_REG_3, 0, 2)
 <pre><code class="language-c">// 验证器在 may_goto 前插入隐藏的计数器，用于有界循环
 // 最大迭代次数由 BPF_MAX_LOOPS (8M) 控制</code></pre>
 
-<h3>5.5 函数调用与返回指令</h3>
+<h3 id="55-函数调用与返回指令" >5.5 函数调用与返回指令</h3>
 
 <table>
 <thead><tr>
@@ -5264,7 +5264,7 @@ JMP_TAIL_CALL:
     insn = prog-&gt;insnsi;
     goto select_insn;  // 不返回，直接跳转到目标程序</code></pre>
 
-<h3>5.6 原子操作指令</h3>
+<h3 id="56-原子操作指令" >5.6 原子操作指令</h3>
 
 <p>原子操作使用 <code>BPF_STX | BPF_ATOMIC | SIZE</code> 编码，具体操作类型由 <strong>imm 字段</strong>指定。</p>
 
@@ -5417,7 +5417,7 @@ case BPF_STORE_REL:
     case BPF_DW: smp_store_release((u64 *)(DST + insn-&gt;off), (u64)SRC); break;
     }</code></pre>
 
-<h3>5.7 内部 (非 UAPI) 指令</h3>
+<h3 id="57-内部-非-uapi-指令" >5.7 内部 (非 UAPI) 指令</h3>
 
 <p>以下指令仅由验证器/JIT 内部使用，不出现在用户提交的程序中:</p>
 
@@ -5474,7 +5474,7 @@ LDX_PROBE_MEM_W:
     DST = *((u32 *)&amp;DST);
     CONT;</code></pre>
 
-<h3>5.8 指令集总览表</h3>
+<h3 id="58-指令集总览表" >5.8 指令集总览表</h3>
 
 <p>汇总全部 <strong>UAPI 公开指令</strong> (来自 <code>BPF_INSN_MAP</code> 宏展开 + 额外公开的传统指令):</p>
 
@@ -5597,7 +5597,7 @@ LDX_PROBE_MEM_W:
 </tr>
 </tbody></table>
 
-<h3>5.9 指令集版本演进</h3>
+<h3 id="59-指令集版本演进" >5.9 指令集版本演进</h3>
 
 <table>
 <thead><tr>
@@ -5669,7 +5669,7 @@ LDX_PROBE_MEM_W:
 </tr>
 </tbody></table>
 
-<h3>5.10 Opcode 空间占用分析与扩展机制</h3>
+<h3 id="510-opcode-空间占用分析与扩展机制" >5.10 Opcode 空间占用分析与扩展机制</h3>
 
 <blockquote>基于 <code>kernel/bpf/core.c</code> 中 <code>bpf_opcode_in_insntable()</code> 和 <code>BPF_INSN_MAP</code> 宏精确统计</blockquote>
 
@@ -6162,7 +6162,7 @@ if (!bpf_opcode_in_insntable(insn-&gt;code)) {
   </g><br>
 </svg></p>
 
-<h3>6.1 技术栈总览</h3>
+<h3 id="61-技术栈总览" >6.1 技术栈总览</h3>
 
 <p>eBPF 程序通过多种<strong>底层挂载技术</strong>接入内核执行路径。每种技术对应不同的 <code>bpf_prog_type</code> 和 <code>bpf_attach_type</code>:</p>
 
@@ -6191,7 +6191,7 @@ enum bpf_attach_type {
     BPF_TRACE_UPROBE_SESSION,    // uprobe session 模式
 };</code></pre>
 
-<h3>6.2 Kprobe / Kretprobe</h3>
+<h3 id="62-kprobe--kretprobe" >6.2 Kprobe / Kretprobe</h3>
 
 <blockquote>源码位置: <code>kernel/kprobes.c</code>, <code>kernel/trace/bpf_trace.c</code></blockquote>
 
@@ -6307,7 +6307,7 @@ int BPF_KPROBE(trace_tcp_funcs)
     return 0;
 }</code></pre>
 
-<h3>6.3 Tracepoint (静态跟踪点)</h3>
+<h3 id="63-tracepoint-静态跟踪点" >6.3 Tracepoint (静态跟踪点)</h3>
 
 <blockquote>源码位置: <code>include/trace/events/*.h</code>, <code>kernel/trace/bpf_trace.c</code></blockquote>
 
@@ -6476,7 +6476,7 @@ int handle_sched_switch(struct bpf_raw_tracepoint_args *ctx)
     return 0;
 }</code></pre>
 
-<h3>6.4 Ftrace / Fentry / Fexit / Fmod_ret</h3>
+<h3 id="64-ftrace--fentry--fexit--fmod_ret" >6.4 Ftrace / Fentry / Fexit / Fmod_ret</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/trampoline.c</code>, <code>arch/arm64/net/bpf_jit_comp.c</code></blockquote>
 
@@ -6640,7 +6640,7 @@ int BPF_PROG(block_task_alloc, struct task_struct *task, unsigned long clone_fla
 
 char LICENSE[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 
-<h3>6.5 Uprobe / Uretprobe</h3>
+<h3 id="65-uprobe--uretprobe" >6.5 Uprobe / Uretprobe</h3>
 
 <blockquote>源码位置: <code>kernel/events/uprobes.c</code>, <code>kernel/trace/bpf_trace.c</code></blockquote>
 
@@ -6707,7 +6707,7 @@ int BPF_UPROBE(trace_go_func)
 
 char LICENSE[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 
-<h3>6.6 Perf Event</h3>
+<h3 id="66-perf-event" >6.6 Perf Event</h3>
 
 <blockquote>源码位置: <code>kernel/events/core.c</code>, <code>kernel/trace/bpf_trace.c</code></blockquote>
 
@@ -6809,7 +6809,7 @@ int perf_fd = perf_event_open(&amp;attr, -1 /* all pids */, cpu, -1, 0);
 ioctl(perf_fd, PERF_EVENT_IOC_SET_BPF, prog_fd);
 ioctl(perf_fd, PERF_EVENT_IOC_ENABLE, 0);</code></pre>
 
-<h3>6.7 BPF LSM (Linux Security Module)</h3>
+<h3 id="67-bpf-lsm-linux-security-module" >6.7 BPF LSM (Linux Security Module)</h3>
 
 <blockquote>源码位置: <code>kernel/bpf/bpf_lsm.c</code>, <code>security/security.c</code></blockquote>
 
@@ -6891,7 +6891,7 @@ int BPF_PROG(restrict_bpf, int cmd, union bpf_attr *attr,
 
 char LICENSE[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 
-<h3>6.8 技术选型对比</h3>
+<h3 id="68-技术选型对比" >6.8 技术选型对比</h3>
 
 <table>
 <thead><tr>
@@ -7015,7 +7015,7 @@ char LICENSE[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 
 <p>Linux 内核网络子系统是 eBPF 最丰富的应用领域，提供了从网卡驱动到 socket 层的<strong>全链路挂载点</strong>。与第 6 章介绍的跟踪/安全类挂载点不同，网络类 BPF 程序直接参与数据包的<strong>转发决策</strong> — 可以丢弃、修改、重定向数据包，实现高性能的可编程网络数据平面。</p>
 
-<h3>7.1 网络数据路径 BPF 挂载点全景</h3>
+<h3 id="71-网络数据路径-bpf-挂载点全景" >7.1 网络数据路径 BPF 挂载点全景</h3>
 
 <pre><code>          ┌─────────────────────────────────────────────────────────┐
           │                    用户空间应用                          │
@@ -7056,7 +7056,7 @@ char LICENSE[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
                │   网卡 RX  │
                └───────────┘</code></pre>
 
-<h3>7.2 XDP (eXpress Data Path)</h3>
+<h3 id="72-xdp-express-data-path" >7.2 XDP (eXpress Data Path)</h3>
 
 <blockquote>源码: <code>net/core/dev.c</code>, <code>net/core/filter.c</code>, <code>include/net/xdp.h</code>, <code>include/uapi/linux/bpf.h</code></blockquote>
 
@@ -7254,7 +7254,7 @@ int xdp_drop_port(struct xdp_md *ctx)
 
 char _license[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 
-<h3>7.3 TC (Traffic Control) — SCHED_CLS / SCHED_ACT</h3>
+<h3 id="73-tc-traffic-control--sched_cls--sched_act" >7.3 TC (Traffic Control) — SCHED_CLS / SCHED_ACT</h3>
 
 <blockquote>源码: <code>net/core/dev.c</code> (<code>sch_handle_ingress</code>, <code>sch_handle_egress</code>), <code>net/core/filter.c</code></blockquote>
 
@@ -7437,7 +7437,7 @@ int tc_rate_limit(struct __sk_buff *skb)
 
 char _license[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 
-<h3>7.4 Socket Filter (SOCKET_FILTER)</h3>
+<h3 id="74-socket-filter-socket_filter" >7.4 Socket Filter (SOCKET_FILTER)</h3>
 
 <blockquote>源码: <code>net/core/filter.c</code> (<code>sk_filter_verifier_ops</code>)</blockquote>
 
@@ -7457,7 +7457,7 @@ const struct bpf_verifier_ops sk_filter_verifier_ops = {
 
 <p><strong>与 TC 的关键区别</strong>: Socket Filter 无法修改数据包内容，helper 集合更受限，主要用于抓包过滤 (tcpdump 底层机制) 和 socket 级别的包过滤。</p>
 
-<h3>7.5 Cgroup BPF 网络程序</h3>
+<h3 id="75-cgroup-bpf-网络程序" >7.5 Cgroup BPF 网络程序</h3>
 
 <blockquote>源码: <code>kernel/bpf/cgroup.c</code>, <code>net/core/filter.c</code></blockquote>
 
@@ -7610,7 +7610,7 @@ int count_egress(struct __sk_buff *skb)
 
 char _license[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 
-<h3>7.6 LWT (Lightweight Tunnel) BPF</h3>
+<h3 id="76-lwt-lightweight-tunnel-bpf" >7.6 LWT (Lightweight Tunnel) BPF</h3>
 
 <blockquote>源码: <code>net/core/lwt_bpf.c</code>, <code>net/core/lwtunnel.c</code>, <code>net/core/filter.c</code></blockquote>
 
@@ -7733,7 +7733,7 @@ static const struct lwtunnel_encap_ops bpf_encap_ops = {
 </tr>
 </tbody></table>
 
-<h3>7.7 SOCK_OPS / SK_SKB / SK_MSG — Socket 级编程</h3>
+<h3 id="77-sock_ops--sk_skb--sk_msg--socket-级编程" >7.7 SOCK_OPS / SK_SKB / SK_MSG — Socket 级编程</h3>
 
 <blockquote>源码: <code>net/core/filter.c</code>, <code>net/core/sock_map.c</code></blockquote>
 
@@ -7865,7 +7865,7 @@ int bpf_sk_msg_verdict(struct sk_msg_md *msg)
 
 char _license[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 
-<h3>7.8 SK_REUSEPORT — 端口复用选择</h3>
+<h3 id="78-sk_reuseport--端口复用选择">7.8 SK_REUSEPORT — 端口复用选择</h3>
 
 <blockquote>源码: <code>net/core/filter.c</code> (<code>sk_reuseport_verifier_ops</code>)</blockquote>
 
@@ -7885,7 +7885,7 @@ char _license[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 
 <p><strong>返回值</strong>: <code>SK_PASS</code> (使用 <code>bpf_sk_select_reuseport()</code> 选定的 socket) 或 <code>SK_DROP</code> (拒绝)。</p>
 
-<h3>7.9 Flow Dissector</h3>
+<h3 id="79-flow-dissector" >7.9 Flow Dissector</h3>
 
 <blockquote>源码: <code>net/core/flow_dissector.c</code>, <code>net/core/filter.c</code></blockquote>
 
@@ -7910,7 +7910,7 @@ if (prog) {
 
 <p><strong>返回值</strong>: <code>BPF_OK</code> (解析完成) 或 <code>BPF_FLOW_DISSECTOR_CONTINUE</code> (129, 回退到内核默认解析)。</p>
 
-<h3>7.10 SK_LOOKUP — Socket 查找覆盖</h3>
+<h3 id="710-sk_lookup--socket-查找覆盖">7.10 SK_LOOKUP — Socket 查找覆盖</h3>
 
 <blockquote>源码: <code>net/core/filter.c</code> (<code>sk_lookup_verifier_ops</code>)</blockquote>
 
@@ -7946,7 +7946,7 @@ sk_lookup_func_proto(enum bpf_func_id func_id, ...)
 
 <p><strong>返回值</strong>: <code>SK_PASS</code> (使用分配的 socket) 或 <code>SK_DROP</code> (丢弃)。</p>
 
-<h3>7.11 Netfilter BPF</h3>
+<h3 id="711-netfilter-bpf" >7.11 Netfilter BPF</h3>
 
 <blockquote>源码: <code>net/netfilter/nf_bpf_link.c</code></blockquote>
 
@@ -8034,7 +8034,7 @@ int bpf_nf_link_attach(const union bpf_attr *attr, struct bpf_prog *prog)
         return -ERANGE;
 }</code></pre>
 
-<h3>7.12 网络 BPF 程序类型技术选型对比</h3>
+<h3 id="712-网络-bpf-程序类型技术选型对比" >7.12 网络 BPF 程序类型技术选型对比</h3>
 
 <table>
 <thead><tr>
@@ -8165,7 +8165,7 @@ int bpf_nf_link_attach(const union bpf_attr *attr, struct bpf_prog *prog)
 
 <p>eBPF 提供两种核心的<strong>程序间控制流转移</strong>机制 — <strong>尾调用 (Tail Call)</strong> 和 <strong>BPF-to-BPF 函数调用 (Subprog Call)</strong>。两者解决不同的编程需求：尾调用实现程序链式执行（类似 <code>execve</code>，不返回），函数调用实现代码模块化复用（类似普通函数调用，会返回）。</p>
 
-<h3>8.1 技术概览与对比</h3>
+<h3 id="81-技术概览与对比" >8.1 技术概览与对比</h3>
 
 <table>
 <thead><tr>
@@ -8227,7 +8227,7 @@ int bpf_nf_link_attach(const union bpf_attr *attr, struct bpf_prog *prog)
 </tr>
 </tbody></table>
 
-<h3>8.2 尾调用 (Tail Call)</h3>
+<h3 id="82-尾调用-tail-call" >8.2 尾调用 (Tail Call)</h3>
 
 <p>尾调用允许一个 BPF 程序在执行结束前<strong>跳转</strong>到另一个 BPF 程序，新程序<strong>取代</strong>当前程序继续执行，不会返回调用者。这类似于 UNIX 的 <code>execve()</code> 系统调用。</p>
 
@@ -8648,7 +8648,7 @@ int main(void)
 
 <blockquote><strong>尾调用的核心优势</strong>: 各协议处理器是<strong>独立的 BPF 程序</strong> (独立 ELF 文件)，可以独立编译、独立更新。运行时通过修改 PROG_ARRAY Map 的槽位即可<strong>热替换</strong>任意一个处理器，无需重新加载整个程序链。</blockquote>
 
-<h3>8.3 BPF-to-BPF 函数调用 (Subprog)</h3>
+<h3 id="83-bpf-to-bpf-函数调用-subprog" >8.3 BPF-to-BPF 函数调用 (Subprog)</h3>
 
 <p>BPF-to-BPF 函数调用允许在<strong>同一个 BPF 程序 (ELF 文件)</strong> 内定义多个函数，并像普通 C 函数一样互相调用。这是解决 BPF 代码复用和模块化的关键机制。</p>
 
@@ -9062,7 +9062,7 @@ char _license[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</code></pre>
 ...
 55: exit                        ; 返回到调用者</code></pre>
 
-<h3>8.4 BPF_PROG_TYPE_EXT — 运行时函数替换</h3>
+<h3 id="84-bpf_prog_type_ext--运行时函数替换">8.4 BPF_PROG_TYPE_EXT — 运行时函数替换</h3>
 
 <p><code>BPF_PROG_TYPE_EXT</code> (Extension) 允许在运行时<strong>替换</strong>目标 BPF 程序中的<strong>全局函数</strong>，实现热更新和动态扩展。</p>
 
@@ -9183,7 +9183,7 @@ int main(void)
     return 0;
 }</code></pre>
 
-<h3>8.5 尾调用与函数调用的组合使用</h3>
+<h3 id="85-尾调用与函数调用的组合使用" >8.5 尾调用与函数调用的组合使用</h3>
 
 <p>尾调用和 BPF-to-BPF 调用可以<strong>组合使用</strong>，但需要注意 <code>tail_call_cnt</code> 的传递:</p>
 
@@ -9232,7 +9232,7 @@ int stage1(struct xdp_md *ctx)
 
 <blockquote><strong>关键</strong>: ARM64 JIT 使用栈上指针 (<code>TCCNT_PTR</code>) 而非寄存器值传递 <code>tail_call_cnt</code>，确保函数调用和尾调用组合时共享同一个计数器，防止无限循环。</blockquote>
 
-<h3>8.6 技术选型决策树</h3>
+<h3 id="86-技术选型决策树" >8.6 技术选型决策树</h3>
 
 <pre><code>需要在 BPF 程序间共享控制流？
 ├─ 需要返回到调用者？
@@ -9288,7 +9288,7 @@ int stage1(struct xdp_md *ctx)
 
 <p>本章基于 Linux 6.18.1 内核 tracepoint、kprobe、fentry 等挂载点，给出三个完整的 eBPF 性能分析程序。每个案例包含：<strong>内核挂载点源码分析 → BPF 内核侧程序 → 用户空间加载程序 → 编译运行 → 输出解读</strong>。</p>
 
-<h3>9.1 CPU 性能分析：函数调用追踪与热点代码检测</h3>
+<h3 id="91-cpu-性能分析函数调用追踪与热点代码检测">9.1 CPU 性能分析：函数调用追踪与热点代码检测</h3>
 
 <h4>9.1.1 分析目标</h4>
 
@@ -9849,7 +9849,7 @@ PID      COMM             Switches       Total-CPU(ms)
 
 <hr>
 
-<h3>9.2 内存分析：分配/释放追踪与泄漏检测</h3>
+<h3 id="92-内存分析分配释放追踪与泄漏检测">9.2 内存分析：分配/释放追踪与泄漏检测</h3>
 
 <h4>9.2.1 分析目标</h4>
 
@@ -10414,7 +10414,7 @@ aarch64-linux-gnu-addr2line -e vmlinux -f 0xffff800080e890c4
 
 <hr>
 
-<h3>9.3 I/O 性能分析：磁盘 I/O 与网络 I/O 监控</h3>
+<h3 id="93-io-性能分析磁盘-io-与网络-io-监控">9.3 I/O 性能分析：磁盘 I/O 与网络 I/O 监控</h3>
 
 <h4>9.3.1 分析目标</h4>
 
@@ -11145,7 +11145,7 @@ if (pio) {
 
 <hr>
 
-<h3>9.4 三大场景技术选型总结</h3>
+<h3 id="94-三大场景技术选型总结" >9.4 三大场景技术选型总结</h3>
 
 <table>
 <thead><tr>
@@ -11220,7 +11220,7 @@ if (pio) {
 
 <p>本章设计 <strong>6 组递进式实验</strong>，在 QEMU <code>virt</code> 平台上从零实践 eBPF 核心技术。每组实验包含：<strong>目标 → 内核配置 → BPF 程序 → 用户空间加载 → 编译部署 → 运行验证 → 预期输出</strong>。</p>
 
-<h3>10.1 实验环境搭建</h3>
+<h3 id="101-实验环境搭建" >10.1 实验环境搭建</h3>
 
 <h4>10.1.1 内核配置补全</h4>
 
@@ -11357,7 +11357,7 @@ bpftool btf dump file /sys/kernel/btf/vmlinux format c &gt; vmlinux.h</code></pr
 
 <hr>
 
-<h3>10.2 实验一：Hello BPF — 最小 tracepoint 程序</h3>
+<h3 id="102-实验一hello-bpf--最小-tracepoint-程序">10.2 实验一：Hello BPF — 最小 tracepoint 程序</h3>
 
 <p><strong>目标</strong>：验证 BPF 子系统可用，挂载最简单的 tracepoint，在内核日志输出消息。</p>
 
@@ -11504,7 +11504,7 @@ cat /sys/kernel/debug/tracing/trace_pipe</code></pre>
 
 <hr>
 
-<h3>10.3 实验二：Kprobe 函数追踪 — 追踪进程创建</h3>
+<h3 id="103-实验二kprobe-函数追踪--追踪进程创建">10.3 实验二：Kprobe 函数追踪 — 追踪进程创建</h3>
 
 <p><strong>目标</strong>：用 kprobe 挂载 <code>do_fork</code> / <code>kernel_clone</code>，记录每次进程创建的父子 PID。</p>
 
@@ -11750,7 +11750,7 @@ Total fork calls: 4</code></pre>
 
 <hr>
 
-<h3>10.4 实验三：Tracepoint + Map — 系统调用频率统计</h3>
+<h3 id="104-实验三tracepoint--map--系统调用频率统计">10.4 实验三：Tracepoint + Map — 系统调用频率统计</h3>
 
 <p><strong>目标</strong>：统计 Guest 中每个系统调用的调用次数，展示 BPF Map 的读写操作。</p>
 
@@ -11962,7 +11962,7 @@ NR       SYSCALL              COUNT        LAST_PID
 
 <hr>
 
-<h3>10.5 实验四：Fentry/Fexit — 零开销函数耗时测量</h3>
+<h3 id="105-实验四fentryfexit--零开销函数耗时测量">10.5 实验四：Fentry/Fexit — 零开销函数耗时测量</h3>
 
 <p><strong>目标</strong>：用 fentry/fexit 测量 <code>vfs_read</code> 的延迟分布，体验 trampoline 零拷贝挂载。</p>
 
@@ -12236,7 +12236,7 @@ Latency              Count      Distribution
 
 <hr>
 
-<h3>10.6 实验五：BPF Map 进阶 — 多类型 Map 联合使用</h3>
+<h3 id="106-实验五bpf-map-进阶--多类型-map-联合使用">10.6 实验五：BPF Map 进阶 — 多类型 Map 联合使用</h3>
 
 <p><strong>目标</strong>：综合使用 <code>HASH</code>、<code>ARRAY</code>、<code>PERCPU_ARRAY</code>、<code>LRU_HASH</code> 四种 Map，实现进程生命周期追踪。</p>
 
@@ -12612,7 +12612,7 @@ PID      COMM             Lifetime(ms)
 
 <hr>
 
-<h3>10.7 实验六：XDP 网络实验 — 丢弃 / 统计 / 重定向</h3>
+<h3 id="107-实验六xdp-网络实验--丢弃--统计--重定向">10.7 实验六：XDP 网络实验 — 丢弃 / 统计 / 重定向</h3>
 
 <p><strong>目标</strong>：在 QEMU virtio-net 上挂载 XDP 程序，实现 ICMP 丢弃、流量统计、协议解析。</p>
 
@@ -13004,7 +13004,7 @@ XDP detached.</code></pre>
 
 <hr>
 
-<h3>10.8 实验总结与故障排查</h3>
+<h3 id="108-实验总结与故障排查" >10.8 实验总结与故障排查</h3>
 
 <h4>10.8.1 六组实验递进关系</h4>
 
@@ -13124,7 +13124,7 @@ cp bpftool /repo/ybzhang/kernel/linux-6.18.1/kmodules/
 
 <hr>
 
-<h3>11.1 基础概念类 (必问)</h3>
+<h3 id="111-基础概念类-必问" >11.1 基础概念类 (必问)</h3>
 
 <hr>
 
@@ -13393,7 +13393,7 @@ static int do_check(struct bpf_verifier_env *env) {
 
 <hr>
 
-<h3>11.2 JIT 编译与执行引擎</h3>
+<h3 id="112-jit-编译与执行引擎" >11.2 JIT 编译与执行引擎</h3>
 
 <hr>
 
@@ -13509,7 +13509,7 @@ struct bpf_prog *bpf_int_jit_compile(struct bpf_prog *prog) {
 
 <hr>
 
-<h3>11.3 挂载机制类</h3>
+<h3 id="113-挂载机制类" >11.3 挂载机制类</h3>
 
 <hr>
 
@@ -13684,7 +13684,7 @@ trampoline (动态生成):
 
 <hr>
 
-<h3>11.4 安全与限制类</h3>
+<h3 id="114-安全与限制类" >11.4 安全与限制类</h3>
 
 <hr>
 
@@ -13765,7 +13765,7 @@ trampoline (动态生成):
 
 <hr>
 
-<h3>11.5 性能与实践类</h3>
+<h3 id="115-性能与实践类" >11.5 性能与实践类</h3>
 
 <hr>
 
@@ -13993,7 +13993,7 @@ u32 pid = BPF_CORE_READ(task, pid);
 
 <hr>
 
-<h3>11.6 网络子系统类</h3>
+<h3 id="116-网络子系统类" >11.6 网络子系统类</h3>
 
 <hr>
 
@@ -14063,7 +14063,7 @@ int firewall(struct xdp_md *ctx) {
 
 <hr>
 
-<h3>11.7 内存与 Map 操作类</h3>
+<h3 id="117-内存与-map-操作类" >11.7 内存与 Map 操作类</h3>
 
 <hr>
 
@@ -14132,7 +14132,7 @@ int profile(struct bpf_perf_event_data *ctx) {
 
 <hr>
 
-<h3>11.8 架构与系统设计类</h3>
+<h3 id="118-架构与系统设计类" >11.8 架构与系统设计类</h3>
 
 <hr>
 
@@ -14272,7 +14272,7 @@ int profile(struct bpf_perf_event_data *ctx) {
 
 <hr>
 
-<h3>11.9 高级与前沿类</h3>
+<h3 id="119-高级与前沿类" >11.9 高级与前沿类</h3>
 
 <hr>
 
@@ -14390,7 +14390,7 @@ bpf_loop(100, callback_fn, ctx, 0);</code></pre>
 
 <hr>
 
-<h3>11.10 场景设计类</h3>
+<h3 id="1110-场景设计类" >11.10 场景设计类</h3>
 
 <hr>
 
@@ -14470,7 +14470,7 @@ int audit_exec(struct linux_binprm *bprm) {
 
 <hr>
 
-<h3>11.11 编码与调试实操类</h3>
+<h3 id="1111-编码与调试实操类" >11.11 编码与调试实操类</h3>
 
 <hr>
 
@@ -14525,7 +14525,7 @@ u64 avg_us = total_ns / count;  // 结果在用户空间再转浮点</code></pre
 
 <hr>
 
-<h3>11.12 面试快问快答 (10 题)</h3>
+<h3 id="1112-面试快问快答-10-题" >11.12 面试快问快答 (10 题)</h3>
 
 <table>
 <thead><tr>

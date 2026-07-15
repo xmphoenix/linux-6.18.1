@@ -509,7 +509,7 @@ hr {
 
 <h2>第一部分：问题诊断 — 你遇到的是什么问题？</h2>
 
-<h3>1.1 问题分类决策树</h3>
+<h3 id="11-问题分类决策树" >1.1 问题分类决策树</h3>
 
 <pre><code class="language-mermaid">graph TD
     START[&quot;内存问题&quot;] --&gt; Q1{&quot;OOM Killed?&quot;}
@@ -528,7 +528,7 @@ hr {
     Q6 -- 是 --&gt; PERF[&quot;→ 第七部分: 性能调优&quot;]
     Q6 -- 否 --&gt; MONITOR[&quot;→ 第九部分: 监控体系&quot;]</code></pre>
 
-<h3>1.2 第一步永远是：采集数据</h3>
+<h3 id="12-第一步永远是采集数据" >1.2 第一步永远是：采集数据</h3>
 
 <pre><code class="language-bash"># 快速全景诊断（5条命令搞定）
 cat /proc/meminfo                          # 全局内存分布
@@ -541,7 +541,7 @@ slabtop -o -s c | head -20                 # slab cache Top 20</code></pre>
 
 <h2>第二部分：OOM 预防与治理</h2>
 
-<h3>2.1 原理回顾（你已学过）</h3>
+<h3 id="21-原理回顾你已学过">2.1 原理回顾（你已学过）</h3>
 
 <pre><code> 内存分配请求
     │
@@ -557,7 +557,7 @@ slabtop -o -s c | head -20                 # slab cache Top 20</code></pre>
     ▼
  OOM Killer ← 选择 oom_score 最高的进程杀掉</code></pre>
 
-<h3>2.2 可调优的点</h3>
+<h3 id="22-可调优的点" >2.2 可调优的点</h3>
 
 <h4>点1：水位线调优（mm/page_alloc.c）</h4>
 
@@ -631,7 +631,7 @@ cat /sys/fs/cgroup/&lt;container&gt;/memory.events
 
 <h2>第三部分：内存泄漏检测</h2>
 
-<h3>3.1 内核态泄漏</h3>
+<h3 id="31-内核态泄漏" >3.1 内核态泄漏</h3>
 
 <h4>工具1：kmemleak（最直接）</h4>
 
@@ -675,7 +675,7 @@ cat /sys/kernel/debug/page_owner &gt; /tmp/page_owner.txt
 python3 tools/mm/page_owner_sort.py /tmp/page_owner.txt
 # 按分配者聚合，找出持有页面最多的调用栈</code></pre>
 
-<h3>3.2 用户态泄漏</h3>
+<h3 id="32-用户态泄漏" >3.2 用户态泄漏</h3>
 
 <pre><code class="language-bash"># 方法1：/proc/&lt;pid&gt;/smaps_rollup（不需要工具）
 cat /proc/&lt;pid&gt;/smaps_rollup
@@ -696,7 +696,7 @@ cat /sys/kernel/debug/tracing/trace
 
 <h2>第四部分：延迟优化</h2>
 
-<h3>4.1 延迟来源分析</h3>
+<h3 id="41-延迟来源分析" >4.1 延迟来源分析</h3>
 
 <pre><code> ┌─ 用户感知的 &quot;卡顿&quot; ────────────────────────────────────────────────────────┐
  │                                                                              │
@@ -719,7 +719,7 @@ cat /proc/pressure/memory
 # some avg10=2.34 avg60=1.50 avg300=0.80 total=45234567
 # ★ avg10=2.34 意味着最近10s内有 2.34% 时间有任务因内存而停顿</code></pre>
 
-<h3>4.2 优化方案</h3>
+<h3 id="42-优化方案" >4.2 优化方案</h3>
 
 <h4>点1：提前回收，避免直接回收</h4>
 
@@ -778,7 +778,7 @@ echo 4 &gt; /proc/sys/vm/page-cluster  # 2^4=16 页预取</code></pre>
 
 <h2>第五部分：碎片治理</h2>
 
-<h3>5.1 碎片检测</h3>
+<h3 id="51-碎片检测" >5.1 碎片检测</h3>
 
 <pre><code class="language-bash"># 查看 buddy 各 order 空闲页数量
 cat /proc/buddyinfo
@@ -790,7 +790,7 @@ cat /proc/buddyinfo
 cat /sys/kernel/debug/extfrag/extfrag_index
 # 越接近 1.0 碎片越严重，越接近 0 越健康</code></pre>
 
-<h3>5.2 优化方案</h3>
+<h3 id="52-优化方案" >5.2 优化方案</h3>
 
 <h4>点1：主动内存压缩</h4>
 
@@ -837,7 +837,7 @@ echo 512 &gt; /proc/sys/vm/nr_hugepages  # 预留 512 个 2MB 大页</code></pre
 
 <h2>第六部分：内存节省</h2>
 
-<h3>6.1 内核态内存节省</h3>
+<h3 id="61-内核态内存节省" >6.1 内核态内存节省</h3>
 
 <h4>点1：SLUB cache 优化</h4>
 
@@ -878,7 +878,7 @@ CONFIG_SWAP=n                    # 无 swap 分区可关闭（嵌入式 flash �
 CONFIG_COMPACTION=n              # 不需要碎片整理（内存小、生命周期短）
 CONFIG_DEBUG_INFO=n              # vmlinux 从 200MB → 20MB（不含调试信息）</code></pre>
 
-<h3>6.2 用户态内存节省</h3>
+<h3 id="62-用户态内存节省" >6.2 用户态内存节省</h3>
 
 <h4>点1：KSM（内核同页合并）</h4>
 
@@ -939,7 +939,7 @@ cat /sys/kernel/debug/zswap/pool_total_size # 压缩池实际大小</code></pre>
 
 <h2>第七部分：特定场景性能调优</h2>
 
-<h3>7.1 数据库（MySQL/PostgreSQL）</h3>
+<h3 id="71-数据库mysqlpostgresql">7.1 数据库（MySQL/PostgreSQL）</h3>
 
 <pre><code class="language-bash"># 1. 大页配置（减少 TLB miss，提升10-20%）
 echo madvise &gt; /sys/kernel/mm/transparent_hugepage/enabled
@@ -960,7 +960,7 @@ echo -1000 &gt; /proc/$(pidof mysqld)/oom_score_adj
 # 5. swappiness（数据库通常不希望被 swap）
 echo 1 &gt; /proc/sys/vm/swappiness  # 几乎不 swap</code></pre>
 
-<h3>7.2 JVM 应用</h3>
+<h3 id="72-jvm-应用" >7.2 JVM 应用</h3>
 
 <pre><code class="language-bash"># 1. THP + JVM 大堆
 # JVM 11+ 支持 -XX:+UseTransparentHugePages
@@ -976,7 +976,7 @@ echo never &gt; /sys/kernel/mm/transparent_hugepage/defrag  # 不碎片整理
 # 确保 vm.max_map_count 足够大（JVM 大堆 VMA 数量多）
 echo 262144 &gt; /proc/sys/vm/max_map_count  # 默认65530</code></pre>
 
-<h3>7.3 容器 / Kubernetes</h3>
+<h3 id="73-容器--kubernetes">7.3 容器 / Kubernetes</h3>
 
 <pre><code class="language-bash"># 1. 内存限制（cgroupv2）
 echo 2G &gt; /sys/fs/cgroup/&lt;pod&gt;/memory.max
@@ -994,7 +994,7 @@ cat /sys/fs/cgroup/&lt;pod&gt;/memory.pressure
 echo max &gt; /sys/fs/cgroup/&lt;pod&gt;/memory.swap.max  # 允许 swap
 echo 0   &gt; /sys/fs/cgroup/&lt;pod&gt;/memory.swap.max  # 禁止 swap</code></pre>
 
-<h3>7.4 嵌入式设备（512MB - 2GB）</h3>
+<h3 id="74-嵌入式设备512mb---2gb">7.4 嵌入式设备（512MB - 2GB）</h3>
 
 <pre><code class="language-bash"># 1. zram（创建内存压缩块设备作为 swap）
 modprobe zram num_devices=1
@@ -1013,7 +1013,7 @@ echo 100 &gt; /proc/sys/vm/vfs_cache_pressure  # 默认100，加速 inode/dentry
 echo 0 &gt; /sys/kernel/mm/ksm/run
 echo never &gt; /sys/kernel/mm/transparent_hugepage/enabled</code></pre>
 
-<h3>7.5 实时系统（低延迟要求）</h3>
+<h3 id="75-实时系统低延迟要求">7.5 实时系统（低延迟要求）</h3>
 
 <pre><code class="language-bash"># 1. 锁定内存避免缺页
 mlockall(MCL_CURRENT | MCL_FUTURE)  # 在 C 程序中
@@ -1035,7 +1035,7 @@ echo 0 &gt; /proc/sys/vm/watermark_boost_factor
 
 <h2>第八部分：内存抖动（Thrashing）诊断与治理</h2>
 
-<h3>8.1 什么是内存抖动</h3>
+<h3 id="81-什么是内存抖动" >8.1 什么是内存抖动</h3>
 
 <p>内存抖动（Thrashing）是指<strong>页面被回收后又立即被访问导致频繁的换入换出</strong>，系统把大量时间花在页面调度而非有用计算上。这是内存不足场景下最严重的性能退化模式。</p>
 
@@ -1061,7 +1061,7 @@ echo 0 &gt; /proc/sys/vm/watermark_boost_factor
  │   用户感知：系统极度卡顿，几乎不响应                     │
  └─────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>8.2 抖动的三种类型</h3>
+<h3 id="82-抖动的三种类型" >8.2 抖动的三种类型</h3>
 
 <pre><code> ┌──────────────────┬──────────────────────────────────────────────────────────┐
  │ 类型              │ 特征                                                    │
@@ -1079,7 +1079,7 @@ echo 0 &gt; /proc/sys/vm/watermark_boost_factor
  │                  │ 表现：thp_fault_fallback 高，workingset_refault 飙升     │
  └──────────────────┴──────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>8.3 内核如何检测抖动：workingset refault 算法</h3>
+<h3 id="83-内核如何检测抖动workingset-refault-算法">8.3 内核如何检测抖动：workingset refault 算法</h3>
 
 <p>这是内核内存管理中最精巧的算法之一，位于 <code>mm/workingset.c</code>。</p>
 
@@ -1129,7 +1129,7 @@ echo 0 &gt; /proc/sys/vm/watermark_boost_factor
      }
  }</code></pre>
 
-<h3>8.4 /proc/vmstat 抖动相关计数器详解</h3>
+<h3 id="84-procvmstat-抖动相关计数器详解">8.4 /proc/vmstat 抖动相关计数器详解</h3>
 
 <pre><code class="language-bash"># 查看抖动计数器
 grep -E &quot;workingset|pswp&quot; /proc/vmstat</code></pre>
@@ -1188,7 +1188,7 @@ if [ &quot;$REF_FILE&quot; -gt 0 ]; then
     fi
 fi</code></pre>
 
-<h3>8.5 内核的自动抖动缓解机制</h3>
+<h3 id="85-内核的自动抖动缓解机制" >8.5 内核的自动抖动缓解机制</h3>
 
 <h4>机制1：回收节流（mm/vmscan.c:540）</h4>
 
@@ -1291,7 +1291,7 @@ cat /sys/kernel/mm/lru_gen/enabled
 cat /sys/kernel/debug/lru_gen
 # 可看到每个 memcg/node/zone 的各代页面数量</code></pre>
 
-<h3>8.6 抖动优化方案</h3>
+<h3 id="86-抖动优化方案" >8.6 抖动优化方案</h3>
 
 <h4>方案1：增加物理内存（治本）</h4>
 
@@ -1388,7 +1388,7 @@ poll(fd, POLLIN, -1);              # 阻塞直到触发
 echo 1800M &gt; /sys/fs/cgroup/&lt;pod&gt;/memory.high
 # 超出 high 后进程分配变慢（节流），但不会被杀</code></pre>
 
-<h3>8.7 QEMU 实验：制造并观察内存抖动</h3>
+<h3 id="87-qemu-实验制造并观察内存抖动">8.7 QEMU 实验：制造并观察内存抖动</h3>
 
 <pre><code class="language-bash"># 实验1：制造 swap 抖动
 # QEMU 启动参数：-m 256M（小内存）
@@ -1447,7 +1447,7 @@ echo 1 &gt; tracing_on
 cat trace | grep -E &quot;throttled|direct_reclaim|shrink_inactive&quot;
 # 预期：看到 VMSCAN_THROTTLE_NOPROGRESS 和持续的 direct_reclaim 事件</code></pre>
 
-<h3>8.8 抖动诊断流程图</h3>
+<h3 id="88-抖动诊断流程图" >8.8 抖动诊断流程图</h3>
 
 <pre><code class="language-mermaid">graph TD
     S[&quot;怀疑内存抖动&quot;] --&gt; D1[&quot;grep workingset /proc/vmstat&quot;]
@@ -1464,7 +1464,7 @@ cat trace | grep -E &quot;throttled|direct_reclaim|shrink_inactive&quot;
     FIX1 --&gt; V[&quot;验证: 持续观察&lt;br/&gt;PSI + workingset 趋势&quot;]
     FIX2 --&gt; V</code></pre>
 
-<h3>8.9 检查清单</h3>
+<h3 id="89-检查清单" >8.9 检查清单</h3>
 
 <ul>
 <li class="task-list-item"><input type="checkbox" disabled >能区分三种抖动类型（全局/cgroup/THP 放大）</li>
@@ -1480,7 +1480,7 @@ cat trace | grep -E &quot;throttled|direct_reclaim|shrink_inactive&quot;
 
 <h2>第九部分：监控体系</h2>
 
-<h3>9.1 完整监控指标</h3>
+<h3 id="91-完整监控指标" >9.1 完整监控指标</h3>
 
 <pre><code> ┌──────────────┬───────────────────────┬──────────────────────────────────────┐
  │ 层面          │ 监控指标              │ 数据来源                             │
@@ -1511,7 +1511,7 @@ cat trace | grep -E &quot;throttled|direct_reclaim|shrink_inactive&quot;
  │              │ memory.events         │ cgroup memory.events                 │
  └──────────────┴───────────────────────┴──────────────────────────────────────┘</code></pre>
 
-<h3>9.2 一键监控脚本</h3>
+<h3 id="92-一键监控脚本" >9.2 一键监控脚本</h3>
 
 <pre><code class="language-bash">#!/bin/bash
 # mm_health_check.sh — 内存健康度快速检查
@@ -1550,7 +1550,7 @@ fi
 echo -e &quot;\n=== 页表内存 ===&quot;
 grep PageTables /proc/meminfo</code></pre>
 
-<h3>9.3 ftrace 实时追踪模板</h3>
+<h3 id="93-ftrace-实时追踪模板" >9.3 ftrace 实时追踪模板</h3>
 
 <pre><code class="language-bash"># 追踪内存分配延迟热点
 cd /sys/kernel/debug/tracing
@@ -1577,7 +1577,7 @@ cat trace
 echo 0 &gt; tracing_on
 echo &gt; trace</code></pre>
 
-<h3>9.4 DAMON — 数据访问模式分析（高级）</h3>
+<h3 id="94-damon--数据访问模式分析高级">9.4 DAMON — 数据访问模式分析（高级）</h3>
 
 <pre><code class="language-bash"># 适用于：分析工作负载的真实内存访问模式，找出冷热数据
 
@@ -1626,7 +1626,7 @@ echo 120000000 &gt; /sys/module/damon_reclaim/parameters/min_age
 
 <p>学完基础知识 + 掌握优化工具后，可以在以下方向深入研究：</p>
 
-<h3>11.1 研究方向</h3>
+<h3 id="111-研究方向" >11.1 研究方向</h3>
 
 <pre><code> ┌───────────────────┬────────────────────────────────────────────────────────────┐
  │ 方向               │ 具体课题                                                  │
@@ -1657,7 +1657,7 @@ echo 120000000 &gt; /sys/module/damon_reclaim/parameters/min_age
  │                   │ · SMMU（系统 MMU / IOMMU）                                 │
  └───────────────────┴────────────────────────────────────────────────────────────┘</code></pre>
 
-<h3>11.2 推荐阅读顺序</h3>
+<h3 id="112-推荐阅读顺序" >11.2 推荐阅读顺序</h3>
 
 <pre><code> 入门完成（你现在的位置）
     │
@@ -1683,7 +1683,7 @@ echo 120000000 &gt; /sys/module/damon_reclaim/parameters/min_age
 
 <h2>附录：参数速查</h2>
 
-<h3>关键 /proc/sys/vm/ 参数</h3>
+<h3 id="关键-procsysvm-参数">关键 /proc/sys/vm/ 参数</h3>
 
 <table>
 <thead><tr>

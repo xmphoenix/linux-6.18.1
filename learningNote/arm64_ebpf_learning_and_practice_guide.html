@@ -637,7 +637,7 @@ hr {
 
 <pre><code class="language-text">eBPF 程序的真正执行对象不是 C 源码，而是 eBPF 指令集定义的一段字节码/指令流。</code></pre>
 
-<h3>为什么 eBPF 要有自己的字节码</h3>
+<h3 id="为什么-ebpf-要有自己的字节码" >为什么 eBPF 要有自己的字节码</h3>
 
 <p>因为内核需要的是：</p>
 
@@ -657,7 +657,7 @@ hr {
 
 <p>所以 eBPF 本质上是一台抽象机。</p>
 
-<h3>这段“字节码故事”到底是怎样流动的</h3>
+<h3 id="这段字节码故事到底是怎样流动的" >这段“字节码故事”到底是怎样流动的</h3>
 
 <p>它的主线其实很清楚：</p>
 
@@ -682,7 +682,7 @@ hr {
 <li>解释器或 JIT 负责真正执行这段 eBPF 指令流。</li>
 </ol>
 
-<h3>eBPF 字节码和普通虚拟机字节码有什么不同</h3>
+<h3 id="ebpf-字节码和普通虚拟机字节码有什么不同" >eBPF 字节码和普通虚拟机字节码有什么不同</h3>
 
 <p>从 PPT 里抽出来的一个很好的视角是：eBPF 也可以被理解成“专用虚拟机字节码”，但它和 Java VM、QEMU 这种通用虚拟机不是一类东西。</p>
 
@@ -700,7 +700,7 @@ hr {
 
 <pre><code class="language-text">一种专门为 Linux 内核可编程扩展设计的小型、安全、可验证、可 JIT 的专用字节码系统。</code></pre>
 
-<h3>为什么说 map 和 helper 也是这段故事的一部分</h3>
+<h3 id="为什么说-map-和-helper-也是这段故事的一部分" >为什么说 map 和 helper 也是这段故事的一部分</h3>
 
 <p>因为单靠一套受限指令，是不可能完成复杂内核交互的。</p>
 
@@ -714,7 +714,7 @@ hr {
 
 <p>这也是为什么 PPT 里的时间线提到 2014 年之后，eBPF 的关键扩展不只是指令集，而是 map、helper、verifier、JIT、BTF 这些机制一起演进。</p>
 
-<h3>字节码、解释器、JIT 三者的关系</h3>
+<h3 id="字节码解释器jit-三者的关系" >字节码、解释器、JIT 三者的关系</h3>
 
 <p>这是必须彻底理顺的一点：</p>
 
@@ -740,7 +740,7 @@ hr {
 
 <p>PPT 里有一些内容和当前 Markdown 已经重合，但也有几类视角值得明确吸收进来，尤其适合你现在这个 ARM64/嵌入式背景。</p>
 
-<h3>1. 用历史线索建立全局感</h3>
+<h3 id="1-用历史线索建立全局感" >1. 用历史线索建立全局感</h3>
 
 <p>PPT 里的时间线可以整理成一个更准确、对学习更有帮助的版本：</p>
 
@@ -756,7 +756,7 @@ hr {
 
 <pre><code class="language-text">eBPF 不是“突然出现的一门内核脚本语言”，而是一条从包过滤、到可验证虚拟机、再到内核通用扩展框架的演化线。</code></pre>
 
-<h3>2. PPT 里的使用场景分类值得保留</h3>
+<h3 id="2-ppt-里的使用场景分类值得保留" >2. PPT 里的使用场景分类值得保留</h3>
 
 <p>PPT 把 eBPF 常见用途归纳为几类，这个归纳是有效的，值得保留为“场景地图”：</p>
 
@@ -771,7 +771,7 @@ hr {
 
 <p>这组分类的价值在于：它提醒你学习时不要把 eBPF 只理解成 tracing 工具，也不要只理解成网络工具。它实际上是一个跨子系统的内核扩展能力。</p>
 
-<h3>3. 嵌入式和 ARM64 场景下的工具选型</h3>
+<h3 id="3-嵌入式和-arm64-场景下的工具选型" >3. 嵌入式和 ARM64 场景下的工具选型</h3>
 
 <p>PPT 有一个很实用的工程判断，我建议直接吸收到当前指南里：</p>
 
@@ -799,7 +799,7 @@ hr {
 <li>对 ARM64 板卡、容器镜像、嵌入式固件来说，最终可部署性通常比原型便利性更重要。</li>
 </ol>
 
-<h3>4. 嵌入式/交叉编译视角的补足</h3>
+<h3 id="4-嵌入式交叉编译视角的补足" >4. 嵌入式/交叉编译视角的补足</h3>
 
 <p>PPT 后半段虽然很多页是工程截图，但它提醒了一个现实问题：</p>
 
@@ -840,7 +840,7 @@ hr {
 
 <p>如果这五条主线没建立起来，后面再看 verifier、JIT、CO-RE 都会比较散。</p>
 
-<h3>0.1 如何使用 libbpf 编写一个 eBPF 程序</h3>
+<h3 id="01-如何使用-libbpf-编写一个-ebpf-程序" >0.1 如何使用 libbpf 编写一个 eBPF 程序</h3>
 
 <p>现代 eBPF 开发里，推荐的主路径不是自己手搓 <code>bpf()</code> syscall，而是：</p>
 
@@ -848,7 +848,7 @@ hr {
 
 <p>也就是说，libbpf 负责的是“加载器”和“对象生命周期管理”，不是 BPF 字节码编译器。</p>
 
-<h4>0.1.1 一个最小 libbpf 项目的结构</h4>
+<h4 >0.1.1 一个最小 libbpf 项目的结构</h4>
 
 <p>通常会有两部分：</p>
 
@@ -1103,7 +1103,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <p>把这四步理解成固定模板，后面看 tracing、XDP、tc、cgroup BPF 都会顺很多。</p>
 
-<h3>0.2 当前 eBPF 的系统调用</h3>
+<h3 id="02-当前-ebpf-的系统调用" >0.2 当前 eBPF 的系统调用</h3>
 
 <p>Linux 并不是给 eBPF 设计了一堆分散 syscall，而是统一提供了一个：</p>
 
@@ -1211,7 +1211,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <p>现代 libbpf 基本会帮你封装这些 syscall，但理解这四个命令仍然非常关键，因为它们决定了 eBPF 用户态与内核交互的基本模型。</p>
 
-<h3>0.3 kprobe、ftrace、tracepoint 以及其他 hook 怎么理解</h3>
+<h3 id="03-kprobeftracetracepoint-以及其他-hook-怎么理解" >0.3 kprobe、ftrace、tracepoint 以及其他 hook 怎么理解</h3>
 
 <p>很多初学者会把 hook 理解成“程序挂载点”，这没有错，但还不够。更准确的理解是：</p>
 
@@ -1521,7 +1521,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 <li>这也是为什么 <code>fentry/fexit</code> 常被视为更现代、更高质量的 tracing 路径。</li>
 </ol>
 
-<h3>0.4 eBPF 内核如何加载并运行程序</h3>
+<h3 id="04-ebpf-内核如何加载并运行程序" >0.4 eBPF 内核如何加载并运行程序</h3>
 
 <p>这是最容易被神秘化的一块。其实只要分成“加载路径”和“执行路径”就清楚了。</p>
 
@@ -1787,7 +1787,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <pre><code class="language-text">尾调不是“调用另一个函数”，而是“根据 prog_array 把当前 eBPF 程序的执行权交给另一个 eBPF 程序，并且成功后不再返回”。</code></pre>
 
-<h3>0.5 用户空间如何使用 eBPF 程序</h3>
+<h3 id="05-用户空间如何使用-ebpf-程序" >0.5 用户空间如何使用 eBPF 程序</h3>
 
 <p>用户空间对 eBPF 的使用，不只是“把程序 load 进去”。完整一点看，用户态至少有五类职责。</p>
 
@@ -1887,9 +1887,9 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <p>这一部分回答你的第一个要求：把学习路径拆成真正可执行的日程，而不是大而空的阶段建议。</p>
 
-<h3>第0周：建立对象模型与环境直觉</h3>
+<h3 id="第0周建立对象模型与环境直觉" >第0周：建立对象模型与环境直觉</h3>
 
-<h4>Day 1：先把对象边界建立起来</h4>
+<h4 id="day-1建立对象模型">Day 1：先把对象边界建立起来</h4>
 
 <p>学习目标：知道 eBPF 世界里有哪些对象，它们如何协作。</p>
 
@@ -1960,7 +1960,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <hr>
 
-<h3>第1周：Verifier 是第一大关</h3>
+<h3 id="第1周verifier-是第一大关" >第1周：Verifier 是第一大关</h3>
 
 <h4>Day 3：理解 verifier 的两阶段模型</h4>
 
@@ -1992,7 +1992,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 <li>在笔记里画出寄存器状态流转图。</li>
 </ol>
 
-<h4>Day 4：读状态结构，不要停留在文档表面</h4>
+<h4 id="day-10再读用户态侧">Day 4：读状态结构，不要停留在文档表面</h4>
 
 <p>重点源码：</p>
 
@@ -2069,7 +2069,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <hr>
 
-<h3>第2周：libbpf、BTF、CO-RE</h3>
+<h3 id="第2周libbpfbtfco-re" >第2周：libbpf、BTF、CO-RE</h3>
 
 <h4>Day 8：先理解 BTF 解决什么问题</h4>
 
@@ -2151,7 +2151,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <hr>
 
-<h3>第3周：第一个 tracing 闭环项目</h3>
+<h3 id="第3周第一个-tracing-闭环项目" >第3周：第一个 tracing 闭环项目</h3>
 
 <p>这一周对应下文的第B部分实战章节，重点是能亲手跑通一个最小但完整的项目。</p>
 
@@ -2238,7 +2238,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <hr>
 
-<h3>第4周：Map 与数据通道</h3>
+<h3 id="第4周map-与数据通道" >第4周：Map 与数据通道</h3>
 
 <p>目标：不要只会用一个 map。</p>
 
@@ -2262,7 +2262,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <hr>
 
-<h3>第5周：Attach Type 横向比较</h3>
+<h3 id="第5周attach-type-横向比较" >第5周：Attach Type 横向比较</h3>
 
 <p>这一周不要急着追求更多代码，而是建立判断力。</p>
 
@@ -2287,7 +2287,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <hr>
 
-<h3>第6周：网络路径，TC 先于 XDP</h3>
+<h3 id="第6周网络路径tc-先于-xdp" >第6周：网络路径，TC 先于 XDP</h3>
 
 <p>这是很多人会犯错的地方。正确顺序是先 TC 再 XDP。</p>
 
@@ -2309,7 +2309,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <hr>
 
-<h3>第7周：ARM64 JIT 精读</h3>
+<h3 id="第7周arm64-jit-精读" >第7周：ARM64 JIT 精读</h3>
 
 <p>这一周对应下文第C部分的源码精读。</p>
 
@@ -2324,7 +2324,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 
 <hr>
 
-<h3>第8周：内核开发者视角</h3>
+<h3 id="第8周内核开发者视角" >第8周：内核开发者视角</h3>
 
 <p>这周不要再只写 demo，而要学会从测试和实现反推设计边界。</p>
 
@@ -2359,7 +2359,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 <li>它的逻辑足够真实，但不复杂到淹没核心概念。</li>
 </ol>
 
-<h3>1. 项目目标</h3>
+<h3 id="1-项目目标" >1. 项目目标</h3>
 
 <p>观测一个进程从“被唤醒”到“真正上 CPU 运行”之间的延迟。</p>
 
@@ -2371,7 +2371,7 @@ cc -g -O2 exec_trace.c -lbpf -lelf -lz -o exec_trace</code></pre>
 <li>当延迟超过阈值时，把事件送到用户态。</li>
 </ol>
 
-<h3>2. 先看 BPF 侧到底做了什么</h3>
+<h3 id="2-先看-bpf-侧到底做了什么" >2. 先看 BPF 侧到底做了什么</h3>
 
 <p><code>runqslower.bpf.c</code> 的结构非常经典。</p>
 
@@ -2441,7 +2441,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>删除 task storage，避免脏数据残留。</li>
 </ol>
 
-<h3>3. 用户态程序做了什么</h3>
+<h3 id="3-用户态程序做了什么" >3. 用户态程序做了什么</h3>
 
 <p><code>runqslower.c</code> 是现代 libbpf 程序的标准骨架。</p>
 
@@ -2457,7 +2457,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>轮询事件并格式化输出。</li>
 </ol>
 
-<h3>4. 这个项目涉及的理论点</h3>
+<h3 id="4-这个项目涉及的理论点" >4. 这个项目涉及的理论点</h3>
 
 <p>这个小项目至少覆盖了下面这些 eBPF 核心知识点：</p>
 
@@ -2470,7 +2470,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>skeleton 负责把 open/load/attach 包成易用接口。</li>
 </ol>
 
-<h3>5. 你应该如何自己做一版最小项目</h3>
+<h3 id="5-你应该如何自己做一版最小项目" >5. 你应该如何自己做一版最小项目</h3>
 
 <p>建议你写一个独立练习项目，按下面顺序做。</p>
 
@@ -2522,7 +2522,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>亲自比较两种用户态消费模型。</li>
 </ol>
 
-<h3>6. 建议的编译与运行准备</h3>
+<h3 id="6-建议的编译与运行准备">6. 建议的编译与运行准备</h3>
 
 <p>参考当前源码树中的说明，你至少需要准备：</p>
 
@@ -2539,7 +2539,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li><code>tools/testing/selftests/bpf/vmtest.sh</code></li>
 </ol>
 
-<h3>7. 这个项目完成后你应该具备什么能力</h3>
+<h3 id="7-这个项目完成后你应该具备什么能力">7. 这个项目完成后你应该具备什么能力</h3>
 
 <p>完成这一实战后，你至少应该达到以下水平：</p>
 
@@ -2566,7 +2566,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 
 <pre><code class="language-text">Verifier 证明程序安全，ARM64 JIT 负责把 BPF 抽象机语义翻译成 AArch64 指令序列。</code></pre>
 
-<h3>1. 第一个入口：寄存器映射</h3>
+<h3 id="1-第一个入口寄存器映射">1. 第一个入口：寄存器映射</h3>
 
 <p>文件一开始最重要的数据结构之一就是：</p>
 
@@ -2598,7 +2598,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 
 <p>你会发现 verifier 文档里关于调用后寄存器保存规则，与这里的映射是严格对齐的。这就是为什么先学 verifier 再学 JIT 是正确顺序。</p>
 
-<h3>2. 第二个入口：立即数与地址装载</h3>
+<h3 id="2-第二个入口立即数与地址装载">2. 第二个入口：立即数与地址装载</h3>
 
 <p>JIT 不是简单把常量塞进寄存器就完了。AArch64 对立即数编码有限制，所以你会看到：</p>
 
@@ -2622,7 +2622,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>再看为什么某些场景优先选 <code>MOVN</code> 而不是 <code>MOVZ</code>。</li>
 </ol>
 
-<h3>3. 第三个入口：prologue 与栈布局</h3>
+<h3 id="3-第三个入口prologue-与栈布局">3. 第三个入口：prologue 与栈布局</h3>
 
 <p><code>bpf_jit_comp.c</code> 中对 prologue 的注释非常关键，因为它把 BPF 栈、A64 栈和函数调用栈三者叠在一起解释了。</p>
 
@@ -2653,7 +2653,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>为什么要考虑 BTI 和 KCFI，而不是只关心功能正确。</li>
 </ol>
 
-<h3>4. 第四个入口：helper call 如何落到 AArch64 调用</h3>
+<h3 id="4-第四个入口helper-call-如何落到-aarch64-调用">4. 第四个入口：helper call 如何落到 AArch64 调用</h3>
 
 <p>JIT 中一个特别关键的函数组合是：</p>
 
@@ -2678,7 +2678,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 
 <p>这正是 AArch64 指令编码约束如何反过来影响 JIT 设计的典型例子。</p>
 
-<h3>5. 第五个入口：helper 特化内联</h3>
+<h3 id="5-第五个入口helper-特化内联">5. 第五个入口：helper 特化内联</h3>
 
 <p>JIT 里不是所有 helper 都一定走普通函数调用。</p>
 
@@ -2693,7 +2693,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 
 <pre><code class="language-text">JIT 不只是翻译器，还是性能与 ABI 约束之间的优化器。</code></pre>
 
-<h3>6. 第六个入口：tail call</h3>
+<h3 id="6-第六个入口tail-call">6. 第六个入口：tail call</h3>
 
 <p>tail call 是 eBPF 里非常独特的一块，既不是普通函数调用，也不是简单跳转。</p>
 
@@ -2705,7 +2705,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>为什么 BTI 落点会影响 tail call 跳转设计。</li>
 </ol>
 
-<h3>7. 第七个入口：BTI 与 KCFI</h3>
+<h3 id="7-第七个入口bti-与-kcfi">7. 第七个入口：BTI 与 KCFI</h3>
 
 <p>这是 ARM64 平台学习里非常值得额外投入的一点。</p>
 
@@ -2726,7 +2726,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 
 <p>这部分如果你搞懂，说明你对 ARM64 平台 eBPF 的理解已经不是“功能层”，而是“架构安全语义层”。</p>
 
-<h3>8. 第八个入口：从一条 BPF 指令追到一串 A64 指令</h3>
+<h3 id="8-第八个入口从一条-bpf-指令追到一串-a64-指令">8. 第八个入口：从一条 BPF 指令追到一串 A64 指令</h3>
 
 <p>真正高质量的 JIT 学习方式，不是顺序扫完整个文件，而是挑典型指令做样本追踪。</p>
 
@@ -2749,7 +2749,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>这和 verifier 的约束有什么关系。</li>
 </ol>
 
-<h3>9. 推荐的 JIT 精读顺序</h3>
+<h3 id="9-推荐的-jit-精读顺序">9. 推荐的 JIT 精读顺序</h3>
 
 <p>不要从头顺读到尾。按下面顺序更高效：</p>
 
@@ -2762,7 +2762,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>最后读 trampoline 与异常回调相关逻辑。</li>
 </ol>
 
-<h3>10. JIT 学习阶段的实践要求</h3>
+<h3 id="10-jit-学习阶段的实践要求">10. JIT 学习阶段的实践要求</h3>
 
 <p>这部分如果只读源码，很容易空转。你必须做对照实验。</p>
 
@@ -2789,7 +2789,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 
 <p>如果你现在就开始学，最推荐的源码阅读顺序如下：</p>
 
-<h3>第一层：官方文档层</h3>
+<h3 id="第一层官方文档层">第一层：官方文档层</h3>
 
 <ol>
 <li><code>Documentation/bpf/index.rst</code></li>
@@ -2801,7 +2801,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li><code>Documentation/bpf/libbpf/index.rst</code></li>
 </ol>
 
-<h3>第二层：用户态工程层</h3>
+<h3 id="第二层用户态工程层">第二层：用户态工程层</h3>
 
 <ol>
 <li><code>samples/bpf/README.rst</code></li>
@@ -2810,7 +2810,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li><code>tools/bpf/bpftool/gen.c</code></li>
 </ol>
 
-<h3>第三层：内核实现层</h3>
+<h3 id="第三层内核实现层">第三层：内核实现层</h3>
 
 <ol>
 <li><code>include/linux/bpf_verifier.h</code></li>
@@ -2818,7 +2818,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li><code>arch/arm64/net/bpf_jit_comp.c</code></li>
 </ol>
 
-<h3>第四层：测试与维护层</h3>
+<h3 id="第四层测试与维护层">第四层：测试与维护层</h3>
 
 <ol>
 <li><code>tools/testing/selftests/bpf/README.rst</code></li>
@@ -2856,7 +2856,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 
 <p>不要只用“看懂了”判断进度。要用可验证标准。</p>
 
-<h3>Verifier 阶段通过标准</h3>
+<h3 id="verifier-阶段通过标准" >Verifier 阶段通过标准</h3>
 
 <ol>
 <li>你能解释 R1-R5 与 R6-R9 的调用后语义。</li>
@@ -2864,7 +2864,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>你能自己制造并解释 5 种常见失败。</li>
 </ol>
 
-<h3>CO-RE 阶段通过标准</h3>
+<h3 id="co-re-阶段通过标准" >CO-RE 阶段通过标准</h3>
 
 <ol>
 <li>你能解释 BTF 与 CO-RE 的关系。</li>
@@ -2872,7 +2872,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>你能修改一个样例的过滤条件和输出结构。</li>
 </ol>
 
-<h3>Tracing 阶段通过标准</h3>
+<h3 id="tracing-阶段通过标准" >Tracing 阶段通过标准</h3>
 
 <ol>
 <li>你能独立写一个简单 tracepoint 或 tp_btf 工具。</li>
@@ -2880,7 +2880,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>你能定位 attach 失败、加载失败、事件不出的常见问题。</li>
 </ol>
 
-<h3>ARM64 JIT 阶段通过标准</h3>
+<h3 id="arm64-jit-阶段通过标准" >ARM64 JIT 阶段通过标准</h3>
 
 <ol>
 <li>你能解释 <code>bpf2a64[]</code> 映射设计。</li>
@@ -2946,7 +2946,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>一张 eBPF 对象关系图。</li>
 </ol>
 
-<h3>Day 2：把 BPF 指令模型和 C 前端分开</h3>
+<h3 id="day-2把-bpf-指令模型和-c-前端分开">Day 2：把 BPF 指令模型和 C 前端分开</h3>
 
 <p>阅读文件：</p>
 
@@ -2969,7 +2969,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>写出你对 <code>BPF_REG_0</code>、<code>BPF_REG_1-5</code>、<code>BPF_REG_6-9</code>、<code>BPF_REG_FP</code> 的直觉解释。</li>
 </ol>
 
-<h3>Day 3：Verifier 总体流程</h3>
+<h3 id="day-3verifier-总体流程">Day 3：Verifier 总体流程</h3>
 
 <p>阅读文件：</p>
 
@@ -2993,7 +2993,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>“安全证明”具体落在哪些约束上。</li>
 </ol>
 
-<h3>Day 4：Verifier 状态结构</h3>
+<h3 id="day-4verifier-状态结构">Day 4：Verifier 状态结构</h3>
 
 <p>阅读文件：</p>
 
@@ -3016,7 +3016,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li><code>umin/umax</code>、<code>smin/smax</code>、<code>tnum</code> 为什么能组合出更强的证明能力。</li>
 </ol>
 
-<h3>Day 5：Verifier 日志与失败案例</h3>
+<h3 id="day-5verifier-日志与失败案例">Day 5：Verifier 日志与失败案例</h3>
 
 <p>阅读目标：</p>
 
@@ -3032,7 +3032,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>每种原因配一条你自己的解释。</li>
 </ol>
 
-<h3>Day 6：libbpf 和 skeleton 的角色</h3>
+<h3 id="day-6libbpf-和-skeleton-的角色">Day 6：libbpf 和 skeleton 的角色</h3>
 
 <p>阅读文件：</p>
 
@@ -3054,7 +3054,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>skeleton 不是新机制，而是对 libbpf 对象模型的包装。</li>
 </ol>
 
-<h3>Day 7：BTF 与 CO-RE</h3>
+<h3 id="day-7btf-与-co-re">Day 7：BTF 与 CO-RE</h3>
 
 <p>阅读文件：</p>
 
@@ -3070,7 +3070,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>CO-RE 依赖哪些前提。</li>
 </ol>
 
-<h3>Day 8：选一个真实 tracing 工具</h3>
+<h3 id="day-8选一个真实-tracing-工具">Day 8：选一个真实 tracing 工具</h3>
 
 <p>阅读文件：</p>
 
@@ -3094,7 +3094,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>为什么这个工具是很好的第一个 tracing 项目。</li>
 </ol>
 
-<h3>Day 9：先读 BPF 侧</h3>
+<h3 id="day-9先读-bpf-侧">Day 9：先读 BPF 侧</h3>
 
 <p>重点函数：</p>
 
@@ -3136,7 +3136,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>open、load、attach 哪一步失败意味着什么。</li>
 </ol>
 
-<h3>Day 11：从 tracing 扩展到 attach type 比较</h3>
+<h3 id="day-11从-tracing-扩展到-attach-type-比较">Day 11：从 tracing 扩展到 attach type 比较</h3>
 
 <p>阅读文件：</p>
 
@@ -3152,7 +3152,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>为什么新项目通常优先考虑 BTF 友好的路径。</li>
 </ol>
 
-<h3>Day 12：进入 ARM64 JIT 的第一层</h3>
+<h3 id="day-12进入-arm64-jit-的第一层">Day 12：进入 ARM64 JIT 的第一层</h3>
 
 <p>阅读文件：</p>
 
@@ -3176,7 +3176,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>BPF 抽象寄存器为什么要先映射到一组稳定的 A64 寄存器。</li>
 </ol>
 
-<h3>Day 13：ARM64 JIT 的立即数与调用路径</h3>
+<h3 id="day-13arm64-jit-的立即数与调用路径">Day 13：ARM64 JIT 的立即数与调用路径</h3>
 
 <p>重点函数：</p>
 
@@ -3197,7 +3197,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 <li>为什么 helper call 有 direct call 和 indirect call 两条路径。</li>
 </ol>
 
-<h3>Day 14：ARM64 JIT 的 prologue、tail call、helper 特化</h3>
+<h3 id="day-14arm64-jit-的-prologuetail-callhelper-特化">Day 14：ARM64 JIT 的 prologue、tail call、helper 特化</h3>
 
 <p>重点函数或区域：</p>
 
@@ -3223,7 +3223,7 @@ SEC(&quot;tp_btf/sched_switch&quot;)</code></pre>
 
 <p>这一部分不是要求你一次都跑完，而是给你一组后续可以直接照抄、按阶段使用的命令模板。</p>
 
-<h3>1. 先确认内核/BPF 基本能力</h3>
+<h3 id="1-先确认内核bpf-基本能力">1. 先确认内核/BPF 基本能力</h3>
 
 <pre><code class="language-bash">bpftool feature probe kernel
 bpftool feature probe kernel full</code></pre>
@@ -3238,7 +3238,7 @@ bpftool feature probe kernel full</code></pre>
 <li>BTF support</li>
 </ol>
 
-<h3>2. 构建基础工具</h3>
+<h3 id="2-构建基础工具">2. 构建基础工具</h3>
 
 <pre><code class="language-bash">make headers_install
 make -C tools/bpf/bpftool
@@ -3254,14 +3254,14 @@ make M=samples/bpf</code></pre>
 <li><code>samples/bpf</code> 有助于快速对照早期风格样例。</li>
 </ol>
 
-<h3>3. ARM64 交叉编译时的常用环境变量</h3>
+<h3 id="3-arm64-交叉编译时的常用环境变量">3. ARM64 交叉编译时的常用环境变量</h3>
 
 <pre><code class="language-bash">export ARCH=arm64
 export CROSS_COMPILE=aarch64-linux-gnu-</code></pre>
 
 <p>如果你在宿主机上交叉编译 samples 或部分工具，可以先设置这两个变量。</p>
 
-<h3>4. 观察已加载程序与 map</h3>
+<h3 id="4-观察已加载程序与-map">4. 观察已加载程序与 map</h3>
 
 <pre><code class="language-bash">bpftool prog show
 bpftool map show
@@ -3275,7 +3275,7 @@ bpftool link show</code></pre>
 <li>attach 结果是不是 link 化了。</li>
 </ol>
 
-<h3>5. 查看 BPF IR 和 JIT 后机器码</h3>
+<h3 id="5-查看-bpf-ir-和-jit-后机器码">5. 查看 BPF IR 和 JIT 后机器码</h3>
 
 <pre><code class="language-bash">bpftool prog dump xlated id &lt;prog_id&gt; linum
 bpftool prog dump jited  id &lt;prog_id&gt; linum</code></pre>
@@ -3290,7 +3290,7 @@ bpftool prog dump jited  id &lt;prog_id&gt; linum</code></pre>
 <li>prologue/epilogue 的固定模式。</li>
 </ol>
 
-<h3>6. 观察 tracing 输出</h3>
+<h3 id="6-观察-tracing-输出">6. 观察 tracing 输出</h3>
 
 <pre><code class="language-bash">bpftool prog tracelog</code></pre>
 
@@ -3301,7 +3301,7 @@ bpftool prog dump jited  id &lt;prog_id&gt; linum</code></pre>
 <li>不适合高频正式数据通道。</li>
 </ol>
 
-<h3>7. 打开程序统计信息</h3>
+<h3 id="7-打开程序统计信息">7. 打开程序统计信息</h3>
 
 <pre><code class="language-bash">sysctl kernel.bpf_stats_enabled=1
 bpftool prog show</code></pre>
@@ -3313,7 +3313,7 @@ bpftool prog show</code></pre>
 <li>适合做简单的程序行为验证。</li>
 </ol>
 
-<h3>8. 观察和调整 JIT 行为</h3>
+<h3 id="8-观察和调整-jit-行为">8. 观察和调整 JIT 行为</h3>
 
 <pre><code class="language-bash">cat /proc/sys/net/core/bpf_jit_enable
 cat /proc/sys/net/core/bpf_jit_harden
@@ -3328,7 +3328,7 @@ echo 2 | sudo tee /proc/sys/net/core/bpf_jit_enable</code></pre>
 <li>这类调整要在测试环境做，不要直接套到生产机。</li>
 </ol>
 
-<h3>9. 运行 selftests</h3>
+<h3 id="9-运行-selftests">9. 运行 selftests</h3>
 
 <pre><code class="language-bash">make -C tools/testing/selftests/bpf
 sudo tools/testing/selftests/bpf/test_progs</code></pre>
@@ -3341,7 +3341,7 @@ sudo tools/testing/selftests/bpf/test_progs</code></pre>
 <li>最后再看 trampoline、struct_ops、网络等更复杂区域。</li>
 </ol>
 
-<h3>10. 用 vmtest 跑隔离环境</h3>
+<h3 id="10-用-vmtest-跑隔离环境">10. 用 vmtest 跑隔离环境</h3>
 
 <pre><code class="language-bash">tools/testing/selftests/bpf/vmtest.sh -h</code></pre>
 
@@ -3352,7 +3352,7 @@ sudo tools/testing/selftests/bpf/test_progs</code></pre>
 <li>你想更贴近维护者 CI 的运行方式。</li>
 </ol>
 
-<h3>11. 建议的最小日常闭环命令</h3>
+<h3 id="11-建议的最小日常闭环命令">11. 建议的最小日常闭环命令</h3>
 
 <p>如果你每天只有 30 到 60 分钟，建议固定执行这个顺序：</p>
 
@@ -3376,7 +3376,7 @@ bpftool prog dump jited id &lt;prog_id&gt;</code></pre>
 
 <p>为了避免学完就散，建议你每次实验都按同一模板记一页笔记。</p>
 
-<h3>笔记模板</h3>
+<h3 id="笔记模板" >笔记模板</h3>
 
 <ol>
 <li>今天看的文档/源码是什么。</li>
@@ -3387,7 +3387,7 @@ bpftool prog dump jited id &lt;prog_id&gt;</code></pre>
 <li>明天准备追哪一个函数或哪个 attach type。</li>
 </ol>
 
-<h3>一个最小示例</h3>
+<h3 id="一个最小示例" >一个最小示例</h3>
 
 <pre><code class="language-text">主题：runqslower 的 sched_wakeup -&gt; sched_switch 数据流
 源码：tools/bpf/runqslower/runqslower.bpf.c
