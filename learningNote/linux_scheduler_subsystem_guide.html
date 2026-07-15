@@ -9711,6 +9711,173 @@ try_to_wake_up(B)
 </table>
 
 
+<h3 id="215c-timer-tick-配置与调度器交互">21.5+++ 补充：Timer Tick 配置与调度器交互 —— NO_HZ_IDLE / NO_HZ_FULL 深度解析</h3>
+
+<p>前面讨论了抢占机制和调度延迟，但一个更底层的问题决定了这一切的节奏：<strong>timer tick 到底多频繁地响？</strong> tick 是调度器的心跳，但现代内核提供了精细的控制——可以有 tick、可以 idle 时关 tick、甚至可以 busy 时也不响 tick。本节讲清楚三种模式和实际选型。</p>
+
+<h4>三种 tick 模式概览</h4>
+
+<p>内核提供了三种互斥的 timer tick 策略：</p>
+
+<table>
+<thead><tr><th>模式</th><th>Kconfig</th><th>busy 时</th><th>idle 时</th><th>单任务时</th></tr></thead>
+<tbody>
+<tr><td><strong>周期 tick</strong></td><td><code>CONFIG_HZ_PERIODIC</code></td><td>✅ tick 响</td><td>✅ tick 响（白白唤醒 CPU）</td><td>✅ tick 响</td></tr>
+<tr style="background:#e8f5e9"><td><strong>空闲停 tick（默认）</strong></td><td><code>CONFIG_NO_HZ_IDLE</code></td><td>✅ tick 响</td><td>❌ tick 停了（省电）</td><td>✅ tick 响</td></tr>
+<tr style="background:#fff3e0"><td><strong>完全无 tick</strong></td><td><code>CONFIG_NO_HZ_FULL</code></td><td>✅ 多任务时响</td><td>❌ tick 停了</td><td>❌ tick 也停了</td></tr>
+</tbody>
+</table>
+
+<h4>Tick 和调度器的关系：为什么 tick 很重要</h4>
+
+<p>在标准配置（HZ=250）下，tick 每 4ms 触发一次 <code>scheduler_tick()</code>，负责：</p>
+
+<table>
+<thead><tr><th>职责</th><th>如果不做会怎样</th></tr></thead>
+<tbody>
+<tr><td><strong>更新时间片</strong>：当前任务的 vruntime/deadline 持续增长</td><td>没有人能抢占它，一个任务霸占 CPU 不放</td></tr>
+<tr><td><strong>触发负载均衡</strong>：<code>rebalance_domains()</code> 把任务搬到空闲 CPU</td><td>有的 CPU 忙死、有的闲着，负载不均</td></tr>
+<tr><td><strong>检查抢占</strong>：vruntime 超了贴 <code>TIF_NEED_RESCHED_LAZY</code></td><td>低优先级任务可能长期得不到 CPU</td></tr>
+<tr><td><strong>更新统计</strong>：PELT 负载衰减、CPU 利用率、cgroup 记账</td><td>调度器的负载视图过时，做出错误决策</td></tr>
+</tbody>
+</table>
+
+<p>所以 <strong>tick 本质上是调度器的时钟源</strong>。没有 tick 就没有时间分片的概念，系统退化为纯协作式调度——只有主动让出 CPU 或者外部中断到达时才会重新调度。</p>
+
+<h4>模式一：NO_HZ_IDLE —— 空闲停 tick（默认，95% 场景的答案）</h4>
+
+<p><strong>几乎所有 Linux 发行版和嵌入式 Linux 的默认配置</strong>。核心逻辑极其简单：CPU 空闲时没有任务要调度，tick 响了也是白响、白白唤醒 CPU 又让它睡回去，不如直接关了省电。</p>
+
+<pre><code>
+HZ_PERIODIC 的浪费：
+  CPU idle → wfi 休眠
+  → 4ms 后 tick 唤醒 → scheduler_tick() 一看："没任务，你继续睡"
+  → CPU 再进 wfi → 4ms 后又醒 → 循环...
+
+NO_HZ_IDLE 的做法：
+  CPU idle → wfi 休眠
+  → tick 被编程为"下次有事的时候再响"（oneshot timer）
+  → CPU 一口气睡几百 ms，深度 C-state
+  → 直到中断或定时事件到达才醒来
+</code></pre>
+
+<p><strong>对调度的影响</strong>：几乎没有。有任务在跑时，tick 正常运作，<code>scheduler_tick()</code> 每个周期都执行，时间片统计和负载更新照常。唯一的受益者是 idle CPU。</p>
+
+<p><strong>进出 idle 的代价</strong>：从 idle 出来时（<code>irq_enter</code>→ 中断处理 → <code>__schedule</code> 挑任务），需要重新编程 timer 回到周期模式。这个开销远小于省掉的几百次空 tick 唤醒。所以几乎所有场景都用它，包括嵌入式。</p>
+
+<h4>模式二：NO_HZ_FULL —— 单任务也停 tick（极低抖动场景）</h4>
+
+<p>这个激进得多。即使 CPU 上有<strong>一个任务正在跑</strong>，tick 也不发了。<strong>目标是把 CPU 100% 交给这个用户态任务，零中断打扰</strong>。</p>
+
+<pre><code>
+NO_HZ_IDLE（多任务 busy）:
+  CPU 跑 A → tick → tick → tick → ...
+  每 4ms 打断 A 一次
+
+NO_HZ_FULL（单任务 busy）:
+  CPU 跑 A → ─────── (没有 tick！) ───────
+  A 连续跑很多 ms，不经受任何 timer 中断
+</code></pre>
+
+<h5>四个关键机制</h5>
+
+<p><strong>1. 单任务时为什么不需要 tick？</strong>——就一个任务，没人跟你抢，<code>nr_running == 1</code>。要 tick 干什么？没有时间分片的需求。EEVDF 的虚拟 deadline 不需要 tick 来实时更新——只要在任务离开 CPU（系统调用返回、中断返回）时补算就行。</p>
+
+<p><strong>2. nr_running > 1 时自动退回到周期 tick。</strong>见 <code>fair.c:6696-6717</code> 的 <code>sched_fair_update_stop_tick()</code>：一旦 enqueue 另一个任务，立即通过 <code>TICK_DEP_BIT_SCHED</code> 机制重新开启 tick，恢复时间分片。</p>
+
+<p><strong>3. 必须保留至少一个"管家 CPU"（housekeeping CPU）。</strong>时间记账、RCU 回调推进、全局统计信息收集等周期性工作需要周期 tick 支撑，不能整个系统都没有 tick。管家 CPU 保持周期 tick，其他 CPU 可以无 tick。通过 boot 参数指定：</p>
+
+<pre><code class="language-bash">nohz_full=1-3         # CPU1-3 做无 tick CPU（CPU0 自动成为管家）
+rcu_nocbs=1-3         # RCU 回调也不在 CPU1-3 上执行</code></pre>
+
+<p><strong>4. NO_HZ_FULL 下 idle CPU 的负载均衡靠 ILB 代理机制。</strong>idle CPU 上没有 tick，不会自己触发 <code>rebalance_domains()</code>。所以有了 <strong>Idle Load Balancer (ILB)</strong>：busy CPU 发现需要均衡，从 <code>nohz.idle_cpus_mask</code> 中找一个 idle CPU，通过 IPI 委托它替所有 idle CPU 执行负载均衡（见 <code>kick_ilb()</code>，<code>fair.c:12313</code>）。</p>
+
+<h4>三种模式的配置与选择</h4>
+
+<h5>内核编译选项</h5>
+
+<pre><code>
+# 极简嵌入式 / 硬实时调试
+CONFIG_HZ_PERIODIC=y
+CONFIG_HZ=1000
+
+# 通用场景（默认，不显式指定就是它）
+CONFIG_NO_HZ_IDLE=y
+CONFIG_HZ=250                    # 服务器常用 250，桌面常用 250~1000
+
+# 低延迟专用
+CONFIG_NO_HZ_FULL=y
+CONFIG_HZ=1000
+</code></pre>
+
+<h5>运行时参数（仅 NO_HZ_FULL 需要）</h5>
+
+<pre><code class="language-bash"># /etc/default/grub 中添加:
+nohz_full=1-3 isolcpus=1-3 rcu_nocbs=1-3
+
+# nohz_full=1-3    → CPU1/2/3 无 tick
+# isolcpus=1-3     → 普通任务不会被调度到 CPU1/2/3（否则 nr_running>1 导致 tick 恢复）
+# rcu_nocbs=1-3    → RCU 回调也在管家 CPU 上处理
+
+# 使用: 把关键任务 pin 到无 tick CPU
+taskset -c 1 ./my_low_latency_app
+</code></pre>
+
+<h5>场景选型速查</h5>
+
+<table>
+<thead><tr><th>场景</th><th>推荐</th><th>原因</th></tr></thead>
+<tbody>
+<tr><td>通用 Linux 服务器</td><td>NO_HZ_IDLE ✅</td><td>默认，idle 省电，busy 行为不变</td></tr>
+<tr><td>虚拟化宿主机（KVM）</td><td>NO_HZ_IDLE ✅</td><td>空闲 pCPU 关 tick，减少 VM Exit</td></tr>
+<tr><td>桌面 / 笔记本</td><td>NO_HZ_IDLE ✅</td><td>省电延长续航</td></tr>
+<tr><td>嵌入式 A53/A57（Yocto/Buildroot）</td><td>NO_HZ_IDLE ✅</td><td>无额外开销，待机省电</td></tr>
+<tr><td>极简嵌入式单核 RTOS-like</td><td>HZ_PERIODIC</td><td>行为简单可预测，避免 dynticks 复杂性</td></tr>
+<tr><td>PREEMPT_RT 硬实时</td><td>HZ_PERIODIC 或 NO_HZ_IDLE</td><td>看是否接受进出 idle 的 timer 重新编程延迟</td></tr>
+<tr><td>HFT / 极低延迟金融</td><td>NO_HZ_FULL 🔴</td><td>微秒级 tick 抖动 = 巨额损失</td></tr>
+<tr><td>DPDK / XDP 用户态网络</td><td>NO_HZ_FULL 🔴</td><td>tick 中断破坏 cache，增大尾延迟</td></tr>
+<tr><td>实时音视频编解码</td><td>NO_HZ_FULL 🟡</td><td>避免编码帧吞吐抖动</td></tr>
+<tr><td>科学计算 / HPC 绑核</td><td>NO_HZ_FULL 🟡</td><td>长时间计算任务省掉 tick 开销</td></tr>
+<tr><td>高频数据库 / KV store 绑核</td><td>NO_HZ_FULL 🟡</td><td>存储引擎 pin 核，不想被 tick 抢时间</td></tr>
+</tbody>
+</table>
+
+<h5>NO_HZ_FULL 的两个坑</h5>
+
+<ol>
+<li><strong>nr_running > 1 时 tick 自动回来</strong>——如果无 tick CPU 上调上了第二个任务（哪怕只是短暂的内核线程），tick 立即恢复。必须配合 <code>isolcpus</code> 或 <code>cpuset</code> 确保每个无 tick CPU 上只有一个用户任务。</li>
+<li><strong>必须留一个管家 CPU</strong>——<code>nohz_full</code> 不能覆盖所有 CPU。时间记账、全局统计、RCU grace period 推进依赖周期 tick。</li>
+</ol>
+
+<h4>决策树</h4>
+
+<pre><code>
+你的场景是什么？
+
+  ┌── 极简嵌入式 / 硬实时 / 单核？ ──→ HZ_PERIODIC
+  │
+  ├── 通用服务器 / 桌面 / 大多数嵌入式？ ──→ NO_HZ_IDLE ✅（默认，什么都不用改）
+  │
+  └── 低延迟交易 / DPDK / 实时音视频？
+       │
+       └── 单 CPU 只绑一个任务、追求零抖动？ ──→ NO_HZ_FULL + isolcpus
+</code></pre>
+
+<h4>核心总结</h4>
+
+<table>
+<thead><tr><th>#</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>NO_HZ_IDLE 是默认选项</strong>，你在 A53/A57 嵌入式 Linux 上跑的就是它</td></tr>
+<tr><td>2</td><td>tick 是<strong>调度器的时钟源</strong>，没有 tick 就没有时间分片、负载均衡和抢占</td></tr>
+<tr><td>3</td><td>NO_HZ_IDLE <strong>只在 idle 时停 tick</strong>——有任务时 tick 照常，调度行为完全不变</td></tr>
+<tr><td>4</td><td>NO_HZ_FULL <strong>单任务 busy 也停 tick</strong>——把 CPU 100% 交给用户态，零中断抖动</td></tr>
+<tr><td>5</td><td>NO_HZ_FULL 必须配合 <code>isolcpus</code> 保证每个无 tick CPU 只有一个任务，且<strong>必须留一个管家 CPU</strong></td></tr>
+<tr><td>6</td><td>不做特殊需求<strong>什么都不用改</strong>——NO_HZ_IDLE 已经是最优默认</td></tr>
+</tbody>
+</table>
+
+
 <h3 id="216-调度器数据结构与实现细节问题">21.6 调度器数据结构与实现细节问题</h3>
 
 <p><strong>Q15: 为什么调度器使用红黑树而不是堆/跳表？</strong></p>
@@ -9839,6 +10006,196 @@ chrt -f 50 -p $(pgrep latency_sensitive_app)
 cyclictest -a 6 -t1 -p 90 -n -i 100 -l 100000
 # 预期 Max latency &lt; 50μs</code></pre>
 
+
+
+<h2 id="22-调度器知识实战应用">22. 调度器知识实战应用 —— 从源码到解决实际问题</h2>
+
+<p>学完整个调度子系统后，你拿到的不仅是一堆源码知识，而是一套<strong>对"CPU 时间如何分配"的完整思维模型</strong>。以下按领域梳理这套知识具体能落地到什么场景。</p>
+
+<h3 id="221-性能问题定位">22.1 性能问题定位 —— 快速从现象到根因</h3>
+
+<table>
+<thead><tr><th>现象</th><th>排查手段</th><th>核心依据</th></tr></thead>
+<tbody>
+<tr><td>某个服务延迟抖动严重</td><td><code>perf sched latency -s max</code>，定位 max/avg 比异常的 CPU 和任务</td><td>调度延迟的三个来源 + 阈值判断（21.5+）</td></tr>
+<tr><td>多核系统中有 CPU 很忙、有的很闲</td><td>看 <code>/proc/schedstat</code> 的 <code>lb_failed</code>，判断负载均衡是否失效</td><td><code>load_balance</code> → <code>should_we_balance</code> → <code>detach_tasks</code> 整条链</td></tr>
+<tr><td>RT 任务偶尔错过 deadline</td><td>检查是否有 CPU 长时间关中断（kworker max delay 异常）、是否被 RT throttle</td><td>抢占机制 + <code>raw_irqentry_exit_cond_resched</code> 的 <code>preempt_count</code> 检查</td></tr>
+<tr><td>系统空闲时功耗高</td><td>确认 <code>NO_HZ_IDLE</code> 是否生效，看 idle CPU 的 tick 是否真的停了</td><td>NO_HZ 配置 + <code>tick_nohz_idle_enter</code> 机制（21.5+++）</td></tr>
+<tr><td><code>top</code> 显示 CPU 使用率低，但任务就是卡</td><td>检查 cgroup <code>cpu.stat</code> 中的 <code>nr_throttled</code> 和 <code>throttled_time</code></td><td>CFS bandwidth control + <code>tg->cfs_bandwidth</code></td></tr>
+<tr><td>NUMA 机器上任务跨 node 后性能暴跌</td><td><code>perf stat -e node-loads,node-load-misses</code> 看远端访存比例</td><td><code>SD_NUMA</code> 标志 + <code>adjust_numa_imbalance</code></td></tr>
+</tbody>
+</table>
+
+<h3 id="222-系统调优">22.2 系统调优 —— 有据可依，不靠猜</h3>
+
+<p><strong>场景：应用 A 需要低延迟，但同机上有批处理任务。</strong></p>
+
+<p>你知道的手段（从应用层到内核层）：</p>
+
+<pre><code class="language-bash"># 第一层：cpuset 物理隔离 —— 批处理只能用 CPU 2-3
+mkdir /sys/fs/cgroup/cpuset/critical
+echo 0-1 > /sys/fs/cgroup/cpuset/critical/cpuset.cpus
+echo 0   > /sys/fs/cgroup/cpuset/critical/cpuset.mems
+echo $PID_CRITICAL > /sys/fs/cgroup/cpuset/critical/tasks
+
+mkdir /sys/fs/cgroup/cpuset/batch
+echo 2-3 > /sys/fs/cgroup/cpuset/batch/cpuset.cpus
+echo $PID_BATCH > /sys/fs/cgroup/cpuset/batch/tasks
+
+# 第二层：让关键 CPU 彻底无 tick（零中断抖动）
+# boot 参数: nohz_full=0,1 isolcpus=0,1 rcu_nocbs=0,1
+taskset -c 0,1 ./critical_app
+
+# 第三层：调整负载均衡参数
+# 减少跨 CPU 迁移的敏感度（避免 cache 踩脏）
+echo 1000000 > /proc/sys/kernel/sched_migration_cost_ns   # 1ms 内唤醒不算"冷"
+echo 16    > /proc/sys/kernel/sched_nr_migrate             # 一次均衡最多迁移 16 个任务</code></pre>
+
+<p><strong>常见可调参数及其背后含义：</strong></p>
+
+<table>
+<thead><tr><th>参数</th><th>位置</th><th>作用</th><th>何时调</th></tr></thead>
+<tbody>
+<tr><td><code>sched_rt_runtime_us</code></td><td><code>/proc/sys/kernel/</code></td><td>RT 任务在每个周期内最多占用的 CPU 时间（默认 0.95s/s）</td><td>RT 任务被 throttle 时调大；防止 RT bug 饿死系统时调小（设为 -1 禁用限制）</td></tr>
+<tr><td><code>sched_migration_cost_ns</code></td><td><code>/proc/sys/kernel/</code></td><td>任务唤醒后多久之内不算 cache-cold（影响 <code>task_hot()</code>）</td><td>cache 很大的 CPU 上调大，减少不必要的迁移</td></tr>
+<tr><td><code>sched_nr_migrate</code></td><td><code>/proc/sys/kernel/</code></td><td>负载均衡一次最多迁移几个任务（<code>detach_tasks</code> 的 <code>loop_max</code>）</td><td>突发大量短任务时调大，加快均衡收敛</td></tr>
+<tr><td><code>sched_util_clamp_min/max</code></td><td>per-task cgroup 属性</td><td>钳制任务的 CPU 利用率（影响 EAS 的选核）</td><td>让后台任务看起来"负载更低"，调度器优先把它们塞到小核</td></tr>
+</tbody>
+</table>
+
+<h3 id="223-应用设计">22.3 应用设计 —— 从调度器的视角写代码</h3>
+
+<p><strong>Q: 为什么我的多线程程序加线程反而更慢？</strong></p>
+
+<p>理解了调度域和负载均衡之后就能解释：16 个计算线程在 4 核上，负载均衡频繁触发，每个线程被搬来搬去，L1/L2 缓存全部被踩脏。内核为了"公平"在不断做大量无谓的迁移开销。正确做法：<strong>计算密集线程数 ≈ CPU 数</strong>，用线程池而非无限创建。</p>
+
+<p><strong>Q: 什么场景用 <code>SCHED_FIFO</code>、什么场景用 <code>SCHED_DEADLINE</code>？</strong></p>
+
+<table>
+<thead><tr><th>调度策略</th><th>适合场景</th><th>不适合场景</th></tr></thead>
+<tbody>
+<tr><td><code>SCHED_OTHER</code>（EEVDF）</td><td>99% 的应用。公平共享 CPU</td><td>有硬实时 deadline 要求的任务</td></tr>
+<tr><td><code>SCHED_FIFO</code></td><td>"我醒了就必须立刻跑"——音频处理、中断下半部的用户态代理</td><td>会跑很久的计算任务（一个死循环就能让系统瘫痪）</td></tr>
+<tr><td><code>SCHED_RR</code></td><td>同优先级的多个 RT 任务需要时间片轮转</td><td>需要严格 deadline 约束的场景</td></tr>
+<tr><td><code>SCHED_DEADLINE</code></td><td>周期性任务有明确的 runtime/deadline/period 约束——传感器采样、视频帧处理</td><td>突发性的非周期任务（admission control 可能拒绝）</td></tr>
+</tbody>
+</table>
+
+<p><strong>一个实际的设计决策：</strong></p>
+
+<pre><code>
+假设你写一个音视频处理 pipeline：
+- 音频采集线程: 每 5ms 有 256 个 sample 需要处理 → SCHED_FIFO, prio 80
+- 视频编码线程: 每 33ms 编码一帧 → SCHED_DEADLINE (runtime=5ms, deadline=33ms, period=33ms)
+  理由：内核帮你做 admission control，保证不超载
+- 日志/统计线程: 不重要 → SCHED_OTHER, nice=19
+
+同时：
+- 把音频线程 pin 到独占的 CPU（isolcpus + taskset）
+- 视频编码线程绑到另外两个 CPU
+- 日志线程不绑核，调度器自己安排
+</code></pre>
+
+<h3 id="224-容器与云基础设施">22.4 容器与云基础设施 —— QoS 与混部</h3>
+
+<p><strong>1. 验证 CPU limit 是否生效：</strong></p>
+
+<pre><code class="language-bash"># cgroup v2
+cat /sys/fs/cgroup/&lt;container&gt;/cpu.stat
+# nr_throttled:   CFS bandwidth control 强制 throttle 的次数
+# throttled_time: 累计被 throttle 的时间（μs）
+
+# 如果 throttled_time 很大 → cpu.max 设太紧了
+# 任务在等 quota 恢复——本质上就是"人造调度延迟"</code></pre>
+
+<p><strong>2. "noisy neighbor" 问题的调度器视角：</strong></p>
+
+<p>同一个 CPU 上混跑了高优先级的在线服务和低优先级的批处理：</p>
+
+<ul>
+<li>CFS bandwidth control（<code>cpu.max</code>）只限制上限，不影响抢占——高权重的任务该抢还是能抢</li>
+<li>但如果低优服务的线程数太多，<code>load_balance</code> 仍可能把高优任务搬到繁忙的 CPU——<strong>用 cpuset 做物理隔离是最可靠的手段</strong></li>
+<li><code>cpu.weight</code> 控制的是"被公平对待的相对份额"，不是绝对性能保证。要保证绝对延迟，需要<code>SCHED_DEADLINE</code> 或物理隔离</li>
+</ul>
+
+<p><strong>3. 快速诊断容器内的调度问题：</strong></p>
+
+<pre><code class="language-bash"># 容器内看自己是否被 throttled
+cat /sys/fs/cgroup/cpu.stat | grep throttled
+
+# 在宿主机上看这个容器的整体调度延迟
+perf sched record -C &lt;容器的CPU集合&gt; -- sleep 10
+perf sched latency -s max | grep &lt;容器进程名&gt;
+
+# 检查容器是否有任务跨 NUMA node 迁移
+perf stat -e sched:sched_migrate_task -p &lt;容器PID&gt; -- sleep 5</code></pre>
+
+<h3 id="225-嵌入式与实时系统">22.5 嵌入式与实时系统 —— 音频/视频/控制回路</h3>
+
+<p><strong>典型问题：A53 四核跑 Linux + RT 音频处理，偶尔爆音。</strong></p>
+
+<p>完整排查路径（每一步都基于前面学到的知识）：</p>
+
+<pre><code>
+Step 1: 确认延迟有多严重
+  $ perf sched latency -s max | head -20
+  → 看到音频线程 max delay = 12ms（而 avg 才 0.05ms）← 这就是爆音的根
+
+Step 2: 找出谁在耽误音频线程
+  $ sudo bpftrace -e '
+      kprobe:resched_curr {
+        printf("resched: %s (pid=%d) wants to preempt cpu=%d\n",
+               comm, pid, arg0);
+      }'
+  → 发现是一个 CFS 任务"kworker/u8:0"持续抢占音频 CPU
+
+Step 3: 定位 kworker 的问题
+  $ cat /proc/&lt;kworker_pid&gt;/stack
+  → [&lt;0&gt;] spi_sync+0x...   ← 某个 SPI 驱动在 spin_lock_irqsave 里做了大段 memcpy！
+
+Step 4: 修复
+  方案 A（治本）: 改驱动，把 memcpy 挪出 spin_lock_irqsave
+  方案 B（治标）: taskset -c 3 ./audio_app  # 把音频绑到 CPU3
+                echo 0 > /proc/irq/&lt;SPI_IRQ&gt;/smp_affinity_list  # 中断只去 CPU0
+
+Step 5: 验证
+  $ cyclictest -a 3 -t1 -p 90 -n -i 100 -l 100000
+  → Max latency &lt; 50μs ✅
+</code></pre>
+
+<h3 id="226-经典故障案例速查">22.6 经典故障案例速查</h3>
+
+<table>
+<thead><tr><th>现象</th><th>根因</th><th>关键知识点</th><th>修复方向</th></tr></thead>
+<tbody>
+<tr><td>两个相同优先级 RT 任务，一个能跑一个不能</td><td><code>SCHED_RR</code> 有时间片轮转，<code>SCHED_FIFO</code> 没有；FIFO 任务死循环会霸占 CPU</td><td>RT 调度类的 push/pull 机制 + 时间片语义差异</td><td>改用 <code>SCHED_RR</code> 或加 <code>sched_yield()</code>；或用 DL 类设 runtime 上限</td></tr>
+<tr><td>CPU 隔离后仍然被 tick 中断</td><td><code>isolcpus</code> 不等于 <code>nohz_full</code>——只隔离调度，不关 tick</td><td><code>NO_HZ_FULL</code> 必须显式配置，<code>isolcpus</code> 仅防止调度</td><td>boot 参数加 <code>nohz_full=X-Y</code></td></tr>
+<tr><td>idle CPU 唤醒后负载均衡失败率高</td><td>NO_HZ idle 让 idle CPU 错过均衡窗口，ILB 代理机制补救不及时</td><td><code>kick_ilb()</code> → <code>nohz_csd_func()</code>（21.5+++）</td><td>调小 <code>nohz.next_balance</code> 或减小均衡间隔</td></tr>
+<tr><td>系统 load average 很高但 CPU 使用率不高</td><td>load 包含 D 状态（不可中断睡眠），大量任务卡在 IO/锁等待</td><td>loadavg 的计算逻辑：<code>nr_running + nr_uninterruptible</code></td><td><code>ps aux | awk '$8=="D"'</code> + <code>/proc/&lt;pid&gt;/stack</code> 找阻塞源</td></tr>
+<tr><td>虚拟机 vCPU 延迟抖动</td><td>vCPU 线程被宿主机负载均衡搬到另一个 pCPU，cache 全冷</td><td><code>can_migrate_task</code> → <code>task_hot()</code> 判断 cache 热度</td><td>vCPU 线程 pin 到固定 pCPU；宿主机调大 <code>sched_migration_cost_ns</code></td></tr>
+<tr><td>软中断（ksoftirqd）占用 100% CPU</td><td>网卡中断只绑了一个 CPU，软中断全压在这个 CPU 上</td><td>irq affinity + RPS/RFS 分发机制</td><td>配置 irqbalance 或手动绑中断到多 CPU</td></tr>
+</tbody>
+</table>
+
+<h3 id="227-核心思维转变">22.7 核心思维转变</h3>
+
+<p>学完整个调度子系统后，最核心的一个转变是：</p>
+
+<blockquote>
+<p><strong>以前你看 <code>top</code> 看到的是"CPU 用了多少"，学完之后你看到的是"谁在用、怎么抢到的、被谁抢走的、抢的过程花了多久"——从静态快照变成了动态因果链。</strong></p>
+</blockquote>
+
+<table>
+<thead><tr><th>能力维度</th><th>具体体现</th></tr></thead>
+<tbody>
+<tr><td><strong>性能问题</strong></td><td>看得懂 <code>perf sched</code> / <code>/proc/schedstat</code> / <code>/proc/sched_debug</code> 输出</td></tr>
+<tr><td><strong>系统调优</strong></td><td>知道改什么参数会有什么后果，不是在黑盒试参数</td></tr>
+<tr><td><strong>应用设计</strong></td><td>从调度器的角度考虑线程模型、优先级策略、绑核方案</td></tr>
+<tr><td><strong>容器隔离</strong></td><td>理解 <code>cpu.weight</code> / <code>cpu.max</code> 的内核语义，知道它们管什么、不管什么</td></tr>
+<tr><td><strong>实时系统</strong></td><td>知道延迟从哪里来、怎么逐层砍掉——从驱动到抢占到 tick</td></tr>
+<tr><td><strong>故障排查</strong></td><td>诡异现象能从现象追溯到源码机制，形成完整因果链</td></tr>
+</tbody>
+</table>
 
 <script>
 (function() {
