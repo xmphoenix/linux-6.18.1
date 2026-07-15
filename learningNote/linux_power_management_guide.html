@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Linux 内核功耗管理子系统深度学习指南</title>
+<style>
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Segoe UI', 'Noto Sans SC', sans-serif; line-height: 1.8; color: #333; background: #fdfdfd; margin: 0; padding: 0; display: flex; }
+.sidebar { position: sticky; top: 0; width: 280px; min-width: 280px; height: 100vh; overflow-y: auto; background: #f4f6f9; border-right: 1px solid #ddd; padding: 15px 12px; font-size: 13px; }
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+.sidebar a { text-decoration: none; color: #2980b9; display: block; padding: 2px 0; }
+.sidebar a:hover { text-decoration: underline; }
+.sidebar .toc { padding: 0; margin: 0; border: none; background: none; }
+.sidebar .toc ul { list-style: none; padding-left: 0; margin: 0; }
+.sidebar .toc li { padding: 1.5px 0; }
+.sidebar .toc .l2 { padding-left: 16px; font-size: 12.5px; }
+.sidebar .toc .l3 { padding-left: 32px; font-size: 12px; }
+.sidebar .toc strong { display: block; font-size: 14px; color: #1a5276; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #2980b9; }
+.content { flex: 1; min-width: 0; max-width: 1100px; padding: 20px 30px; }
+h1 { text-align: center; color: #1a5276; border-bottom: 3px solid #2980b9; padding-bottom: 15px; margin-bottom: 30px; }
+h2 { color: #1a5276; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 40px; }
+h3 { color: #2471a3; margin-top: 30px; }
+h4 { color: #2e86c1; margin-top: 20px; }
+h5 { color: #444; }
+pre { background: #f4f4f4; border-left: 4px solid #2980b9; padding: 15px; overflow-x: auto; font-size: 13px; line-height: 1.5; border-radius: 4px; }
+code { background: #eef2f7; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+th { background: #2980b9; color: white; padding: 10px; text-align: left; }
+td { border: 1px solid #ddd; padding: 8px 10px; }
+tr:nth-child(even) { background: #f8f9fa; }
+blockquote { border-left: 4px solid #2980b9; margin: 15px 0; padding: 10px 20px; background: #eaf2f8; border-radius: 4px; }
+.toc { background: #f8f9fa; border: 1px solid #ddd; padding: 20px 30px; margin: 20px 0; border-radius: 6px; }
+.toc a { text-decoration: none; color: #2980b9; }
+.toc ul { list-style: none; padding-left: 0; }
+.toc li { padding: 3px 0; }
+.toc .l2 { padding-left: 25px; font-size: 14px; }
+.toc .l3 { padding-left: 50px; font-size: 13px; }
+.note { background: #e8f5e9; border-left: 4px solid #27ae60; padding: 10px 15px; margin: 10px 0; border-radius: 4px; }
+.warn { background: #fff3e0; border-left: 4px solid #e67e22; padding: 10px 15px; margin: 10px 0; border-radius: 4px; }
+.diagram { background: #fafafa; border: 1px solid #ddd; padding: 15px; margin: 15px 0; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre; overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+<div class="toc">
+<strong>目录</strong>
+<ul>
+<li><a href="#ch1">1. 功耗管理子系统全景架构</a></li>
+<li class="l2"><a href="#ch1-1">1.1 为什么需要功耗管理</a></li>
+<li class="l2"><a href="#ch1-2">1.2 五大子系统及相互关系</a></li>
+<li class="l2"><a href="#ch1-3">1.3 ARM64 上的典型功耗管理堆栈</a></li>
+<li><a href="#ch2">2. CPUidle —— CPU 空闲状态管理</a></li>
+<li class="l2"><a href="#ch2-1">2.1 核心数据结构</a></li>
+<li class="l2"><a href="#ch2-2">2.2 从空闲线程到 C-State 的完整调用链</a></li>
+<li class="l2"><a href="#ch2-3">2.3 CPUidle Governor 机制</a></li>
+<li class="l2"><a href="#ch2-4">2.4 四个主要 Governor 对比</a></li>
+<li class="l2"><a href="#ch2-5">2.5 ARM64 PSCI CPUidle 驱动</a></li>
+<li class="l2"><a href="#ch2-6">2.6 CPUidle 统计与预测质量</a></li>
+<li class="l2"><a href="#ch2-7">2.7 CPUidle 核心总结</a></li>
+<li class="l2"><a href="#ch2-8">2.8 C-State 决策深度解析</a></li>
+<li class="l3"><a href="#ch2-8-1">2.8.1 决策框架总览</a></li>
+<li class="l3"><a href="#ch2-8-2">2.8.2 menu governor 决策算法逐行分析</a></li>
+<li class="l3"><a href="#ch2-8-3">2.8.3 teo governor</a></li>
+<li class="l3"><a href="#ch2-8-4">2.8.4 ladder governor</a></li>
+<li class="l3"><a href="#ch2-8-5">2.8.5 haltpoll governor</a></li>
+<li class="l3"><a href="#ch2-8-6">2.8.6 四大 Governor 对比</a></li>
+<li class="l3"><a href="#ch2-8-7">2.8.7 stop_tick 决策</a></li>
+<li class="l3"><a href="#ch2-8-8">2.8.8 ARM64 决策示例</a></li>
+<li class="l3"><a href="#ch2-8-9">2.8.9 核心总结</a></li>
+<li><a href="#ch3">3. CPUFreq —— CPU 频率调节</a></li>
+<li class="l2"><a href="#ch3-1">3.1 核心概念：Policy、Driver、Governor</a></li>
+<li class="l2"><a href="#ch3-2">3.2 数据结构与关系</a></li>
+<li class="l2"><a href="#ch3-3">3.3 CPUFreq Governor 框架</a></li>
+<li class="l2"><a href="#ch3-4">3.4 三大传统 Governor 对比</a></li>
+<li class="l2"><a href="#ch3-5">3.5 CPUFreq 核心总结</a></li>
+<li><a href="#ch4">4. Schedutil</a></li>
+<li class="l2"><a href="#ch4-1">4.1 为什么需要 schedutil</a></li>
+<li class="l2"><a href="#ch4-2">4.2 核心数据结构</a></li>
+<li class="l2"><a href="#ch4-3">4.3 update_util hook</a></li>
+<li class="l2"><a href="#ch4-4">4.4 频率公式推导</a></li>
+<li class="l2"><a href="#ch4-5">4.5 IO Wait 提升</a></li>
+<li class="l2"><a href="#ch4-6">4.6 Fast vs Slow Path</a></li>
+<li class="l2"><a href="#ch4-7">4.7 频率保持策略</a></li>
+<li class="l2"><a href="#ch4-8">4.8 Schedutil 核心总结</a></li>
+<li><a href="#ch5">5. Energy Model</a></li>
+<li class="l2"><a href="#ch5-1">5.1 为什么需要 EM</a></li>
+<li class="l2"><a href="#ch5-2">5.2 核心数据结构</a></li>
+<li class="l2"><a href="#ch5-3">5.3 EM 的构建</a></li>
+<li class="l2"><a href="#ch5-4">5.4 Cost 计算</a></li>
+<li class="l2"><a href="#ch5-5">5.5 EM 与 EAS</a></li>
+<li class="l2"><a href="#ch5-6">5.6 DebugFS 接口</a></li>
+<li class="l2"><a href="#ch5-7">5.7 EM 核心总结</a></li>
+<li><a href="#ch6">6. Device Runtime PM</a></li>
+<li class="l2"><a href="#ch6-1">6.1 Usage Counter</a></li>
+<li class="l2"><a href="#ch6-2">6.2 核心 API</a></li>
+<li class="l2"><a href="#ch6-3">6.3 Autosuspend</a></li>
+<li class="l2"><a href="#ch6-4">6.4 回调层次</a></li>
+<li class="l2"><a href="#ch6-5">6.5 Runtime PM 核心总结</a></li>
+<li><a href="#ch7">7. 系统休眠管理</a></li>
+<li class="l2"><a href="#ch7-1">7.1 三种休眠状态</a></li>
+<li class="l2"><a href="#ch7-2">7.2 Suspend-to-Idle</a></li>
+<li class="l2"><a href="#ch7-3">7.3 Suspend-to-RAM</a></li>
+<li class="l2"><a href="#ch7-4">7.4 Hibernate</a></li>
+<li class="l2"><a href="#ch7-5">7.5 系统休眠核心总结</a></li>
+<li><a href="#ch8">8. PM QoS</a></li>
+<li class="l2"><a href="#ch8-1">8.1 设计目标</a></li>
+<li class="l2"><a href="#ch8-2">8.2 CPU Latency QoS</a></li>
+<li class="l2"><a href="#ch8-3">8.3 Device PM QoS</a></li>
+<li class="l2"><a href="#ch8-4">8.4 PM QoS 核心总结</a></li>
+<li><a href="#ch9">9. 热管理</a></li>
+<li class="l2"><a href="#ch9-1">9.1 Thermal Framework</a></li>
+<li class="l2"><a href="#ch9-2">9.2 CPU Cooling</a></li>
+<li class="l2"><a href="#ch9-3">9.3 功率限制</a></li>
+<li><a href="#ch10">10. 调试与 Profiling</a></li>
+<li class="l2"><a href="#ch10-1">10.1 CPUidle 调试</a></li>
+<li class="l2"><a href="#ch10-2">10.2 CPUFreq 调试</a></li>
+<li class="l2"><a href="#ch10-3">10.3 Tracepoint</a></li>
+<li class="l2"><a href="#ch10-4">10.4 功耗测量</a></li>
+<li><a href="#ch11">11. 实战速查</a></li>
+<li class="l2"><a href="#ch11-1">11.1 常见问题分类</a></li>
+<li class="l2"><a href="#ch11-2">11.2 诊断工具速查</a></li>
+<li class="l2"><a href="#ch11-3">11.3 A53/A57 调优</a></li>
+<li class="l2"><a href="#ch11-4">11.4 服务器调优</a></li>
+<li class="l2"><a href="#ch11-5">11.5 核心思维转变</a></li>
+</ul>
+</div>
+</nav>
+
+<div class="content">
+
+<h1>Linux 内核功耗管理子系统 —— 深度源码学习指南</h1>
+
+<p style="text-align:center; color:#777;">基于 Linux 6.18.1 · 涵盖 CPUidle / CPUFreq / Schedutil / Energy Model / Runtime PM / 系统休眠 / PM QoS</p>
+
+<hr>
+
+<!-- ================================================================================================ -->
+<h2 id="ch1">1. 功耗管理子系统全景架构</h2>
+
+<h3 id="ch1-1">1.1 为什么需要功耗管理</h3>
+
+<p>现代 SoC 的功耗管理不是简单的"不用就关"，而是一个多层级的动态平衡问题。以 ARM64 移动设备为例：</p>
+
+<pre><code>
+一颗 A57 大核跑满 2.0GHz：           ~2.0W
+同一颗核 idle 在 WFI（C1）：          ~0.1W
+同一颗核 power collapse（C3/PSCI）：  ~0.001W
+
+差距是 2000 倍。但这只是静态功耗——实际情况中，CPU 在 busy/idle
+之间以毫秒级切换，功耗管理必须：
+  (1) 快速响应——不能为了省电而让用户感觉到卡顿
+  (2) 准确预测——选错了 C-state 代价很大（浅了浪费电，深了延迟大）
+  (3) 全局优化——不能单颗 CPU 省电却把任务全堆到另一颗上面
+</code></pre>
+
+<h3 id="ch1-2">1.2 五大子系统及相互关系</h3>
+
+<table>
+<thead><tr><th>子系统</th><th>核心问题</th><th>关键数据结构</th><th>源码位置</th></tr></thead>
+<tbody>
+<tr><td><strong>CPUidle</strong></td><td>CPU 空闲时进哪个 C-State？</td><td><code>cpuidle_device</code>, <code>cpuidle_driver</code>, <code>cpuidle_state</code></td><td>drivers/cpuidle/</td></tr>
+<tr><td><strong>CPUFreq</strong></td><td>CPU busy 时跑什么频率？</td><td><code>cpufreq_policy</code>, <code>cpufreq_driver</code>, <code>cpufreq_governor</code></td><td>drivers/cpufreq/</td></tr>
+<tr><td><strong>Energy Model</strong></td><td>每个 (频率, 利用率) 组合花多少电？</td><td><code>em_perf_domain</code>, <code>em_perf_state</code></td><td>kernel/power/energy_model.c</td></tr>
+<tr><td><strong>Runtime PM</strong></td><td>外设不用时如何自动关？</td><td><code>dev_pm_ops</code>, usage counter</td><td>drivers/base/power/runtime.c</td></tr>
+<tr><td><strong>System PM</strong></td><td>整个系统如何休眠/唤醒？</td><td><code>suspend_state_t</code>, <code>platform_suspend_ops</code></td><td>kernel/power/</td></tr>
+</tbody>
+</table>
+
+<p><strong>这些子系统之间的关系</strong>不是平级的——它们形成一个从应用层到硬件的决策栈：</p>
+
+<pre class="diagram">
+                    ┌──────────────────────────────────────┐
+                    │    调度器 (EAS)                       │
+                    │    "任务放哪个CPU最省电？"             │
+                    │    需要 EM 提供 cost 数据              │
+                    └──────────┬───────────────────────────┘
+                               │ 需要频率-功率表
+                    ┌──────────▼───────────────────────────┐
+                    │    Energy Model (EM)                  │
+                    │    "频率 X → 功耗 Y mW, 算力 Z"       │
+                    └──────────┬───────────────────────────┘
+                               │
+               ┌───────────────┼───────────────┐
+               │                               │
+    ┌──────────▼──────────┐      ┌─────────────▼──────────┐
+    │   CPUFreq (频率)     │      │   CPUidle (空闲状态)    │
+    │   "现在该跑多快？"    │      │   "现在该睡多深？"      │
+    │   schedutil/ondemand  │      │   menu/teo governor    │
+    └──────────┬──────────┘      └─────────────┬──────────┘
+               │                               │
+    ┌──────────▼───────────────────────────────▼──────────┐
+    │               ARM64 PSCI Firmware                   │
+    │    CPUFreq: set_performance() / set_frequency()     │
+    │    CPUidle: cpu_suspend(state_id)                   │
+    └──────────────────────┬──────────────────────────────┘
+                           │
+    ┌──────────────────────▼──────────────────────────────┐
+    │           Hardware (DVFS / Clock / Power Gate)      │
+    └─────────────────────────────────────────────────────┘
+</pre>
+
+<h3 id="ch1-3">1.3 ARM64 上的典型功耗管理堆栈</h3>
+
+<p>在 ARM64 A53/A57 平台（如 Hikey960、DB820c、Raspberry Pi 5）上，典型配置如下：</p>
+
+<pre><code>
+BootLoader (U-Boot/EDK2) → PSCI 1.0+
+                           │
+Linux Kernel ──────────────┼─────────────────────────────
+                           │
+  CPUFreq:  scmi-cpufreq / cpufreq-dt / qcom-cpufreq-hw
+            governor = schedutil (默认)
+  CPUidle:  cpuidle-psci (ARM PSCI 标准接口)
+            governor = menu 或 teo
+  EM:       由 CPUFreq 驱动自动注册或
+            DT 中的 "opp-table" 节点提供数据
+  Runtime PM: 由各设备驱动独立使用
+  System PM:  PSCI system_suspend()
+</code></pre>
+
+<div class="note">
+<strong>关键理解</strong>：在 ARM64 上，CPUidle 和 CPUFreq 最终都通过 PSCI (Power State Coordination Interface) 调用到 ATF (ARM Trusted Firmware) 的 EL3 固件层。内核不直接操作电源门控寄存器——那是 EL3 的职责。
+</div>
+
+<!-- ================================================================================================ -->
+<h2 id="ch2">2. CPUidle —— CPU 空闲状态管理</h2>
+
+<h3 id="ch2-1">2.1 核心数据结构</h3>
+
+<p>CPUidle 子系统由三组核心结构组成，分别由<a href="#ch2-1-1">框架层</a>、<a href="#ch2-1-2">驱动层</a>和<a href="#ch2-1-3">策略层</a>使用。</p>
+
+<h4 id="ch2-1-1">2.1.1 cpuidle_device —— 每个 CPU 一个实例</h4>
+
+<pre><code>// drivers/cpuidle/cpuidle.c:33-34 (声明)
+// include/linux/cpuidle.h (完整定义)
+struct cpuidle_device {
+    unsigned int        cpu;
+    int                 last_residency_ns;      // 上次在 idle 状态待了多久(ns)
+    u64                 next_hrtimer;           // 最近一次定时器到期时间
+    struct cpuidle_state_usage  states_usage[CPUIDLE_STATE_MAX]; // 每个状态的统计
+    int                 enabled:1;              // 是否启用
+    int                 registered:1;           // 是否已注册
+    // ...
+};
+</code></pre>
+
+<h4 id="ch2-1-2">2.1.2 cpuidle_driver —— 硬件平台定义的空闲状态</h4>
+
+<pre><code>// drivers/cpuidle/driver.c  + include/linux/cpuidle.h
+struct cpuidle_driver {
+    const char          *name;
+    struct module       *owner;
+    struct cpumask       *cpumask;              // 此驱动覆盖哪些CPU
+    int                  state_count;           // 有几个idle状态（含state[0]=poll）
+    struct cpuidle_state states[CPUIDLE_STATE_MAX];  // ★ 核心：状态表
+};
+
+struct cpuidle_state {
+    char    name[CPUIDLE_NAME_LEN];  // "C1", "C2", "cluster-sleep" 等
+    char    desc[CPUIDLE_DESC_LEN];
+    u64     exit_latency_ns;         // ★ 退出延迟：从唤醒到开始执行需要多久
+    u64     target_residency_ns;     // ★ 目标驻留时间：至少睡多久才能回本
+    int     (*enter)(struct cpuidle_device *, struct cpuidle_driver *, int index);
+    int     (*enter_dead)(struct cpuidle_device *, int index);  // CPU hotplug off
+    unsigned int flags;
+    // CPUIDLE_FLAG_TIMER_STOP: 进入该状态后本地timer停止，需要broadcast timer
+    // CPUIDLE_FLAG_RCU_IDLE:   RCU不在该状态下做grace period跟踪
+    // CPUIDLE_FLAG_TLB_FLUSHED: 进入该状态后TLB被刷掉
+};
+</code></pre>
+
+<div class="note">
+<strong>关键字段理解</strong>：
+<ul>
+<li><strong>exit_latency_ns</strong>：这个值决定了 Governor 是否敢选这个状态。如果 PM QoS 要求延迟 &lt; 50μs，那 exit_latency 100μs 的状态直接不可用。</li>
+<li><strong>target_residency_ns</strong>：节能的"盈亏平衡点"。假设进 C3 花费 200μs（进+出），额外省电 100mW。那么睡 100μs 电没省到反而亏了延迟，至少睡 200μs 才回本。这个值由硬件数据手册和实测决定。</li>
+</ul>
+</div>
+
+<div class="note">
+<strong>C-State 的含义</strong>：C 中的 "C" 代表 <strong>Cpu</strong>（或 Core），是 ACPI 规范中定义的状态分类字母编号。它与 P-State 和 T-State 构成完整的处理器电源管理分类体系：
+<ul>
+<li><strong>C-State</strong>（CPU Power State）— CPU 空闲时睡多深（关时钟？关电源？）</li>
+<li><strong>P-State</strong>（Performance State）— CPU 忙碌时频率/电压（DVFS）</li>
+<li><strong>T-State</strong>（Throttle State）— 强制降频（过温保护，已被 P-State 替代）</li>
+</ul>
+
+C-State 的数字越大表示睡得越深（省电更多、唤醒更慢）：
+<table>
+<thead><tr><th>C-State</th><th>通用名称</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><strong>C0</strong></td><td>Active / Run</td><td>CPU 正在执行指令</td></tr>
+<tr><td><strong>C1</strong></td><td>Halt</td><td>停止指令执行，时钟和电源保持（最快恢复）</td></tr>
+<tr><td><strong>C2</strong></td><td>Stop-Clock</td><td>关闭部分时钟，保留缓存（比 C1 慢但省电）</td></tr>
+<tr><td><strong>C3</strong></td><td>Sleep</td><td>关闭全部时钟 + 部分电源域，缓存一致性可能丢失</td></tr>
+<tr><td><strong>C4+</strong></td><td>Deep Sleep</td><td>更深电源门控，甚至关掉 L2 缓存电源</td></tr>
+</tbody>
+</table>
+在 <strong>ARM64</strong> 上，实际使用 Device Tree 中 <code>arm,psci-suspend-param</code> 定义的平台相关名称（如 <code>cpu-sleep-0</code>、<code>cluster-sleep-0</code>），但概念上等价于 ACPI 的 C-State 体系——一个是字母编号（x86），另一个是 PSCI suspend 参数描述（ARM）。
+</div>
+
+<h4 id="ch2-1-3">2.1.3 cpuidle_governor —— 选状态的决策算法</h4>
+
+<pre><code>// drivers/cpuidle/governor.c
+struct cpuidle_governor {
+    char        name[CPUIDLE_NAME_LEN];
+    unsigned int rating;                            // 评分，高的优先
+    int  (*select)(struct cpuidle_driver *drv,      // ★ 核心：选几号状态
+                   struct cpuidle_device *dev,
+                   bool *stop_tick);                // [out] 是否停止sched tick
+    void (*reflect)(struct cpuidle_device *dev, int index);  // 选完后的反馈（用于学习）
+    int  (*enable)(struct cpuidle_driver *drv, struct cpuidle_device *dev);
+    void (*disable)(struct cpuidle_driver *drv, struct cpuidle_device *dev);
+};
+</code></pre>
+
+<p>三者关系：</p>
+
+<pre class="diagram">
+  per-CPU                   per-platform              algorithm
+┌──────────────┐      ┌────────────────────┐      ┌──────────────┐
+│cpuidle_device│─────→│  cpuidle_driver    │←─────│   governor   │
+│   cpu=0      │      │  state[0] = poll   │      │  menu/teo    │
+│   last_*=... │      │  state[1] = WFI    │      │  .select()   │
+│   enabled=1  │      │  state[2] = C3     │      │  .reflect()  │
+└──────────────┘      └────────────────────┘      └──────────────┘
+    "我的状态"            "我能进哪些状态"            "我该选哪个"
+</pre>
+
+<h3 id="ch2-2">2.2 从空闲线程到 C-State 的完整调用链</h3>
+
+<h4>2.2.1 入口：do_idle() 循环</h4>
+
+<pre><code>// kernel/sched/idle.c:257
+static void do_idle(void)
+{
+    int cpu = smp_processor_id();
+
+    nohz_run_idle_balance(cpu);          // Step 1: 跑一次idle负载均衡
+    __current_set_polling();             // Step 2: 设置 TIF_POLLING_NRFLAG
+    tick_nohz_idle_enter();             // Step 3: 通知NO_HZ子系统进入idle
+
+    while (!need_resched()) {            // ★ 主循环：只要没有需要调度的
+        local_irq_disable();
+
+        if (cpu_is_offline(cpu)) {
+            cpuhp_report_idle_dead();    // CPU hot-unplug 路径
+            arch_cpu_idle_dead();
+        }
+
+        arch_cpu_idle_enter();
+
+        if (cpu_idle_force_poll || tick_check_broadcast_expired())
+            cpu_idle_poll();             // 路径A: 轮询模式（不进深度睡眠）
+        else
+            cpuidle_idle_call();         // 路径B: ★ 走CPUidle框架选状态
+
+        arch_cpu_idle_exit();
+    }
+
+    // 退出 idle 循环: TIF_NEED_RESCHED 被置位了
+    tick_nohz_idle_exit();
+    __current_clr_polling();
+    schedule_idle();                     // 调用 schedule() 切到就绪任务
+}
+</code></pre>
+
+<h4>2.2.2 cpuidle_idle_call() —— CPUidle 核心决策</h4>
+
+<pre><code>// kernel/sched/idle.c:172
+static void cpuidle_idle_call(void)
+{
+    struct cpuidle_device *dev = cpuidle_get_device();
+    struct cpuidle_driver *drv = cpuidle_get_cpu_driver(dev);
+    int next_state, entered_state;
+
+    if (need_resched()) {               // 快速检查：如果已经有任务要跑了
+        local_irq_enable();             // 直接返回do_idle循环，不进idle
+        return;
+    }
+
+    if (cpuidle_not_available(drv, dev)) {
+        tick_nohz_idle_stop_tick();     // CPUidle不可用，走fallback
+        default_idle_call();            // → arch_cpu_idle()（ARM64是wfi）
+        goto exit_idle;
+    }
+
+    if (idle_should_enter_s2idle() || dev->forced_idle_latency_limit_ns) {
+        // Suspend-to-idle 路径: 不经过governor，直接选最深状态
+        next_state = cpuidle_find_deepest_state(drv, dev, max_latency_ns);
+        call_cpuidle(drv, dev, next_state);
+    } else {
+        bool stop_tick = true;
+        // ★ 正常路径：让 Governor 决策
+        next_state = cpuidle_select(drv, dev, &stop_tick);
+
+        if (stop_tick || tick_nohz_tick_stopped())
+            tick_nohz_idle_stop_tick();      // 停掉sched tick（NO_HZ）
+        else
+            tick_nohz_idle_retain_tick();    // 保留tick（浅idle状态）
+
+        entered_state = call_cpuidle(drv, dev, next_state);
+        cpuidle_reflect(dev, entered_state);  // 反馈给governor学习
+    }
+
+exit_idle:
+    __current_set_polling();
+}
+</code></pre>
+
+<h4>2.2.3 cpuidle_enter_state() —— 真正进入硬件空闲</h4>
+
+<pre><code>// drivers/cpuidle/cpuidle.c:215
+noinstr int cpuidle_enter_state(struct cpuidle_device *dev,
+                                 struct cpuidle_driver *drv, int index)
+{
+    struct cpuidle_state *target_state = &drv->states[index];
+    ktime_t time_start, time_end;
+
+    // Step 1: 如果状态会让本地timer停掉，先设置broadcast timer
+    if (broadcast && tick_broadcast_enter()) {
+        index = find_deepest_state(drv, dev, ...);  // 降级到不需要broadcast的状态
+    }
+
+    // Step 2: 通知调度器，当前CPU要进idle了
+    sched_idle_set_state(target_state);
+    time_start = ns_to_ktime(local_clock_noinstr());
+
+    // Step 3: ★ 硬件进入idle —— 这是"沉睡"的关键时刻
+    entered_state = target_state->enter(dev, drv, index);
+    //                 ↑ 调用到 arch/arm64 的 psci_cpu_suspend()
+    //                   在 ARM64 上: wfi 或 power down
+
+    // Step 4: ★ 醒来！更新统计
+    sched_idle_set_state(NULL);          // 通知调度器idle结束
+    time_end = ns_to_ktime(local_clock_noinstr());
+
+    // Step 5: 统计 —— 判断选的深度对不对
+    diff = ktime_sub(time_end, time_start);
+    dev->last_residency_ns = diff;
+    dev->states_usage[entered_state].time_ns += diff;
+    dev->states_usage[entered_state].usage++;
+
+    // Step 5a: 如果实际睡眠时间 &lt; target_residency → 选深了，above++
+    if (diff < drv->states[entered_state].target_residency_ns) {
+        dev->states_usage[entered_state].above++;
+    }
+    // Step 5b: 如果实际睡眠远超 exit_latency → 选浅了，below++
+    else if (diff > delay) {
+        if (diff - delay >= drv->states[i].target_residency_ns) {
+            dev->states_usage[entered_state].below++;
+        }
+    }
+
+    return entered_state;
+}
+</code></pre>
+
+<h3 id="ch2-3">2.3 CPUidle Governor 机制</h3>
+
+<p>Governor 是 CPUidle 的"大脑"——它要根据预测的空闲时长，结合 PM QoS 约束，在功耗和延迟之间做出权衡。</p>
+
+<pre><code>
+// 决策流程 (cpuidle_select)
+cpuidle_select(drv, dev, &stop_tick)
+  → cpuidle_curr_governor->select(drv, dev, stop_tick)
+     输入: 驱动定义的状态表（exit_latency, target_residency）
+           设备统计历史（states_usage[].time_ns, usage, above, below）
+           PM QoS 延迟约束
+           下一个定时器的到期时间 (next_timer_event)
+     输出: 选中的状态 index
+           stop_tick: 是否可以关掉 sched tick
+</code></pre>
+
+<p><strong>Governor 的核心权衡</strong>：</p>
+
+<pre class="diagram">
+  ┌─ 预测空闲时长 ─┐     ┌─ 状态属性 ─┐     ┌─ PM QoS 约束 ─┐
+  │ next_timer=2ms  │     │ C1: 2μs/1μs │     │ latency=50μs │
+  │ 历史修正因子0.5  │     │ C2: 20μs/10μs│     │ (来自用户空间 │
+  │ 预测:1ms        │     │ C3: 200μs/100μs│   │  /dev/cpu_dma │
+  └────────┬────────┘     └──────┬──────┘     │   _latency)   │
+           │                     │            └───────┬───────┘
+           └─────────────────────┼────────────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │  Governor 决策算法       │
+                    │  选 exit_latency ≤ QoS   │
+                    │  且 target_residency     │
+                    │  最接近预测值的状态       │
+                    └────────────┬────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │  返回: index=1 (C1)     │
+                    │  stop_tick=true (浅sleep│
+                    │  不值得留tick)          │
+                    └─────────────────────────┘
+</pre>
+
+<h3 id="ch2-4">2.4 四个主要 Governor 对比</h3>
+
+<table>
+<thead><tr><th>特性</th><th>menu</th><th>teo (Timer Events Oriented)</th><th>ladder</th></tr></thead>
+<tbody>
+<tr><td><strong>设计思想</strong></td><td>基于历史统计预测空闲时长</td><td>基于 timer 事件模式 + 唤醒拦截统计</td><td>阶梯式学习（逐步深入）</td></tr>
+<tr><td><strong>关键数据</strong></td><td>6 个 bucket 的校正因子、next_timer 剩余时间</td><td>每个状态的 bin 的 hits/intercepts 计数</td><td>每个状态的 promotion/demotion 计数</td></tr>
+<tr><td><strong>决策依据</strong></td><td>predicted_us = 校正因子×next_timer; 选 target_residency 最接近的状态</td><td>如果浅状态的 hits 足够多，直接选浅的；否则取 sleep_length</td><td>如果最近多次睡眠足够长，提升到更深的状态</td></tr>
+<tr><td><strong>适用场景</strong></td><td>通用，历史行为稳定的系统</td><td>现代系统，timer 是主要唤醒源</td><td>简单嵌入式，不需要复杂预测</td></tr>
+<tr><td><strong>rating</strong></td><td>20</td><td>25 (更高优先级)</td><td>10</td></tr>
+<tr><td><strong>默认？</strong></td><td>历史默认，仍广泛使用</td><td>现代内核默认（如果编译了）</td><td>否</td></tr>
+</tbody>
+</table>
+
+<h4>menu governor 决策逻辑</h4>
+
+<pre><code>
+// drivers/cpuidle/governors/menu.c
+// 核心公式: predicted_us = (next_timer_us - RESIDENCY_ADJUST) * correction_factor[bucket]
+
+// correction_factor 基于8个历史间隔的EWMA统计
+// bucket由预测值的大小决定:
+//   bucket 0: 0~1μs    → factor可能很小（经常被中断提前唤醒）
+//   bucket 5: >500ms    → factor可能接近1.0（长时间idle很少被意外打断）
+
+// 选状态: for i in states: if exit_latency ≤ QoS && target_residency ≤ predicted:
+//            best = i
+</code></pre>
+
+<h4>teo governor 决策逻辑</h4>
+
+<pre><code>
+// drivers/cpuidle/governors/teo.c
+// teo 的核心观察: timer 中断比其他中断多 2-3 个数量级
+// 所以它直接把 "到最近timer的时间" 作为最可靠预测
+
+// 但如果历史数据显示浅状态已经足够（hits很多），就不查 sleep_length
+// ——这样就不用读 timer hardware（省指令）
+
+// hits/update > 1/2 → 这个状态"命中率高"
+// intercepts/update 过高 → 非timer中断频繁，不能预测太乐观
+</code></pre>
+
+<h3 id="ch2-5">2.5 ARM64 PSCI CPUidle 驱动</h3>
+
+<p>在 ARM64 平台（A53/A57）上，CPU 空闲状态通过 PSCI 协议调用 ATF 固件实现：</p>
+
+<pre><code>
+// drivers/cpuidle/cpuidle-psci.c (简化逻辑)
+
+static __cpuidle int __psci_enter_domain_idle_state(
+    struct cpuidle_device *dev, struct cpuidle_driver *drv, int idx, bool s2idle)
+{
+    u32 *states = data->psci_states;         // DT中 "arm,psci-suspend-param"
+    u32 state = states[idx];
+
+    cpu_pm_enter();                          // 通知CPU PM子系统
+
+    // 如果有power domain层级（cluster sleep）
+    if (s2idle)
+        dev_pm_genpd_suspend(pd_dev);        // suspend:2idle 路径
+    else
+        pm_runtime_put_sync_suspend(pd_dev);  // 正常路径: 减少pd引用计数
+
+    // ★ 真正进入硬件休眠
+    ret = psci_cpu_suspend_enter(state) ? -1 : idx;
+    //     └→ PSCI function_id: PSCI_FN_CPU_SUSPEND
+    //        └→ ATF (EL3): 关中断、刷cache、power gate、设唤醒源
+
+    // 恢复 pd
+    if (s2idle)
+        dev_pm_genpd_resume(pd_dev);
+    else
+        pm_runtime_get_sync(pd_dev);
+
+    cpu_pm_exit();
+    return ret;
+}
+</code></pre>
+
+<p><strong>ARM64 PSCI Idle 状态的 Device Tree 描述</strong>：</p>
+
+<pre><code>
+// arch/arm64/boot/dts/xxx.dts (示例)
+cpu-idle-states {
+    CPU_SLEEP_0: cpu-sleep-0 {
+        compatible = "arm,idle-state";
+        arm,psci-suspend-param = <0x0010000>;   // PSCI power_state 参数
+        entry-latency-us = <2>;                   // 进入延迟 2μs
+        exit-latency-us = <2>;                    // 退出延迟 2μs
+        min-residency-us = <10>;                  // 最小驻留 10μs → target_residency
+    };
+    CLUSTER_SLEEP_0: cluster-sleep-0 {
+        compatible = "arm,idle-state";
+        arm,psci-suspend-param = <0x1010000>;   // 含 StateType=1 (power down)
+        entry-latency-us = <150>;
+        exit-latency-us = <200>;
+        min-residency-us = <800>;
+        local-timer-stop;                         // → CPUIDLE_FLAG_TIMER_STOP
+        // 进入后 local timer 停止，需要 broadcast timer 支持
+    };
+};
+</code></pre>
+
+<h3 id="ch2-6">2.6 CPUidle 统计与预测质量</h3>
+
+<p>每个 idle 状态都有详细的使用统计，通过 sysfs 暴露：</p>
+
+<pre><code>
+$ ls /sys/devices/system/cpu/cpu0/cpuidle/
+state0/  state1/  state2/  state3/
+
+$ cat /sys/devices/system/cpu/cpu0/cpuidle/state2/*
+name:   "cpu-sleep-0"
+desc:   "CPU suspend"
+latency: 150                  ← exit_latency (us)
+residency: 400                ← target_residency (us)
+usage: 84532                  ← 进入次数
+time: 384720000000            ← 累计停留时间 (ns)
+above: 123                    ← 选深了（实际睡眠不够回本）
+below: 45                     ← 选浅了（实际睡眠远超需要）
+rejected: 0                   ← 被拒绝了（如 QoS 约束拒绝）
+disable: 0                    ← 被禁用
+</code></pre>
+
+<div class="note">
+<strong>above/below 的含义</strong>：
+<ul>
+<li><strong>above++</strong>：实际睡眠时间小于 target_residency，说明 governor "高估"了空闲时长，选深了。这次休眠其实没省电，反而浪费了进出延迟。</li>
+<li><strong>below++</strong>：实际睡眠时间足够长，可以进更深的状态，说明 governor "低估"了空闲时长，选浅了。错过了更省电的机会。</li>
+</ul>
+<p>如果某项持续增长，说明 governor 的预测模型需要调整——或者这个平台的硬件参数不准确。</p>
+</div>
+
+<h3 id="ch2-7">2.7 CPUidle 核心总结</h3>
+
+<table>
+<thead><tr><th>#</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>CPUidle 是<strong>纵向</strong>管理——CPU 空闲时选多深的睡眠状态（C-State）</td></tr>
+<tr><td>2</td><td>三个核心结构：<code>cpuidle_device</code>（CPU 实例）、<code>cpuidle_driver</code>（硬件状态表）、<code>cpuidle_governor</code>（决策算法）</td></tr>
+<tr><td>3</td><td>每个 idle 状态有两个关键参数：<strong>exit_latency_ns</strong>（延迟代价）和 <strong>target_residency_ns</strong>（节能盈亏点）</td></tr>
+<tr><td>4</td><td>Governor 根据 <strong>next_timer + 历史修正 + PM QoS</strong> 三者选择状态</td></tr>
+<tr><td>5</td><td>深度睡眠要让 local timer 停止 → 需要 broadcast timer 在别的 CPU 上代为计时</td></tr>
+<tr><td>6</td><td>ARM64 上通过 PSCI 协议将 idle 请求发送到 <strong>ATF (EL3)</strong>，内核不直接操作电源寄存器</td></tr>
+<tr><td>7</td><td><code>above/below</code> 计数器是判断 governor 预测质量的关键指标</td></tr>
+</tbody>
+</table>
+
+<!-- ================================================================================================ -->
+<h2 id="ch2-8">2.8 C-State 决策深度解析 —— CPU 空闲时到底选哪个状态？</h2>
+
+<p>这是整个 CPUidle 子系统最核心的问题。前面 2.4 节从表格层面对比了四个 governor，本节从<strong>算法细节和源码</strong>层面展开每个 governor 的完整决策逻辑，并说明 stop_tick 信号、PM QoS 约束如何参与决策。</p>
+
+<h3 id="ch2-8-1">2.8.1 决策框架总览</h3>
+
+<p>无论哪个 governor，决策都遵循相同的框架（见 <code>cpuidle_select()</code>）：</p>
+
+<pre class="diagram">
+  cpuidle_select(drv, dev, &stop_tick)
+    │
+    ├─ Step 1: 获取 PM QoS 延迟约束
+    │    latency_req = cpuidle_governor_latency_req(cpu)
+    │    └→ 来自两处: dev_pm_qos + cpu_latency_qos，取最小值(ns)
+    │
+    ├─ Step 2: Key Question #1 — "大概会睡多久？"
+    │    ┌─ menu:   next_timer × 历史校正因子 + 重复间隔检测
+    │    ├─ teo:    先看历史 hits/intercepts，必要时再查 sleep_length
+    │    ├─ ladder: 不预测！只看上次的 residency 决定升降级
+    │    └─ haltpoll: 也不预测！交替 poll/halt
+    │
+    ├─ Step 3: Key Question #2 — "哪个状态回本？"
+    │    遍历 states[]: if exit_latency ≤ latency_req &&
+    │                     target_residency ≤ predicted_ns → 可选
+    │
+    ├─ Step 4: Key Question #3 — "tick 要不要关？"
+    │    stop_tick = (选的状态够深 && 预期睡够久) || tick已停
+    │
+    └─ 返回选中的 index
+</pre>
+
+<p>每个 governor 的核心差异在于 <strong>Step 2：如何预测会睡多久</strong>。CPU 无法预知未来，只能靠最近的下一次定时器（"最晚什么时候一定醒"）和历史行为模式（"通常会被什么提前打断"）来推测。</p>
+
+<h3 id="ch2-8-2">2.8.2 menu governor 决策算法逐行分析</h3>
+
+<h4>2.8.2.1 核心数据结构</h4>
+
+<pre><code>// drivers/cpuidle/governors/menu.c:70-78
+struct menu_device {
+    int             needs_update;          // 需要先更新历史数据
+    int             tick_wakeup;           // 这次醒来是tick唤醒的吗？
+    u64             next_timer_ns;         // 下一个定时器的剩余时间
+    unsigned int    bucket;                // next_timer落在哪个档位(0~5)
+    unsigned int    correction_factor[6];  // ★ 6个档位的校正因子
+    unsigned int    intervals[8];          // ★ 最近8次实际的idle时长(us)
+    int             interval_ptr;          // 环形缓冲区指针
+};
+
+// bucket 分档（which_bucket函数）:
+// bucket 0: < 10μs     (极短idle，通常是中断密集场景)
+// bucket 1: 10~100μs   (短idle)
+// bucket 2: 100μs~1ms  (中等idle)
+// bucket 3: 1ms~10ms   (较长idle)
+// bucket 4: 10ms~100ms (长idle)
+// bucket 5: > 100ms    (极长idle，几乎等于休眠)
+</code></pre>
+
+<h4>2.8.2.2 决策前：更新历史（menu_update）</h4>
+
+<p>在每次 <code>menu_select()</code> 决策<strong>之前</strong>，先通过 <code>menu_reflect()</code> → <code>menu_update()</code> 学习"上次预测得准不准"。</p>
+
+<pre><code>// menu.c:414-498 — 核心学习算法
+static void menu_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
+{
+    // 1. 取出上次预测的 bucket 和实际的停留时间
+    measured_ns = dev->last_residency_ns;
+    // 扣除退出延迟（因为退出延迟不是真正"睡眠"的时间）
+    if (measured_ns > 2 * target->exit_latency_ns)
+        measured_ns -= target->exit_latency_ns;
+
+    // 2. 更新该 bucket 的校正因子（EWMA 指数加权移动平均）
+    new_factor = data->correction_factor[bucket];
+    new_factor -= new_factor / DECAY;     // 衰减旧值（DECAY=8，即衰减1/8）
+    new_factor += RESOLUTION * measured_ns / next_timer_ns;  // 加入新观测
+    data->correction_factor[bucket] = new_factor;
+
+    // 校正因子的物理含义：
+    //   factor ≈ RESOLUTION * (实际睡眠 / next_timer)
+    //   例: next_timer=2ms, 实际睡了1ms → 校正因子=RESOLUTION/2=512
+    //       意思是"下次别按2ms预测，打五折"
+
+    // 3. 记录到重复间隔检测数组
+    menu_update_intervals(data, measured_ns);
+}
+</code></pre>
+
+<div class="note">
+<strong>校正因子的 EWMA 公式</strong>：<br>
+<code>new_factor = old_factor × 7/8 + RESOLUTION × (measured_ns / next_timer_ns)</code><br>
+其中 <code>RESOLUTION = 1024</code>，所以初始值 = <code>1024 × 8 = 8192</code>（即校正因子=1.0）。<br>
+如果 measured_ns 总是 next_timer_ns 的一半，校正因子会收敛到 4096，预测值就打五折。
+</div>
+
+<h4>2.8.2.3 决策核心：menu_select()</h4>
+
+<pre><code>// menu.c:218-390 — 完整的决策流程
+
+static int menu_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
+                       bool *stop_tick)
+{
+    s64 latency_req = cpuidle_governor_latency_req(dev->cpu); // Step 1: QoS约束
+
+    // ─── prediction 1: 重复间隔检测 ───
+    predicted_ns = get_typical_interval(data) * NSEC_PER_USEC;
+
+    // get_typical_interval() 分析最近8次实测idle时长的标准差:
+    //   if (方差很小) → 返回平均值    // 有固定周期模式
+    //   else          → 返回 UINT_MAX // 无规律，放弃这个预测
+
+    if (predicted_ns > RESIDENCY_THRESHOLD_NS) {
+        // ─── prediction 2: next_timer × 校正因子 ───
+        delta = tick_nohz_get_sleep_length(&delta_tick);  // 最近定时器剩余时间
+        bucket = which_bucket(next_timer_ns);             // 时间落在哪个档位
+        timer_us = next_timer_ns * correction_factor[bucket] / (RESOLUTION * DECAY);
+
+        // ★ 关键：取两个预测的最小值
+        predicted_ns = min(timer_us, predicted_ns);
+    }
+
+    // ─── 短路：如果连最浅的状态都不值得进 → 直接选 state 0 ───
+    if (next_timer_ns < drv->states[1].target_residency_ns ||
+        latency_req < drv->states[1].exit_latency_ns)
+        return 0;  // 马上就醒了，不值得进idle
+
+    // ─── 遍历状态表，找最深的"回本"状态 ───
+    for (i = 0; i < drv->state_count; i++) {
+        if (s->exit_latency_ns > latency_req) break;  // QoS 拒绝
+        if (s->target_residency_ns <= predicted_ns)
+            idx = i;  // 这个状态的驻留时间 ≤ 我们预测的时间，可选
+    }
+
+    // ─── stop_tick 决策 ───
+    if (state_is_polling || predicted_ns < TICK_NSEC)
+        *stop_tick = false;    // 预测睡不够一个tick，留着tick更安全
+    return idx;
+}
+</code></pre>
+
+<h4>2.8.2.4 menu 的决策流程图</h4>
+
+<pre class="diagram">
+  menu_select() 开始
+      │
+      ├─ get_typical_interval() → 有固定模式吗？
+      │   ├─ YES: predicted = 平均值
+      │   └─ NO:  predicted = UINT_MAX
+      │
+      ├─ tick_nohz_get_sleep_length() → next_timer 还有多久？
+      │   │
+      │   └─ timer_us = next_timer × correction_factor[bucket]
+      │
+      ├─ ★ predicted_ns = min(timer_us, typical_interval)
+      │   (保守原则：取两个预测中较短的)
+      │
+      ├─ predicted < 最浅状态的 target_residency？
+      │   └─ YES → return state0 (不值得进idle，立即返回)
+      │
+      ├─ 遍历 states[]:
+      │   │ exit_latency > QoS → skip
+      │   │ target_residency ≤ predicted → 候选
+      │   └─ 选 target_residency 最大的（最深的回本状态）
+      │
+      └─ 返回 idx, stop_tick
+</pre>
+
+<div class="warn">
+<strong>menu 的一个典型误判场景</strong>：假设历史数据都是 2ms idle，校正因子趋向 1.0。突然来了一个 burst 中断，在 0.1ms 时唤醒 CPU。menu 会：
+<ol>
+<li>预测 2ms → 选 target=1ms 的 C3 状态</li>
+<li>实际只睡了 0.1ms → 远小于 target_residency → <code>above++</code></li>
+<li>校正因子在这轮更新后会降低，<strong>但需要多次才能收敛</strong>（EWMA 的惯性）</li>
+</ol>
+这就是 TEO governor 试图改进的场景。
+</div>
+
+<h3 id="ch2-8-3">2.8.3 teo governor —— 不预测未来，只统计模式</h3>
+
+<h4>2.8.3.1 设计思想</h4>
+
+<p>TEO (Timer Events Oriented) 的核心洞察是：</p>
+
+<blockquote>
+<strong>不要费劲预测空闲时长。只需统计"timer 说会睡 Xμs，但实际被非 timer 中断在 Yμs 时打断了"的频率。如果这种情况频繁发生，就选浅一点的状态。</strong>
+</blockquote>
+
+<p>也就是说，teo 不做预测，它只做<strong>模式匹配</strong>——根据历史数据判断"timer wakeup 主导"还是"non-timer wakeup 主导"。</p>
+
+<h4>2.8.3.2 核心数据结构</h4>
+
+<pre><code>// drivers/cpuidle/governors/teo.c:126-147
+struct teo_bin {
+    unsigned int intercepts;  // ★ "拦截"次数：非timer中断在timer之前唤醒
+    unsigned int hits;        // ★ "命中"次数：timer按预期触发
+};
+
+struct teo_cpu {
+    s64 sleep_length_ns;
+    struct teo_bin state_bins[CPUIDLE_STATE_MAX]; // ★ 每个idle状态一个bin
+    unsigned int total;           // 总事件数(带衰减)
+    unsigned int tick_intercepts; // 在 tick 周期内被非timer中断唤醒的次数
+    unsigned int short_idles;     // 短idle的次数（< RESIDENCY_THRESHOLD_NS）
+    bool artificial_wakeup;      // 是否是"非真实"唤醒（如poll超时、tick未停）
+};
+</code></pre>
+
+<h4>2.8.3.3 bin 的含义</h4>
+
+<pre class="diagram">
+  bin 的边界 = idle 状态的 target_residency
+
+  假设有3个 idle 状态:
+    state0: target_residency=0       (poll)
+    state1: target_residency=10μs    (WFI)
+    state2: target_residency=100μs   (C2)
+
+  产生3个 bin:
+    bin[0]: 0 ~ 10μs       对应 state0 (poll)
+    bin[1]: 10μs ~ 100μs   对应 state1 (WFI)
+    bin[2]: >100μs          对应 state2 (C2)
+
+  每次醒来后:
+    1. 找到 sleep_length 落在哪个 bin → idx_timer
+       (sleep_length = 到最近定时器的时间)
+    2. 找到实际 idle 时长落在哪个 bin → idx_duration
+    3. if idx_timer == idx_duration → hits[idx_timer]++
+       else                         → intercepts[idx_duration]++
+       // "timer预测能睡到bin2，但实际在bin1就被打断了" → 一次 intercept
+</pre>
+
+<h4>2.8.3.4 决策核心：teo_select()</h4>
+
+<pre><code>// teo.c:268-498
+
+static int teo_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
+                      bool *stop_tick)
+{
+    s64 latency_req = cpuidle_governor_latency_req(dev->cpu); // QoS约束
+
+    // ─── Round 0: 更新历史统计 ───
+    teo_update(drv, dev);
+    // 1) 对所有 bin 的 hits/intercepts 做衰减(>>DECAY_SHIFT=÷8)
+    // 2) 找到 sleep_length 和 measured duration 各自的 bin
+    // 3) idx_timer==idx_duration → hits++ 否则 → intercepts++
+
+    // ─── Round 1: 找最深的候选状态 idx ───
+    // 遍历 states[]，同时累加 intercept_sum 和 hit_sum
+    for (i = 1; i < drv->state_count; i++) {
+        intercept_sum += state_bins[i-1].intercepts;
+        hit_sum += state_bins[i-1].hits;
+        idx = i;  // 候选 = 最深的 enabled 状态
+    }
+
+    // ─── Round 2: 如果有大量 intercept，选浅一点的 ───
+    // ★ 关键判断：如果浅于idx的所有状态中intercept占主导...
+    if (2 * idx_intercept_sum > cpu_data->total - idx_hit_sum) {
+        // 往浅的方向找——从 idx-1 向下
+        for (i = idx - 1; i >= 0; i--) {
+            intercept_sum += state_bins[i].intercepts;
+            if (2 * intercept_sum > idx_intercept_sum) {
+                idx = i;  // ← 降级到浅状态
+                break;
+            }
+        }
+    }
+
+    // ─── Round 3: QoS 强制降级 ───
+    if (idx > constraint_idx)
+        idx = constraint_idx;
+
+    // ─── Round 4: 判断是否需要查 sleep_length ───
+    // 如果选的状态已经很浅(或QoS很紧)，不用查 timer，直接返回
+    if (drv->states[idx].target_residency_ns < RESIDENCY_THRESHOLD_NS &&
+        2 * cpu_data->short_idles >= cpu_data->total)
+        goto out_tick;  // 短路：历史显示频繁短idle，查timer是浪费
+
+    // ─── Round 5: 用 sleep_length 验证 ───
+    duration_ns = tick_nohz_get_sleep_length(&delta_tick);
+    if (drv->states[idx].target_residency_ns > duration_ns)
+        idx = teo_find_shallower_state(...);  // 最近的timer比当前状态还早→降级
+
+    // ─── Round 6: stop_tick 决策 ───
+    // 基于 tick_intercepts 来判断是否保留tick
+    return idx;
+}
+</code></pre>
+
+<h4>2.8.3.5 teo vs menu 的关键差异</h4>
+
+<pre class="diagram">
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ 场景: timer 说还有 2ms，但历史数据显示经常在 50μs 被中断唤醒    │
+  ├─────────────────────────────────────────────────────────────────┤
+  │ menu:                                                            │
+  │   predicted = 2ms × correction_factor                            │
+  │   correction_factor 需要多轮才能从 1.0 降到 0.025               │
+  │   → 收敛慢，期间会反复选深了被 reality "打脸"                    │
+  ├─────────────────────────────────────────────────────────────────┤
+  │ teo:                                                             │
+  │   sleep_length=2ms → bin[2] (deep)                               │
+  │   但 intercepts[0] > hits[2]  → 直接把 idx 从 deep 降到 shallow │
+  │   → 瞬时反应，不需要"多轮学习"                                    │
+  └─────────────────────────────────────────────────────────────────┘
+</pre>
+
+<div class="note">
+<strong>为什么 teo 可能更省电？</strong><br>
+menu 在遇到新模式时会有一段时间的"错误惩罚期"（EWMA 惯性），这段时期的每次错误选择都会消耗额外的电量（进了深状态但很快被唤醒 = 浪费了进出功耗）。teo 的 bin 统计方式可以更快地识别"非 timer 中断主导"的模式。
+</div>
+
+<h3 id="ch2-8-4">2.8.4 ladder governor —— 最简单的梯子算法</h3>
+
+<p>ladder 不做任何预测。它只根据<strong>上一次实际睡了多久</strong>来决定升级还是降级：</p>
+
+<pre><code>// ladder.c:67-126 — 核心逻辑
+
+static int ladder_select_state(struct cpuidle_driver *drv,
+                               struct cpuidle_device *dev, bool *dummy)
+{
+    last_residency = dev->last_residency_ns - drv->states[last_idx].exit_latency_ns;
+
+    // Rule 1: 考虑升级 (promotion)
+    // 条件: 上次睡得足够久 && 更深状态未被禁用 && 更深状态满足QoS
+    if (last_residency > threshold.promotion_time_ns) {
+        last_state->stats.promotion_count++;
+        if (promotion_count >= 4) {  // 连续4次都睡得够久 → 才升级
+            return last_idx + 1;     // 向深一级
+        }
+    }
+
+    // Rule 2: 考虑降级 (demotion)
+    // 条件: 上次睡得不够久 || 当前状态被禁用了 || 当前状态不满足QoS
+    if (last_residency < threshold.demotion_time_ns) {
+        last_state->stats.demotion_count++;
+        if (demotion_count >= 1) {   // 只需1次睡不够 → 就降级
+            return last_idx - 1;     // 向浅一级
+        }
+    }
+
+    return last_idx;  // 保持不变
+}
+</code></pre>
+
+<h4>ladder 的升级/降级门槛</h4>
+
+<table>
+<thead><tr><th>参数</th><th>值</th><th>含义</th></tr></thead>
+<tbody>
+<tr><td><strong>promotion_time_ns</strong></td><td>等于<strong>下一级</strong>状态的 exit_latency_ns</td><td>睡得比下一级的进出开销还长 → 值得升级</td></tr>
+<tr><td><strong>demotion_time_ns</strong></td><td>等于<strong>当前</strong>状态的 exit_latency_ns</td><td>睡的时间都比不上进出开销 → 赶紧降级</td></tr>
+<tr><td><strong>promotion_count</strong></td><td>需要 ≥ 4</td><td>保守升级：连续4次都够长才升级</td></tr>
+<tr><td><strong>demotion_count</strong></td><td>需要 ≥ 1</td><td>激进降级：1次不够就降</td></tr>
+</tbody>
+</table>
+
+<div class="warn">
+<strong>ladder 的局限性</strong>：它是"瞎子"，不知道下一个 timer 什么时候到。在变化快的场景中可能根本来不及升级就被频繁打断。只在 <strong>NO_HZ 关闭（nohz=off）</strong>的古老配置中仍然使用（此时 ladder rating 被提升到 25 超过 menu，因为无 dynticks 时 menu 的校正因子计算基本没有优势）。
+</div>
+
+<h3 id="ch2-8-5">2.8.5 haltpoll governor —— KVM 虚拟化专用</h3>
+
+<p>haltpoll 是专门为 KVM 虚拟化设计的，思想完全不同：</p>
+
+<pre><code>// haltpoll.c:49-77
+
+static int haltpoll_select(struct cpuidle_driver *drv,
+                           struct cpuidle_device *dev, bool *stop_tick)
+{
+    // 策略: poll 和 halt 交替
+    // 上次是 poll(state0)?
+    if (dev->last_state_idx == 0) {
+        if (dev->poll_time_limit == true)
+            return 1;    // poll 超时了→退到halt(真正的idle)
+        return 0;        // poll 没超时→继续poll
+    }
+    return 0;            // 上次halt→这次poll
+
+    // adjust_poll_limit(): poll_limit_ns 根据 block_ns 动态调整
+    //   block 时间长 → grow poll_limit(多poll，因为值得等)
+    //   block 时间短 → shrink poll_limit(少poll，不值得等)
+}
+</code></pre>
+
+<div class="note">
+<strong>为什么虚拟机需要 haltpoll？</strong><br>
+在虚拟化环境中，进入真实的 C-State（通过 HLT 指令）会触发 VM Exit，让 hypervisor 把 pCPU 调走。但如果在 HLT 和 VM Exit 之间的时间非常短，来回的开销（VM Exit + VM Entry + cache 刷新）可能比收益还大。haltpoll 通过在 HLT 之前先 poll 一段时间（类似忙等），等待可能很快到达的中断，从而减少昂贵的 VM Exit。
+</div>
+
+<h3 id="ch2-8-6">2.8.6 四大 Governor 决策机制对比</h3>
+
+<table>
+<thead><tr><th>维度</th><th>menu</th><th>teo</th><th>ladder</th><th>haltpoll</th></tr></thead>
+<tbody>
+<tr><td><strong>预测方式</strong></td><td>next_timer × 校正因子 + 重复间隔检测</td><td>hits/intercepts 统计 + sleep_length 验证</td><td>不预测！只看上次 residency 的升降级</td><td>不预测！poll/halt 交替</td></tr>
+<tr><td><strong>学习速度</strong></td><td>慢（EWMA，8个周期衰减）</td><td>快（bin 统计，模式变化即时生效）</td><td>慢（升级需要 4 次确认）</td><td>中（poll_limit 自适应）</td></tr>
+<tr><td><strong>是否需要查 timer</strong></td><td>总是</td><td>仅当有必要时（节省 MMIO 读）</td><td>不需要</td><td>不需要</td></tr>
+<tr><td><strong>timer 主导场景</strong></td><td>好（校正因子接近 1.0）</td><td>好（hits 占多数）</td><td>一般</td><td>差</td></tr>
+<tr><td><strong>中断 burst 场景</strong></td><td>差（EWMA 需要多轮收敛）</td><td>好（intercept 立即生效）</td><td>一般</td><td>好（poll 可以抓到）</td></tr>
+<tr><td><strong>虚拟化场景</strong></td><td>一般（不了解 VM Exit 成本）</td><td>一般（不了解 VM Exit 成本）</td><td>差</td><td>最优（专为 KVM 设计）</td></tr>
+<tr><td><strong>rating</strong></td><td>20</td><td>19</td><td>10 (nohz=off 时为 25)</td><td>9</td></tr>
+<tr><td><strong>适用场景</strong></td><td>通用，但正在被 teo 取代</td><td>现代系统的默认（ARM64 推荐）</td><td>仅 nohz=off 的旧系统</td><td>KVM 虚拟机</td></tr>
+</tbody>
+</table>
+
+<h3 id="ch2-8-7">2.8.7 stop_tick 决策详解</h3>
+
+<p><code>stop_tick</code> 是 governor 的第二个输出（第一个是状态 index）。它告诉 <code>cpuidle_idle_call()</code> 是否可以关掉 sched tick。</p>
+
+<pre><code>
+// 为什么 stop_tick 重要？
+// 如果 tick 不停，每 4ms (HZ=250) 一次 tick 中断就会把 CPU 从 C-State 中唤醒
+// → 深状态根本没法用（因为 exit_latency 可能比 4ms 还大，但实际上 tick 4ms 就打断）
+// → 所以：要进深状态，必须先关 tick
+
+// 决策规则（menu/teo 共同的逻辑）:
+if (selected_state == polling)        → stop_tick = false  // poll 不能关 tick
+else if (predicted_ns < TICK_NSEC)    → stop_tick = false  // 预计很快醒，留 tick
+else if (tick_nohz_tick_stopped())    → stop_tick = true   // tick 已经停了
+else                                   → stop_tick = true   // 预计睡够久，关 tick
+</code></pre>
+
+<p><strong>menu 的额外策略</strong>：如果 stop_tick == false（tick 不停），menu 会额外检查选中的状态的 target_residency 是否合理——因为 tick 大约 4ms 后就到，选一个 target=10ms 的状态显然不合适：</p>
+
+<pre><code>// menu.c:367-387
+if (!*stop_tick) {
+    // tick 不停→预期 sleep 不会超过 tick 周期
+    // 如果选的状态 target > delta_tick(≈2ms) → 往回找一个浅的
+    if (idx > 0 && drv->states[idx].target_residency_ns > delta_tick) {
+        for (i = idx - 1; i >= 0; i--)
+            if (drv->states[i].target_residency_ns <= delta_tick)
+                idx = i;  // 选一个在 tick 到来前能"回本"的浅状态
+    }
+}
+</code></pre>
+
+<p><strong>teo 的额外策略</strong>：利用 <code>tick_intercepts</code> 的统计——如果大多数 wakeup 都发生在 tick 周期内，说明 tick 还没到就已经被其他中断打断了，那就没必要保留 tick：</p>
+
+<pre><code>// teo.c:472-474
+if (drv->states[idx].target_residency_ns < TICK_NSEC &&
+    cpu_data->tick_intercepts > cpu_data->total / 2 + cpu_data->total / 8)
+    duration_ns = TICK_NSEC / 2;  // 故意设短，导致后续不满足 stop_tick 条件
+</code></pre>
+
+<h3 id="ch2-8-8">2.8.8 一个完整的 ARM64 决策示例</h3>
+
+<p><strong>场景</strong>：A53 CPU0 空闲，系统配置 menu governor，3 个 idle 状态：</p>
+
+<pre><code>
+State0: polling,     exit=0ns,     target=0ns
+State1: WFI,         exit=2μs,     target=10μs
+State2: cpu-sleep-0, exit=150μs,   target=400μs
+
+PM QoS: 无特殊约束 (latency_req = U64_MAX)
+next_timer: 800μs 后有一个 hrtimer 到期
+历史校正因子 (bucket 3, 1ms~10ms): 0.85 (即通常被提前15%打断)
+重复间隔检测: 无固定模式 → predicted = UINT_MAX
+</code></pre>
+
+<pre class="diagram">
+  menu_select() 执行:
+
+  Step 1: get_typical_interval() → UINT_MAX (无固定模式)
+  Step 2: predicted_ns > RESIDENCY_THRESHOLD_NS(15μs)?
+          → YES, 继续查 timer
+  Step 3: next_timer_ns = 800000 (ns) = 800μs
+          bucket = which_bucket(800μs) = 3
+          timer_us = 800μs × 0.85 = 680μs
+          predicted_ns = min(680μs, ∞) = 680μs
+
+  Step 4: 遍历状态:
+          State1: target=10μs  ≤ 680μs  → candidate ✓
+          State2: target=400μs ≤ 680μs  → candidate ✓ (更深!)
+          → idx = 2
+
+  Step 5: stop_tick 决策:
+          predicted=680μs > TICK_NSEC(4000μs)?
+          680μs < 4000μs → stop_tick = false
+          → 因为预测只睡680μs，不够一个tick周期
+          → 保留 tick，让它约4ms后唤醒我们（即使选的是 deep state）
+
+  Step 6: stop_tick 为 false 时重新评估:
+          delta_tick ≈ 2000μs (半个tick周期)
+          state2.target=400μs > delta_tick=2000μs? NO
+          → 不需要降级，state2 可以在 tick 前回本
+
+  最终决策: idx=2 (cpu-sleep-0, 400μs target), stop_tick=false
+  效果: CPU 进到深度睡眠，但约 800μs 后被 timer 唤醒
+       如果 800μs 之间没有中断 → 睡满 800μs → 回本（>400μs）→ below++
+       如果 200μs 就被中断打断 → 没回本（<400μs）→ above++
+</pre>
+
+<h3 id="ch2-8-9">2.8.9 C-State 决策核心总结</h3>
+
+<table>
+<thead><tr><th>#</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>决策问题的本质："不知道会睡多久"→ governor 的核心任务就是<strong>用最小代价预测空闲时长</strong></td></tr>
+<tr><td>2</td><td>menu 用 <strong>next_timer × 校正因子</strong> 预测，EWMA 学习慢但稳定——适合行为单调的系统</td></tr>
+<tr><td>3</td><td>teo 用 <strong>hits/intercepts 模式匹配</strong>，不需要显式预测时长——适合中断模式复杂多变的系统</td></tr>
+<tr><td>4</td><td>ladder <strong>不预测</strong>，只看上次结果升降级——只适合 nohz=off 的简单系统</td></tr>
+<tr><td>5</td><td>haltpoll 专为 <strong>KVM 虚拟化</strong> 设计——poll 再 halt，减少 VM Exit</td></tr>
+<tr><td>6</td><td><strong>stop_tick</strong> 不是孤立决策——它与状态选择深度耦合：浅状态留 tick，深状态必须关 tick</td></tr>
+<tr><td>7</td><td><strong>PM QoS latency_req</strong> 是整个决策的硬上限——exit_latency 超过它的状态不可选，这是用户空间控制 idle 深度的标准接口</td></tr>
+<tr><td>8</td><td>ARM64 A53/A57 上推荐 <strong>teo</strong> —— 移动/嵌入式设备的中断模式变化频繁，teo 的快速适应特性更适合</td></tr>
+</tbody>
+</table>
+
+<!-- ================================================================================================ -->
+<h2 id="ch3">3. CPUFreq —— CPU 频率调节</h2>
+
+<h3 id="ch3-1">3.1 核心概念：Policy、Driver、Governor</h3>
+
+<p>CPUFreq 是<strong>横向</strong>管理——当 CPU 有任务在跑时，选择什么频率。与 CPUidle 类似，也是三层架构：</p>
+
+<table>
+<thead><tr><th>组件</th><th>角色</th><th>类比</th></tr></thead>
+<tbody>
+<tr><td><strong>cpufreq_policy</strong></td><td>一组共享频率的 CPU 的管理单元</td><td>cpuidle_device</td></tr>
+<tr><td><strong>cpufreq_driver</strong></td><td>操作具体硬件寄存器设置频率</td><td>cpuidle_driver</td></tr>
+<tr><td><strong>cpufreq_governor</strong></td><td>决策算法：什么时候调到什么频率</td><td>cpuidle_governor</td></tr>
+</tbody>
+</table>
+
+<p>在 ARM big.LITTLE 系统（如 A53+A57）上，每类 core 各自形成一个 policy：</p>
+
+<pre class="diagram">
+  cpufreq_policy[0]:              cpufreq_policy[1]:
+  CPUs: 0,1,2,3 (A53小核)       CPUs: 4,5 (A57大核)
+  min: 500MHz                    min: 500MHz
+  max: 1.4GHz                    max: 2.0GHz
+  cur: 800MHz                    cur: 1.2GHz
+  governor: schedutil            governor: schedutil
+  driver: cpufreq-dt             driver: cpufreq-dt
+</pre>
+
+<h3 id="ch3-2">3.2 数据结构与关系</h3>
+
+<pre><code>
+// include/linux/cpufreq.h
+struct cpufreq_policy {
+    cpumask_var_t       cpus;          // 这个policy管理的在线CPU
+    cpumask_var_t       related_cpus;  // 所有相关CPU（包括offline）
+    unsigned int        cpu;           // 管理CPU（代表）
+    unsigned int        min;           // 最低允许频率 (kHz)
+    unsigned int        max;           // 最高允许频率 (kHz)
+    unsigned int        cur;           // 当前频率 (kHz)
+    struct cpufreq_governor *governor;
+    void                *governor_data;
+    bool                fast_switch_enabled;  // ★ 快速切换标志
+    // ...
+};
+
+struct cpufreq_driver {
+    char        name[CPUFREQ_NAME_LEN];
+    u16         flags;                  // CPUFREQ_HAVE_GOVERNOR_PER_POLICY 等
+    int         (*online)(struct cpufreq_policy *policy);
+    int         (*offline)(struct cpufreq_policy *policy);
+    int         (*target_index)(struct cpufreq_policy *policy, unsigned int index);
+    int         (*target)(struct cpufreq_policy *policy, unsigned int target_freq,
+                          unsigned int relation);
+    int         (*fast_switch)(struct cpufreq_policy *policy, unsigned int target_freq);
+    void        (*adjust_perf)(unsigned int cpu, unsigned long min_perf,
+                               unsigned long target_perf, unsigned long capacity);
+    unsigned int (*get)(unsigned int cpu);  // 读当前频率
+    unsigned int (*resolve_freq)(struct cpufreq_policy *policy, unsigned int target_freq);
+    // ...
+};
+
+struct cpufreq_governor {
+    char    name[CPUFREQ_NAME_LEN];
+    int     (*init)(struct cpufreq_policy *policy);
+    void    (*exit)(struct cpufreq_policy *policy);
+    int     (*start)(struct cpufreq_policy *policy);
+    void    (*stop)(struct cpufreq_policy *policy);
+    void    (*limits)(struct cpufreq_policy *policy);  // policy限制变化时
+    struct list_head  governor_list;
+};
+</code></pre>
+
+<h3 id="ch3-3">3.3 CPUFreq Governor 框架</h3>
+
+<p>CPUFreq 有两类 governor 架构：</p>
+
+<h4>3.3.1 基于采样的传统 governor（ondemand / conservative）</h4>
+
+<p>它们使用 <strong>定时采样</strong> 模式——每隔固定时间（sampling_rate）计算 CPU 负载，然后决定是否调频。</p>
+
+<pre><code>
+// drivers/cpufreq/cpufreq_governor.c
+// 采样循环:
+dbs_update_util_handler()           // update_util hook 被调用
+  → 检查是否过了采样间隔 (sample_delay_ns)
+  → irq_work_queue → dbs_irq_work → dbs_work_handler
+    → gov->gov_dbs_update(policy)   // 计算负载百分比
+    → __cpufreq_driver_target()     // 调频
+</code></pre>
+
+<h4>3.3.2 基于调度器信息的 schedutil governor</h4>
+
+<p>它不使用固定采样率，而是在 <strong>每次调度器更新利用率时</strong> 实时计算目标频率。详见 <a href="#ch4">第 4 章</a>。</p>
+
+<h3 id="ch3-4">3.4 三大传统 Governor 对比</h3>
+
+<table>
+<thead><tr><th>特性</th><th>performance</th><th>powersave</th><th>ondemand</th><th>conservative</th></tr></thead>
+<tbody>
+<tr><td><strong>策略</strong></td><td>锁定最高频率</td><td>锁定最低频率</td><td>负载高→快速升频</td><td>负载高→缓慢升频</td></tr>
+<tr><td><strong>调频触发</strong></td><td>从不调低</td><td>从不调高</td><td>负载>up_threshold(95%)</td><td>负载>up_threshold(80%)</td></tr>
+<tr><td><strong>升频速度</strong></td><td>N/A</td><td>N/A</td><td>立即到最高</td><td>逐级提升</td></tr>
+<tr><td><strong>降频时机</strong></td><td>N/A</td><td>N/A</td><td>负载低于阈值立即降</td><td>负载低于阈值逐步降</td></tr>
+<tr><td><strong>采样间隔</strong></td><td>N/A</td><td>N/A</td><td>可配(默认10ms)</td><td>可配(默认10ms)</td></tr>
+<tr><td><strong>适用场景</strong></td><td>基准测试、延迟敏感</td><td>热限制、省电优先</td><td>通用，响应快</td><td>电池供电设备</td></tr>
+<tr><td><strong>状态</strong></td><td>内置</td><td>内置</td><td>内核模块</td><td>内核模块</td></tr>
+</tbody>
+</table>
+
+<h4>ondemand governor 的核心决策逻辑</h4>
+
+<pre><code>
+// cpufreq_ondemand.c
+// dbs_update() 返回 0~100 的 CPU 负载
+// └→ max_load = max(各CPU的(time_elapsed - idle_time) / time_elapsed)
+
+// od_update():
+// if (max_load > up_threshold)             // 默认 >95%
+//     freq = policy->max * max_load / 100  // 升频
+// else
+//     freq = policy->max * max_load / 100  // 降频（或保持）
+
+// 特殊: powersave_bias (0~1000) 用于在计算出的频率上再打折
+//   1000 → 频率打一折(降到接近最低)，用于强制省电
+</code></pre>
+
+<h3 id="ch3-5">3.5 CPUFreq 核心总结</h3>
+
+<table>
+<thead><tr><th>#</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>CPUFreq 是<strong>横向</strong>管理——CPU busy 时选什么频率（OPP）</td></tr>
+<tr><td>2</td><td>policy 将共享同一条频率/电压轨的 CPU 归为一组（ARM big.LITTLE 天然分为两个 policy）</td></tr>
+<tr><td>3</td><td>两类 governor：<strong>采样型</strong>（ondemand, conservative）和 <strong>调度器驱动型</strong>（schedutil）</td></tr>
+<tr><td>4</td><td>现代内核（ARM64）默认使用 <strong>schedutil</strong>，因为它不需要固定采样率，响应时间从 ~10ms 降到 μs 级</td></tr>
+<tr><td>5</td><td><code>fast_switch</code> 允许在调度器上下文（关中断、持 rq lock）直接调频，不经过 workqueue/kthread</td></tr>
+<tr><td>6</td><td><code>adjust_perf</code> 是更现代的接口——直接传 capacity/performance level，而不是频率值（让硬件自己决定 OPP）</td></tr>
+</tbody>
+</table>
+
+<!-- ================================================================================================ -->
+<h2 id="ch4">4. Schedutil —— 调度器驱动的频率调节器</h2>
+
+<h3 id="ch4-1">4.1 设计思想：为什么需要 schedutil</h3>
+
+<p>传统 governor（如 ondemand）的致命缺陷：<strong>采样延迟</strong>。</p>
+
+<pre><code>
+ondemand 模式下的悲剧场景:
+  T+0ms:    任务被唤醒，但采样还没到
+  T+5ms:    任务以最低频率在跑，卡顿明显
+  T+10ms:   ondemand采样到来 → 发现负载高了 → 升频到 max
+  T+10.1ms: 任务终于在高频下执行
+  → 浪费了 10ms 的延迟，而这恰好是用户能感知的量级
+
+schedutil 的做法:
+  T+0ms:    任务被唤醒 → enqueue_task → update_load_avg
+            → cpufreq_update_util() → sugov_update_single_freq()
+            → 立即升频！(在 μs 级别完成)
+  T+0.05ms: 任务已经在高频下执行
+  → 延迟从 10ms 级降到 μs 级
+</code></pre>
+
+<div class="note">
+<strong>关键设计原则</strong>：schedutil 直接嵌入调度器的热路径。它不是"定时采样"，而是"事件驱动"——每次任务唤醒、每次 PELT 衰减、每次 tick 都会触发频率重新评估。
+</div>
+
+<h3 id="ch4-2">4.2 核心数据结构</h3>
+
+<pre><code>
+// kernel/sched/cpufreq_schedutil.c
+
+struct sugov_policy {               // 每个 CPUFreq policy 一个实例
+    struct cpufreq_policy   *policy;
+    raw_spinlock_t           update_lock;
+    u64                      last_freq_update_time;
+    s64                      freq_update_delay_ns;  // ★ 频率更新间隔（限速）
+    unsigned int             next_freq;             // 计算出的下一个频率
+    unsigned int             cached_raw_freq;       // 缓存的原始频率值
+
+    // 慢路径 (slow path) 使用：
+    struct irq_work          irq_work;   // 从中断上下文推迟到进程上下文
+    struct kthread_work      work;
+    struct kthread_worker    worker;
+    struct task_struct       *thread;    // "sugov:0" 内核线程(SCHED_DEADLINE!)
+    bool                     work_in_progress;
+    bool                     limits_changed;
+    bool                     need_freq_update;
+};
+
+struct sugov_cpu {                  // 每个 CPU 一个实例
+    struct update_util_data  update_util;  // ★ 注册到调度器的hook
+    struct sugov_policy     *sg_policy;
+    unsigned int             cpu;
+
+    bool                     iowait_boost_pending;
+    unsigned int             iowait_boost;       // ★ IO等待提升值
+    u64                      last_update;
+
+    unsigned long            util;               // ★ 目标利用率
+    unsigned long            bw_min;             // DL 带宽约束
+};
+</code></pre>
+
+<h3 id="ch4-3">4.3 更新路径：update_util hook 机制</h3>
+
+<p>这是 schedutil 最精妙的设计——它通过 <code>update_util_data</code> 结构把自己"插入"到调度器的关键路径中：</p>
+
+<pre><code>
+// kernel/sched/cpufreq.c —— 调度器侧
+DEFINE_PER_CPU(struct update_util_data __rcu *, cpufreq_update_util_data);
+
+// 注册 hook（schedutil 启动时调用）
+void cpufreq_add_update_util_hook(int cpu, struct update_util_data *data,
+                                   void (*func)(struct update_util_data *, u64, unsigned int))
+{
+    data->func = func;
+    rcu_assign_pointer(per_cpu(cpufreq_update_util_data, cpu), data);
+}
+
+// 调度器在各关键点调用 cpufreq_update_util():
+// 调度器侧 (fair.c, rt.c, dl.c 中):
+//
+// 1. enqueue_task → update_load_avg → cpufreq_update_util()
+// 2. dequeue_task → update_load_avg → cpufreq_update_util()
+// 3. scheduler_tick → update_rq_clock → cpufreq_update_util()
+// 4. task 唤醒后 -> cpufreq_update_util() + SCHED_CPUFREQ_IOWAIT flag
+</code></pre>
+
+<p><strong>调度器 → schedutil 的调用路径示例</strong>：</p>
+
+<pre class="diagram">
+  scheduler_tick()
+    → update_rq_clock(rq)
+      → cpufreq_update_util(rq, flags)
+        → data = rcu_dereference(per_cpu(cpufreq_update_util_data, cpu))
+        → data->func(data, rq_clock(rq), flags)
+          │
+          ├── sugov_update_single_freq()    // 每CPU独立policy
+          ├── sugov_update_single_perf()    // adjust_perf 接口
+          └── sugov_update_shared()         // 多CPU共享policy
+</pre>
+
+<h3 id="ch4-4">4.4 频率选择公式推导</h3>
+
+<pre><code>
+// kernel/sched/cpufreq_schedutil.c:193
+static unsigned int get_next_freq(struct sugov_policy *sg_policy,
+                                   unsigned long util, unsigned long max)
+{
+    struct cpufreq_policy *policy = sg_policy->policy;
+    unsigned int freq;
+
+    freq = get_capacity_ref_freq(policy);    // Step 1: 获取参考频率
+    freq = map_util_freq(util, freq, max);   // Step 2: 利用率映射
+    return cpufreq_driver_resolve_freq(policy, freq); // Step 3: 取整到支持的OPP
+}
+
+// map_util_freq() 的核心公式:
+// next_freq = 1.25 * max_freq * util / max
+//
+// 为什么是 1.25？
+// 因为 80% 利用率时, next_freq = 1.25 * max_freq * 0.8 = 1.0 * max_freq
+// 即: 当利用率达到80%时，频率已经到达最大值
+// 这留下了 20% 的 headroom 用于处理突发负载
+
+// get_capacity_ref_freq() 返回的参考频率:
+// (1) arch_scale_freq_ref() — arch 提供的硬件参考频率
+// (2) policy->cpuinfo.max_freq — 如果 arch freq invariant
+// (3) policy->cur * 1.25 — 降级方案（加了25%余量）
+</code></pre>
+
+<h3 id="ch4-5">4.5 IO Wait 提升机制</h3>
+
+<p>这是 schedutil 最有特色的功能之一——识别 IO 密集型任务的唤醒模式并临时提升 CPU 频率：</p>
+
+<pre><code>
+// 算法: 每次 wakeup with SCHED_CPUFREQ_IOWAIT 标志时
+//   boost = max(boost * 2,  IOWAIT_BOOST_MIN)   // IOWAIT_BOOST_MIN = 容量/8
+//   每次 tick 内没有新的 IO wakeup 时
+//   boost = boost / 2
+//   如果超过一个 tick 都没有 IO wakeup
+//   boost = 0
+
+// 示例场景: 数据库查询
+// T+0ms:    查询请求到达，进程被唤醒 (IO wait)
+//            boost = 128 (IOWAIT_BOOST_MIN)
+// T+0.1ms:  结果返回，再次唤醒
+//            boost = 256
+// T+0.2ms:  更多数据到达
+//            boost = 512
+// ...
+// T+4ms:    没有新IO, tick到
+//            boost = 512 / 2 = 256
+// T+8ms:    下一个tick, 仍无IO
+//            boost = 128
+// T+12ms:   超过一个tick无IO
+//            boost = 0
+
+// 效果：IO密集场景下CPU频率快速提升到最高，
+//        IO完成后频率逐渐回落，避免不必要的功耗
+</code></pre>
+
+<h3 id="ch4-6">4.6 Fast Switch vs Slow Path</h3>
+
+<table>
+<thead><tr><th>特性</th><th>Fast Switch</th><th>Slow Path</th></tr></thead>
+<tbody>
+<tr><td><strong>触发时机</strong></td><td>直接在调度器上下文中</td><td>通过 irq_work → kthread_work</td></tr>
+<tr><td><strong>调用上下文</strong></td><td>持有 rq->lock，关中断</td><td>进程上下文 (sugov:0 线程)</td></tr>
+<tr><td><strong>要求</strong></td><td>驱动不能睡眠，不能持有 mutex</td><td>驱动可以调用可能阻塞的 API</td></tr>
+<tr><td><strong>延迟</strong></td><td>~几微秒</td><td>~几十微秒</td></tr>
+<tr><td><strong>ARM64 典型使用</strong></td><td>SCMI perf 协议、cpufreq-dt</td><td>带 I2C/SPI 调压器的老平台</td></tr>
+<tr><td><strong>线程</strong></td><td>不需要</td><td>"sugov:0" 线程（SCHED_DEADLINE，保证不被饿死）</td></tr>
+</tbody>
+</table>
+
+<h4>慢路径的 kthread 机制</h4>
+
+<pre><code>
+// kernel/sched/cpufreq_schedutil.c:655-708
+
+// sugov 线程创建时设置为 SCHED_DEADLINE:
+//   runtime=1ms, deadline=10ms, period=10ms
+// 目的: 确保调频请求不会被其他任务无限期延迟
+
+// 流程:
+// sugov_update_single_freq() → 发现不能 fast_switch
+//   → raw_spin_lock(&sg_policy->update_lock)
+//   → sugov_deferred_update(sg_policy)  // 设置 work_in_progress
+//     → irq_work_queue(&sg_policy->irq_work)
+//       → sugov_irq_work()              // 硬中断上下文
+//         → kthread_queue_work()        // 排队到 sugov kthread
+//           → sugov_work()              // 进程上下文
+//             → __cpufreq_driver_target(sg_policy->policy, freq, CPUFREQ_RELATION_L)
+</code></pre>
+
+<h3 id="ch4-7">4.7 频率保持与下降延迟</h3>
+
+<p>schedutil 有一个重要的启发式策略——不轻易降频：</p>
+
+<pre><code>
+// kernel/sched/cpufreq_schedutil.c:358
+static bool sugov_hold_freq(struct sugov_cpu *sg_cpu)
+{
+    // 如果 CPU 最近没有 idle（tick_nohz_get_idle_calls_cpu 计数没有增加）
+    // 说明 CPU 一直在忙 → 不要降频
+    //
+    // 原因: CPU 连续忙碌时，短暂的计算间隙不代表负载真的下降了
+    //       过早降频会导致下次再忙时又得升回去（频率震荡）
+    //
+    // 例外: uclamp_max 钳制——即使要 hold 也得降（用户显式要求的）
+    idle_calls = tick_nohz_get_idle_calls_cpu(sg_cpu->cpu);
+    ret = idle_calls == sg_cpu->saved_idle_calls;  // true → hold
+    sg_cpu->saved_idle_calls = idle_calls;
+    return ret;
+}
+</code></pre>
+
+<h3 id="ch4-8">4.8 Schedutil 核心总结</h3>
+
+<table>
+<thead><tr><th>#</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Schedutil 是<strong>事件驱动</strong>而非采样驱动——在调度器的每个关键点实时决策</td></tr>
+<tr><td>2</td><td>通过 <code>update_util</code> hook 嵌入调度器，延迟从 ~10ms 降到 μs 级</td></tr>
+<tr><td>3</td><td>频率公式 <code>1.25 * max_freq * util / max</code> 确保 80% util 时已达 max freq</td></tr>
+<tr><td>4</td><td><strong>IO wait boosting</strong> 对数据库/web服务器等 IO 密集负载至关重要</td></tr>
+<tr><td>5</td><td><strong>fast_switch</strong> 允许在调度器关中断上下文中直接调频（无阻塞路径）</td></tr>
+<tr><td>6</td><td><code>sugov_hold_freq</code> 防止频率震荡——CPU 持续 busy 时不轻易降频</td></tr>
+<tr><td>7</td><td>慢路径使用 SCHED_DEADLINE kthread 保证调频请求的实时性</td></tr>
+</tbody>
+</table>
+
+<!-- ================================================================================================ -->
+<h2 id="ch5">5. Energy Model —— 能耗模型与 EAS</h2>
+
+<h3 id="ch5-1">5.1 为什么需要 Energy Model</h3>
+
+<p>前面章节讲了如何在 "忙碌" 时调频（CPUFreq）和 "空闲"时选深度（CPUidle），但有一个更根本的问题没回答：</p>
+
+<blockquote>
+<strong>任务应该放在哪个 CPU 上执行，才能让整个系统的能耗最小？</strong>
+</blockquote>
+
+<p>这是 Energy-Aware Scheduling (EAS) 要解决的问题。而 EM 就是 EAS 的"数据库"——它告诉调度器每个 (CPU, 频率) 组合对应多少功耗和算力。</p>
+
+<h3 id="ch5-2">5.2 核心数据结构</h3>
+
+<pre><code>
+// include/linux/energy_model.h
+struct em_perf_domain {
+    struct em_perf_table __rcu *em_table;  // ★ RCU 保护的性能状态表
+    int                         nr_perf_states;
+    unsigned long               flags;
+    unsigned long               cpus[];        // 这个 domain 包含的 CPU bitmap
+};
+
+struct em_perf_state {
+    unsigned long frequency;     // 频率 (kHz)
+    unsigned long power;         // ★ 功耗 (mW) — 由驱动或DT提供
+    unsigned long cost;          // ★ 能效比 (power/performance × 10) — EAS用
+    unsigned long performance;   // 该频率下的算力 (0~1024)
+    unsigned long flags;         // EM_PERF_STATE_INEFFICIENT 标记
+};
+
+// em_perf_state[] 按频率从低到高排列:
+// table[0]: 500MHz, 100mW, performance=250, cost=400
+// table[1]: 800MHz, 200mW, performance=400, cost=500
+// table[2]: 1.2GHz, 400mW, performance=600, cost=667 ← 这是最优点?
+// table[3]: 1.6GHz, 700mW, performance=800, cost=875
+// table[4]: 2.0GHz, 1200mW, performance=1024, cost=1172
+</code></pre>
+
+<h3 id="ch5-3">5.3 Energy Model 的构建</h3>
+
+<p>EM 可以通过多种方式构建，取决于平台提供的数据：</p>
+
+<pre><code>
+// kernel/power/energy_model.c
+
+// 方法1: 驱动通过 em_dev_register_perf_domain() 主动注册
+//        传入 em_data_callback {
+//            .active_power() → 返回该频率下的功耗(mW)
+//        }
+// 方法2: 从 Device Tree 的 "opp-table" 节点解析
+//        opp-table { opp-500000000 { opp-hz = ... ; opp-microwatt = <100000>; }; }
+// 方法3: CPUFreq 驱动自动推导 (EM artificial)
+//        如果没有真实功耗数据，使用简化的线性模型
+
+// 构建流程:
+em_dev_register_perf_domain(dev, nr_states, cb, cpus, flags)
+  → em_create_perf_table(dev, pd, nr_states, cb, flags)
+    → 分配 em_perf_state 表
+    → 调用 cb->active_power() 获取每个频率的功耗
+    → em_init_performance()  → 计算 performance = max_cap * freq / fmax
+    → em_compute_costs()     → ★ 计算 cost
+  → 将 em_perf_domain 挂到 dev->em_pd
+  → em_rebuild_sched_domains()  // ★ 触发调度域重建，让EAS感知到新EM
+</code></pre>
+
+<h3 id="ch5-4">5.4 Cost 的计算与低效状态标记</h3>
+
+<p>这是 EM 中最关键的计算——cost 直接决定了 EAS 的任务放置决策：</p>
+
+<pre><code>
+// kernel/power/energy_model.c:229
+static int em_compute_costs(...)
+{
+    for (i = nr_states - 1; i >= 0; i--) {
+        // cost = power * 10 / performance
+        // 含义: 每单位算力的功耗 × 10（放大精度）
+        power_res = table[i].power * 10;
+        cost = power_res / table[i].performance;
+        table[i].cost = cost;
+
+        // ★ 效率标记:
+        // 如果升到更高频率后 cost 并没有降低 → 说明升频不划算
+        // 标记为 EM_PERF_STATE_INEFFICIENT
+        if (table[i].cost >= prev_cost) {
+            table[i].flags = EM_PERF_STATE_INEFFICIENT;
+            // 调度器在选频率时会跳过这个点
+        } else {
+            prev_cost = table[i].cost;
+        }
+    }
+}
+
+// 低效状态的直观理解:
+// 假设：
+//   1.0GHz: 200mW, perf=500 → cost=400
+//   1.2GHz: 350mW, perf=600 → cost=583  ← 升了20%频率功耗涨了75%，cost反而大了
+//
+// 那么 1.2GHz 会被标记为 INEFFICIENT
+// → EAS 知道如果不需要 600 的算力，宁愿跑 1.0GHz = 500 的算力
+</code></pre>
+
+<h3 id="ch5-5">5.5 EM 与 EAS 的交互</h3>
+
+<pre><code>
+// EAS (Energy-Aware Scheduling) 的任务放置决策:
+// 对于每个可放置任务的 CPU，计算放置后的预期能耗:
+
+energy_diff = em_cpu_energy(cpu, new_util_after) - em_cpu_energy(cpu, old_util_before);
+//            └→ compute_energy() in fair.c
+//               利用 em_perf_state 的 cost 值，计算该CPU在新的利用率下需要多少功耗
+
+// EAS 选择 energy_diff 最小的 CPU
+// → 同时考虑了:
+//   (1) 目标任务现在的利用率（决定该走多快）
+//   (2) 该 CPU 自身的能效曲线（cost 表）
+//   (3) 该 CPU 上已有任务的利用率（共享频率轨的影响）
+</code></pre>
+
+<h3 id="ch5-6">5.6 DebugFS 接口</h3>
+
+<pre><code>
+$ mount -t debugfs none /sys/kernel/debug
+$ ls /sys/kernel/debug/energy_model/
+cpu0/  cpu4/  (每个 performance domain 一个)
+
+$ ls /sys/kernel/debug/energy_model/cpu0/
+cpus       # 共享此 domain 的CPU
+flags      # EM 标志
+ps:500000/ ps:800000/ ps:1200000/ ps:1400000/  # 每个频率点一个目录
+
+$ cat /sys/kernel/debug/energy_model/cpu0/ps:1200000/*
+frequency:    1200000
+power:        250          ← 功耗 (mW)
+cost:         425          ← 能效比
+performance:  614          ← 算力 (0~1024)
+inefficient:  0            ← 非低效状态
+</code></pre>
+
+<h3 id="ch5-7">5.7 Energy Model 核心总结</h3>
+
+<table>
+<thead><tr><th>#</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>EM 是 EAS 的"数据库"，提供每个 (CPU, 频率) 的<strong>功耗、算力、成本</strong></td></tr>
+<tr><td>2</td><td><strong>cost = power/performance</strong> 是 EAS 做任务放置决策的核心依据</td></tr>
+<tr><td>3</td><td><code>EM_PERF_STATE_INEFFICIENT</code> 标记那些"频率更高但能效反而更低"的点</td></tr>
+<tr><td>4</td><td>EM 数据可以来自<strong>驱动注册</strong>、<strong>DT OPP 表</strong>或<strong>简化推导</strong></td></tr>
+<tr><td>5</td><td>没有 EM，EAS 退化为纯性能调度（不考虑功耗）</td></tr>
+<tr><td>6</td><td>ARM64 big.LITTLE 平台尤其依赖 EM：大核跑低频可能比小核跑高频更省电</td></tr>
+</tbody>
+</table>
+
+<!-- ================================================================================================ -->
+<h2 id="ch6">6. Device Runtime PM —— 设备运行时电源管理</h2>
+
+<h3 id="ch6-1">6.1 核心概念：Usage Counter</h3>
+
+<p>Runtime PM 管理单个设备的运行时电源状态（而非整个系统）。它的核心是一个简单的引用计数机制：</p>
+
+<pre><code>
+// include/linux/pm_runtime.h
+// 设计思想: "有人用就不关，没人用就可以关"
+
+// 每个 device 有一个 usage_counter:
+//  usage_counter > 0: 设备被"使用中"，不能 suspend
+//  usage_counter = 0: 设备处于空闲，可以在适当时候 suspend
+
+// 典型使用模式:
+// driver_open()    → pm_runtime_get_sync(dev);   // usage_counter++
+// ...使用设备...
+// driver_release() → pm_runtime_put(dev);         // usage_counter--
+//                                                   → 如果变成0，触发suspend
+</code></pre>
+
+<h3 id="ch6-2">6.2 核心 API</h3>
+
+<pre><code>
+// ★ 引用计数操作
+pm_runtime_get(dev);           // 增加引用计数（异步，不保证设备已 resume）
+pm_runtime_get_sync(dev);      // 增加引用计数 + 等待 resume 完成
+pm_runtime_put(dev);           // 减少引用计数（异步触发 idle/suspend）
+pm_runtime_put_sync(dev);      // 减少引用计数 + 等待 suspend 完成
+
+// ★ 控制
+pm_runtime_enable(dev);        // 启用 runtime PM
+pm_runtime_disable(dev);       // 禁用（force resume + 阻止后续操作）
+pm_runtime_forbid(dev);        // 禁止 suspend（引用计数不受影响）
+pm_runtime_allow(dev);         // 允许 suspend
+
+// ★ 状态查询
+pm_runtime_suspended(dev);     // 设备是否处于 suspended 状态
+pm_runtime_active(dev);        // 设备是否 active
+</code></pre>
+
+<h3 id="ch6-3">6.3 Autosuspend 机制</h3>
+
+<p>如果每次 <code>pm_runtime_put</code> 都立即 suspend 设备，频繁的进出延迟会严重影响性能。Autosuspend 解决这个问题：</p>
+
+<pre><code>
+// include/linux/pm_runtime.h
+// autosuspend: put之后不是立即suspend，而是等 idle_timeout
+
+pm_runtime_use_autosuspend(dev);              // 启用 autosuspend
+pm_runtime_set_autosuspend_delay(dev, 200);   // 设200ms超时
+pm_runtime_mark_last_busy(dev);               // 标记"我刚用过设备"
+pm_runtime_put_autosuspend(dev);              // put + 启动autosuspend定时器
+
+// 流程:
+// 1. put → 设备进入 RPM_SUSPENDING 状态 → 启动200ms定时器
+// 2. 200ms内如果有人 get → 设备回到 active，取消定时器
+// 3. 200ms内无人使用 → 定时器到期 → rpm_suspend() → 真正suspend
+
+// 好处: 一个典型的交互式操作可能在100ms内触发多次设备访问
+//       autosuspend能避免频繁的 suspend/resume
+</code></pre>
+
+<h3 id="ch6-4">6.4 Runtime PM 的回调层次</h3>
+
+<p>Runtime PM 的回调可以通过多个层级注册（优先级从高到低）：</p>
+
+<pre class="diagram">
+  dev->pm_domain->ops           → 通用 power domain (如 genpd)
+    → dev->type->pm             → 设备类型
+      → dev->class->pm          → 设备类
+        → dev->bus->pm          → 总线
+          → dev->driver->pm     → 驱动 (struct dev_pm_ops {
+              .runtime_suspend,
+              .runtime_resume,
+              .runtime_idle
+          })
+</pre>
+
+<p>这个层级设计允许架构代码（如 ARM PSCI genpd）和设备驱动各自处理自己关心的部分。</p>
+
+<h3 id="ch6-5">6.5 Runtime PM 核心总结</h3>
+
+<table>
+<thead><tr><th>#</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Runtime PM 管理<strong>单个设备</strong>的电源，与 CPUidle/CPUFreq 的 CPU 级别管理形成互补</td></tr>
+<tr><td>2</td><td>基于 <strong>usage counter</strong>——"有人在用就不关"</td></tr>
+<tr><td>3</td><td><strong>Autosuspend</strong> 是保持性能和功耗平衡的关键机制——避免频繁进出</td></tr>
+<tr><td>4</td><td>回调优先级：<strong>pm_domain > type > class > bus > driver</strong></td></tr>
+<tr><td>5</td><td>ARM64 上 genpd (Generic Power Domain) 常与 PSCI 结合，控制 cluster 级别的 power gate</td></tr>
+</tbody>
+</table>
+
+<!-- ================================================================================================ -->
+<h2 id="ch7">7. 系统休眠管理 —— Suspend / Resume / Hibernate</h2>
+
+<h3 id="ch7-1">7.1 三种系统休眠状态</h3>
+
+<table>
+<thead><tr><th>状态</th><th>内核术语</th><th>功耗</th><th>唤醒时间</th><th>RAM 状态</th><th>CPU 状态</th></tr></thead>
+<tbody>
+<tr><td><strong>Suspend-to-Idle</strong></td><td>s2idle / freeze</td><td>较高（CPU idle）</td><td>最快（~几μs）</td><td>保持刷新</td><td>深度 idle</td></tr>
+<tr><td><strong>Suspend-to-RAM</strong></td><td>deep / mem</td><td>极低</td><td>中等（~几十ms）</td><td>自刷新模式</td><td>断电</td></tr>
+<tr><td><strong>Hibernate</strong></td><td>disk</td><td>零（可断电）</td><td>最慢（~几秒）</td><td>内容写入磁盘</td><td>断电</td></tr>
+</tbody>
+</table>
+
+<h3 id="ch7-2">7.2 Suspend-to-Idle (s2idle) 流程</h3>
+
+<p>s2idle 是"最轻量"的休眠——不关闭 RAM，不关闭 CPU 电源。它只做三件事：</p>
+
+<pre><code>
+// kernel/power/suspend.c
+
+// 入口: echo freeze > /sys/power/state → pm_suspend(PM_SUSPEND_FREEZE)
+// 核心流程:
+suspend_devices_and_enter(PM_SUSPEND_FREEZE)
+  → platform_suspend_begin()           // 通知平台固件
+  → suspend_console()                  // 冻结控制台输出
+  → dpm_suspend_start(PMSG_FREEZE)     // ★ 设备冻结（调用驱动的.freeze回调）
+  → dpm_suspend_end(PMSG_FREEZE)       // ★ 设备后期处理
+  → suspend_disable_secondary_cpus()   // 把所有非boot CPU踢出（CPU hotplug）
+  → // 所有CPU已冻结，只剩boot CPU在跑
+  → tick_freeze()                      // 冻结系统 tick
+  → cpuidle_enter_s2idle()             // ★ Boot CPU 进入最深 idle 状态
+  // ─── 系统在此休眠 ───
+  // 被唤醒中断唤醒
+  → tick_unfreeze()
+  → suspend_enable_secondary_cpus()   // 恢复次级CPU
+  → dpm_resume_start(PMSG_RESUME)     // 恢复设备
+  → dpm_resume_end(PMSG_RESUME)
+  → resume_console()
+</code></pre>
+
+<h3 id="ch7-3">7.3 Suspend-to-RAM (STR/Deep Sleep) 流程</h3>
+
+<pre><code>
+// echo mem > /sys/power/state
+
+suspend_devices_and_enter(PM_SUSPEND_MEM)
+  → dpm_suspend_start(PMSG_SUSPEND)
+  → suspend_disable_secondary_cpus()   // 所有非boot CPU offline
+  → syscore_suspend()                  // ★ 系统核心设备 suspend（中断控制器等）
+  → // ─── 关键：所有中断被屏蔽 ───
+  → platform_suspend_ops->enter(state) // ★ 进入平台特定休眠
+  //   └→ ARM64 PSCI: psci_system_suspend() (PSCI 0.2+)
+  //      └→ CPU_SUSPEND with StateType=powerdown
+  //         └→ ATF: 保存CPU上下文 → 关CPU电源 → DDR进自刷新 → 等唤醒
+  //
+  // ─── 系统完全 stop，只有唤醒源还在监听 ───
+  //
+  // 唤醒源触发 → ATF 恢复DDR → 恢复CPU → 从psci_cpu_suspend返回
+  → syscore_resume()
+  → suspend_enable_secondary_cpus()
+  → dpm_resume_start(PMSG_RESUME)
+</code></pre>
+
+<h3 id="ch7-4">7.4 Hibernate (Suspend-to-Disk)</h3>
+
+<p>Hibernate 是"最彻底"的——把整个 RAM 的内容保存到 swap 设备，然后完全断电。唤醒时从 swap 恢复 RAM 镜像。</p>
+
+<pre><code>
+// kernel/power/hibernate.c + kernel/power/snapshot.c
+// 核心流程:
+hibernate()
+  → freeze_processes()            // 冻结所有用户态进程
+  → create_image()                // ★ 将 RAM 快照写入 swap
+  //   → 遍历所有 page，将使用的 page 写到 swap
+  //   → 压缩（可选 LZO/LZ4）
+  → power_down()
+  //   → 平台特定：关机或 STR
+  // 唤醒后：
+  → load_image()                  // ★ 从 swap 读回快照
+  //   → 逐页恢复（不覆盖内核自己用的 page）
+  → thaw_processes()              // 解冻所有进程
+</code></pre>
+
+<h3 id="ch7-5">7.5 系统休眠核心总结</h3>
+
+<table>
+<thead><tr><th>#</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>三种休眠模式：<strong>s2idle</strong>（最浅，~几μs唤醒）、<strong>STR/mem</strong>（最常用，~几十ms）、<strong>disk</strong>（最彻底，~几秒）</td></tr>
+<tr><td>2</td><td>休眠流程是"自底向上 suspend，自顶向下 resume"——<strong>设备→CPU→平台</strong></td></tr>
+<tr><td>3</td><td>ARM64 上最终调用 PSCI <code>system_suspend()</code>，由 EL3 固件完成真正的电源门控</td></tr>
+<tr><td>4</td><td>s2idle 并不关 CPU 电源，只是让 CPU 进到最深的 idle 状态（C-state）</td></tr>
+<tr><td>5</td><td>Hibernate 的关键挑战是：写 RAM 镜像时 <strong>不能修改 RAM 本身</strong>（因此有 snapshot 机制和原子 copy）</td></tr>
+</tbody>
+</table>
+
+<!-- ================================================================================================ -->
+<h2 id="ch8">8. PM QoS —— 电源管理服务质量约束</h2>
+
+<h3 id="ch8-1">8.1 设计目标</h3>
+
+<p>PM QoS 提供了一种机制，让应用/驱动/子系统可以向电源管理框架表达自己的<strong>延迟需求</strong>或<strong>带宽需求</strong>。它回答："为了省电可以牺牲到什么程度？"</p>
+
+<pre><code>
+// 两种 QoS：
+// 1. CPU Latency QoS:   "CPU 从 idle 醒过来的延迟不能超过 Xμs"
+// 2. Device PM QoS:     "这个设备的 resume 延迟不能超过 Xμs"
+
+// 应用场景:
+//   - 音频驱动: "我的 DMA 延迟不能超过 500μs" → CPU 不能进太深的 C-State
+//   - 用户空间: echo 200 > /dev/cpu_dma_latency → 延迟不超过 200μs
+//     （后台进程打开这个 fd 并保持，直到退出）
+</code></pre>
+
+<h3 id="ch8-2">8.2 CPU Latency QoS</h3>
+
+<pre><code>
+// kernel/power/qos.c
+// CPU latency QoS 对 CPUidle governor 的影响:
+
+// 每个 CPU 都有 pm_qos 约束
+// CPUidle governor 在 select() 中调用:
+cpuidle_governor_latency_req(cpu)
+  → device_req = dev_pm_qos_raw_resume_latency(device);  // 设备级别的约束
+  → global_req = cpu_latency_qos_limit();                 // 全局约束（/dev/cpu_dma_latency）
+  → return min(device_req, global_req);                   // 取最严格的
+
+// 状态选择时:
+for each state:
+    if state->exit_latency_ns > latency_req:
+        skip  // ← 退出延迟超过QoS要求，不能用这个状态
+
+// 示例: QoS=50μs 时
+//    C1 exit_latency=2μs  → ✅
+//    C2 exit_latency=20μs → ✅
+//    C3 exit_latency=200μs → ❌ QoS拒绝
+
+// 用户空间接口:
+$ cat /dev/cpu_dma_latency    // 读取当前最严格的约束
+// 打开它并写入一个值来注册约束（保持fd打开，退出自动释放）
+</code></pre>
+
+<h3 id="ch8-3">8.3 Device PM QoS</h3>
+
+<pre><code>
+// drivers/base/power/qos.c
+// 每个设备可以有多个 QoS 参数:
+// - DEV_PM_QOS_RESUME_LATENCY:  设备 resume 的最大允许延迟
+// - DEV_PM_QOS_LATENCY_TOLERANCE: device 可容忍的延迟（activity 窗口）
+// - DEV_PM_QOS_FLAGS:           如 DEV_PM_QOS_FLAG_NO_POWER_OFF
+
+// 使用示例:
+dev_pm_qos_add_request(dev, &req,
+    DEV_PM_QOS_RESUME_LATENCY, 100);  // 要求 resume ≤ 100μs
+
+// Runtime PM 在 suspend 前检查:
+if (dev_pm_qos_flags(dev, DEV_PM_QOS_FLAG_NO_POWER_OFF))
+    return -EBUSY;  // 不允许关电
+</code></pre>
+
+<h3 id="ch8-4">8.4 PM QoS 核心总结</h3>
+
+<table>
+<thead><tr><th>#</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>PM QoS 是"省电的刹车"——告诉电源管理框架 <strong>最多能牺牲多少延迟</strong></td></tr>
+<tr><td>2</td><td>CPU Latency QoS 直接限制 CPUidle 最深可选的状态</td></tr>
+<tr><td>3</td><td><code>/dev/cpu_dma_latency</code> 是用户空间设置 CPU QoS 的标准接口</td></tr>
+<tr><td>4</td><td>约束值取 <strong>最小值</strong>（最严格的那个生效）</td></tr>
+</tbody>
+</table>
+
+<!-- ================================================================================================ -->
+<h2 id="ch9">9. 热管理 —— CPU Cooling 与功率限制</h2>
+
+<h3 id="ch9-1">9.1 Thermal Framework 架构</h3>
+
+<p>当 SoC 温度过高时，必须限制 CPU 的功耗（降低频率/关核），甚至触发紧急关机。Linux Thermal Framework 使用"导热区（thermal zone）+ 降温设备（cooling device）"模型：</p>
+
+<pre><code>
+// thermal_zone: 温度传感器 + Trip Points
+// cooling_device: CPUFreq / CPUidle / 风扇 等能降低温度的手段
+
+// Trip Points:
+trip_point[0]: "passive"  → 65°C → 开始通过降频降温（不影响功能）
+trip_point[1]: "hot"      → 85°C → 更激进的降温
+trip_point[2]: "critical" → 105°C → 紧急关机（thermal shutdown）
+</code></pre>
+
+<h3 id="ch9-2">9.2 CPU Cooling Device</h3>
+
+<pre><code>
+// drivers/cpufreq/cpufreq.c + include/linux/cpu_cooling.h
+
+// CPU cooling device 是 cpufreq 的一个"面"
+// cpufreq_cooling_register() 注册 cooling device
+
+// 降温级别 (cooling_state) 映射到频率限制:
+// state 0: 无限制（可以跑满 freq）
+// state 1: 限频到 policy->max * 3/4
+// state 2: 限频到 policy->max * 2/4
+// state 3: 限频到 policy->max * 1/4
+// ...
+
+// thermal governor(如 step_wise, power_allocator) 根据温度决定:
+// 当前温度 > trip_temp → cooling_state++
+// 当前温度 < trip_temp - hysteresis → cooling_state--
+
+// 用户空间工具:
+$ cat /sys/class/thermal/thermal_zone0/temp       // 读取温度(毫摄氏度)
+$ cat /sys/class/thermal/cooling_device0/cur_state // 读取当前降频级别
+</code></pre>
+
+<h3 id="ch9-3">9.3 功率限制 (Power Capping)</h3>
+
+<pre><code>
+// 与温度限制不同，功率限制是"功耗预算"模型
+// 使用 thermal power allocator governor:
+
+// 概念: 给一组设备分配一个总功耗预算 (sustainable_power)
+// 每个 cooling device 按权重 (weight) 分配降温额度
+
+// 例如: sustainable_power = 5W
+//   CPU cooling:     weight=80 → 获得 80% 的降温额度
+//   GPU cooling:     weight=20 → 获得 20% 的降温额度
+//   当总功耗 > 5W 时，power_allocator 按权重分配限频量
+
+// sysfs 配置:
+$ cat /sys/class/thermal/thermal_zone0/policy  // power_allocator
+$ echo 5000 > .../sustainable_power            // 5W 可持续功耗
+</code></pre>
+
+<div class="note">
+<strong>ARM64 实战提示</strong>：在 A53/A57 嵌入式场景中，thermal 问题比 x86 服务器严重得多。一颗 A57 跑满 2GHz 可以在几秒内触发 thermal shutdown。实际部署中通常需要：
+<ol>
+<li>thermal zone + passive cooling 保证不死机</li>
+<li>power allocator 或 step_wise governor 进行温控</li>
+<li>配合 EAS 避免把热任务集中在 thermal "热点"CPU上</li>
+</ol>
+</div>
+
+<!-- ================================================================================================ -->
+<h2 id="ch10">10. 调试与 Profiling 工具</h2>
+
+<h3 id="ch10-1">10.1 CPUidle 调试</h3>
+
+<pre><code>
+# 查看所有CPU的idle状态和支持的C-State
+$ ls /sys/devices/system/cpu/cpu0/cpuidle/
+
+# 查看每个状态的统计
+$ for i in /sys/devices/system/cpu/cpu0/cpuidle/state*; do
+    echo "$i: name=$(cat $i/name), usage=$(cat $i/usage), time=$(cat $i/time)"
+  done
+
+# 查看是否有状态被禁用
+$ cat /sys/devices/system/cpu/cpu0/cpuidle/state*/disable
+
+# 查看当前PM QoS约束
+$ cat /dev/cpu_dma_latency &
+$ # (如果没有进程打开它，可能没有输出，需要先 cat 它)
+
+# 用 powertop 查看C-State驻留时间（推荐！）
+$ sudo powertop
+# Tab "Idle stats": 显示每个C-State的驻留百分比
+</code></pre>
+
+<h3 id="ch10-2">10.2 CPUFreq 调试</h3>
+
+<pre><code>
+# 查看当前governor和频率
+$ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+$ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq
+$ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors
+
+# 查看频率统计（每个频率驻留时间）
+$ cat /sys/devices/system/cpu/cpu0/cpufreq/stats/time_in_state
+
+# 手动切换governor
+$ echo schedutil > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+
+# 查看 schedutil 的 rate_limit（更新频率的最小间隔）
+$ cat /sys/devices/system/cpu/cpufreq/policy0/schedutil/rate_limit_us
+
+# 查看 policy 约束
+$ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+$ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+</code></pre>
+
+<h3 id="ch10-3">10.3 Tracepoint 追踪</h3>
+
+<pre><code>
+# CPUidle 事件追踪
+$ sudo perf stat -e 'power:cpu_idle' -- sleep 10     # 统计idle进入/退出次数
+$ sudo trace-cmd record -e cpu_idle -e cpu_idle_miss  # 记录idle选择和miss事件
+$ sudo trace-cmd report
+
+# CPUFreq 事件追踪
+$ sudo perf stat -e 'power:cpu_frequency' -- sleep 10  # 频率切换次数
+$ sudo trace-cmd record -e cpu_frequency               # 记录每次频率切换
+$ sudo trace-cmd report
+
+# 用 bpftrace 实时追踪频率变化
+$ sudo bpftrace -e '
+    tracepoint:power:cpu_frequency {
+        printf("CPU%d: %d → %d\n", args->cpu, args->old_freq, args->new_freq);
+    }'
+
+# 追踪 schedutil 的利用率与频率决策
+$ sudo bpftrace -e '
+    kprobe:sugov_update_single_freq {
+        $sg = (struct sugov_cpu *)arg0;
+        printf("CPU%d: util=%lu → freq=%u\n",
+               $sg->cpu, $sg->util, $sg->sg_policy->next_freq);
+    }'
+
+# CPUidle 选状态追踪
+$ sudo bpftrace -e '
+    kprobe:cpuidle_select {
+        printf("CPU%d: governor select called\n", cpu);
+    }
+    kprobe:cpuidle_enter_state {
+        printf("CPU%d: entering state index=%d\n",
+               ((struct cpuidle_device *)arg0)->cpu, arg2);
+    }'
+</code></pre>
+
+<h3 id="ch10-4">10.4 功耗测量</h3>
+
+<pre><code>
+# 1. Energy Model debugfs（看每个频率点的理论功耗）
+$ cat /sys/kernel/debug/energy_model/cpu0/ps:*/power
+
+# 2. 硬件功耗测量（ARM64平台）
+# 大部分 ARM64 平台通过 hwmon 或 power capping 暴露功耗
+$ find /sys/class/hwmon -name "power*" -o -name "energy*" 2>/dev/null
+# 或
+$ find /sys/devices -name "energy*_label" 2>/dev/null
+
+# 3. Running Average Power Limit (RAPL) — x86
+$ sudo perf stat -e power/energy-cores/ -- sleep 10    # x86 RAPL
+
+# 4. 软件估算
+# 结合 CPUFreq 时间统计和EM功耗数据，可以大致估算CPU能量消耗：
+$ cat /sys/devices/system/cpu/cpu0/cpufreq/stats/time_in_state
+# 500000 384720   ← 在500MHz停留了384720个时间单位
+# 800000 128430
+# 1200000 84230
+# 1400000 28510
+# 总能耗 ≈ Σ(freq_time[i] * EM_power[i]) / (max_freq * max_time)
+</code></pre>
+
+<!-- ================================================================================================ -->
+<h2 id="ch11">11. 实战：调试与调优速查</h2>
+
+<h3 id="ch11-1">11.1 常见功耗问题分类</h3>
+
+<table>
+<thead><tr><th>现象</th><th>可能原因</th><th>排查工具</th><th>参考章节</th></tr></thead>
+<tbody>
+<tr><td>idle 状态下功耗偏高</td><td>CPU 不能进入深度 idle 状态</td><td>powertop, /sys/.../cpuidle, trace-cmd</td><td><a href="#ch2">2</a>, <a href="#ch8">8</a></td></tr>
+<tr><td>轻负载时跑高频</td><td>governor 配置不当（如用了 performance）</td><td>/sys/.../cpufreq/, bpftrace</td><td><a href="#ch3">3</a>, <a href="#ch4">4</a></td></tr>
+<tr><td>IO 任务响应慢</td><td>schedutil io_wait_boost 未生效 或 rate_limit 太大</td><td>trace-cmd -e sched_switch</td><td><a href="#ch4-5">4.5</a>, <a href="#ch4-7">4.7</a></td></tr>
+<tr><td>音频/视频卡顿</td><td>CPU 进了太深的 C-State 导致唤醒延迟大</td><td>PM QoS /dev/cpu_dma_latency</td><td><a href="#ch8">8</a></td></tr>
+<tr><td>设备频繁 resume/suspend</td><td>缺少 autosuspend 或 delay 太小</td><td>/sys/devices/.../power/</td><td><a href="#ch6-3">6.3</a></td></tr>
+<tr><td>系统发热严重</td><td>thermal 限制太松、governor 太激进</td><td>/sys/class/thermal/</td><td><a href="#ch9">9</a></td></tr>
+<tr><td>suspend 无法唤醒</td><td>唤醒源没配置、gpio 中断没使能</td><td>/sys/power/pm_wakeup, dmesg</td><td><a href="#ch7">7</a></td></tr>
+</tbody>
+</table>
+
+<h3 id="ch11-2">11.2 诊断工具速查表</h3>
+
+<table>
+<thead><tr><th>工具/接口</th><th>用途</th><th>典型命令</th></tr></thead>
+<tbody>
+<tr><td><strong>powertop</strong></td><td>一站式功耗分析（C-State, P-State, wakeup 频率）</td><td><code>sudo powertop</code></td></tr>
+<tr><td><strong>trace-cmd</strong></td><td>追踪 idle、freq、sched 事件</td><td><code>trace-cmd record -e cpu_idle -e cpu_frequency</code></td></tr>
+<tr><td><strong>bpftrace</strong></td><td>实时动态追踪内核函数</td><td><code>bpftrace -e 'kprobe:sugov_update_single_freq {...}'</code></td></tr>
+<tr><td><strong>perf</strong></td><td>统计性能计数器</td><td><code>perf stat -e power/cpu_idle/ -- sleep 10</code></td></tr>
+<tr><td><strong>/sys/.../cpuidle/</strong></td><td>每CPU的idle状态统计</td><td><code>cat .../state*/{name,usage,time,above,below}</code></td></tr>
+<tr><td><strong>/sys/.../cpufreq/</strong></td><td>频率策略和统计</td><td><code>cat .../stats/time_in_state</code></td></tr>
+<tr><td><strong>/sys/class/thermal/</strong></td><td>温度和thermal throttling状态</td><td><code>cat .../thermal_zone0/temp</code></td></tr>
+<tr><td><strong>/sys/kernel/debug/energy_model/</strong></td><td>EM 数据（频率-功耗表）</td><td><code>cat .../cpu0/ps:*/{frequency,power,cost}</code></td></tr>
+</tbody>
+</table>
+
+<h3 id="ch11-3">11.3 ARM64 嵌入式 A53/A57 调优示例</h3>
+
+<p><strong>场景：A53 四核 + A57 双核，电池供电设备，需要延长待机时间。</strong></p>
+
+<pre><code>
+# Step 1: 确认 idle 状态可用
+$ ls /sys/devices/system/cpu/cpu0/cpuidle/
+state0 state1 state2
+$ cat /sys/devices/system/cpu/cpu0/cpuidle/state2/name
+cluster-sleep-0
+$ cat /sys/devices/system/cpu/cpu0/cpuidle/state2/usage
+1342  ← 使用次数很少，说明 governor 很少选这个深状态
+
+# Step 2: 检查 PM QoS 是否挡住了深状态
+$ cat /dev/cpu_dma_latency
+# 如果输出 "200000" 之类的小值，说明有进程在限制延迟
+$ lsof /dev/cpu_dma_latency
+# 找出是谁打开的
+
+# Step 3: 检查哪些唤醒源在频繁打断 idle
+$ sudo powertop
+# → "Top causes for wakeups" 部分
+# 假设看到某个驱动每秒产生 100 次中断 → 这就是功耗杀手
+
+# Step 4: 配置 EAS + schedutil
+$ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+$ echo schedutil > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+# 确认 EM 存在（EAS 需要）
+$ ls /sys/kernel/debug/energy_model/
+cpu0 cpu4  ← big 和 LITTLE 各有一个 domain
+
+# Step 5: 设置合理的频率范围
+$ echo 300000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+$ echo 1400000 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+$ echo 500000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq
+$ echo 2000000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
+
+# Step 6: 对于电池供电场景，考虑在轻负载时offline大核
+$ echo 0 > /sys/devices/system/cpu/cpu4/online
+# （这会禁用大核，当 wakeup 源不频繁时显著省电）
+</code></pre>
+
+<h3 id="ch11-4">11.4 服务器场景调优</h3>
+
+<p><strong>场景：x86/ARM64 服务器，混合负载（在线服务 + 批处理），需要平衡延迟和功耗。</strong></p>
+
+<pre><code>
+# Step 1: 确认使用 intel_pstate / amd_pstate 或 schedutil
+$ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+# 在服务器上 performance governor 是常见的默认值
+# 需评估: 是否值得切换到 schedutil 来省电？
+
+# Step 2: schedutil 的 rate_limit 调优
+# 默认 rate_limit 通常 ~10ms，对于延迟敏感的服务可能需要调小
+$ echo 2000 > /sys/devices/system/cpu/cpufreq/policy0/schedutil/rate_limit_us
+# 调小 → 响应更快但调频更频繁；调大 → 更稳定但响应慢
+
+# Step 3: 检查 thermal throttling
+$ cat /sys/class/thermal/thermal_zone*/temp
+# 如果温度接近被动/主动冷却 trip point，CPU 可能已被限频
+
+# Step 4: NUMA + idle 状态的关系
+# 在 NUMA 机器上，node-local 的 idle 退出更快
+# 考虑用 numactl 把延迟敏感任务绑定到特定 node
+$ numactl --cpunodebind=0 --membind=0 ./latency_sensitive_app
+</code></pre>
+
+<h3 id="ch11-5">11.5 核心思维转变</h3>
+
+<p>学完整个功耗管理子系统后，最核心的思维转变是：</p>
+
+<blockquote>
+<p><strong>以前你看 CPU 频率和功耗是两个独立数字，学完之后你看到的是：谁在驱动频率变化（schedutil hook）→ 频率决定功耗（EM cost 表）→ 空闲时进多深由谁决定（governor + PM QoS）→ 温度太高怎么自保（thermal throttling）→ 整个系统如何省电地休眠（s2idle/STR）——从一个静态的"当前频率"变成了一个完整的动态因果链。</strong></p>
+</blockquote>
+
+<table>
+<thead><tr><th>能力维度</th><th>具体体现</th></tr></thead>
+<tbody>
+<tr><td><strong>功耗问题</strong></td><td>看得懂 powertop、trace-cmd 输出，能定位深度 idle 进不去的原因</td></tr>
+<tr><td><strong>性能调优</strong></td><td>知道 schedutil rate_limit、io_wait_boost 怎么调，不是在黑盒试参数</td></tr>
+<tr><td><strong>系统设计</strong></td><td>从功耗的角度选择 governor、配置 PM QoS、设计唤醒源</td></tr>
+<tr><td><strong>实时系统</strong></td><td>理解 CPUidle 的 exit_latency 如何影响 real-time deadline，如何用 PM QoS 限制</td></tr>
+<tr><td><strong>嵌入式省电</strong></td><td>知道 idle 状态选择、thermal throttling、EAS 任务放置三者如何协同</td></tr>
+<tr><td><strong>故障排查</strong></td><td>能从"设备发热"追踪到 thermal zone → cooling device → CPUFreq governor → schedutil 的决策</td></tr>
+</tbody>
+</table>
+
+<hr>
+
+<p style="text-align:center; color:#999; margin-top:40px; padding-top:20px; border-top:1px solid #ddd;">
+Linux Kernel Power Management Subsystem Deep Dive Guide · Based on Linux 6.18.1<br>
+Last updated: 2026-07 · Covers CPUidle / CPUFreq / Schedutil / EM / Runtime PM / System PM / PM QoS / Thermal
+</p>
+
+</div>
+
+</body>
+</html>
