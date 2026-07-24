@@ -35,13 +35,89 @@
 body {
     font-family: "Georgia", "Noto Serif", "Times New Roman", serif;
     line-height: 1.8;
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 40px 24px;
     color: var(--text);
     background: var(--bg);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    display: flex;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+/* ========== Sidebar TOC ========== */
+#toc-sidebar {
+    width: 280px;
+    min-width: 280px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border-right: 1px solid var(--border);
+    padding: 28px 20px 28px 24px;
+    box-sizing: border-box;
+    z-index: 10;
+}
+#toc-sidebar h2 {
+    font-size: 1.05em;
+    margin: 0 0 16px 0;
+    padding: 0;
+    border: none;
+    color: var(--heading);
+}
+#toc-sidebar summary {
+    display: none;
+}
+#toc-sidebar .toc-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+#toc-sidebar .toc-list li {
+    margin: 2px 0;
+    line-height: 1.55;
+}
+#toc-sidebar .toc-list .toc-list {
+    padding-left: 14px;
+    margin-top: 1px;
+    margin-bottom: 2px;
+}
+#toc-sidebar .toc-list .toc-list .toc-list {
+    padding-left: 12px;
+}
+#toc-sidebar .toc-h2 > a {
+    font-weight: 700;
+    font-size: 0.85em;
+    color: var(--heading);
+}
+#toc-sidebar .toc-h3 > a {
+    font-weight: 400;
+    font-size: 0.80em;
+    color: var(--text);
+}
+#toc-sidebar .toc-h4 > a {
+    font-weight: 400;
+    font-size: 0.76em;
+    color: var(--text-muted);
+}
+#toc-sidebar .toc-list a {
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease, color 0.15s ease;
+    display: block;
+    padding: 1px 0;
+}
+#toc-sidebar .toc-list a:hover {
+    color: var(--accent);
+}
+
+/* ========== Main Content ========== */
+#main-content {
+    flex: 1;
+    min-width: 0;
+    max-width: 860px;
+    padding: 40px 36px 40px 40px;
 }
 
 /* ========== Headings ========== */
@@ -200,10 +276,18 @@ hr {
     background: #FDE8C8;
     color: #3D2B0F;
 }
+
+/* ========== Images — fully displayed ========== */
 </style>
 
 </head>
 <body>
+<nav id="toc-sidebar">
+<h2>目录</h2>
+<div class="toc-list" id="toc-content"></div>
+</nav>
+
+<main id="main-content">
 <h1>Linux ARM64 内存管理架构：三个函数，三层抽象</h1>
 
 <h2>概述</h2>
@@ -1910,5 +1994,49 @@ buddy 管理:      [===]      [=====]    [===]      managed = 50 (去掉 reserve
 
 <blockquote><strong><code>arch_numa_init()</code> 告诉内核"这块内存离哪个 CPU 近"，<code>sparse_init()</code> 告诉内核"怎么找到每一页的账本"，<code>zone_sizes_init()</code> 告诉内核"这块内存能给谁用"。三者协作，使得内核能够高效、正确、节省地管理物理内存。</strong></blockquote>
 
+</main>
+
+<script>
+(function() {
+    const toc = document.getElementById('toc-content');
+    const main = document.getElementById('main-content');
+    const headings = main.querySelectorAll('h2, h3, h4');
+    const stack = [{ el: toc, level: 1 }];
+
+    headings.forEach(function(h, i) {
+        const level = parseInt(h.tagName.charAt(1));
+        const id = 'sec-' + i;
+        h.id = id;
+
+        const li = document.createElement('li');
+        li.className = 'toc-h' + level;
+        const a = document.createElement('a');
+        a.href = '#' + id;
+        a.textContent = h.textContent;
+        li.appendChild(a);
+
+        // Find the right parent by walking the stack
+        while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+            stack.pop();
+        }
+        const parent = stack[stack.length - 1];
+
+        // If parent is a li and doesn't have a nested ul yet, create one
+        if (parent.level > 1) {
+            let ul = parent.el.querySelector('ul');
+            if (!ul) {
+                ul = document.createElement('ul');
+                ul.className = 'toc-list';
+                parent.el.appendChild(ul);
+            }
+            ul.appendChild(li);
+        } else {
+            parent.el.appendChild(li);
+        }
+
+        stack.push({ el: li, level: level });
+    });
+})();
+</script>
 </body>
 </html>

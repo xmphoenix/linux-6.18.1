@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从 QEMU Boot ROM 到 head.S：ARM64 内核启动流程 GDB 调试分析</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: fixed; top: 0; left: 0; width: 280px; height: 100vh;
+    overflow-y: auto; background: #fff; border-right: 1px solid var(--border);
+    padding: 28px 22px 40px; font-size: 0.9em; z-index: 10;
+}
+.sidebar h4 { font-size: 0.82em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 14px; font-weight: 600; }
+.sidebar a { display: block; color: var(--text-secondary); text-decoration: none; padding: 5px 0; border-radius: 3px; white-space: nowrap; }
+.sidebar a:hover, .sidebar a:target { color: var(--accent); }
+.sidebar a .num { color: #94a3b8; font-size: 0.82em; margin-right: 4px; }
+.main-content { margin-left: 280px; flex: 1; min-width: 0; }
+header { padding: 44px 0 36px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+header h1 { font-size: 1.95em; font-weight: 700; color: var(--accent); margin-bottom: 14px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 1.02em; color: var(--text-secondary); line-height: 2; }
+header .tag-row { margin-top: 18px; }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 960px; margin: 0 auto; padding: 36px 28px 60px; }
+section { padding: 32px 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.4em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 9px; margin-bottom: 18px; }
+section h3 { font-size: 1.12em; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
+section h4 { font-size: 1.02em; font-weight: 600; color: var(--text-secondary); margin: 14px 0 6px; }
+section p { font-size: 1em; color: var(--text-secondary); margin: 6px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 4px; font-size: 0.98em; }
+code { background: var(--code-bg); padding: 2px 7px; border-radius: 4px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.9em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 14px 18px; border-radius: 8px; overflow-x: auto; font-size: 0.86em; line-height: 1.65; margin: 10px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.93em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 9px 13px; text-align: left; font-size: 0.88em; }
+td { padding: 7px 13px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 10px 16px; border-radius: 4px; margin: 12px 0; font-size: 0.93em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 10px 16px; border-radius: 4px; margin: 12px 0; font-size: 0.93em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin: 10px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.82em; line-height: 1.75; white-space: pre; overflow-x: auto; color: #334155; }
+.flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; font-family: monospace; font-size: 0.9em; }
+.flow-box { background: var(--accent-light); color: var(--accent); padding: 6px 12px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe; font-weight: 500; }
+.flow-arrow { color: #94a3b8; font-size: 1.2em; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin: 8px 0; }
+.str { font-size: 0.9em; }
+@media (max-width: 860px) {
+    .sidebar { display: none; }
+    .main-content { margin-left: 0; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 24px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+<nav class="sidebar">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 调试环境整体架构</a>
+<a href="#s2"><span class="num">2.</span> vmlinux 虚拟→物理地址映射</a>
+<a href="#s3"><span class="num">3.</span> head.S 执行流程</a>
+<a href="#s4"><span class="num">4.</span> preserve_boot_args 逐条分析 ★</a>
+<a href="#s5"><span class="num">5.</span> QEMU 内存布局</a>
+<a href="#s6"><span class="num">6.</span> Bootloader 源码 &amp; GDB 验证</a>
+<a href="#s7"><span class="num">7.</span> GDB 断点配置 &amp; 自定义命令</a>
+<a href="#s8"><span class="num">8.</span> GDB 脚本踩坑记录</a>
+<a href="#s9"><span class="num">9.</span> 总结 &amp; 调试操作速查</a>
+</nav>
+
+<div class="main-content">
+
+<header>
+<h1>从 QEMU Boot ROM 到 head.S<br>ARM64 内核启动流程 GDB 调试分析</h1>
+<div class="subtitle">
+<p>📁 <code>linux-6.18.1/arch/arm64/kernel/head.S</code></p>
+<p>🎯 目标: 单步调试 <code>preserve_boot_args</code> — 内核启动参数保存函数</p>
+<p>🛠 工具链: QEMU + gdb-multiarch + 自定义 GDB 脚本</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">head.S</span><span class="tag tag-green">GDB</span><span class="tag tag-amber">QEMU</span><span class="tag tag-gray">ARM64</span><span class="tag tag-gray">early boot</span><span class="tag tag-gray">MMU off</span>
+</div>
+</header>
+
+<main>
+
+<!-- ====== 1 ====== -->
+<section id="s1">
+<h2>1. 调试环境整体架构</h2>
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────┐
+│                         launch.sh                          │
+│                                                             │
+│  ┌─────────────────────┐     ┌──────────────────────────┐  │
+│  │  QEMU 启动           │────▶│  gdb-multiarch 启动       │  │
+│  │  -s -S               │     │  ~/.gdbinit 自动加载：    │  │
+│  │  -kernel Image       │     │  ① add-symbol-file       │  │
+│  │  nokaslr             │     │    → 符号 @ 物理地址      │  │
+│  │  QEMU_PID=$!         │     │  ② 6 个断点              │  │
+│  └─────────────────────┘     │  ③ target remote :1234   │  │
+│                               │  ④ TUI 自动开启           │  │
+│  kill $QEMU_PID ◀────────────└──────────┬───────────────┘  │
+│  (GDB quit 后自动清理)                   │                  │
+└─────────────────────────────────────────────────────────────┘
+</div>
+<div class="two-col">
+<div>
+<h3>设计要点</h3>
+<ul>
+<li>QEMU <code>-s -S</code>: 开启 GDB stub 监听 :1234，CPU 暂停等待调试器连接</li>
+<li><code>nokaslr</code>: 禁用内核地址空间随机化，保证断点地址每次一致</li>
+<li><code>$QEMU_PID</code>: 捕获 QEMU 进程 PID，退出时精确 kill，不伤及其他 QEMU 实例</li>
+<li><code>sleep 0.5</code>: 等待 QEMU GDB stub 端口就绪后再启动 gdb-multiarch</li>
+</ul>
+</div>
+<div>
+<h3>踩过的坑</h3>
+<ul>
+<li>❌ <code>gdb</code> (仅 x86_64 target) — 不支持 aarch64 架构</li>
+<li>✅ 改为 <code>gdb-multiarch</code> (支持 aarch64)</li>
+<li>❌ <code>killall qemu-system-aarch64</code> — 可能误杀其他 QEMU 实例</li>
+<li>✅ 改为 <code>kill $QEMU_PID</code> 精确清理</li>
+<li>❌ 每次手动输入 <code>target remote :1234</code></li>
+<li>✅ .gdbinit 中自动连接</li>
+</ul>
+</div>
+</div>
+</section>
+
+<!-- ====== 2 ====== -->
+<section id="s2">
+<h2>2. vmlinux 虚拟地址 → 物理地址映射</h2>
+<h3>核心问题</h3>
+<p>vmlinux 是 <span class="accent">PIE (位置无关可执行文件)</span>，所有符号链接在虚拟地址 <code>0xffff80008xxxxxxx</code>。<br>
+QEMU 用 <code>-kernel Image</code> 将内核加载到物理地址 <span class="accent">0x40200000</span>。<br>
+<strong>MMU 关闭期间，CPU 使用物理地址</strong>，因此 GDB 符号必须映射到物理地址才能正确匹配 PC 寄存器。</p>
+<h3>fix_vmlinux_head_entry.sh 转换公式</h3>
+<pre><code>phys = (VMA_lower32 + 0x40200000 - 0x80000000) &amp; 0xffffffff
+     = virt - 0xffff800080000000 + 0x40200000</code></pre>
+<table>
+<tr><th>符号</th><th>虚拟地址 (vmlinux)</th><th>物理地址 (QEMU)</th><th>ELF 绑定</th><th>所在段</th></tr>
+<tr><td><code>_text</code></td><td><code>0xffff800080000000</code></td><td class="green"><code>0x40200000</code></td><td>GLOBAL</td><td>.head.text</td></tr>
+<tr><td><code>primary_entry</code></td><td><code>0xffff80008143c0f0</code></td><td class="green"><code>0x4163c0f0</code></td><td>GLOBAL</td><td>.rodata.text</td></tr>
+<tr><td><code>__primary_switch</code></td><td><code>0xffff80008143c658</code></td><td><code>0x4163c658</code></td><td>LOCAL</td><td>.rodata.text</td></tr>
+<tr><td><code>record_mmu_state</code></td><td><code>0xffff80008145a648</code></td><td><code>0x4165a648</code></td><td>LOCAL</td><td>.init.text</td></tr>
+<tr><td><code>preserve_boot_args</code></td><td><code>0xffff80008145a69c</code></td><td class="amber"><code>0x4165a69c</code></td><td>LOCAL</td><td>.init.text</td></tr>
+<tr><td><code>__primary_switched</code></td><td><code>0xffff80008145a6cc</code></td><td><code>0x4165a6cc</code></td><td>LOCAL</td><td>.init.text</td></tr>
+</table>
+<p>生成的 <code>add-symbol-file</code> 命令：</p>
+<pre><code>add-symbol-file vmlinux -s .head.text  0x40200000 \
+                        -s .text       0x40210000 \
+                        -s .rodata     0x410f0000 \
+                        -s .rodata.text 0x41637800 \
+                        -s .init.text  0x41650000 \
+                        -s .init.data  0x41738000</code></pre>
+<div class="warn">⚠ <code>preserve_boot_args</code> 是 LOCAL 符号（由 <code>SYM_CODE_START_LOCAL</code> 定义），GDB 无法通过名称找到它，必须使用地址断点: <code>b *0x4165a69c</code></div>
+</section>
+
+<!-- ====== 3 ====== -->
+<section id="s3">
+<h2>3. head.S 执行流程（物理地址视角）</h2>
+<div class="diagram">
+CPU 上电复位
+  │
+  ▼
+0x40000000  ┌ QEMU Bootloader (6 条指令) ──────────────────┐
+            │ ldr  x0, =DTB        ; x0 = 0x48000000       │
+            │ mov  x1/x2/x3, xzr   ; 清零                   │
+            │ ldr  x4, =entry      ; x4 = 0x40200000       │
+            │ br   x4              ; 跳转到内核              │
+            └───────────────────────────────────────────────┘
+  │  br x4
+  ▼
+0x40200000  ┌ _text ───────────────────────────────────────┐  ← BP1 (GLOBAL)
+            │ efi_signature_nop                            │
+            │ b    primary_entry                           │
+            └──────────────────────────────────────────────┘
+  │  b primary_entry (这条跳转跨了 ~20MB)
+  ▼
+0x4163c0f0  ┌ primary_entry ─────────────────────────────┐  ← BP2 (GLOBAL)
+            │ bl   record_mmu_state   ───▶ 0x4165a648 BP3 │
+            │ bl   preserve_boot_args ───▶ 0x4165a69c BP4 │  ★ 调试目标
+            │ adrp x1, early_init_stack                   │
+            │ mov  sp, x1                                 │
+            │ adrp x0, __pi_init_idmap_pg_dir              │
+            │ mov  x1, xzr                                │
+            │ bl   __pi_create_init_idmap                  │
+            │ ... 创建 identity mapping ...                │
+            │ ... 无效化/清理 D-cache ...                   │
+            └─────────────────────────────────────────────┘
+  │
+  ▼
+0x4163c658  __primary_switch    ← BP6 (LOCAL, MMU 即将开启)
+  │  (MMU ON — 此后地址切换到虚拟地址)
+  ▼
+0x4165a6cc  __primary_switched  →  start_kernel  →  内核 C 代码世界
+</div>
+<div class="note">💡 所有 6 个断点均配置了 <code>commands</code> 块：<code>silent</code> 抑制默认消息，<code>printf</code> 打印上下文信息，<strong>不调用 continue</strong>，因此 GDB 会在每个断点处停下来等待用户操作。</div>
+</section>
+
+<!-- ====== 4 ====== -->
+<section id="s4">
+<h2>4. preserve_boot_args 逐条指令分析 ★</h2>
+<div class="two-col">
+<div>
+<h3>源码 (head.S:170-185)</h3>
+<pre><code>SYM_CODE_START_LOCAL(preserve_boot_args)
+    mov     x21, x0              // x21 = FDT
+    adr_l   x0, boot_args        // x0 = &amp;boot_args
+    stp     x21, x1, [x0]        // boot_args[0]=x21(FDT)
+                                  // boot_args[1]=x1
+    stp     x2, x3, [x0, #16]    // boot_args[2]=x2
+                                  // boot_args[3]=x3
+    cbnz    x19, 0f   // MMU was on? skip
+    dmb     sy         // memory barrier
+    add     x1, x0, #0x20
+    b       dcache_inval_poc     // tail call
+0:  str_l   x19, mmu_enabled_at_boot, x0
+    ret
+SYM_CODE_END(preserve_boot_args)</code></pre>
+</div>
+<div>
+<h3>指令布局 &amp; 断点位置</h3>
+<table>
+<tr><th>偏移</th><th>物理地址</th><th>指令</th></tr>
+<tr style="background:#fffbeb"><td>+0x00</td><td><code>0x4165a69c</code></td><td><code>mov x21, x0</code> <span class="tag tag-amber">BP4</span></td></tr>
+<tr><td>+0x04</td><td><code>0x4165a6a0</code></td><td><code>adrp x0, boot_args</code></td></tr>
+<tr><td>+0x08</td><td><code>0x4165a6a4</code></td><td><code>add x0, x0, #lo12</code></td></tr>
+<tr><td>+0x0C</td><td><code>0x4165a6a8</code></td><td><code>stp x21, x1, [x0]</code></td></tr>
+<tr><td>+0x10</td><td><code>0x4165a6ac</code></td><td><code>stp x2, x3, [x0, #16]</code></td></tr>
+<tr style="background:#ecfdf5"><td>+0x14</td><td><code>0x4165a6b0</code></td><td><code>cbnz x19, 0f</code> <span class="tag tag-green">BP5</span></td></tr>
+<tr><td>+0x18</td><td><code>0x4165a6b4</code></td><td><code>dmb sy</code></td></tr>
+<tr><td>+0x1C</td><td><code>0x4165a6b8</code></td><td><code>add x1, x0, #0x20</code></td></tr>
+<tr><td>+0x20</td><td><code>0x4165a6bc</code></td><td><code>b dcache_inval_poc</code></td></tr>
+</table>
+<h4>函数功能</h4>
+<p>保存 bootloader 传入的 4 个参数 (x0~x3) 到全局数组 <code>boot_args[]</code>。x0 保存的是 FDT (设备树) 物理地址，是内核后续解析硬件的关键入口。</p>
+<h4>两条路径</h4>
+<ul>
+<li><strong>x19 == 0</strong> (MMU off): 执行 D-cache 无效化尾调用</li>
+<li><strong>x19 != 0</strong> (MMU on): 记录 <code>mmu_enabled_at_boot</code> 标志并返回</li>
+</ul>
+</div>
+</div>
+</section>
+
+<!-- ====== 5 ====== -->
+<section id="s5">
+<h2>5. QEMU ARM64 virt 机器内存布局</h2>
+<div class="diagram" style="font-size:0.8em;">
+0x40000000 ┌──────────────────────────────────────┐
+           │  QEMU Bootloader (6 条指令，~40 字节)  │  ← 源码: hw/arm/boot.c
+           │    ldr  x0, =DTB      ; → 0x48000000 │     bootloader_aarch64[]
+           │    mov  x1, xzr                       │
+           │    mov  x2, xzr                       │
+           │    mov  x3, xzr                       │
+           │    ldr  x4, =entry    ; → 0x40200000 │
+           │    br   x4                            │
+0x40000028 ├──────────────────────────────────────┤
+           │                                      │
+           │  ... 全零 (~2044KB) ...               │  ← 2MB 对齐带来的间隙，
+           │                                      │     不是"预留空间"
+0x40200000 ├──────────────────────────────────────┤
+           │  kernel Image (_text)                 │  ← ARM64 2MB 对齐要求
+           │    efi_signature_nop                  │
+           │    b     primary_entry                │
+           │    .quad 0       ; text_offset = 0   │
+           │    le64sym _kernel_size_le            │
+           │    le64sym _kernel_flags_le           │
+           │    ...                                │
+0x48000000 ├──────────────────────────────────────┤
+           │  DTB (Device Tree Blob)               │  ← RAM base + 128MB
+           │  魔数: 0xd00dfeed                     │     QEMU 在此放置硬件拓扑
+           │  内容: CPU/内存/外设描述               │
+           └──────────────────────────────────────┘
+</div>
+<h3>为什么内核加载在 0x40200000 而不是 0x40000000？</h3>
+<div class="flow">
+<span class="flow-box">内核 text_offset = 0</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box">QEMU: 0 &lt; 4KB ?</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box">+ 2MB (ARM64 2MB 对齐)</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box">加载到 0x40200000</span>
+</div>
+<p style="margin-top:8px">ARM64 内核要求加载到 2MB 对齐的地址。内核的 <code>text_offset = 0</code> 表示"随便放，由 bootloader 决定"。QEMU 检测到 0 &lt; 4KB (会覆盖 bootloader)，于是加上 2MB 对齐到下一个边界，得到 <code>0x40000000 + 0x200000 = 0x40200000</code>。中间 2MB-4KB 几乎是全零，纯粹是 2MB 对齐的副产品。</p>
+</section>
+
+<!-- ====== 6 ====== -->
+<section id="s6">
+<h2>6. QEMU Bootloader 源码 &amp; GDB 验证</h2>
+<div class="two-col">
+<div>
+<h3>QEMU 源码 (hw/arm/boot.c:47-59)</h3>
+<pre><code>static const ARMInsnFixup
+bootloader_aarch64[] = {
+   { 0x580000c0 }, // ldr x0, arg
+   { 0xaa1f03e1 }, // mov x1, xzr
+   { 0xaa1f03e2 }, // mov x2, xzr
+   { 0xaa1f03e3 }, // mov x3, xzr
+   { 0x58000084 }, // ldr x4, entry
+   { 0xd61f0080 }, // br  x4
+   { 0, FIXUP_ARGPTR_LO },     // DTB 低 32 位
+   { 0, FIXUP_ARGPTR_HI },     // DTB 高 32 位
+   { 0, FIXUP_ENTRYPOINT_LO }, // 内核入口低 32 位
+   { 0, FIXUP_ENTRYPOINT_HI }, // 内核入口高 32 位
+   { 0, FIXUP_TERMINATOR }
+};</code></pre>
+</div>
+<div>
+<h3>执行流程</h3>
+<ol>
+<li>CPU 上电，PC = 0x40000000，开始执行 bootloader</li>
+<li><code>ldr x0, [pc, #24]</code> — 从 PC+24 (即 0x40000018) 加载 DTB 地址到 x0</li>
+<li><code>mov x1/x2/x3, xzr</code> — 将 x1~x3 清零 (Linux boot protocol 要求)</li>
+<li><code>ldr x4, [pc, #16]</code> — 从 PC+16 (即 0x40000020) 加载内核入口地址到 x4</li>
+<li><code>br x4</code> — 无条件跳转到内核 (_text @ 0x40200000)</li>
+</ol>
+<div class="note">Fixup 数据在 QEMU 启动时动态填充：DTB 地址 = 0x48000000，内核入口 = 0x40200000</div>
+</div>
+</div>
+
+<h3>在 GDB 中逐步验证 (3 个步骤)</h3>
+
+<h4>步骤 1 — 反汇编 bootloader 指令</h4>
+<pre><code>(gdb) x/6i 0x40000000</code></pre>
+<p>预期输出：</p>
+<pre><code>0x40000000:  ldr  x0, 0x40000018     ; x0 = DTB 地址 (从 offset 0x18 加载)
+0x40000004:  mov  x1, xzr            ; x1 = 0
+0x40000008:  mov  x2, xzr            ; x2 = 0
+0x4000000c:  mov  x3, xzr            ; x3 = 0
+0x40000010:  ldr  x4, 0x40000020     ; x4 = 内核入口地址 (从 offset 0x20 加载)
+0x40000014:  br   x4                 ; 跳转到内核</code></pre>
+
+<h4>步骤 2 — 验证指令编码</h4>
+<pre><code>(gdb) x/6xw 0x40000000</code></pre>
+<p>预期匹配 QEMU 源码中的编码：</p>
+<table>
+<tr><th>地址</th><th>编码</th><th>指令</th><th>含义</th></tr>
+<tr><td><code>0x40000000</code></td><td><code>0x580000c0</code></td><td><code>ldr x0, arg</code></td><td>加载 DTB 地址到 x0</td></tr>
+<tr><td><code>0x40000004</code></td><td><code>0xaa1f03e1</code></td><td><code>mov x1, xzr</code></td><td>清零 x1</td></tr>
+<tr><td><code>0x40000008</code></td><td><code>0xaa1f03e2</code></td><td><code>mov x2, xzr</code></td><td>清零 x2</td></tr>
+<tr><td><code>0x4000000c</code></td><td><code>0xaa1f03e3</code></td><td><code>mov x3, xzr</code></td><td>清零 x3</td></tr>
+<tr><td><code>0x40000010</code></td><td><code>0x58000084</code></td><td><code>ldr x4, entry</code></td><td>加载内核入口到 x4</td></tr>
+<tr><td><code>0x40000014</code></td><td><code>0xd61f0080</code></td><td><code>br x4</code></td><td>跳转到内核</td></tr>
+</table>
+
+<h4>步骤 3 — 验证 fixup 数据 (紧跟指令之后)</h4>
+<pre><code>(gdb) x/4xg 0x40000018</code></pre>
+<p>这两个 64 位值在 QEMU 启动时动态填充：</p>
+<table>
+<tr><th>偏移</th><th>内容</th><th>预期值</th></tr>
+<tr><td><code>0x40000018</code></td><td>DTB 地址</td><td class="amber"><code>0x0000000048000000</code></td></tr>
+<tr><td><code>0x40000020</code></td><td>内核入口</td><td class="green"><code>0x0000000040200000</code></td></tr>
+</table>
+<div class="note">💡 将这三条命令的输出与上表的预期值逐一比对，就能逐字节验证 QEMU 的 bootloader 行为与源码完全一致。</div>
+</section>
+
+<!-- ====== 7 ====== -->
+<section id="s7">
+<h2>7. GDB 断点配置 &amp; 自定义命令速查</h2>
+<div class="two-col">
+<div>
+<h3>6 个断点 (全部自动停止等待用户)</h3>
+<table>
+<tr><th>#</th><th>符号 / 地址</th><th>定位说明</th></tr>
+<tr><td>BP1</td><td><code>_text</code></td><td>内核第一条指令，入口 0x40200000</td></tr>
+<tr><td>BP2</td><td><code>primary_entry</code></td><td>启动入口 (GLOBAL 符号，可用名称)</td></tr>
+<tr><td>BP3</td><td><code>*0x4165a648</code></td><td>record_mmu_state — 记录 MMU 状态到 x19</td></tr>
+<tr><td>BP4</td><td><code>*0x4165a69c</code></td><td class="amber">preserve_boot_args — 保存 FDT ★</td></tr>
+<tr><td>BP5</td><td><code>*0x4165a6b0</code></td><td>stp 完成后，dump boot_args 内存</td></tr>
+<tr><td>BP6</td><td><code>*0x4163c658</code></td><td>__primary_switch — MMU 即将开启</td></tr>
+</table>
+</div>
+<div>
+<h3>自定义 GDB 命令</h3>
+<table>
+<tr><th>命令</th><th>功能</th></tr>
+<tr><td><code>hdctx</code></td><td>完整 ARM64 寄存器上下文 dump</td></tr>
+<tr><td><code>headsym</code></td><td>head.S 符号 → 物理地址速查表</td></tr>
+<tr><td><code>bootargs</code></td><td>dump boot_args[] 数组内容</td></tr>
+<tr><td><code>mmustat</code></td><td>显示 MMU 状态 (读取 x19 寄存器)</td></tr>
+<tr><td><code>memdump ADDR [N]</code></td><td>内存 hex dump (默认 4×64bit)</td></tr>
+<tr><td><code>memins ADDR [N]</code></td><td>反汇编内存中的指令</td></tr>
+<tr><td><code>bphys ADDR</code></td><td>在物理地址设硬件断点</td></tr>
+<tr><td><code>tui-head</code></td><td>手动开启 TUI (asm + reg)</td></tr>
+</table>
+</div>
+</div>
+<h3>TUI 自动布局 (GDB 启动时自动开启)</h3>
+<pre><code>┌───────────────────────────────┐
+│  head.S 源码 (layout src)      │  ← 当前执行行高亮
+├───────────────────────────────┤
+│  通用寄存器 (tui reg general)   │  ← x0~x30, sp, pc, lr
+├───────────────────────────────┤
+│  (gdb) si                     │  ← 命令输入区
+└───────────────────────────────┘</code></pre>
+</section>
+
+<!-- ====== 8 ====== -->
+<section id="s8">
+<h2>8. GDB 脚本踩坑记录</h2>
+<table>
+<tr><th>#</th><th>问题</th><th>现象</th><th>根因</th><th>修复</th></tr>
+<tr>
+<td>1</td>
+<td><code>gdb</code> 不支持 aarch64</td>
+<td class="str"><code>Target description specified unknown architecture "aarch64"</code><br><code>Truncated register 37 in remote 'g' packet</code></td>
+<td>Ubuntu <code>gdb</code> 包只编译了 x86_64 target</td>
+<td class="green">改用 <code>gdb-multiarch</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>define</code> 内嵌 <code>commands/end</code> 块</td>
+<td>所有断点、符号加载、target remote 均未执行，GDB 直接进入交互提示符</td>
+<td>GDB 解析器将 <code>commands</code> 块的 <code>end</code> 误匹配为外层 <code>define</code> 的终止符，导致整个 define 被截断</td>
+<td class="green">把 <code>if</code> 块内只放简单命令；断点的 <code>commands</code> 块放到 .gdbinit 顶层</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>define</code> 内嵌双层 <code>if/else/end</code></td>
+<td><code>memins</code> / <code>memdump</code> 命令提示 <code>Undefined command</code></td>
+<td>外层 <code>define/end</code> 与内层 <code>if/else/end</code> 嵌套导致解析冲突</td>
+<td class="green">用 "default-then-override" 模式消除内层 <code>else</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>GDB 退出后 QEMU 进程残留</td>
+<td>退出 GDB 后 QEMU 仍在后台运行，占用 1234 端口</td>
+<td><code>killall qemu-system-aarch64</code> 不够精确，且可能误杀</td>
+<td class="green"><code>kill $QEMU_PID</code> 精确清理 + <code>hook-quit</code> disconnect</td>
+</tr>
+</table>
+<h3>GDB 解析器核心限制</h3>
+<div class="warn">
+<strong>核心规则：</strong><code>define ... end</code> 内部<strong>不能</strong>包含任何其他以 <code>end</code> 结尾的块（<code>commands</code>、<code>if/else</code>、<code>while</code>），否则 define 会被第一个 <code>end</code> 截断。<br><br>
+<strong>解决方案：</strong>将所有 GDB 命令块放在 .gdbinit 顶层（不嵌套在 define 内），使用 Python 控制条件分支。
+</div>
+</section>
+
+<!-- ====== 9 ====== -->
+<section id="s9">
+<h2>9. 总结 &amp; 调试操作速查</h2>
+<h3>一键启动</h3>
+<pre><code>./launch.sh arm64 debug</code></pre>
+<h3>典型调试会话</h3>
+<pre><code>GDB 启动 → 符号 @ 物理地址 → target remote :1234 → TUI 自动开启
+                                                        │
+(gdb) c   →  BP1: _text (0x40200000)                    │  入口
+(gdb) c   →  BP2: primary_entry                         │  真正启动
+(gdb) c   →  BP4: preserve_boot_args ★                  │  目标函数
+             │                                           │
+(gdb) si  →  mov x21, x0           ; 逐条单步执行        │
+(gdb) si  →  adrp x0, boot_args                         │
+(gdb) si  →  add  x0, x0, #lo12                         │
+(gdb) si  →  stp  x21, x1, [x0]    ; [0]=FDT [1]=x1    │
+(gdb) si  →  stp  x2, x3, [x0, #16] ; [2]=x2  [3]=x3   │
+(gdb) bootargs                      ; 验证写入结果       │
+(gdb) hdctx                         ; 查看完整寄存器      │
+(gdb) quit                          ; QEMU 自动清理      │</code></pre>
+<h3>涉及文件</h3>
+<table>
+<tr><th>文件</th><th>作用</th></tr>
+<tr><td><code>launch.sh</code></td><td>QEMU 启动 + gdb-multiarch + PID 精确清理</td></tr>
+<tr><td><code>fix_vmlinux_head_entry.sh</code></td><td>vmlinux 虚拟地址 → 物理地址映射 (生成 <code>add-symbol-file</code>)</td></tr>
+<tr><td><code>~/.gdbinit</code></td><td>自动配置: 符号加载 / 6 个断点 / 自动连接 / TUI / 退出清理 hook</td></tr>
+<tr><td><code>arch/arm64/kernel/head.S</code></td><td>ARM64 内核启动汇编，调试目标所在</td></tr>
+<tr><td><code>hw/arm/boot.c</code> (QEMU)</td><td>QEMU 内置 bootloader 源码，负责加载内核和 DTB</td></tr>
+</table>
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+</body>
+</html>
