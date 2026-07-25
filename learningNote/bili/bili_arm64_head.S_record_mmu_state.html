@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>record_mmu_state：ARM64 内核启动 MMU 状态记录函数深度分析</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease;
+    overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 1px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num, .sidebar a[href^="#s3"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s4"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s6"] .num { color: #7c3aed; font-weight: 600; }
+.sidebar a[href^="#s7"] .num { color: #0891b2; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; font-family: monospace; font-size: 0.8em; }
+.flow-box { background: var(--accent-light); color: var(--accent); padding: 6px 12px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe; font-weight: 500; }
+.flow-arrow { color: #94a3b8; font-size: 1.2em; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+.str { font-size: 0.82em; }
+.step-list { counter-reset: step; list-style: none; margin-left: 0; }
+.step-list li { counter-increment: step; margin-bottom: 8px; padding-left: 28px; position: relative; color: var(--text-secondary); font-size: 0.85em; }
+.step-list li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 1px;
+    width: 18px; height: 18px;
+    background: var(--accent); color: #fff;
+    border-radius: 50%; text-align: center;
+    font-size: 10px; font-weight: 700; line-height: 18px;
+}
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .toggle-btn { top: 14px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 概述：record_mmu_state 的使命</a>
+<a href="#s2"><span class="num">2.</span> 完整源码与上下文</a>
+<a href="#s3"><span class="num">3.</span> 指令逐条分析 ★</a>
+<a href="#s4"><span class="num">4.</span> 两条执行路径详解</a>
+<a href="#s5"><span class="num">5.</span> x19 返回值在各处的消费</a>
+<a href="#s6"><span class="num">6.</span> 寄存器与标志位参考表</a>
+<a href="#s7"><span class="num">7.</span> GDB 调试验证</a>
+<a href="#s8"><span class="num">8.</span> 总结 &amp; 关键要点</a>
+</div>
+</nav>
+
+<div class="main-content">
+
+<header>
+<h1>record_mmu_state<br>ARM64 内核启动 MMU 状态记录函数深度分析</h1>
+<div class="subtitle">
+<p>📁 <code>arch/arm64/kernel/head.S:134-165</code></p>
+<p>🎯 目标: 逐条分析 record_mmu_state — 内核启动的第一个函数调用</p>
+<p>🛠 涉及: SCTLR 寄存器 / 异常级别检测 / 字节序检测 / 条件执行 / 两条路径</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">head.S</span><span class="tag tag-green">ARM64</span><span class="tag tag-amber">SCTLR</span><span class="tag tag-gray">MMU state</span><span class="tag tag-gray">early boot</span><span class="tag tag-gray">endianness</span>
+</div>
+</header>
+
+<main>
+
+<!-- ====== 1 ====== -->
+<section id="s1">
+<h2>1. 概述：record_mmu_state 的使命</h2>
+<div class="two-col">
+<div>
+<h3>调用位置</h3>
+<pre><code>SYM_CODE_START(primary_entry)
+    bl      record_mmu_state   // ★ 内核启动第一个函数调用
+    bl      preserve_boot_args
+    ...</code></pre>
+</div>
+<div>
+<h3>核心使命</h3>
+<ul>
+<li>检测当前 <strong>异常级别</strong>（EL1 or EL2）</li>
+<li>读取对应异常级别的 <strong>SCTLR 寄存器</strong></li>
+<li>提取 <strong>M 位</strong>（MMU 启用标志）存入 <code>x19</code></li>
+<li>检测 <strong>字节序</strong>是否匹配内核编译设置</li>
+<li>若不匹配：纠正字节序 + 禁用 MMU + 清除 x19</li>
+</ul>
+</div>
+</div>
+
+<h3>返回值：x19 编码含义</h3>
+<table>
+<tr><th>x19 值</th><th>含义</th><th>对应场景</th></tr>
+<tr><td><code>0</code></td><td>MMU 关闭（Cold Boot）</td><td>内核从 bootloader 直接启动</td></tr>
+<tr><td><code>1</code></td><td>MMU 开启（Warm Boot）</td><td>kexec / 从休眠唤醒</td></tr>
+<tr><td><code>0</code>（endian 路径）</td><td>字节序不匹配，已纠正并关闭 MMU</td><td>大端 bootloader 启动小端内核等</td></tr>
+</table>
+
+<div class="note">💡 <strong>x19 是 callee-saved 寄存器：</strong><code>record_mmu_state</code> 选择 x19 存储 MMU 状态，是因为 x19 遵循 ARM64 AAPCS64 调用约定——被调用者保存。这意味着 <code>primary_entry</code> 中 x19 的值可以安全地跨越后续所有函数调用（直到 <code>init_kernel_el</code> 以 x0 接收它）。</div>
+</section>
+
+<!-- ====== 2 ====== -->
+<section id="s2">
+<h2>2. 完整源码与上下文</h2>
+<h3>2.1 完整源码</h3>
+<pre><code>SYM_CODE_START_LOCAL(record_mmu_state)        // @ 134
+    mrs     x19, CurrentEL                     // 读取当前异常级别
+    cmp     x19, #CurrentEL_EL2                // 是否在 EL2？
+    mrs     x19, sctlr_el1                     // (投机)读 EL1 的 SCTLR
+    b.ne    0f                                 // 不在 EL2 → 跳转到 0f
+    mrs     x19, sctlr_el2                     // 在 EL2 → 读 EL2 的 SCTLR
+0:                                              // ← 两条路径在此汇合
+    CPU_LE( tbnz    x19, #SCTLR_ELx_EE_SHIFT, 1f )  // LE 内核: 如果 EE 位=1 → 1f
+    CPU_BE( tbz     x19, #SCTLR_ELx_EE_SHIFT, 1f )  // BE 内核: 如果 EE 位=0 → 1f
+    tst     x19, #SCTLR_ELx_C                  // Z := (C == 0)
+    and     x19, x19, #SCTLR_ELx_M             // 提取 M 位
+    csel    x19, xzr, x19, eq                  // 如果 Z (C==0) 则清除 x19
+    ret
+
+    // === 字节序不匹配路径 ===
+1:  eor     x19, x19, #SCTLR_ELx_EE            // 翻转 EE 位
+    bic     x19, x19, #SCTLR_ELx_M             // 清除 M 位 (MMU off)
+    b.ne    2f                                  // 如果 EE 位之前是 1 (LE内核+EE=1) → 2f
+    pre_disable_mmu_workaround                  // QCOM FALKOR ERRATUM E1041
+    msr     sctlr_el2, x19                     // 写回 EL2 SCTLR
+    b       3f
+2:  pre_disable_mmu_workaround
+    msr     sctlr_el1, x19                     // 写回 EL1 SCTLR
+3:  isb                                         // 同步屏障
+    mov     x19, xzr                           // x19 = 0
+    ret
+SYM_CODE_END(record_mmu_state)</code></pre>
+
+<h3>2.2 调用上下文 — x19 的使用链</h3>
+<div class="diagram">// ============ x19 的生命周期 ============
+
+primary_entry:
+    bl  record_mmu_state       <span style="color:#2563eb;">// x19 = MMU 状态</span>
+    bl  preserve_boot_args     <span style="color:#94a3b8;">// 内部检查 x19 决定是否 invalidate cache</span>
+
+    bl  __pi_create_init_idmap <span style="color:#94a3b8;">// 创建 identity mapping</span>
+
+    cbnz    x19, 0f            <span style="color:#2563eb;">// ★ 根据 x19 分流：</span>
+    <span style="color:#059669;">// x19 == 0 (MMU off) → invalidate D-cache</span>
+    <span style="color:#d97706;">// x19 != 0 (MMU on)  → clean D-cache (idmap)</span>
+
+    mov     x0, x19            <span style="color:#94a3b8;">// x19 → x0，传给 init_kernel_el</span>
+    bl      init_kernel_el     <span style="color:#94a3b8;">// w0 = cpu_boot_mode</span>
+
+    <span style="color:#94a3b8;">// 此后 x19 不再使用</span></div>
+
+<div class="note">💡 <code>record_mmu_state</code> 虽然是 <code>primary_entry</code> 调用的第一个函数，但内核入口 <code>_text</code> 处的第一条指令是 <code>efi_signature_nop</code>，用于 EFI 兼容性。真正的逻辑从 <code>b primary_entry</code> 跳转过来。</div>
+</section>
+
+<!-- ====== 3 ====== -->
+<section id="s3">
+<h2>3. 指令逐条分析 ★</h2>
+<h3>3.1 指令布局</h3>
+<table>
+<tr><th>偏移</th><th>物理地址 (示例)</th><th>指令</th><th>行号</th></tr>
+<tr><td>+0x00</td><td><code>0x4165a648</code></td><td><code>mrs x19, CurrentEL</code></td><td>135</td></tr>
+<tr><td>+0x04</td><td><code>0x4165a64c</code></td><td><code>cmp x19, #CurrentEL_EL2</code></td><td>136</td></tr>
+<tr><td>+0x08</td><td><code>0x4165a650</code></td><td><code>mrs x19, sctlr_el1</code></td><td>137</td></tr>
+<tr><td>+0x0c</td><td><code>0x4165a654</code></td><td><code>b.ne 0f</code></td><td>138</td></tr>
+<tr><td>+0x10</td><td><code>0x4165a658</code></td><td><code>mrs x19, sctlr_el2</code></td><td>139</td></tr>
+<tr><td>+0x14</td><td><code>0x4165a65c</code></td><td><code>0: CPU_LE(tbnz ...)</code></td><td>141</td></tr>
+<tr><td>+0x18</td><td><code>0x4165a660</code></td><td><code>tst x19, SCTLR_ELx_C</code></td><td>143</td></tr>
+<tr><td>+0x1c</td><td><code>0x4165a664</code></td><td><code>and x19, x19, SCTLR_ELx_M</code></td><td>144</td></tr>
+<tr><td>+0x20</td><td><code>0x4165a668</code></td><td><code>csel x19, xzr, x19, eq</code></td><td>145</td></tr>
+<tr><td>+0x24</td><td><code>0x4165a66c</code></td><td><code>ret</code></td><td>146</td></tr>
+</table>
+
+<h3>3.2 逐条详解</h3>
+
+<h4>① <code>mrs x19, CurrentEL</code> — 读取当前异常级别</h4>
+<ul>
+<li><code>CurrentEL</code> 是 ARM64 系统寄存器，bits[3:2] 编码当前异常级别</li>
+<li>EL1 = 0b01（内核），EL2 = 0b10（虚拟机监视器），EL3 = 0b11（安全监控）</li>
+<li>Linux 内核通常在 EL1 或 EL2 运行</li>
+<li>这里读取 CurrentEL 仅仅为了<strong>判断是否需要读 sctlr_el2</strong></li>
+</ul>
+
+<h4>② <code>cmp x19, #CurrentEL_EL2</code> — 是否在 EL2？</h4>
+<ul>
+<li>设置条件标志：<code>EQ</code>（相等）表示在 EL2，<code>NE</code> 表示在 EL1</li>
+<li><strong>注意：</strong> 此时 x19 存储的是 CurrentEL 的值，不是 SCTLR</li>
+</ul>
+
+<h4>③ <code>mrs x19, sctlr_el1</code> — （投机）读取 EL1 的 SCTLR</h4>
+<ul>
+<li>ARM64 是推测执行架构——这里<strong>不管最终在哪个异常级别</strong>，先读 sctlr_el1</li>
+<li>如果在 EL2，下一行会用 sctlr_el2 覆盖这个值，所以读出 sctlr_el1 只是浪费一次 MRS</li>
+<li>这种写法避免了在两条路径中都放 MRS 指令，但代价是路径合并处多了一次 MRS</li>
+<li class="accent">为什么这么写？<strong>代码简洁</strong>——仅一条 MRS（投机执行）+ 一个条件 MRS</li>
+</ul>
+
+<h4>④ <code>b.ne 0f</code> — 不在 EL2？跳过下一行</h4>
+<ul>
+<li>如果③的 CMP 结果是 NE（即 CurrentEL != EL2），跳转到标签 0</li>
+<li>如果 EQ（在 EL2），不跳转，执行下一行</li>
+</ul>
+
+<h4>⑤ <code>mrs x19, sctlr_el2</code> — 在 EL2，用 sctlr_el2 覆盖</h4>
+<ul>
+<li>只有当前在 EL2 时才会执行</li>
+<li>覆盖了③中读出的 sctlr_el1 值</li>
+<li>至此 x19 持有正确的 SCTLR 值：sctlr_el1（EL1下）或 sctlr_el2（EL2下）</li>
+</ul>
+
+<div class="diagram">// ============ 异常级别检测逻辑 ============
+
+    mrs  x19, CurrentEL          <span style="color:#94a3b8;">// x19 = CurrentEL</span>
+    cmp  x19, #CurrentEL_EL2     <span style="color:#94a3b8;">// 设置标志位</span>
+    mrs  x19, sctlr_el1         <span style="color:#94a3b8;">// (投机) 先读 EL1 的 SCTLR</span>
+
+    ┌── b.ne 0f ────┐
+    │  NE (EL1)     │  EQ (EL2)
+    ▼                ▼
+  (跳过)          mrs x19, sctlr_el2
+    │                │
+    └──── 0: 汇合 ───┘
+         x19 = 正确的 SCTLR
+</div>
+
+<h4>⑥ <code>CPU_LE(tbnz x19, #SCTLR_ELx_EE_SHIFT, 1f)</code></h4>
+<ul>
+<li>编译为 LE 内核时：<code>tbnz x19, #25, 1f</code> — 测试 bit 25 (EE 位)</li>
+<li>EE 位（bit 25）= <strong>Endianness 配置位</strong>：0=小端，1=大端</li>
+<li>如果 EE 位 = 1（与 LE 内核期望相反）→ 跳转到 1f（字节序纠正路径）</li>
+<li>编译为 BE 内核时指令相反：<code>tbz ... 1f</code> — 如果 EE=0 跳转</li>
+<li>这是整个函数<strong>最精妙</strong>的设计：一条指令同时检测了字节序兼容性和 MMU 状态</li>
+</ul>
+
+<h4>⑦ <code>tst x19, #SCTLR_ELx_C</code> — 测试 C 位（Cache 启用）</h4>
+<ul>
+<li><code>SCTLR_ELx_C</code> = bit 2，数据 cache 启用标志</li>
+<li><code>tst</code> 做按位与，设置 Z 标志：C=0 → Z=1；C=1 → Z=0</li>
+<li>为什么检测 C 位而不是直接检测 M 位？见下面关键设计点</li>
+</ul>
+
+<div class="note">💡 <strong>为什么检测 C（Cache）而不是 M（MMU）？</strong><br>
+正常情况下，M=0（MMU off）时 C 也一定是 0。但有些 bootloader 可能关闭了 MMU 却忘记关闭 cache（M=0, C=1），这会导致 non-cacheable 写入操作发生后，cache 中有陈旧数据。检测 C 位而非 M 位可以在这种情况下也触发 cache 维护操作。<br><br>
+<strong>另外 csel 的逻辑：</strong><code>csel x19, xzr, x19, eq</code> 表示"如果 Z=1（C==0），把 xzr(=0) 写入 x19，否则保持 x19 的 M 位值"。所以最终 x19 = (C==0) ? 0 : M_bit。</div>
+
+<h4>⑧ <code>and x19, x19, #SCTLR_ELx_M</code> — 提取 M 位</h4>
+<ul>
+<li><code>SCTLR_ELx_M</code> = bit 0，MMU 启用标志</li>
+<li><code>and</code> 屏蔽掉其他所有位，x19 只剩下 bit 0</li>
+<li>此时 x19 = 0（MMU off）或 1（MMU on）</li>
+</ul>
+
+<h4>⑨ <code>csel x19, xzr, x19, eq</code> — 条件选择</h4>
+<ul>
+<li>这是 <strong>条件执行</strong>（conditional select）指令</li>
+<li>如果 <code>EQ</code>（即上一步 tst 的结果 Z=1，C 位 = 0）：x19 = xzr = 0</li>
+<li>如果 <code>NE</code>（Z=0，C 位 = 1）：x19 = x19（保留 M 位的值）</li>
+<li>最终效果：<code>x19 = (C == 0) ? 0 : M_bit</code></li>
+</ul>
+
+<h4>⑩ <code>ret</code> — 返回</h4>
+<ul>
+<li>正常路径的返回点</li>
+<li>x19 携带 MMU 状态返回调用者</li>
+</ul>
+</section>
+
+<!-- ====== 4 ====== -->
+<section id="s4">
+<h2>4. 两条执行路径详解</h2>
+
+<h3>4.1 路径总览</h3>
+<div class="diagram">// ============ record_mmu_state 完整流程 ============
+
+                     mrs  x19, CurrentEL
+                     cmp  x19, #CurrentEL_EL2
+                     mrs  x19, sctlr_el1           <span style="color:#94a3b8;">// 投机执行</span>
+                         │
+                         ▼
+              b.ne ─── 在 EL1？─── EQ ─── mrs x19, sctlr_el2
+                │                                  │
+                └────────── 汇合 ──────────────────┘
+                              │
+                              ▼ x19 = SCTLR (EL1 或 EL2)
+                              │
+                    CPU_LE(tbnz ... EE bit) ─── EE 不匹配 ──▶ 1: 纠正字节序
+                              │                                    │
+                         EE 匹配                            关闭 MMU + 写回 SCTLR
+                              │                                    │
+                    tst  x19, #C (cache bit)                 isb + x19 = 0
+                    and  x19, #M  (MMU bit)                       │
+                    csel x19, xzr, x19, eq                        │
+                              │                                    │
+                    return (x19 = 0 或 1)                return (x19 = 0)
+</div>
+
+<h3>4.2 正常路径（字节序匹配）</h3>
+<p>这是最常见的路径：内核的字节序编译设置与硬件当前配置一致。</p>
+<table>
+<tr><th>步骤</th><th>操作</th><th>x19</th><th>解释</th></tr>
+<tr><td>1</td><td>检测异常级别</td><td>—</td><td>确定读 EL1 还是 EL2 的 SCTLR</td></tr>
+<tr><td>2</td><td>读 SCTLR</td><td>SCTLR 值</td><td>SCTLR 寄存器包含 M、C、EE 等位</td></tr>
+<tr><td>3</td><td>CPU_LE(tbnz EE)</td><td>不变</td><td>EE=0? → 不跳转（小端匹配）</td></tr>
+<tr><td>4</td><td>tst + and</td><td>0 或 1</td><td>x19 = M_bit (MMU enabled?)</td></tr>
+<tr><td>5</td><td>csel (C 位修正)</td><td>0 或 1</td><td>C=0 时强制清零</td></tr>
+<tr><td>6</td><td>ret</td><td>0 (MMU off) 或 1 (MMU on)</td><td>返回调用者</td></tr>
+</table>
+
+<h3>4.3 字节序纠正路径（endian 不匹配）</h3>
+
+<div class="warn">⚠ 这条路径非常罕见，但设计极为精巧。当 bootloader 以与内核相反的字节序启动时，CPU 上电后执行的第一条指令就可能因为字节序错误而崩溃。ARM64 通过这套机制在禁用 MMU 后安全切换字节序。</div>
+
+<ol class="step-list">
+<li><strong>检测到不匹配：</strong><code>tbnz x19, #EE, 1f</code> — EE 位与预期不同</li>
+<li><strong>翻转 EE 位：</strong><code>eor x19, x19, #SCTLR_ELx_EE</code> — 异或 bit 25，得到正确的字节序配置</li>
+<li><strong>清除 M 位：</strong><code>bic x19, x19, #SCTLR_ELx_M</code> — 强制关闭 MMU（因为字节序切换要求 MMU 关闭）</li>
+<li><strong>选择写入的 SCTLR：</strong>
+  <ul>
+    <li><code>b.ne 2f</code> — 如果原 EE=1（LE内核+硬件大端）→ 写 sctlr_el1</li>
+    <li>原 EE=0（BE内核+硬件小端）→ 写 sctlr_el2</li>
+  </ul>
+</li>
+<li><strong>写入 SCTLR + ISB：</strong><code>pre_disable_mmu_workaround + msr + isb</code> — 写入正确的 SCTLR，同步屏障</li>
+<li><strong>清除 x19：</strong><code>mov x19, xzr</code> — 返回 0（MMU 强制关闭）</li>
+</ol>
+
+<div class="note">💡 <code>pre_disable_mmu_workaround</code> 是一个针对 <strong>Qualcomm Falkor 勘误 E1041</strong> 的 workaround。该勘误影响某些 Qualcomm 服务器 CPU，在禁用 MMU 时可能需要 ISB 防止后续指令使用错误的翻译。大多数平台这个宏展开为空。</div>
+</section>
+
+<!-- ====== 5 ====== -->
+<section id="s5">
+<h2>5. x19 返回值在各处的消费</h2>
+<p>x19 从 <code>record_mmu_state</code> 返回后，在 <code>primary_entry</code> 和 <code>preserve_boot_args</code> 中被多处使用：</p>
+
+<h3>5.1 在 primary_entry 中使用（line 101）</h3>
+<pre><code>    cbnz    x19, 0f           // x19 != 0 → MMU was on → 跳转到 0
+    // x19 == 0 → MMU was off
+    dmb     sy
+    mov     x1, x0            // x1 = ptep (页表使用结束)
+    adrp    x0, __pi_init_idmap_pg_dir
+    adr_l   x2, dcache_inval_poc
+    blr     x2                // invalidate D-cache
+    b       1f
+
+0:  // x19 != 0 → MMU was on
+    adrp    x0, __idmap_text_start
+    adr_l   x1, __idmap_text_end
+    adr_l   x2, dcache_clean_poc
+    blr     x2                // clean D-cache
+
+1:  mov     x0, x19           // x19 → x0
+    bl      init_kernel_el    // w0 = cpu_boot_mode</code></pre>
+
+<table>
+<tr><th>x19 值</th><th>路径</th><th>缓存操作</th><th>传给 init_kernel_el</th></tr>
+<tr><td><code>0</code> (Cold Boot)</td><td>跳转 cache inval</td><td>Invalidate D-cache [pg_dir, ptep)</td><td>0</td></tr>
+<tr><td><code>1</code> (Warm Boot)</td><td>不跳转</td><td>Clean D-cache [__idmap_text_start, end)</td><td>1</td></tr>
+</table>
+
+<h3>5.2 在 preserve_boot_args 中使用（line 177）</h3>
+<pre><code>SYM_CODE_START_LOCAL(preserve_boot_args)
+    mov     x21, x0
+    adr_l   x0, boot_args
+    stp     x21, x1, [x0]       // boot_args[0..1] = x21(FDT), x1
+    stp     x2, x3, [x0, #16]   // boot_args[2..3] = x2, x3
+
+    cbnz    x19, 0f             // x19 != 0 → MMU on → 跳过 cache inval
+    dmb     sy                  // MMU off: 需要内存屏障
+    add     x1, x0, #0x20       // boot_args 4 × 8 = 32 字节
+    b       dcache_inval_poc    // tail call: invalidate boot_args cache lines
+
+0:  str_l   x19, mmu_enabled_at_boot, x0  // 记录 MMU 状态到全局变量
+    ret</code></pre>
+
+<div class="note">💡 <strong>两条路径的对称设计：</strong>
+<ul>
+<li>MMU off → 页表写入是 non-cacheable 的，但 speculative load 可能缓存了陈旧值 → 需要 invalidate</li>
+<li>MMU on → 页表写入是 cacheable 的，但在关闭 MMU 前需要把 dirty cache lines 写回内存 → 需要 clean</li>
+<li>这套对称的 cache 维护逻辑贯穿了整个 early boot 阶段</li>
+</ul></div>
+</section>
+
+<!-- ====== 6 ====== -->
+<section id="s6">
+<h2>6. 寄存器与标志位参考表</h2>
+
+<h3>6.1 SCTLR_ELx 关键位</h3>
+<table>
+<tr><th>位</th><th>名称</th><th>含义</th><th>在本函数中的作用</th></tr>
+<tr><td>bit 0</td><td><strong>M</strong></td><td>MMU 启用标志</td><td>提取到 x19 作为返回值</td></tr>
+<tr><td>bit 2</td><td><strong>C</strong></td><td>数据 cache 启用</td><td>tst 检测：C=0 时强制 x19=0</td></tr>
+<tr><td>bit 25</td><td><strong>EE</strong></td><td>Endianness（0=小端，1=大端）</td><td>tbnz 检测字节序匹配</td></tr>
+</table>
+
+<h3>6.2 ARM64 条件标志速查</h3>
+<table>
+<tr><th>指令</th><th>设置的条件位</th><th>后续 csel/b.ne 的行为</th></tr>
+<tr><td><code>cmp x19, #CurrentEL_EL2</code></td><td>Z = (x19 == EL2)</td><td>EQ=在EL2, NE=在EL1</td></tr>
+<tr><td><code>tst x19, #SCTLR_ELx_C</code></td><td>Z = ((x19 & C) == 0)</td><td>EQ=C=0, NE=C=1</td></tr>
+<tr><td><code>eor x19, x19, #SCTLR_ELx_EE</code> (endian 路径)</td><td>Z = (原 EE 位 == 0)</td><td>EQ=原 EE=0, NE=原 EE=1</td></tr>
+</table>
+
+<h3>6.3 关键寄存器使用</h3>
+<table>
+<tr><th>寄存器</th><th>用途</th><th>调用约定</th></tr>
+<tr><td><code>x19</code></td><td>存储 MMU 状态返回值</td><td>callee-saved（被调用者保存）</td></tr>
+<tr><td><code>x0</code></td><td>末尾传递给 init_kernel_el</td><td>参数/返回值寄存器</td></tr>
+<tr><td><code>CurrentEL</code></td><td>读取异常级别</td><td>系统寄存器</td></tr>
+<tr><td><code>sctlr_el1/el2</code></td><td>系统控制寄存器</td><td>系统寄存器</td></tr>
+</table>
+</section>
+
+<!-- ====== 7 ====== -->
+<section id="s7">
+<h2>7. GDB 调试验证</h2>
+
+<h3>7.1 断点设置</h3>
+<table>
+<tr><th>#</th><th>位置</th><th>验证目标</th></tr>
+<tr><td>BP1</td><td><code>record_mmu_state</code> 入口</td><td>检查 CurrentEL 值</td></tr>
+<tr><td>BP2</td><td><code>b.ne 0f</code> 之后</td><td>确认在 EL1/EL2</td></tr>
+<tr><td>BP3</td><td><code>0:</code> 标签处（EE 检测前）</td><td>x19 = SCTLR 值，检查 EE, C, M 位</td></tr>
+<tr><td>BP4</td><td><code>ret</code> 之前</td><td>检查 x19 最终值</td></tr>
+<tr><td>BP5</td><td><code>primary_entry</code> 中 <code>cbnz x19, 0f</code></td><td>验证 cache 维护路径选择</td></tr>
+</table>
+
+<h3>7.2 GDB 命令</h3>
+<pre><code># 在 record_mmu_state 入口断下
+b record_mmu_state
+commands
+  silent
+  printf "=== record_mmu_state entry ===\n"
+  printf "CurrentEL (x19) = 0x%lx\n", $x19
+  printf "SCTLR_EL1       = 0x%lx\n", $(&amp;sctlr_el1)
+  # 检查 EE bit (25): 小端应为 0
+  printf "EE bit         = %d\n", ($x19 >> 25) &amp; 1
+  printf "M  bit (MMU)   = %d\n", $x19 &amp; 1
+  printf "C  bit (Cache) = %d\n", ($x19 >> 2) &amp; 1
+  continue
+end
+
+# 如果使用了自定义命令，可以快速查看 SCTLR 位域
+define show_mmu_state
+    printf "MMU:  %s\n", $arg0 &amp; 1 ? "ON" : "OFF"
+    printf "Cache:%s\n", ($arg0 >> 2) &amp; 1 ? "ON" : "OFF"
+    printf "EE:   %s\n", ($arg0 >> 25) &amp; 1 ? "BIG ENDIAN" : "LITTLE ENDIAN"
+end
+
+# 使用示例: 在 0: 标签处调用 show_mmu_state $x19</code></pre>
+
+<h3>7.3 典型调试输出（Cold Boot）</h3>
+<pre><code>(gdb) b record_mmu_state
+(gdb) c
+Breakpoint 1, record_mmu_state
+=== record_mmu_state entry ===
+CurrentEL (x19) = 0x0000000000000004   # 4 → bits[3:2]=01 → EL1
+SCTLR_EL1       = 0x0000000000000000   # M=0, C=0, EE=0 (MMU off)
+EE bit          = 0                    # Little Endian ✓ (匹配 LE 内核)
+M  bit (MMU)    = 0                    # MMU off
+C  bit (Cache)  = 0                    # Cache off
+
+# 单步到 0: 标签
+(gdb) show_mmu_state $x19
+MMU:  OFF
+Cache: OFF
+EE:   LITTLE ENDIAN
+
+# 再单步到 ret
+(gdb) p/x $x19
+$1 = 0x0   # MMU was off, cache was off → x19 = 0</code></pre>
+
+<h3>7.4 验证 x19 在后续函数中的传递</h3>
+<pre><code># 在 __pi_create_init_idmap 返回后
+(gdb) fin
+
+# 断到 cbnz x19, 0f 处
+(gdb) b *0x4165a6e4   # 需要替换为实际物理地址
+(gdb) c
+(gdb) p/x $x19
+$2 = 0x0    # MMU was off → invalidate 路径
+
+# 断到 mov x0, x19 处
+(gdb) si   # x0 = x19 = 0
+(gdb) si   # bl init_kernel_el
+(gdb) p/x $x0
+$3 = 0x0    # cpu_boot_mode = 0 (cold boot)</code></pre>
+
+<div class="warn">⚠ 注意：由于 <code>record_mmu_state</code> 使用 <code>SYM_CODE_START_LOCAL</code> 定义（LOCAL 符号），GDB 中 <code>b record_mmu_state</code> 可能无法解析。需要使用物理地址断点：<code>b *&lt;phys_addr&gt;</code>。物理地址计算方法请参考 <code>bili_arm64_head.S_debug_qemu_bootrom.html</code>。</div>
+</section>
+
+<!-- ====== 8 ====== -->
+<section id="s8">
+<h2>8. 总结 &amp; 关键要点</h2>
+<table>
+<tr><th>#</th><th>要点</th><th>说明</th></tr>
+<tr>
+<td>1</td>
+<td class="accent">内核启动第一个函数调用</td>
+<td>在 primary_entry 中，record_mmu_state 是第一条 bl 指令</td>
+</tr>
+<tr>
+<td>2</td>
+<td class="accent">返回值在 x19 中</td>
+<td>x19 = 0（关闭）或 1（开启），受 C 位修正</td>
+</tr>
+<tr>
+<td>3</td>
+<td class="green">投机执行 + 条件覆盖</td>
+<td>先读 sctlr_el1，再根据异常级别决定是否用 sctlr_el2 覆盖</td>
+</tr>
+<tr>
+<td>4</td>
+<td class="green">单条指令检测字节序</td>
+<td><code>tbnz EE_bit</code> 同时检查字节序兼容性，不匹配时跳转纠正路径</td>
+</tr>
+<tr>
+<td>5</td>
+<td class="amber">C 位修正而非 M 位修正</td>
+<td>检测 Cache 位而不是 MMU 位来决策，更安全（M=0,C=1 的边缘情况）</td>
+</tr>
+<tr>
+<td>6</td>
+<td class="amber">字节序纠正路径</td>
+<td>翻转 EE 位 + 关闭 MMU + 写回 SCTLR + ISB，处理跨字节序启动</td>
+</tr>
+<tr>
+<td>7</td>
+<td class="amber">条件执行三连击</td>
+<td><code>tst → and → csel</code>：测试 C 位 → 提取 M 位 → 条件选择，无分支</td>
+</tr>
+<tr>
+<td>8</td>
+<td class="accent">x19 贯穿整个 early boot</td>
+<td>影响 cache 维护策略（invalidate vs clean）和 init_kernel_el 参数</td>
+</tr>
+</table>
+
+<h3>涉及文件</h3>
+<table>
+<tr><th>文件</th><th>作用</th></tr>
+<tr><td><code>arch/arm64/kernel/head.S</code></td><td>record_mmu_state 定义 + primary_entry 调用</td></tr>
+<tr><td><code>arch/arm64/include/asm/sysreg.h</code></td><td>SCTLR_ELx_M / SCTLR_ELx_C / SCTLR_ELx_EE 等位定义</td></tr>
+<tr><td><code>arch/arm64/include/asm/assembler.h</code></td><td>pre_disable_mmu_workaround 宏（QCOM FALKOR E1041）</td></tr>
+<tr><td><code>arch/arm64/kernel/head.S</code></td><td>preserve_boot_args + primary_entry 中消费 x19</td></tr>
+<tr><td><code>arch/arm64/kernel/pi/map_kernel.c</code></td><td>init_kernel_el 接收 x19 作为 cpu_boot_mode</td></tr>
+</table>
+
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>preserve_boot_args：ARM64 内核启动参数保存函数深度分析</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease;
+    overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 1px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num, .sidebar a[href^="#s3"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s4"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s6"] .num { color: #7c3aed; font-weight: 600; }
+.sidebar a[href^="#s7"] .num { color: #0891b2; font-weight: 600; }
+.sidebar a[href^="#s8"] .num { color: #be185d; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; font-family: monospace; font-size: 0.8em; }
+.flow-box { background: var(--accent-light); color: var(--accent); padding: 6px 12px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe; font-weight: 500; }
+.flow-arrow { color: #94a3b8; font-size: 1.2em; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+.str { font-size: 0.82em; }
+.step-list { counter-reset: step; list-style: none; margin-left: 0; }
+.step-list li { counter-increment: step; margin-bottom: 8px; padding-left: 28px; position: relative; color: var(--text-secondary); font-size: 0.85em; }
+.step-list li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 1px;
+    width: 18px; height: 18px;
+    background: var(--accent); color: #fff;
+    border-radius: 50%; text-align: center;
+    font-size: 10px; font-weight: 700; line-height: 18px;
+}
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .toggle-btn { top: 14px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 概述：preserve_boot_args 的使命</a>
+<a href="#s2"><span class="num">2.</span> 完整源码与上下文</a>
+<a href="#s3"><span class="num">3.</span> 指令逐条分析 ★</a>
+<a href="#s4"><span class="num">4.</span> 两条路径与缓存维护</a>
+<a href="#s5"><span class="num">5.</span> x21 FDT 指针生命周期</a>
+<a href="#s6"><span class="num">6.</span> boot_args 在 C 代码中的消费</a>
+<a href="#s7"><span class="num">7.</span> GDB 调试验证</a>
+<a href="#s8"><span class="num">8.</span> 总结 &amp; 关键要点</a>
+</div>
+</nav>
+
+<div class="main-content">
+
+<header>
+<h1>preserve_boot_args<br>ARM64 内核启动参数保存函数深度分析</h1>
+<div class="subtitle">
+<p>📁 <code>arch/arm64/kernel/head.S:170-185</code></p>
+<p>🎯 目标: 逐条分析 preserve_boot_args — 保存 bootloader 传入的 4 个参数</p>
+<p>🛠 涉及: boot_args / x21 FDT 指针 / 尾调用 / adr_l / str_l 宏 / D-cache 维护</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">head.S</span><span class="tag tag-green">ARM64</span><span class="tag tag-amber">boot protocol</span><span class="tag tag-gray">FDT</span><span class="tag tag-gray">tail call</span><span class="tag tag-gray">cache</span>
+</div>
+</header>
+
+<main>
+
+<!-- ====== 1 ====== -->
+<section id="s1">
+<h2>1. 概述：preserve_boot_args 的使命</h2>
+<div class="two-col">
+<div>
+<h3>调用位置</h3>
+<pre><code>SYM_CODE_START(primary_entry)
+    bl  record_mmu_state        // 记录 MMU 状态 → x19
+    bl  preserve_boot_args      // ★ 保存启动参数
+    adrp x1, early_init_stack
+    mov sp, x1
+    ...</code></pre>
+</div>
+<div>
+<h3>核心使命</h3>
+<ul>
+<li>将 bootloader 传入的 <strong>x0~x3</strong> 保存到全局数组 <code>boot_args[4]</code></li>
+<li>将 <strong>x0 (FDT 物理地址)</strong> 额外保存到 <strong>x21</strong>（后续仍会用到）</li>
+<li>根据 <strong>x19</strong>（MMU 状态）分两条路径处理 D-cache 一致性</li>
+<li>MMU on 时：将 x19 记录到全局变量 <code>mmu_enabled_at_boot</code></li>
+</ul>
+</div>
+</div>
+
+<h3>ARM64 Boot Protocol 参数约定</h3>
+<table>
+<tr><th>寄存器</th><th>内容</th><th>类型</th></tr>
+<tr><td><code>x0</code></td><td>FDT（Flattened Device Tree）物理地址</td><td class="accent">必须提供</td></tr>
+<tr><td><code>x1</code></td><td>保留（必须为 0）</td><td>应为 0</td></tr>
+<tr><td><code>x2</code></td><td>保留（必须为 0）</td><td>应为 0</td></tr>
+<tr><td><code>x3</code></td><td>保留（必须为 0）</td><td>应为 0</td></tr>
+</table>
+
+<div class="note">💡 这些参数是 ARM64 Linux boot protocol 的定义。x1~x3 必须为 0，后续内核启动时会检查并在非零时发出警告。只有 x0（FDT 地址）是真正使用的参数。</div>
+</section>
+
+<!-- ====== 2 ====== -->
+<section id="s2">
+<h2>2. 完整源码与上下文</h2>
+<h3>2.1 完整源码</h3>
+<pre><code>SYM_CODE_START_LOCAL(preserve_boot_args)           // @ 170
+    mov     x21, x0                                // 保存 FDT 指针到 x21 (callee-saved)
+
+    adr_l   x0, boot_args                          // x0 = &amp;boot_args[0]
+    stp     x21, x1, [x0]                          // boot_args[0] = FDT, boot_args[1] = x1
+    stp     x2, x3, [x0, #16]                      // boot_args[2] = x2, boot_args[3] = x3
+
+    cbnz    x19, 0f                                // x19 != 0 (MMU on) → 跳转到 0f
+    dmb     sy                                     // MMU off: 内存屏障 (DC IVAC 需要)
+    add     x1, x0, #0x20                          // x1 = boot_args + 32 (4×8 = 结束地址)
+    b       dcache_inval_poc                       // 尾调用: invalidate D-cache
+0:  str_l   x19, mmu_enabled_at_boot, x0           // 记录 MMU on 标志
+    ret
+SYM_CODE_END(preserve_boot_args)</code></pre>
+
+<h3>2.2 调用上下文</h3>
+<div class="diagram">// ============ primary_entry 中的调用顺序 ============
+
+  .section .head.text, "ax"
+  _text:
+      efi_signature_nop            // EFI 签名 (不执行)
+      b       primary_entry        // 跳转到实际入口
+      ...
+
+  .section .init.text, "ax"
+  primary_entry:
+      bl  record_mmu_state         <span style="color:#94a3b8;">// x19 = 0 (MMU off) 或 1 (MMU on)</span>
+      bl  preserve_boot_args       <span style="color:#2563eb;">// ★ 本函数</span>
+      adrp x1, early_init_stack
+      mov  sp, x1
+      mov  x29, xzr
+      adrp x0, __pi_init_idmap_pg_dir
+      mov  x1, xzr
+      bl   __pi_create_init_idmap  <span style="color:#94a3b8;">// 创建 identity mapping</span>
+      ...
+      bl   init_kernel_el           <span style="color:#94a3b8;">// x0 = x19 (cpu_boot_mode)</span>
+      bl   __cpu_setup
+      b    __primary_switch</div>
+
+<div class="note">💡 preserve_boot_args 是一个 <strong>尾调用</strong>（Tail Call）的典型示例——当 MMU off 时，最后一条指令直接 <code>b dcache_inval_poc</code> 而不是 <code>bl</code>，没有多余的 ret，精简了一个栈帧。</div>
+</section>
+
+<!-- ====== 3 ====== -->
+<section id="s3">
+<h2>3. 指令逐条分析 ★</h2>
+<h3>3.1 指令布局</h3>
+<table>
+<tr><th>偏移</th><th>物理地址 (示例)</th><th>指令</th><th>行号</th></tr>
+<tr><td>+0x00</td><td><code>0x4165a69c</code></td><td><code>mov x21, x0</code></td><td>171</td></tr>
+<tr><td>+0x04</td><td><code>0x4165a6a0</code></td><td><code>adrp x0, boot_args</code></td><td>173</td></tr>
+<tr><td>+0x08</td><td><code>0x4165a6a4</code></td><td><code>add x0, x0, :lo12:boot_args</code></td><td>173</td></tr>
+<tr><td>+0x0c</td><td><code>0x4165a6a8</code></td><td><code>stp x21, x1, [x0]</code></td><td>174</td></tr>
+<tr><td>+0x10</td><td><code>0x4165a6ac</code></td><td><code>stp x2, x3, [x0, #16]</code></td><td>175</td></tr>
+<tr><td>+0x14</td><td><code>0x4165a6b0</code></td><td><code>cbnz x19, 0f</code></td><td>177</td></tr>
+<tr><td>+0x18</td><td><code>0x4165a6b4</code></td><td><code>dmb sy</code></td><td>178</td></tr>
+<tr><td>+0x1c</td><td><code>0x4165a6b8</code></td><td><code>add x1, x0, #0x20</code></td><td>181</td></tr>
+<tr><td>+0x20</td><td><code>0x4165a6bc</code></td><td><code>b dcache_inval_poc</code></td><td>182</td></tr>
+<tr><td>+0x24</td><td><code>0x4165a6c0</code></td><td><code>str x19, [x0, :lo12:mmu_enabled_at_boot]</code></td><td>183</td></tr>
+<tr><td>+0x28</td><td><code>0x4165a6c4</code></td><td><code>ret</code></td><td>184</td></tr>
+</table>
+
+<h3>3.2 逐条详解</h3>
+
+<h4>① <code>mov x21, x0</code> — 保存 FDT 指针到 x21</h4>
+<ul>
+<li>x0 是 bootloader 传入的 FDT 物理地址（Device Tree Blob）</li>
+<li>x21 是 callee-saved 寄存器，不会被后续函数调用破坏</li>
+<li>后续可通过 x21 随时访问 FDT（line 231: <code>str_l x21, __fdt_pointer</code>，line 517: <code>mov x1, x21</code>）</li>
+<li class="accent">为什么不用 x19？x19 已经被 record_mmu_state 占用了（MMU 状态标志）</li>
+</ul>
+
+<h4>② <code>adr_l x0, boot_args</code> — 获取 boot_args 数组地址</h4>
+<ul>
+<li><code>adr_l</code> 是汇编宏，展开为两条指令：</li>
+</ul>
+<pre><code>// adr_l dst, sym 展开为:
+adrp    dst, sym        // 加载符号所在 4KB 页基址
+add     dst, dst, :lo12:sym  // 加上页内偏移</code></pre>
+<ul>
+<li><code>boot_args</code> 是 <code>u64 boot_args[4]</code>，在 setup.c 中定义</li>
+<li>此时 MMU 可能关闭，CPU 跑在物理地址上，但 <code>adrp</code> 基于 PC 相对寻址，仍然正确</li>
+<li class="accent"><strong>关键理解：</strong>由于内核是 PIE（位置无关）编译，adrp 得到的是运行时物理地址，与 MMU 状态无关</li>
+</ul>
+
+<h4>③ <code>stp x21, x1, [x0]</code> — 写入 boot_args[0..1]</h4>
+<ul>
+<li><code>STP</code>（Store Pair）指令：一条指令存储两个 64 位值</li>
+<li><code>[x0]</code> = boot_args[0] = x21（FDT 物理地址）</li>
+<li><code>[x0+8]</code> = boot_args[1] = x1（bootloader 传入的第 2 个参数，应为 0）</li>
+<li>相比两条 STR 指令，STP 节省了代码空间和指令发射带宽</li>
+</ul>
+
+<h4>④ <code>stp x2, x3, [x0, #16]</code> — 写入 boot_args[2..3]</h4>
+<ul>
+<li><code>STP</code> 使用立即偏移 <code>#16</code>（16 字节偏移）</li>
+<li><code>[x0+16]</code> = boot_args[2] = x2</li>
+<li><code>[x0+24]</code> = boot_args[3] = x3</li>
+<li>至此 boot_args[4] 的 32 字节已全部填入</li>
+</ul>
+
+<h4>⑤ <code>cbnz x19, 0f</code> — 条件分支：MMU 状态判断</h4>
+<ul>
+<li><code>CBNZ</code>（Compare and Branch if Non-Zero）：如果 x19 ≠ 0 → 跳转到 0f</li>
+<li>x19 来自 record_mmu_state 的返回值：0 = MMU off, 1 = MMU on</li>
+<li>MMU on (x19=1) → 跳转到 0f → <code>str_l x19, mmu_enabled_at_boot</code></li>
+<li>MMU off (x19=0) → 不跳转 → 执行 D-cache invalidate 序列</li>
+</ul>
+
+<h4>⑥ <code>dmb sy</code> — 内存屏障</h4>
+<ul>
+<li>全系统数据内存屏障（Data Memory Barrier, Shareable）</li>
+<li><strong>为什么需要？</strong> 当 MMU 关闭时，<code>STP</code> 写入是 non-cacheable 的，但随后的 <code>DC IVAC</code>（Data Cache Invalidate by Address to PoC）需要保证所有之前的内存访问已经全局可见</li>
+<li>DMB SY 确保所有之前的存储操作在 D-cache invalidation 之前完成</li>
+</ul>
+
+<div class="warn">⚠ <code>dmb sy</code> 只在 MMU off 路径执行。MMU on 时跳过了它——因为 cacheable 写入是硬件自洽的，不需要额外的 barrier。</div>
+
+<h4>⑦ <code>add x1, x0, #0x20</code> — 准备结束地址</h4>
+<ul>
+<li>x0 当前指向 boot_args[0]，x1 = x0 + 0x20 = x0 + 32</li>
+<li>boot_args 总共 4×8 = 32 字节，所以 x1 指向 boot_args 的末尾</li>
+<li>这为 dcache_inval_poc 准备了 <code>[x0, x1)</code> 地址区间参数</li>
+</ul>
+
+<h4>⑧ <code>b dcache_inval_poc</code> — 尾调用</h4>
+<ul>
+<li>这不是 <code>bl</code>（分支并链接），而是 <code>b</code>（无条件跳转）</li>
+<li><strong>尾调用优化：</strong>不压栈、不保留返回地址，直接跳转到 dcache_inval_poc</li>
+<li>dcache_inval_poc 执行完毕后会 <code>ret</code>，但返回到 <strong>preserve_boot_args 的调用者</strong>（primary_entry），而不是 preserve_boot_args 本身</li>
+<li>这消除了一个没有任何后续代码的 ret 指令</li>
+</ul>
+
+<h4>⑨ <code>str_l x19, mmu_enabled_at_boot, x0</code> — 记录 MMU 状态</h4>
+<ul>
+<li>仅在 MMU on (x19=1) 路径执行</li>
+<li><code>str_l</code> 是汇编宏，展开为：</li>
+</ul>
+<pre><code>// str_l src, sym, tmp 展开为:
+adrp    tmp, sym         // tmp = &amp;mmu_enabled_at_boot 页基址
+str     src, [tmp, :lo12:sym]  // 写入 mmu_enabled_at_boot = x19</code></pre>
+<ul>
+<li>这个全局变量在 setup.c 中定义（<code>u64 mmu_enabled_at_boot __initdata</code>）</li>
+<li>后续在 C 代码中检查该标志：如果非零且非 EFI 启动，则打印 FW_BUG 警告</li>
+</ul>
+
+<h4>⑩ <code>ret</code> — 返回</h4>
+<ul>
+<li>只有 MMU on 路径执行到这里</li>
+<li>MMU off 路径通过尾调用 dcache_inval_poc 返回，不会执行这个 ret</li>
+</ul>
+</section>
+
+<!-- ====== 4 ====== -->
+<section id="s4">
+<h2>4. 两条路径与缓存维护</h2>
+
+<h3>4.1 路径总览</h3>
+<div class="diagram">// ============ preserve_boot_args 流程 ============
+
+  x0=FDT, x1/x2/x3=bootloader args, x19=MMU state
+
+    mov  x21, x0               <span style="color:#94a3b8;">// 保存 FDT</span>
+    adr_l x0, boot_args        <span style="color:#94a3b8;">// 获取数组地址</span>
+    stp  x21, x1, [x0]        <span style="color:#94a3b8;">// 写入 [0..1]</span>
+    stp  x2, x3, [x0, #16]    <span style="color:#94a3b8;">// 写入 [2..3]</span>
+         │
+         ▼
+    cbnz x19, 0f  ──────────── 分支
+         │                        │
+    x19=0 (MMU off)           x19≠0 (MMU on)
+         │                        │
+    dmb sy                   str_l x19, mmu_enabled_at_boot
+    add  x1, x0, #0x20            │
+    b    dcache_inval_poc      ret
+         │                        │
+         └──── 汇合 ──────────────┘
+              (返回 primary_entry)
+</div>
+
+<h3>4.2 路径对比</h3>
+<table>
+<tr><th></th><th class="accent">Cold Boot (MMU off)</th><th class="amber">Warm Boot (MMU on)</th></tr>
+<tr><td>x19 值</td><td>0</td><td>1</td></tr>
+<tr><td>写入属性</td><td>Non-cacheable</td><td>Cacheable</td></tr>
+<tr><td>缓存操作</td><td><code>dmb sy</code> + <code>dcache_inval_poc</code></td><td>无（硬件自洽）</td></tr>
+<tr><td>额外记录</td><td>不记录</td><td><code>mmu_enabled_at_boot = 1</code></td></tr>
+<tr><td>返回方式</td><td>尾调用（b dcache_inval_poc）</td><td>正常 ret</td></tr>
+</table>
+
+<div class="note">💡 <strong>为什么 Cold Boot 需要 D-cache invalidate？</strong><br>
+当 STP 以 non-cacheable（MMU off）方式写入时，数据直接到达内存。但 CPU 的 speculative load 可能在写入前就已经将对应地址的数据加载到了 D-cache 中（预取）。如果不做 D-cache invalidate，后续当 MMU 开启后，cacheable 访问会命中这些陈旧缓存行，读到旧数据而不是刚写入的值。</div>
+</section>
+
+<!-- ====== 5 ====== -->
+<section id="s5">
+<h2>5. x21 FDT 指针生命周期</h2>
+
+<p>x21 在 preserve_boot_args 中被赋值为 FDT 物理地址，它在整个启动过程中被多次使用：</p>
+
+<div class="diagram">// ============ x21 (FDT pointer) 生命周期 ============
+
+  primary_entry:
+      bl  record_mmu_state
+      bl  preserve_boot_args     <span style="color:#2563eb;">// x21 = FDT (x0)</span>
+      ...
+      bl  __pi_create_init_idmap
+      bl  init_kernel_el
+      bl  __cpu_setup
+      b   __primary_switch
+          │
+          ▼
+  __primary_switch:
+      ...
+      bl  __primary_switched     <span style="color:#94a3b8;">// 进入 C 世界</span>
+          │
+  __primary_switched:
+      str_l  x21, __fdt_pointer, x5   <span style="color:#d97706;">// ★ 保存到全局 FDT 指针 (line 231)</span>
+      ...
+      mov    x0, x21                   <span style="color:#94a3b8;">// ★ x0 = FDT (作为参数传给 C 函数)</span>
+      bl     start_kernel              <span style="color:#94a3b8;">// → 进入内核 C 代码主入口</span>
+       ───────────────────────────────
+  setup_arch():
+      x0 就是 FDT 地址 → early_init_dt_scan() → unflatten_device_tree()
+      <span style="color:#2563eb;">从此内核拥有了完整的设备树描述</span></div>
+
+<div class="note">💡 FDT 指针通过 x21 一路穿越 10+ 个函数调用，最终到达 start_kernel。ARM64 的 callee-saved 寄存器约定（x19~x28）保证了 x21 在穿越各函数时不被破坏。这种设计避免了在 MMU-off 环境下访问全局变量的复杂性。</div>
+</section>
+
+<!-- ====== 6 ====== -->
+<section id="s6">
+<h2>6. boot_args 在 C 代码中的消费</h2>
+
+<h3>6.1 定义</h3>
+<pre><code>// arch/arm64/kernel/setup.c
+
+u64 __cacheline_aligned boot_args[4];      // ★ 缓存行对齐，避免 false sharing
+u64 mmu_enabled_at_boot __initdata;        // ★ 仅在初始化阶段使用</code></pre>
+
+<h3>6.2 消费点 1 — FW_BUG 检查 (mmu_enabled_at_boot)</h3>
+<pre><code>// arch/arm64/kernel/setup.c ~line 328
+
+WARN_TAINT(mmu_enabled_at_boot, TAINT_FIRMWARE_WORKAROUND,
+           FW_BUG "Booted with MMU enabled!");</code></pre>
+
+<ul>
+<li>如果 bootloader 启动内核时 MMU 已经是开启状态，说明 bootloader 行为异常</li>
+<li>触发 FW_BUG 警告并打上 TAINT 标记</li>
+<li>非 EFI 启动时才会检查（EFI 启动 MMU on 是合法的）</li>
+</ul>
+
+<h3>6.3 消费点 2 — 参数合规检查 (boot_args)</h3>
+<pre><code>// arch/arm64/kernel/setup.c ~line 372
+
+if (boot_args[1] || boot_args[2] || boot_args[3]) {
+    pr_err("WARNING: x1-x3 nonzero in violation of boot protocol:\n"
+           "\tx1: %016llx\n\tx2: %016llx\n\tx3: %016llx\n"
+           "This indicates a broken bootloader or old kernel\n",
+           boot_args[1], boot_args[2], boot_args[3]);
+}</code></pre>
+
+<ul>
+<li>ARM64 boot protocol 要求 x1~x3 必须为零</li>
+<li>如果非零，打印错误消息（但不 panic）</li>
+<li>这是对 bootloader 兼容性的运行时检查</li>
+</ul>
+
+<h3>6.4 消费点 3 — x0 (FDT) 的使用</h3>
+<div class="diagram">// ============ FDT 地址的传递链 ============
+
+  bootloader       head.S                C 代码
+  ┌────────┐     ┌────────────┐     ┌──────────────────┐
+  │ x0=FDT │────▶│boot_args[0]│────▶│x0→start_kernel() │
+  │        │     │ x21       │────▶│    →setup_arch()  │
+  │        │     │            │     │    →early_init_  │
+  │        │     │ __fdt_     │────▶│      dt_scan()   │
+  │        │     │ pointer    │     │    →unflatten_   │
+  │        │     │            │     │      device_tree()│
+  └────────┘     └────────────┘     └──────────────────┘
+
+  三条路径：
+  ① boot_args[0] → 检查/调试用途
+  ② x21          → 直接传参给 start_kernel (最快路径)
+  ③ __fdt_pointer → 全局变量，任意位置可访问</div>
+</section>
+
+<!-- ====== 7 ====== -->
+<section id="s7">
+<h2>7. GDB 调试验证</h2>
+
+<h3>7.1 断点设置</h3>
+<table>
+<tr><th>#</th><th>位置</th><th>验证目标</th></tr>
+<tr><td>BP1</td><td><code>preserve_boot_args</code> 入口</td><td>检查 x0(FDT), x1/x2/x3 入参</td></tr>
+<tr><td>BP2</td><td><code>stp x21, x1, [x0]</code> 之后</td><td>使用 <code>bootargs</code> 命令验证写入结果</td></tr>
+<tr><td>BP3</td><td><code>cbnz x19, 0f</code> 处</td><td>确认选择哪条路径</td></tr>
+<tr><td>BP4</td><td><code>0:</code>（MMU on 路径）</td><td>验证 mmu_enabled_at_boot 被写入</td></tr>
+</table>
+
+<h3>7.2 GDB 命令</h3>
+<pre><code># 在 preserve_boot_args 入口断下
+b preserve_boot_args
+commands
+  silent
+  printf "=== preserve_boot_args entry ===\n"
+  printf "FDT (x0)      = 0x%lx\n", $x0
+  printf "x1            = 0x%lx\n", $x1
+  printf "x2            = 0x%lx\n", $x2
+  printf "x3            = 0x%lx\n", $x3
+  printf "MMU state(x19)= %d (%s)\n", $x19, $x19 ? "ON" : "OFF"
+  continue
+end
+
+# 验证写入结果的自定义命令
+define bootargs
+  # 需要先知道 boot_args 的物理地址
+  # 假设物理地址为 phys_addr，可通过 add-symbol-file 后的符号表获得
+  printf "boot_args[0] (FDT) = 0x%llx\n", *(unsigned long long*)$arg0
+  printf "boot_args[1]       = 0x%llx\n", *(unsigned long long*)($arg0 + 8)
+  printf "boot_args[2]       = 0x%llx\n", *(unsigned long long*)($arg0 + 16)
+  printf "boot_args[3]       = 0x%llx\n", *(unsigned long long*)($arg0 + 24)
+end
+
+# 验证 mmu_enabled_at_boot
+define mmustat
+    printf "mmu_enabled_at_boot = %d\n", *(int*)$arg0
+end</code></pre>
+
+<h3>7.3 典型调试输出（Cold Boot）</h3>
+<pre><code>(gdb) b preserve_boot_args
+(gdb) c
+
+Breakpoint 1, preserve_boot_args
+=== preserve_boot_args entry ===
+FDT (x0)      = 0x0000000048000000
+x1            = 0x0000000000000000   # 符合 boot protocol ✓
+x2            = 0x0000000000000000
+x3            = 0x0000000000000000
+MMU state(x19)= 0 (OFF)
+
+# STP 执行后验证内存
+(gdb) si 3   # 跳过 mov + adr_l + 第一条 stp
+(gdb) si     # 第二条 stp
+
+(gdb) # 检查 boot_args 内存
+(gdb) x/4xg &lt;boot_args_phys&gt;
+0x4173xxxx: 0x0000000048000000 0x0000000000000000  # [0]=FDT [1]=0
+            0x0000000000000000 0x0000000000000000  # [2]=0   [3]=0
+
+# 确认 cbnz 走 MMU off 路径
+(gdb) si
+cbnz x19, 0f   →  x19=0, 不跳转 (走 dmb + dcache_inval_poc 尾调用)</code></pre>
+
+<h3>7.4 典型调试输出（Warm Boot / kexec）</h3>
+<pre><code># 对于 kexec 或休眠唤醒场景
+(gdb) b preserve_boot_args
+(gdb) c
+
+=== preserve_boot_args entry ===
+FDT (x0)      = 0x00000000xxxx0000
+x1            = 0x0000000000000000
+MMU state(x19)= 1 (ON)                          # ← MMU 已开启！
+
+# cbnz 会跳转到 0f 路径
+(gdb) si
+cbnz x19, 0f   →  x19=1, 跳转到 0f
+(gdb)
+str_l x19, mmu_enabled_at_boot, x0              # 记录标志
+
+# 验证全局变量
+(gdb) # 检查 mmu_enabled_at_boot = 1
+(gdb) p mmu_enabled_at_boot
+$1 = 1</code></pre>
+
+<div class="warn">⚠ 由于 preserve_boot_args 使用 <code>SYM_CODE_START_LOCAL</code>（LOCAL 符号），GDB 中直接 <code>b preserve_boot_args</code> 可能无法解析，需使用物理地址断点或 <code>b *&lt;phys_addr&gt;</code>。具体地址计算方法请参考 <code>bili_arm64_head.S_debug_qemu_bootrom.html</code>。</div>
+</section>
+
+<!-- ====== 8 ====== -->
+<section id="s8">
+<h2>8. 总结 &amp; 关键要点</h2>
+<table>
+<tr><th>#</th><th>要点</th><th>说明</th></tr>
+<tr><td>1</td>
+<td class="accent">保存 4 个启动参数到 boot_args[4]</td>
+<td>STP 两条指令完成 32 字节写入，高效紧凑</td></tr>
+<tr><td>2</td>
+<td class="accent">FDT 地址 → x21</td>
+<td>callee-saved 寄存器，一路穿越到 start_kernel</td></tr>
+<tr><td>3</td>
+<td class="green">尾调用优化（Tail Call）</td>
+<td>MMU off 路径以 <code>b dcache_inval_poc</code> 结尾，消除冗余 ret</td></tr>
+<tr><td>4</td>
+<td class="green">adr_l / str_l 宏</td>
+<td>PIE 环境下使用 PC-relative 寻址全局变量，与 MMU 状态无关</td></tr>
+<tr><td>5</td>
+<td class="amber">两条路径对称设计</td>
+<td>MMU off → invalidate cache；MMU on → 记录标志 + 后续 FW_BUG</td></tr>
+<tr><td>6</td>
+<td class="amber">DMB SY 内存屏障</td>
+<td>MMU off 写入后需要保证操作全局可见性</td></tr>
+<tr><td>7</td>
+<td class="amber">boot protocol 合规检查</td>
+<td>x1~x3 必须为 0，否则 setup.c 中打印警告</td></tr>
+<tr><td>8</td>
+<td class="accent">FDT 三条传递路径</td>
+<td>boot_args[0] / x21 寄存器 / __fdt_pointer 全局变量，冗余备份</td></tr>
+</table>
+
+<h3>涉及文件</h3>
+<table>
+<tr><th>文件</th><th>作用</th></tr>
+<tr><td><code>arch/arm64/kernel/head.S</code></td><td>preserve_boot_args 定义 + primary_entry 调用</td></tr>
+<tr><td><code>arch/arm64/kernel/setup.c</code></td><td>boot_args[4] / mmu_enabled_at_boot 定义和消费</td></tr>
+<tr><td><code>arch/arm64/include/asm/setup.h</code></td><td>boot_args extern 声明</td></tr>
+<tr><td><code>arch/arm64/include/asm/assembler.h</code></td><td>adr_l / str_l 宏定义</td></tr>
+</table>
+
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>

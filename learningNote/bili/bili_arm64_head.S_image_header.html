@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 内核 Image 头部设计：多协议兼容的魔数编排艺术</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease;
+    overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 1px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num, .sidebar a[href^="#s3"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s4"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s6"] .num { color: #7c3aed; font-weight: 600; }
+.sidebar a[href^="#s7"] .num { color: #be185d; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; font-family: monospace; font-size: 0.8em; }
+.flow-box { background: var(--accent-light); color: var(--accent); padding: 6px 12px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe; font-weight: 500; }
+.flow-arrow { color: #94a3b8; font-size: 1.2em; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+.str { font-size: 0.82em; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .toggle-btn { top: 14px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 概述：Image 是什么</a>
+<a href="#s2"><span class="num">2.</span> 64 字节头部逐字段解析</a>
+<a href="#s3"><span class="num">3.</span> 三重身份：指令/NOP/魔数</a>
+<a href="#s4"><span class="num">4.</span> EFI PE/COFF 头嵌入</a>
+<a href="#s5"><span class="num">5.</span> _kernel_flags 位域编码</a>
+<a href="#s6"><span class="num">6.</span> 设计哲学与约束</a>
+<a href="#s7"><span class="num">7.</span> 总结 &amp; 关键要点</a>
+</div>
+</nav>
+
+<div class="main-content">
+
+<header>
+<h1>ARM64 内核 Image 头部设计<br>多协议兼容的魔数编排艺术</h1>
+<div class="subtitle">
+<p>📁 <code>arch/arm64/kernel/head.S:57-72</code> + <code>arch/arm64/kernel/efi-header.S</code></p>
+<p>🎯 目标: 理解 ARM64 内核 Image 头部为什么这样设计 — 一份二进制，多重兼容</p>
+<p>🛠 涉及: ARM64 boot protocol / PE/COFF / UEFI / MZ 签名 / 位域编码</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">head.S</span><span class="tag tag-green">PE/COFF</span><span class="tag tag-amber">UEFI</span><span class="tag tag-gray">Image header</span><span class="tag tag-gray">boot protocol</span>
+</div>
+</header>
+
+<main>
+
+<!-- ====== 1 ====== -->
+<section id="s1">
+<h2>1. 概述：ARM64 内核 Image 是什么</h2>
+
+<p>ARM64 内核编译产出 <strong>vmlinux</strong>（ELF 可执行文件），但 bootloader 加载的实际文件是 <strong>Image</strong>（裸二进制）。Image 的前 64 字节是一个精心编排的<strong>自描述头部</strong>，它同时满足三套协议：</p>
+
+<div class="diagram">// ============ Image = vmlinux 剥离 ELF 头后的裸二进制 ============
+
+  vmlinux (ELF)                     Image (raw binary)
+  ┌────────────────┐                ┌──────────────────────────┐
+  │  ELF Header     │   objcopy -O   │  <span style="color:#2563eb;">0x00  64-byte Image Header</span> │ ← 本文分析对象
+  │  Program Hdrs   │   binary  ────▶│                           │
+  │  Section Hdrs   │   (--strip)    ├──────────────────────────┤
+  ├────────────────┤                │  <span style="color:#94a3b8;">0x40  .head.text / .text</span>     │
+  │  .head.text     │                │  (代码段)                 │
+  │  .text          │                │                           │
+  │  .rodata        │                ├──────────────────────────┤
+  │  .init.text     │                │  <span style="color:#94a3b8;">.init.text / .init.data</span>   │
+  │  ...            │                │                           │
+  └────────────────┘                └──────────────────────────┘</div>
+
+<h3>核心问题：为什么需要 64 字节头部？</h3>
+<div class="two-col">
+<div>
+<p><strong>1. 传统 bootloader（GRUB/U-Boot）</strong><br>
+把 Image 当作<strong>可跳转的原始代码</strong>，从偏移 0 开始执行。前 8 字节必须是可执行指令（NOP + B）。</p>
+</div>
+<div>
+<p><strong>2. UEFI 固件（支持 PE/COFF）</strong><br>
+把 Image 当作 <strong>PE/COFF 可执行文件</strong>。文件必须以 "MZ"（0x4D 0x5A）开头。内核必须以"有效 NOP"的方式嵌入这个签名。</p>
+</div>
+<div>
+<p><strong>3. Linux boot protocol</strong><br>
+头部必须包含魔数 <code>"ARM\x64"</code>、内核大小、页面大小等元数据，让 bootloader 在加载前就能<strong>验证和解析内核配置</strong>。</p>
+</div>
+<div>
+<p><strong>4. 向后兼容</strong><br>
+头部的前 8 字节 == <code>text_offset</code> 字段。0 表示"内核不关心加载偏移"。非零值曾用于特殊平台（已废弃），但<strong>必须 >= 0 以保证向后兼容</strong>。</p>
+</div>
+</div>
+
+<div class="note">💡 <strong>核心矛盾：</strong>"MZ" 在 x86 上是合法指令（<code>dec bp; pop dx</code>），但在 ARM64 上并不是。内核用了一个非常巧妙的方法：<code>ccmp x18, #0, #0xd, pl</code> — 这条 ARM64 指令的 opcode 恰好等于 "MZ"。它不是真正的"比较"，而是被精心挑选来生成正确的二进制字节。</div>
+</section>
+
+<!-- ====== 2 ====== -->
+<section id="s2">
+<h2>2. 64 字节头部逐字段解析</h2>
+
+<div class="diagram">// ============ ARM64 Image Header (64 bytes) ============
+
+<span style="color:#94a3b8;">Offset  Size   Field                   Content                     Purpose</span>
+<span style="color:#2563eb;">0x00    4      指令/NOP                 efi_signature_nop           triple: ARM insn + MZ sig + NOP</span>
+<span style="color:#2563eb;">0x04    4      跳转指令                b primary_entry             跳转到真正入口</span>
+<span style="color:#059669;">0x08    8      text_offset             .quad 0                     加载偏移（0=不关心）</span>
+<span style="color:#059669;">0x10    8      image_size             le64sym _kernel_size_le      内核有效大小</span>
+<span style="color:#059669;">0x18    8      flags                  le64sym _kernel_flags_le     标志位（字节序/页大小/物理基址）★</span>
+<span style="color:#94a3b8;">0x20    8      reserved 1             .quad 0                     保留</span>
+<span style="color:#94a3b8;">0x28    8      reserved 2             .quad 0                     保留</span>
+<span style="color:#94a3b8;">0x30    8      reserved 3             .quad 0                     保留</span>
+<span style="color:#d97706;">0x38    4      魔数                   .ascii "ARM\x64"             标识为 ARM64 Linux Image</span>
+<span style="color:#d97706;">0x3C    4      PE header offset       .long .Lpe_header_offset     指向 PE/COFF 头的偏移</span></div>
+
+<h3>2.1 逐字段详解</h3>
+
+<h4>字段 1: 偏移 0x00 — efi_signature_nop (4 bytes)</h4>
+<div class="two-col">
+<div>
+<pre><code>// 启用 CONFIG_EFI 时:
+ccmp  x18, #0, #0xd, pl
+// opcode = 0xFA400D5A (小端)
+//         ^^^^ ^^^^
+//          MZ   ??  (0x5A4D = "MZ")
+// 注意: 实际编码中 "MZ" = 0x5A4D
+// ARM64 LE 存储: 低字节在前
+// bytes: 5A 0D 40 FA → "Z\r@\xfa"</code></pre>
+</div>
+<div>
+<pre><code>// 未启用 CONFIG_EFI 时:
+nop
+// opcode = 0xD503201F
+// bytes: 1F 20 03 D5</code></pre>
+</div>
+</div>
+<div class="note">💡 <strong>CCMP 指令的玄机：</strong><code>ccmp</code>（Conditional Compare）只在条件满足时才执行比较。这里条件码 <code>pl</code>（plus，N=0）在冷启动时成立，所以会执行 <code>cmp x18, #0</code>，结果被丢弃（无后续 CSEL）。关键是这条指令的 <strong>opcode</strong> — 内核开发者从 ARM64 指令集中筛选出二进制编码恰好为 "MZ"（0x5A4D LE）的那一条指令！</div>
+
+<h4>字段 2: 偏移 0x04 — b primary_entry (4 bytes)</h4>
+<pre><code>b  primary_entry
+// ARM64 无条件跳转指令，opcode = 0x14000000 | imm26
+// 跳转到 primary_entry，这是真正的内核入口</code></pre>
+<ul>
+<li>传统 bootloader 加载 Image 后直接跳转到偏移 0，执行这条 <code>b</code> 进入内核代码</li>
+<li><strong>注意：</strong>UEFI 固件不会执行这条指令，而是解析 PE/COFF 头，调用 <code>__efistub_efi_pe_entry</code></li>
+</ul>
+
+<h4>字段 3: 偏移 0x08 — text_offset (8 bytes)</h4>
+<pre><code>.quad  0    // text_offset = 0</code></pre>
+<ul>
+<li>内核对 bootloader 说："我不在乎加载到哪个地址，你随便放"</li>
+<li>ARM64 要求 2MB 对齐，bootloader 会加上 offset_text 到 2MB 边界</li>
+<li><strong>历史：</strong>旧版本 ARM64 内核可能要求 text_offset 非零（特殊平台的固定加载地址），现已统一为 0</li>
+</ul>
+
+<h4>字段 4: 偏移 0x10 — image_size (8 bytes)</h4>
+<pre><code>le64sym _kernel_size_le
+// 展开为:
+// .long _kernel_size_le_lo32
+// .long _kernel_size_le_hi32</code></pre>
+<ul>
+<li><code>_kernel_size_le</code> 是一个 <strong>小端编码的 64 位值</strong>，表示内核镜像有效大小</li>
+<li>通过 <code>le64sym</code> 宏拆成 lo32/hi32 两部分</li>
+<li>bootloader 用这个值来计算需要从介质读入多少字节</li>
+<li><strong>为什么用 le64sym 而不是 .quad？</strong> 保证任何字节序下都是小端格式的二进制值（链接器默认会用目标字节序写入 .quad）</li>
+</ul>
+
+<h4>字段 5: 偏移 0x18 — flags (8 bytes, ★ 最复杂的字段)</h4>
+<pre><code>le64sym _kernel_flags_le
+// 同样拆成 lo32 / hi32，小端编码</code></pre>
+<p>flags 是一个位域编码，header flag bits 布局：</p>
+<table>
+<tr><th>Bit</th><th>名称</th><th>编码</th><th>含义</th></tr>
+<tr><td>0</td><td>ARM64_IMAGE_FLAG_BE</td><td>0=LE, 1=BE</td><td>内核字节序</td></tr>
+<tr><td>1-2</td><td>ARM64_IMAGE_FLAG_PAGE_SIZE</td><td>1=4K, 2=16K, 3=64K</td><td>页面大小</td></tr>
+<tr><td>3</td><td>ARM64_IMAGE_FLAG_PHYS_BASE</td><td>0=任意, 1=固定</td><td>物理地址基址是否固定</td></tr>
+<tr><td>4-63</td><td>(保留)</td><td>0</td><td>未来扩展</td></tr>
+</table>
+<div class="note">💡 <strong>flags 的设计意图：</strong>bootloader 在解析头部后就知道内核的页面大小、字节序等编译配置，从而在启动前做自检。例如，一个 4K 页面的内核不能在有 64K 页面硬件约束的平台上运行。</div>
+
+<h4>字段 6-8: 偏移 0x20/0x28/0x30 — reserved (3×8 bytes)</h4>
+<ul>
+<li>三个保留字段，当前全部为 0</li>
+<li>为未来可能扩展留出空间（例如更大的物理地址、新的安全特性等）</li>
+<li>这种预留设计在 boot protocol 中非常常见 — 一旦定义了，就要兼容到将来</li>
+</ul>
+
+<h4>字段 9: 偏移 0x38 — ARM64_IMAGE_MAGIC (4 bytes)</h4>
+<pre><code>.ascii "ARM\x64"    // 小端: bytes = 41 52 4D 00</code></pre>
+<ul>
+<li>这是 Linux ARM64 boot protocol 的身份证</li>
+<li>bootloader 检查这个魔数来确认这是一个 ARM64 Linux 内核镜像</li>
+<li><strong>为什么是 "ARM\x64" 而不是其他？</strong> "ARM" 是 ARM 架构，"64" 代表 64-bit（注意是 '\x64' = ASCII 'd'），避免与 32-bit ARM 混淆</li>
+</ul>
+
+<h4>字段 10: 偏移 0x3C — PE header offset (4 bytes)</h4>
+<pre><code>.long .Lpe_header_offset    // PE/COFF 头在 Image 中的偏移</code></pre>
+<ul>
+<li>告诉解析器去哪里找 PE/COFF 头</li>
+<li>如果未启用 CONFIG_EFI，这个值可能为 0</li>
+<li>这个字段本身是 PE/COFF DOS stub 的一部分</li>
+</ul>
+</section>
+
+<!-- ====== 3 ====== -->
+<section id="s3">
+<h2>3. 三重身份：指令 / NOP / 魔数</h2>
+
+<div class="diagram">// ============ 前 4 个字节的多重身份 ============
+
+  偏移 0x00 的 4 字节，在 <span class="accent">三个不同视角</span> 下有不同的含义：
+
+  ┌─────────────────────────────────────────────────────┐
+  │  二进制:        5A 0D 40 FA                         │
+  │                                                      │
+  │  <span style="color:#2563eb;">视角 1: ARM64 指令解码器</span>                              │
+  │      → ccmp x18, #0, #0xd, pl                       │
+  │      → 一条无实际效果的"条件比较"指令                    │
+  │                                                      │
+  │  <span style="color:#059669;">视角 2: UEFI PE/COFF 加载器</span>                           │
+  │      → 前 2 字节: 5A 4D = "MZ"                       │
+  │      → "这是一个有效的 PE 可执行文件"                    │
+  │                                                      │
+  │  <span style="color:#d97706;">视角 3: 传统 Linux bootloader</span>                         │
+  │      → 这是一条 ARM64 指令，CPU 会正常执行它             │
+  │      → 执行完毕后，下一条是 b primary_entry              │
+  └─────────────────────────────────────────────────────┘</div>
+
+<h3>3.1 为什么选择 CCMP？而不是其他 "MZ" 指令？</h3>
+
+<p>ARM64 指令集中，"MZ"（0x5A4D LE）恰好对应多条指令。内核开发者需要一条满足以下条件的：</p>
+
+<ol class="step-list">
+<li><strong>无副作用：</strong>不能修改任何寄存器或内存（否则会影响 x0~x3 中的 bootloader 参数）</li>
+<li><strong>无条件执行或条件总是满足：</strong>指令必须正确执行，不能因条件码不满足而被跳过</li>
+<li><strong>不影响标志位：</strong>不能改变 N/Z/C/V，否则影响后续逻辑</li>
+<li><strong>不产生异常：</strong>不能触发 Undefined Instruction 或其他 trap</li>
+</ol>
+
+<p><code>ccmp x18, #0, #0xd, pl</code> 完美满足所有条件：</p>
+<ul>
+<li>x18 是平台寄存器（Platform Register），修改它标志位不影响普通代码</li>
+<li><code>pl</code>（N=0）在冷启动时成立（大多数 CPU 上电后 PSTATE.N=0）</li>
+<li>CCMP 只更新 NZCV 且<strong>条件为 PL 时执行</strong>，这确实会影响标志位 — 但后续代码中 <code>cmp</code> 和 <code>tst</code> 会重新设置标志位</li>
+<li>所有 ARMv8+ CPU 都支持 CCMP</li>
+</ul>
+
+<div class="warn">⚠ <strong>PL 条件码的隐患：</strong>如果 CPU 上电时 N=1（极少见但理论上可能），<code>ccmp</code> 将不被执行，标志位保持原样。不过紧跟着的 <code>b primary_entry</code> 无条件跳转，不影响执行流。在 primary_entry 中，<code>record_mmu_state</code> 的 <code>cmp</code> 指令会重新设置标志位，所以即便 CCMP 被跳过也无害。</div>
+</section>
+
+<!-- ====== 4 ====== -->
+<section id="s4">
+<h2>4. EFI PE/COFF 头嵌入</h2>
+
+<div class="diagram">// ============ PE/COFF 结构嵌入 ============
+
+  Image 物理布局:
+  ┌──────────────────────────┐ ← offset 0x000
+  │  <span style="color:#2563eb;">Image Header (64 bytes)</span> │   Linux boot protocol 头部
+  │   0x3C: PE Header Offset  │ ← 指向 PE signature
+  ├──────────────────────────┤
+  │  <span style="color:#059669;">PE Signature              │   "PE\0\0" (PE签名+IMAGE_NT_SIGNATURE)
+  │  COFF Header              │   机器类型: ARM64 (0xAA64)
+  │  Optional Header          │   入口: __efistub_efi_pe_entry
+  │  Section Table            │   .text/.data 段描述
+  ├──────────────────────────┤
+  │  <span style="color:#94a3b8;">.head.text (代码)</span>        │   _text = primary_entry
+  └──────────────────────────┘</div>
+
+<h3>UEFI 启动流程</h3>
+<div class="flow">
+<span class="flow-box">UEFI 固件解析 PE/COFF 头</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box">调用 AddressOfEntryPoint = __efistub_efi_pe_entry</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box">EFI stub 初始化 (ExitBootServices 等)</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box">跳转到 primary_entry (MMU on, x0=FDT)</span>
+</div>
+
+<h3>传统 bootloader 启动流程</h3>
+<div class="flow">
+<span class="flow-box">bootloader 加载 Image 到内存</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box">检查 "ARM\x64" 魔数</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box">读取 image_size 分配内存</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box">跳转到 Image 偏移 0 (b primary_entry)</span>
+</div>
+
+<h3>关键设计点</h3>
+<table>
+<tr><th>机制</th><th>说明</th></tr>
+<tr><td><strong>DOS stub 复用</strong></td><td>PE/COFF 格式要求文件头包含 DOS stub。ARM64 内核把 Linux Image Header 作为 DOS stub 的前 64 字节，0x3C 处的偏移值指向 PE signature。传统 PE 文件中这个偏移指向 0x80 或更远，这里指向紧跟在 Image Header 之后的位置。</td></tr>
+<tr><td><strong>入口地址分离</strong></td><td>PE/COFF 的 AddressOfEntryPoint 指向 <code>__efistub_efi_pe_entry</code>（EFI stub），而传统入口在偏移 4（<code>b primary_entry</code>）。两者的启动环境完全不同：EFI 入口 MMU on + EFI 服务可用，传统入口 MMU off。</td></tr>
+<tr><td><strong>Section Table 偏移计算</strong></td><td><code>.Lpe_header_offset</code> 是链接时计算的相对偏移（<code>. - .L_head</code>），与运行时加载地址无关。这就是 PIE 编译的好处。</td></tr>
+</table>
+</section>
+
+<!-- ====== 5 ====== -->
+<section id="s5">
+<h2>5. _kernel_flags 位域编码详解</h2>
+
+<div class="diagram">// ============ _kernel_flags_le 位域布局 (64-bit) ============
+
+    63 .... 4    3              2-1         0
+  ┌──────────────┬──────────────┬───────────┬───┐
+  │   reserved   │ PHYS_BASE    │ PAGE_SIZE │ BE│
+  │   (all 0)    │   1 bit      │  2 bits   │ 1b│
+  └──────────────┴──────────────┴───────────┴───┘
+
+  PHYS_BASE: 0 = kernel can run at any PA
+             1 = kernel requires fixed PA
+
+  PAGE_SIZE: 01 = 4KB, 10 = 16KB, 11 = 64KB
+
+  BE:        0 = Little Endian
+             1 = Big Endian
+
+  <span style="color:#2563eb;">为什么需要这些 flag？</span>
+  同一个内核二进制 (<span class="accent">Image</span>) 可能被多个 bootloader 加载。
+  bootloader 读取 flags 后可以 <span class="accent">在加载前</span> 验证兼容性：
+    - "这个内核是 64K 页面的，这个平台只支持 4K → 拒绝加载"
+    - "这个内核需要固定 PA，但我在非固定 PA 环境 → 拒绝加载"</div>
+
+<h3>flags 检查 — bootloader 视角</h3>
+<pre><code>// bootloader 伪代码
+struct arm64_image_header *hdr = (void *)kernel_image;
+
+if (memcmp(hdr->magic, "ARM\x64", 4) != 0)
+    die("Not an ARM64 Linux Image");
+
+u64 flags = hdr->flags;
+
+int page_size = (flags >> 1) & 3;
+if (page_size == 0)        die("Invalid page size");
+if (page_size == 1) ps = 4096;
+if (page_size == 2) ps = 16384;  // 16K
+if (page_size == 3) ps = 65536;  // 64K
+
+int be = flags & 1;
+if (be != my_endianness)
+    die("Endianness mismatch");
+
+int phys_base = (flags >> 3) & 1;
+if (phys_base && !i_can_provide_fixed_pa())
+    die("Fixed PA not supported");</code></pre>
+</section>
+
+<!-- ====== 6 ====== -->
+<section id="s6">
+<h2>6. 设计哲学与约束</h2>
+
+<h3>6.1 约束清单</h3>
+<table>
+<tr><th>约束</th><th>来源</th><th>如何满足</th></tr>
+<tr>
+<td>前两字节必须是 "MZ"</td>
+<td>PE/COFF (DOS header 签名)</td>
+<td><code>efi_signature_nop</code> → <code>ccmp</code> opcode = 5A 4D</td>
+</tr>
+<tr>
+<td>偏移 0 必须是可执行指令</td>
+<td>传统 bootloader 直接跳转</td>
+<td>ccmp = 合法 ARM64 指令（条件比较，无副作用）</td>
+</tr>
+<tr>
+<td>魔数必须是 "ARM\x64"</td>
+<td>Linux ARM64 boot protocol</td>
+<td><code>.ascii "ARM\x64"</code> @ offset 0x38</td>
+</tr>
+<tr>
+<td>text_offset 必须小端编码</td>
+<td>多字节序兼容</td>
+<td>le64sym 宏确保小端，与宿主字节序无关</td>
+</tr>
+<tr>
+<td>PE header offset 必须在 0x3C</td>
+<td>PE/COFF (DOS header 布局)</td>
+<td><code>.long .Lpe_header_offset</code> @ 0x3C</td>
+</tr>
+<tr>
+<td>头部大小必须 >= 64 bytes</td>
+<td>ARM64 boot protocol</td>
+<td>64 字节固定头部 + 后续 PE/COFF 头 + __EFI_PE_HEADER</td>
+</tr>
+<tr>
+<td>链接脚本 <code>.head.text</code> 必须最前</td>
+<td>vmlinux.lds.S 链接顺序</td>
+<td><code>.head.text</code> 在 <code>_text</code> 前排列</td>
+</tr>
+</table>
+
+<h3>6.2 设计哲学</h3>
+<ol class="step-list">
+<li><strong>"一份二进制，所有启动路径"</strong> — 同一个 Image 文件可以被传统 bootloader（GRUB/U-Boot）、UEFI 固件、QEMU -kernel 参数启动。不需要编译不同版本的 Image。</li>
+<li><strong>"自描述"</strong> — bootloader 无需额外元数据文件，直接从 Image 头部读取页面大小、字节序、内核大小。这避免了像 x86 的 bzImage setup header 那样的复杂历史包袱。</li>
+<li><strong>"最大兼容性 = 最小假设"</strong> — text_offset=0 表示"我不假设加载地址"，让 bootloader 自由选择。EE/页大小 flags 则提供编译时信息以便兼容性检查。</li>
+<li><strong>"嵌入不侵入"</strong> — PE/COFF 头没有破坏 ARM64 boot protocol 的兼容性。PE header 偏移存储在 0x3C，传统 bootloader 直接忽略它。两者可以和平共存。</li>
+<li><strong>"预留即远见"</strong> — 3 个 reserved 字段（8×3=24 bytes）看似浪费，但一旦未来需要新字段（例如更大的物理地址 PA bits > 48），就有空间添加而不破坏兼容性。</li>
+</ol>
+
+<div class="note">💡 <strong>对比 x86：</strong>x86 的 bzImage 有 setup header（512+ bytes，一个极其复杂的历史遗留结构），因为 x86 的实模式→保护模式切换需要大量参数。ARM64 只有简洁的 64 字节头部 — 没有实模式、没有段寄存器、没有 A20 gate，硬件架构的简洁性直接反映在软件设计上。</div>
+</section>
+
+<!-- ====== 7 ====== -->
+<section id="s7">
+<h2>7. 总结 &amp; 关键要点</h2>
+<table>
+<tr><th>#</th><th>要点</th><th>说明</th></tr>
+<tr><td>1</td><td class="accent">三重身份的 NOP</td><td>前 4 字节 = 有效 ARM64 指令 + MZ 签名 + 传统 NOP</td></tr>
+<tr><td>2</td><td class="accent">PE/COFF 嵌入</td><td>64 字节 header + 紧随的 PE/COFF 头，双协议共享一个二进制</td></tr>
+<tr><td>3</td><td class="green">text_offset=0</td><td>内核不关心加载地址（2MB 对齐由 bootloader 保证）</td></tr>
+<tr><td>4</td><td class="green">le64sym 小端编码</td><td>image_size / flags 始终用小端存储，与主机字节序解耦</td></tr>
+<tr><td>5</td><td class="amber">flags 位域自描述</td><td>页面大小 + 字节序 + 物理基址信息，bootloader 加载前验证</td></tr>
+<tr><td>6</td><td class="amber">"ARM\x64" 魔数 @ 0x38</td><td>Linux ARM64 boot protocol 身份验证，32-bit 的 "ARM" 对应 32-bit ARM 内核</td></tr>
+<tr><td>7</td><td class="amber">3 个 reserved 预留</td><td>24 bytes 未来扩展空间，不破坏兼容的向前设计</td></tr>
+<tr><td>8</td><td class="accent">DOS stub 复用设计</td><td>Linux Image Header 兼任 PE/COFF DOS stub，0x3C 处指向 PE signature</td></tr>
+</table>
+
+<h3>涉及文件</h3>
+<table>
+<tr><th>文件</th><th>作用</th></tr>
+<tr><td><code>arch/arm64/kernel/head.S</code></td><td>Image 头部定义 + primary_entry 入口</td></tr>
+<tr><td><code>arch/arm64/kernel/efi-header.S</code></td><td>efi_signature_nop / __EFI_PE_HEADER 宏</td></tr>
+<tr><td><code>arch/arm64/include/asm/image.h</code></td><td>ARM64_IMAGE_MAGIC / ARM64_IMAGE_FLAG_* 定义</td></tr>
+<tr><td><code>arch/arm64/include/asm/assembler.h</code></td><td>le64sym 宏</td></tr>
+<tr><td><code>include/linux/init.h</code></td><td>__HEAD 宏 (.section ".head.text","ax")</td></tr>
+<tr><td><code>include/linux/pe.h</code></td><td>PE/COFF 常量 (IMAGE_NT_SIGNATURE, IMAGE_FILE_MACHINE_ARM64 etc.)</td></tr>
+<tr><td><code>arch/arm64/kernel/vmlinux.lds.S</code></td><td>链接脚本：.head.text 段在最前</td></tr>
+</table>
+
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>

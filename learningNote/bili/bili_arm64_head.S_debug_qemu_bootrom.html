@@ -14,60 +14,83 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
     font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    background: var(--bg); color: var(--text); line-height: 1.7;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
 }
 .page-wrapper { display: flex; }
 .sidebar {
-    position: fixed; top: 0; left: 0; width: 280px; height: 100vh;
-    overflow-y: auto; background: #fff; border-right: 1px solid var(--border);
-    padding: 28px 22px 40px; font-size: 0.9em; z-index: 10;
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease;
+    overflow: visible;
 }
-.sidebar h4 { font-size: 0.82em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 14px; font-weight: 600; }
-.sidebar a { display: block; color: var(--text-secondary); text-decoration: none; padding: 5px 0; border-radius: 3px; white-space: nowrap; }
-.sidebar a:hover, .sidebar a:target { color: var(--accent); }
-.sidebar a .num { color: #94a3b8; font-size: 0.82em; margin-right: 4px; }
-.main-content { margin-left: 280px; flex: 1; min-width: 0; }
-header { padding: 44px 0 36px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
-header h1 { font-size: 1.95em; font-weight: 700; color: var(--accent); margin-bottom: 14px; letter-spacing: -0.02em; }
-header .subtitle { font-size: 1.02em; color: var(--text-secondary); line-height: 2; }
-header .tag-row { margin-top: 18px; }
-.tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 500; margin: 2px; }
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 1px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s3"] .num, .sidebar a[href^="#s4"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s6"] .num { color: #7c3aed; font-weight: 600; }
+.sidebar a[href^="#s7"] .num { color: #0891b2; font-weight: 600; }
+.sidebar a[href^="#s8"] .num { color: #be185d; font-weight: 600; }
+.sidebar a[href^="#s9"] .num { color: #059669; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
 .tag-blue  { background: #dbeafe; color: #1e40af; }
 .tag-green { background: #d1fae5; color: #065f46; }
 .tag-amber { background: #fef3c7; color: #92400e; }
 .tag-gray  { background: #e2e8f0; color: #475569; }
-main { max-width: 960px; margin: 0 auto; padding: 36px 28px 60px; }
-section { padding: 32px 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
 section:last-of-type { border-bottom: none; }
-section h2 { font-size: 1.4em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 9px; margin-bottom: 18px; }
-section h3 { font-size: 1.12em; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
-section h4 { font-size: 1.02em; font-weight: 600; color: var(--text-secondary); margin: 14px 0 6px; }
-section p { font-size: 1em; color: var(--text-secondary); margin: 6px 0; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
 section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
-section li { margin-bottom: 4px; font-size: 0.98em; }
-code { background: var(--code-bg); padding: 2px 7px; border-radius: 4px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.9em; color: #1e293b; border: 1px solid var(--border); }
-pre { background: #f8fafc; padding: 14px 18px; border-radius: 8px; overflow-x: auto; font-size: 0.86em; line-height: 1.65; margin: 10px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
 pre code { background: none; padding: 0; border: none; color: #334155; }
-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.93em; }
-th { background: var(--accent); color: #fff; font-weight: 600; padding: 9px 13px; text-align: left; font-size: 0.88em; }
-td { padding: 7px 13px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
 tr:nth-child(even) td { background: #f8fafc; }
 .accent { color: var(--accent); font-weight: 600; }
 .green  { color: var(--green);  font-weight: 600; }
 .amber  { color: var(--amber);  font-weight: 600; }
-.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 10px 16px; border-radius: 4px; margin: 12px 0; font-size: 0.93em; color: #374151; }
-.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 10px 16px; border-radius: 4px; margin: 12px 0; font-size: 0.93em; color: #78350f; }
-.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin: 10px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.82em; line-height: 1.75; white-space: pre; overflow-x: auto; color: #334155; }
-.flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; font-family: monospace; font-size: 0.9em; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; font-family: monospace; font-size: 0.8em; }
 .flow-box { background: var(--accent-light); color: var(--accent); padding: 6px 12px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe; font-weight: 500; }
 .flow-arrow { color: #94a3b8; font-size: 1.2em; }
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin: 8px 0; }
-.str { font-size: 0.9em; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+.str { font-size: 0.82em; }
 @media (max-width: 860px) {
-    .sidebar { display: none; }
-    .main-content { margin-left: 0; }
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .toggle-btn { top: 14px; }
+    .main-content { padding: 16px 14px 30px; }
     .two-col { grid-template-columns: 1fr; }
-    section { padding: 24px 0; }
+    section { padding: 16px 0; }
 }
 </style>
 </head>
@@ -75,7 +98,9 @@ tr:nth-child(even) td { background: #f8fafc; }
 
 <div class="page-wrapper">
 
-<nav class="sidebar">
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
 <h4>目 录</h4>
 <a href="#s1"><span class="num">1.</span> 调试环境整体架构</a>
 <a href="#s2"><span class="num">2.</span> vmlinux 虚拟→物理地址映射</a>
@@ -86,6 +111,7 @@ tr:nth-child(even) td { background: #f8fafc; }
 <a href="#s7"><span class="num">7.</span> GDB 断点配置 &amp; 自定义命令</a>
 <a href="#s8"><span class="num">8.</span> GDB 脚本踩坑记录</a>
 <a href="#s9"><span class="num">9.</span> 总结 &amp; 调试操作速查</a>
+</div><!-- /.sidebar-inner -->
 </nav>
 
 <div class="main-content">
@@ -493,5 +519,14 @@ bootloader_aarch64[] = {
 </main>
 </div><!-- .main-content -->
 </div><!-- .page-wrapper -->
+
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
 </body>
 </html>

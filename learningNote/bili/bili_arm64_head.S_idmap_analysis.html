@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 Identity Mapping：create_init_idmap 页表构建深度分析</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease;
+    overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 1px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num, .sidebar a[href^="#s3"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s4"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s6"] .num { color: #7c3aed; font-weight: 600; }
+.sidebar a[href^="#s7"] .num { color: #0891b2; font-weight: 600; }
+.sidebar a[href^="#s8"] .num { color: #be185d; font-weight: 600; }
+.sidebar a[href^="#s9"] .num { color: #dc2626; font-weight: 600; }
+.sidebar a[href^="#s10"] .num { color: #dc2626; font-weight: 600; }
+.sidebar a[href^="#s11"] .num { color: #059669; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; font-family: monospace; font-size: 0.8em; }
+.flow-box { background: var(--accent-light); color: var(--accent); padding: 6px 12px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe; font-weight: 500; }
+.flow-arrow { color: #94a3b8; font-size: 1.2em; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+.str { font-size: 0.82em; }
+.step-list { counter-reset: step; list-style: none; margin-left: 0; }
+.step-list li { counter-increment: step; margin-bottom: 8px; padding-left: 28px; position: relative; color: var(--text-secondary); font-size: 0.85em; }
+.step-list li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 1px;
+    width: 18px; height: 18px;
+    background: var(--accent); color: #fff;
+    border-radius: 50%; text-align: center;
+    font-size: 10px; font-weight: 700; line-height: 18px;
+}
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .toggle-btn { top: 14px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 概述：什么是 Identity Mapping</a>
+<a href="#s2"><span class="num">2.</span> 汇编代码逐行分析 (head.S)</a>
+<a href="#s3"><span class="num">3.</span> C 运行时环境准备 ★</a>
+<a href="#s4"><span class="num">4.</span> create_init_idmap C 函数 ★</a>
+<a href="#s5"><span class="num">5.</span> map_range 核心递归算法 ★</a>
+<a href="#s6"><span class="num">6.</span> 实例演练（4KB+48bit 一步步走）</a>
+<a href="#s7"><span class="num">7.</span> ARM64 页表结构详解</a>
+<a href="#s8"><span class="num">8.</span> 内存布局 &amp; 页表分配策略</a>
+<a href="#s9"><span class="num">9.</span> 完整流程走读</a>
+<a href="#s10"><span class="num">10.</span> GDB 辅助验证与调试 ★</a>
+<a href="#s11"><span class="num">11.</span> 总结 &amp; 关键要点</a>
+</div><!-- /.sidebar-inner -->
+</nav>
+
+<div class="main-content">
+
+<header>
+<h1>ARM64 Identity Mapping<br>create_init_idmap 页表构建深度分析</h1>
+<div class="subtitle">
+<p>📁 <code>arch/arm64/kernel/head.S</code> + <code>arch/arm64/kernel/pi/map_range.c</code></p>
+<p>🎯 目标: 深入理解 identity mapping 的构建过程 — 从汇编到 C，从 PGD 到 Block Mapping</p>
+<p>🛠 涉及: 页表递归算法 / 2MB Block 映射 / W^X 安全策略 / PIE 位置无关代码</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">head.S</span><span class="tag tag-green">C</span><span class="tag tag-amber">ARM64</span><span class="tag tag-gray">identity mapping</span><span class="tag tag-gray">page table</span><span class="tag tag-gray">MMU off</span><span class="tag tag-gray">early boot</span>
+</div>
+</header>
+
+<main>
+
+<!-- ====== 1 ====== -->
+<section id="s1">
+<h2>1. 概述：什么是 Identity Mapping</h2>
+<div class="diagram">
+<span style="color:#94a3b8;">// ============ Identity Mapping = VA == PA ============</span>
+
+  <span style="color:#2563eb;">CPU 发出地址 0x40080000</span>
+       │
+       ├── <span style="color:#059669;">MMU OFF</span> ──▶ 直接访问物理内存 0x40080000
+       │
+       └── <span style="color:#d97706;">MMU ON</span>  ──▶ 查 PGD→PUD→PMD→PTE ──▶ 翻译得 PA=0x40080000
+                                                          │
+                                              <span style="font-weight:600;">VA 和 PA 完全相等！</span>
+</div>
+<div class="two-col">
+<div>
+<h3>为什么需要 Identity Mapping</h3>
+<ul>
+<li>MMU 开启是 <strong>CPU 执行那条指令后立刻生效</strong>的</li>
+<li>下一条指令的 PC 就要经过 MMU 翻译</li>
+<li>如果 VA→PA 映射不存在 → 立刻取指异常 → 系统崩溃</li>
+<li>Identity mapping 保证 <strong>MMU 开启瞬间代码不断流</strong></li>
+</ul>
+</div>
+<div>
+<h3>谁负责创建它</h3>
+<ul>
+<li><code>primary_entry</code> (head.S) 调用 <code>create_init_idmap()</code></li>
+<li>此时 <strong>MMU 关闭，CPU 跑在物理地址上</strong></li>
+<li>C 代码编译为 PIE，使用 PC-relative 寻址</li>
+<li>函数运行在物理地址上，直接操作物理内存</li>
+</ul>
+</div>
+</div>
+<div class="note">💡 Identity mapping 是临时的——MMU 开启后，内核会重建正式页表并切换到高地址虚拟空间（如 0xffff8000xxxxxxxx）。这套 idmap 页表在初始化完成后被废弃。</div>
+</section>
+
+<!-- ====== 2 ====== -->
+<section id="s2">
+<h2>2. 汇编代码逐行分析 (head.S:89-94)</h2>
+<div class="two-col">
+<div>
+<h3>源码</h3>
+<pre><code>SYM_CODE_START(primary_entry)
+    bl      record_mmu_state       // 记录 MMU 状态 → x19
+    bl      preserve_boot_args     // 保存 FDT 等启动参数
+
+    adrp    x1, early_init_stack   // ①
+    mov     sp, x1                 // ②
+    mov     x29, xzr               // ③
+    adrp    x0, __pi_init_idmap_pg_dir // ④
+    mov     x1, xzr                // ⑤
+    bl      __pi_create_init_idmap // ⑥</code></pre>
+</div>
+<div>
+<h3>逐条解释</h3>
+<table>
+<tr><th>行</th><th>指令</th><th>作用</th></tr>
+<tr><td>①</td><td><code>adrp x1, early_init_stack</code></td><td>加载 early_init_stack 的 4KB 页基址到 x1</td></tr>
+<tr><td>②</td><td><code>mov sp, x1</code></td><td>设置栈指针（只有 4KB 空间！）</td></tr>
+<tr><td>③</td><td><code>mov x29, xzr</code></td><td>清零帧指针 FP=0，标记栈回溯终点</td></tr>
+<tr><td>④</td><td><code>adrp x0, __pi_init_idmap_pg_dir</code></td><td class="accent">x0 = PGD 物理地址 (第1参数 pg_dir)</td></tr>
+<tr><td>⑤</td><td><code>mov x1, xzr</code></td><td>x1 = 0 = clrmask (第2参数)</td></tr>
+<tr><td>⑥</td><td><code>bl __pi_create_init_idmap</code></td><td class="green">调用 C 函数构建 identity mapping</td></tr>
+</table>
+</div>
+</div>
+
+<h3>关键设计点</h3>
+<div class="two-col">
+<div>
+<h4>①~③ 栈设置</h4>
+<ul>
+<li><code>early_init_stack</code> 位于 init_pg_dir 之后，<strong>仅 4KB</strong></li>
+<li>足够早期简单 C 函数调用（无深层递归，无大局部变量）</li>
+<li>FP=0 标记栈帧终点：GDB 做 backtrace 时在此终止</li>
+</ul>
+</div>
+<div>
+<h4>④~⑤ 参数传递</h4>
+<ul>
+<li>ARM64 调用约定：x0=第1参数，x1=第2参数</li>
+<li><code>clrmask=0</code>：<strong>MMU 关闭时不需清除缓存属性位</strong></li>
+<li>第二次调用（MMU on 时）会传真正的 clrmask</li>
+</ul>
+</div>
+</div>
+
+<h3>返回值的使用 (line 101-106)</h3>
+<div class="diagram">
+<span style="color:#94a3b8;">// create_init_idmap 返回 ptep → 用于 cache 一致性维护</span>
+
+    cbnz    x19, 0f                <span style="color:#94a3b8;">// MMU 本来就开着？跳过</span>
+    dmb     sy                      <span style="color:#94a3b8;">// 内存屏障</span>
+    mov     x1, x0                  <span style="color:#94a3b8;">// x1 = ptep (返回值：页表使用区域结束地址)</span>
+    adrp    x0, __pi_init_idmap_pg_dir  <span style="color:#94a3b8;">// x0 = 起始地址</span>
+    adr_l   x2, dcache_inval_poc
+    blr     x2                      <span style="color:#94a3b8;">// D-cache invalidate [x0 .. x1)</span>
+</div>
+<div class="warn">⚠ MMU 关闭时页表写入是 non-cacheable 的，但 speculative load 可能缓存了旧数据。必须在 MMU 开启前 invalidate 这些 cache lines。</div>
+</section>
+
+<!-- ====== 3 ====== -->
+<section id="s3">
+<h2>3. C 运行时环境准备 ★</h2>
+
+<p>这 6 条指令（line 89-94）在调用 <code>create_init_idmap</code> 之前，为 C 代码执行准备了<strong>最小的运行时环境</strong>。理解这个环境是理解整个 identity mapping 构建的前提。</p>
+
+<h3>3.1 在 MMU 关闭时运行 C 代码 — 为什么可能？</h3>
+<div class="two-col">
+<div>
+<h4>正常 C 运行时依赖</h4>
+<ul>
+<li>栈指针（SP）有效</li>
+<li>数据段可读写</li>
+<li>BSS 段已清零</li>
+<li>全局变量已重定位</li>
+<li>MMU 提供虚拟地址空间</li>
+</ul>
+</div>
+<div>
+<h4>Early boot 提供的最小集</h4>
+<ul>
+<li class="green">✓ 栈指针（SP）— 4KB</li>
+<li class="green">✓ 代码段可执行（PC-relative）</li>
+<li class="red">✗ BSS 未清零</li>
+<li class="red">✗ 全局变量未重定位</li>
+<li class="green">✓ PIE 编译，无需 MMU</li>
+</ul>
+</div>
+</div>
+
+<div class="note">💡 <strong>PIE 拯救 early boot：</strong><code>create_init_idmap</code> 和 <code>map_range</code> 所在的 <code>map_range.c</code> 被编译为 <span class="accent">位置无关代码（PIE）</span>。所有全局/静态数据访问都使用 PC-relative 寻址，不依赖 MMU 翻译。这就是为什么 MMU 关闭时 C 代码也能正确运行——地址本身就是物理地址。</div>
+
+<h3>3.2 三条指令准备运行时</h3>
+
+<table>
+<tr><th>指令</th><th>寄存器</th><th>作用</th><th>为什么需要</th></tr>
+<tr>
+<td><code>adrp x1, early_init_stack</code></td><td>x1</td><td>加载 early_init_stack 的物理地址</td><td>获取栈空间基址</td></tr>
+<tr>
+<td><code>mov sp, x1</code></td><td>SP</td><td>设置栈指针</td><td>C 函数调用需要栈（返回地址压栈、局部变量）</td></tr>
+<tr>
+<td><code>mov x29, xzr</code></td><td>x29 (FP)</td><td>清零帧指针</td><td>标记栈回溯的终点</td></tr>
+</table>
+
+<h3>3.3 栈空间在哪？</h3>
+<pre><code>// 来自 arch/arm64/kernel/vmlinux.lds.S
+
+    . = ALIGN(PAGE_SIZE);
+    __pi_init_pg_dir = .;          // 正式内核页表
+        . += INIT_DIR_SIZE;
+    . += SZ_4K;                    // ★ 早期 C 运行时栈空间
+    early_init_stack = .;          // ★ SP 指向这里 (仅 4KB!)
+    _end = .;</code></pre>
+
+<div class="diagram">// ============ 内存布局中的栈位置 ============
+
+  低地址
+    ┌──────────────────────────┐
+    │  .text / .rodata (代码)   │
+    ├──────────────────────────┤
+    │  .init.text / .init.data  │ ← create_init_idmap / map_range 在此
+    ├──────────────────────────┤
+    │  __pi_init_idmap_pg_dir   │ ← idmap 页表空间
+    │  (INIT_IDMAP_DIR_SIZE)    │
+    ├──────────────────────────┤
+    │  __pi_init_pg_dir         │ ← 正式内核页表
+    │  (INIT_DIR_SIZE)          │
+    ├──────────────────────────┤
+    │  early_init_stack (4KB)   │ ← ★ SP 指向这里！
+    ├──────────────────────────┤
+    │  _end 之后...              │
+  高地址</div>
+
+<div class="note">💡 为什么 4KB 就够了？<code>create_init_idmap</code> 的调用链很简单：<code>create_init_idmap → map_range (2 次) → map_range (递归)</code>。递归深度最多 4 级（PGD→PUD→PMD→PTE），且没有大局部变量。4KB 的栈空间绰绰有余。</div>
+
+<h3>3.4 帧指针 FP=0 的意义</h3>
+<table>
+<tr><th>正常 C 函数入口</th><th>Early boot 设置</th></tr>
+<tr>
+<td><pre><code>func:
+    stp x29, x30, [sp, #-32]!   // 保存 FP/LR
+    mov x29, sp                  // 设置帧指针</code></pre></td>
+<td><pre><code>primary_entry:
+    mov x29, xzr                 // FP = 0
+    bl  create_init_idmap        // 直接调用</code></pre></td>
+</tr>
+</table>
+
+<div class="two-col">
+<div>
+<h4>对 backtrace 的影响</h4>
+<ul>
+<li>GDB 中 <code>bt</code>（backtrace）依赖帧指针链</li>
+<li>FP=0 是链的终止条件（unwinder 见到 0 停止回溯）</li>
+<li><code>create_init_idmap</code> 内部有正常的函数序言（prologue），从那里开始有完整的 FP 链</li>
+<li>回溯结果：<code>create_init_idmap → ... → ? (FP=0)</code>，准确停在 primary_entry</li>
+</ul>
+</div>
+<div>
+<h4>GDB 验证</h4>
+<pre><code>(gdb) b create_init_idmap
+(gdb) c
+(gdb) bt
+#0  create_init_idmap (pg_dir=..., clrmask=0)
+    at map_range.c:91
+#1  0x4165xxxx in primary_entry ()
+    at head.S:94
+#2  0x0000000000000000       # ← FP=0 终结</code></pre>
+</div>
+</div>
+
+<h3>3.5 PI 编译模型 — __pi_ 前缀</h3>
+
+<p>注意到 head.S 中调用的符号是 <code>__pi_create_init_idmap</code>，而不是 <code>create_init_idmap</code>。这是 PI（Position Independent）编译模型的关键：</p>
+
+<div class="diagram">// ============ PI 编译与链接流程 ============
+
+  map_range.c ──编译──▶ map_range.o        <span style="color:#94a3b8;">// 普通 .o</span>
+                            │
+                      objcopy --prefix-symbols=__pi_
+                            │
+                            ▼
+                      map_range.pi.o       <span style="color:#94a3b8;">// 所有符号加上 __pi_ 前缀</span>
+                            │
+                      链接进内核镜像
+                            │
+                            ▼
+  head.S 调用 __pi_create_init_idmap
+
+  <span style="color:#2563eb;">为什么这样做？</span>
+  PI 代码运行在物理地址上，与内核主代码（运行在高虚拟地址）使用不同的地址空间。
+  加 __pi_ 前缀是为了避免与主内核中的同名符号冲突（虽然 map_range.c 只在 PI 中使用，没有同名冲突）。
+  更重要的原因是：PI 代码使用的链接脚本段不同（.init 段），objcopy 用 --prefix-alloc-sections=.init 确保这一点。</div>
+
+<pre><code>// arch/arm64/kernel/pi/Makefile
+
+# 将 map_range.o 转换为 map_range.pi.o，所有符号添加 __pi_ 前缀
+$(obj)/%.pi.o: OBJCOPYFLAGS := --prefix-symbols=__pi_ \
+                                --remove-section=.note.gnu.property
+$(obj)/%.pi.o: $(obj)/%.o $(obj)/relacheck FORCE
+    $(call if_changed,piobjcopy)
+
+# PI 代码使用特殊的编译标志
+KBUILD_CFLAGS := -fpie -Os -ffreestanding \
+                 -fno-stack-protector ...</code></pre>
+
+<table>
+<tr><th>编译标志</th><th>作用</th></tr>
+<tr><td><code>-fpie</code></td><td>生成位置无关可执行代码，所有寻址通过 PC-relative</td></tr>
+<tr><td><code>-ffreestanding</code></td><td>独立环境编译，不依赖标准库（没有 memset/memcpy 等）</td></tr>
+<tr><td><code>-fno-stack-protector</code></td><td>禁用栈保护，因为没有 __stack_chk_fail</td></tr>
+<tr><td><code>-Os</code></td><td>优化代码大小，减少栈使用</td></tr>
+<tr><td><code>CFLAGS_map_range.o += -mstrict-align</code></td><td>MMU off 时不对齐访问会触发异常</td></tr>
+</table>
+
+<div class="warn">⚠ <strong>对比完整 C 运行时：</strong>2.6 之前的内核中，early boot C 代码需要手动初始化 BSS、重定位数据段、设置异常向量等。现代内核通过 PIE + 最小栈的方式，在进入 C 之前只需要设置 SP 即可，极大地简化了汇编阶段的准备工作。</div>
+
+<h3>3.6 参数传递约定</h3>
+<table>
+<tr><th>参数</th><th>寄存器</th><th>值</th><th>含义</th></tr>
+<tr><td>第 1 个（pg_dir）</td><td>x0</td><td><code>__pi_init_idmap_pg_dir</code></td><td>PGD 的物理地址</td></tr>
+<tr><td>第 2 个（clrmask）</td><td>x1</td><td>0（xzr）</td><td>不清除任何 protection bit</td></tr>
+</table>
+
+<div class="note">💡 <strong>xzr 的技巧：</strong><code>mov x1, xzr</code> 读的是零寄存器（Zero Register），这是 ARM64 的一个特殊寄存器，永远返回 0。不需要先加载 0 到某个通用寄存器再 mov，xzr 直接提供 0 值，既省指令又省功耗。</div>
+</section>
+
+<!-- ====== 4 ====== -->
+<section id="s4">
+<h2>4. create_init_idmap C 函数 ★</h2>
+<h3>3.1 函数完整源码</h3>
+<pre><code>asmlinkage phys_addr_t __init create_init_idmap(pgd_t *pg_dir, ptdesc_t clrmask)
+{
+    phys_addr_t ptep = (phys_addr_t)pg_dir + PAGE_SIZE; // ① 空闲页指针 = PGD 后的第一个页
+    pgprot_t text_prot = PAGE_KERNEL_ROX;               // ② 代码段：只读+可执行
+    pgprot_t data_prot = PAGE_KERNEL;                   // ③ 数据段：可读写
+
+    pgprot_val(text_prot) &= ~clrmask;                  // ④ clrmask=0 时无效
+    pgprot_val(data_prot) &= ~clrmask;
+
+    // ⑤ 映射代码段 [_stext .. __initdata_begin)  ROX
+    map_range(&ptep, (u64)_stext, (u64)__initdata_begin,
+              (phys_addr_t)_stext, text_prot, IDMAP_ROOT_LEVEL,
+              (pte_t *)pg_dir, false, 0);
+
+    // ⑥ 映射数据段 [__initdata_begin .. _end)  RW
+    map_range(&ptep, (u64)__initdata_begin, (u64)_end,
+              (phys_addr_t)__initdata_begin, data_prot, IDMAP_ROOT_LEVEL,
+              (pte_t *)pg_dir, false, 0);
+
+    return ptep;                                        // ⑦ 返回使用区域的结束地址
+}</code></pre>
+
+<h3>3.2 保护属性展开</h3>
+<table>
+<tr><th>宏</th><th>展开</th><th>效果</th></tr>
+<tr>
+<td><code>PAGE_KERNEL_ROX</code></td>
+<td><code>PROT_NORMAL & ~(PTE_WRITE | PTE_PXN) | PTE_RDONLY</code></td>
+<td class="green">EL1 可读可执行，禁止写入 ← W^X 安全策略</td>
+</tr>
+<tr>
+<td><code>PAGE_KERNEL</code></td>
+<td><code>PROT_NORMAL | PTE_WRITE</code></td>
+<td class="amber">EL1 可读写，禁止执行（PXN=1）</td>
+</tr>
+</table>
+
+<h3>3.3 两段映射策略 — 为什么分成两段？</h3>
+<div class="diagram">
+<span style="color:#94a3b8;">// ============ 内核镜像 ============</span>
+
+  _stext ──────────────┐
+  .head.text           │
+  .text                ├─ <span style="color:#2563eb;">第一段: ROX (Read-Only + Execute)</span>
+  .rodata              │   <span style="color:#2563eb;">map_range(..., text_prot, ...)</span>
+  .init.text           │
+  __initdata_begin ────┤
+  idmap 页表区域        │
+  .init.data           │
+  .data                ├─ <span style="color:#d97706;">第二段: RW (Read-Write, XN)</span>
+  .bss                 │   <span style="color:#d97706;">map_range(..., data_prot, ...)</span>
+  init 页表区域         │
+  early_init_stack     │
+  _end ────────────────┘
+</div>
+<div class="note">💡 <strong>W^X 安全原则：</strong>代码不可写，数据不可执行。即使攻击者控制了数据段，也无法执行注入的代码。这是内核最基本的安全防护。</div>
+</section>
+
+<!-- ====== 5 ====== -->
+<section id="s5">
+<h2>5. map_range 核心递归算法 ★</h2>
+<h3>4.1 参数表</h3>
+<pre><code>void map_range(
+    phys_addr_t *pte,     // [in/out] 空闲物理页指针（分配新页表时递增）
+    u64 start,            // 映射起始 VA
+    u64 end,              // 映射结束 VA (exclusive)
+    phys_addr_t pa,       // 映射起始 PA  ← identity map 时 pa == start !
+    pgprot_t prot,        // 保护属性
+    int level,            // 当前层级 (0=PGD, 1=PUD, 2=PMD, 3=PTE)
+    pte_t *tbl,           // 当前层级页表基址
+    bool may_use_cont,    // 是否可用 contiguous bit (此处为 false)
+    u64 va_offset         // 页表 PA→VA 偏移 (MMU off 时为 0)
+);</code></pre>
+
+<h3>4.2 算法伪代码</h3>
+<div class="two-col">
+<div>
+<pre><code>map_range(..., level, tbl, ...):
+
+    // 每级解析的 VA bit 数: 9 bits
+    lshift = (3 - level) * PTDESC_TABLE_SHIFT
+
+    // 本级每个 entry 覆盖范围 - 1
+    lmask  = (PAGE_SIZE &lt;&lt; lshift) - 1
+    // level 0: 512GB-1
+    // level 1: 1GB-1
+    // level 2: 2MB-1
+    // level 3: 4KB-1
+
+    // 定位到覆盖 start 的 entry
+    tbl += (start &gt;&gt; (lshift + 12)) % 512</code></pre>
+</div>
+<div>
+<pre><code>    // 设置描述符类型位
+    protval |= (level == 2) ? PMD_TYPE_SECT
+                            : PTE_TYPE_PAGE
+
+    while (start &lt; end):
+        next = min((start | lmask) + 1,
+                   ALIGN(end, PAGE_SIZE))
+
+        if level &lt; 2 OR (level == 2 AND 不对齐):
+            // → 递归创建下级页表
+            if tbl[entry] 为空:
+                分配新物理页作为下级页表
+            map_range(..., level+1, ...)
+
+        else:
+            // → 直接放 Block/Page 映射
+            tbl[entry] = pa | protval
+
+        pa    += next - start
+        start  = next
+        tbl++</code></pre>
+</div>
+</div>
+
+<h3>4.3 关键判断逻辑</h3>
+<table>
+<tr><th>Level</th><th>覆盖范围</th><th>行为</th><th>原因</th></tr>
+<tr>
+<td>0 (PGD)</td><td>512 GB</td><td class="accent">总是递归</td>
+<td>512GB 太粗粒度，必须细分</td>
+</tr>
+<tr>
+<td>1 (PUD)</td><td>1 GB</td><td class="accent">总是递归</td>
+<td>1GB 仍太粗，需进一步细分</td>
+</tr>
+<tr>
+<td>2 (PMD)</td><td>2 MB</td><td class="green">对齐→Block；不对齐→递归</td>
+<td>内核 2MB 对齐加载 → 几乎总是 Block</td>
+</tr>
+<tr>
+<td>3 (PTE)</td><td>4 KB</td><td class="amber">直接 Page 映射</td>
+<td>最细粒度，没有更下级了</td>
+</tr>
+</table>
+
+<div class="note">💡 <strong>2MB Block Mapping 是性能关键：</strong>ARM64 boot protocol 要求 2MB 对齐，所以 PMD level 几乎总能使用 block descriptor。一个 ~30MB 的内核仅需约 15 个 PMD entries，而非 7500+ 个 PTE entries！</div>
+</section>
+
+<!-- ====== 6 ====== -->
+<section id="s6">
+<h2>6. 实例演练（4KB 页面 + 48bit VA 一步步走）</h2>
+<h3>5.1 参数计算</h3>
+<table>
+<tr><th>参数</th><th>公式</th><th>值</th></tr>
+<tr><td><code>PAGE_SHIFT</code></td><td>—</td><td>12 (4KB pages)</td></tr>
+<tr><td><code>PTDESC_ORDER</code></td><td>—</td><td>3 (描述符 8 字节 = 2³)</td></tr>
+<tr><td><code>PTDESC_TABLE_SHIFT</code></td><td><code>PAGE_SHIFT - 3</code></td><td class="accent">9 (每级解析 9 bits VA)</td></tr>
+<tr><td><code>PTRS_PER_PTE</code></td><td><code>2^9</code></td><td>512 (每级 512 个 entries)</td></tr>
+<tr><td><code>ARM64_HW_PGTABLE_LEVELS(48)</code></td><td><code>(48 - 3 - 1) / 9</code></td><td>4 (需要 4 级页表)</td></tr>
+<tr><td><code>IDMAP_ROOT_LEVEL</code></td><td><code>4 - IDMAP_LEVELS</code></td><td class="green">0 (从 PGD 开始)</td></tr>
+</table>
+
+<h3>5.2 一步步跟踪（假设内核在 0x40080000，~30MB）</h3>
+<ol class="step-list">
+<li>
+<strong>Level 0 (PGD) — 分配 PUD</strong><br>
+<code>lshift = (3-0)&times;9 = 27</code>，<code>lmask = 512GB - 1</code><br>
+整个内核镜像 &lt; 512GB → 只需 1 个 PGD entry<br>
+<code>tbl_index = (0x40080000 &gt;&gt; 39) % 512 = 0</code>（PGD[0]）<br>
+→ PGD[0] 写入 Table descriptor，指向新分配的 PUD 物理页<br>
+→ <code>*pte += 4096</code>（分配了 1 页）
+</li>
+<li>
+<strong>Level 1 (PUD) — 分配 PMD</strong><br>
+<code>lshift = (3-1)&times;9 = 18</code>，<code>lmask = 1GB - 1</code><br>
+内核 ~30MB &lt; 1GB → 只需 1 个 PUD entry<br>
+→ PUD[0] 写入 Table descriptor，指向新分配的 PMD 物理页<br>
+→ <code>*pte += 4096</code>
+</li>
+<li>
+<strong>Level 2 (PMD) — 放置 Block 映射</strong><br>
+<code>lshift = (3-2)&times;9 = 9</code>，<code>lmask = 2MB - 1</code><br>
+<code>start=0x40080000, pa=0x40080000</code> → 都 2MB 对齐！✅<br>
+→ <strong>直接写 Block descriptor：</strong><br>
+<code>PMD[i] = 0x40080000 | PMD_TYPE_SECT | prot_ROX</code><br>
+→ <strong>无需分配 PTE 页表！</strong><br>
+→ 循环放置 ~15 个 block entries（覆盖 ~30MB 代码段）
+</li>
+<li>
+<strong>第二段 (数据段) 同理</strong><br>
+从 <code>__initdata_begin</code> 开始，保护属性切换为 RW<br>
+→ 继续在同一个 PMD 表里放 Block entries<br>
+→ 共用已有的 PGD/PUD/PMD 页表（不重复分配）
+</li>
+</ol>
+
+<div class="diagram">
+<span style="color:#94a3b8;">// ============ 页表结构总览 ============</span>
+
+<span style="color:#2563eb;">PGD (Level 0)</span>          <span style="color:#2563eb;">PUD (Level 1)</span>          <span style="color:#2563eb;">PMD (Level 2)</span>
+┌──────────────┐    ┌──────────────┐    ┌──────────────────────────────┐
+│ [0] ─────────┼───▶│ [0] ─────────┼───▶│ [0]  empty                    │
+│ [1..511]     │    │ [1..511]     │    ├──────────────────────────────┤
+│ empty        │    │ empty        │    │ ...                          │
+└──────────────┘    └──────────────┘    ├──────────────────────────────┤
+                                        │ <span style="color:#059669;">[4]  0x40080000 | BLOCK | ROX</span>  │  ← 2MB
+                                        │ <span style="color:#059669;">[5]  0x400a0000 | BLOCK | ROX</span>  │  ← 2MB
+                                        │ <span style="color:#059669;">[6]  0x400c0000 | BLOCK | ROX</span>  │  ← 2MB
+                                        │ ... (代码段，~15 个 ROX block)  │
+                                        ├──────────────────────────────┤
+                                        │ <span style="color:#d97706;">[N]  0x4xxx0000 | BLOCK | RW</span>   │  ← 2MB
+                                        │ <span style="color:#d97706;">[N+1] 0x4xxx0000 | BLOCK | RW</span> │  ← 2MB
+                                        │ ... (数据段，几个 RW block)     │
+                                        ├──────────────────────────────┤
+                                        │ [...] empty                   │
+                                        └──────────────────────────────┘
+
+   <span style="color:#94a3b8;">共分配: PGD(1页) + PUD(1页) + PMD(1页) = 3 个物理页</span>
+   <span style="color:#94a3b8;">映射 ~30MB+ 内核，仅用 ~15 个 PMD block entries</span>
+</div>
+</section>
+
+<!-- ====== 7 ====== -->
+<section id="s7">
+<h2>7. ARM64 页表结构详解</h2>
+<h3>6.1 VA 地址划分 (48-bit, 4KB pages, 4-level)</h3>
+<div class="diagram">
+  47   39 38   30 29   21 20   12 11     0
+  ┌──────┬──────┬──────┬──────┬──────────┐
+  │ L0   │ L1   │ L2   │ L3   │  Offset  │
+  │ 9bit │ 9bit │ 9bit │ 9bit │  12bit   │
+  └──┬───┴──┬───┴──┬───┴──┬───┴────┬─────┘
+     │      │      │      │        │
+     ▼      ▼      ▼      ▼        ▼
+   <span style="color:#2563eb;">PGD</span>   <span style="color:#2563eb;">PUD</span>   <span style="color:#2563eb;">PMD</span>   <span style="color:#2563eb;">PTE</span>   <span style="color:#94a3b8;">Page Offset</span>
+  512GB   1GB    2MB    4KB     (offset within page)
+  /entry  /entry /entry /entry
+</div>
+
+<h3>6.2 描述符格式 (64-bit)</h3>
+<table>
+<tr><th>类型</th><th>bits[1:0]</th><th>物理地址位</th><th>说明</th></tr>
+<tr>
+<td>Table descriptor</td>
+<td class="accent">11</td>
+<td>PA[47:12] @ bits[47:12]</td>
+<td>指向下一级页表的物理地址</td>
+</tr>
+<tr>
+<td>Block descriptor (L2)</td>
+<td class="green">01</td>
+<td>PA[47:21] @ bits[47:21]</td>
+<td>直接映射 2MB，无需 PTE</td>
+</tr>
+<tr>
+<td>Page descriptor (L3)</td>
+<td class="amber">11</td>
+<td>PA[47:12] @ bits[47:12]</td>
+<td>映射 4KB 单页</td>
+</tr>
+</table>
+
+<h3>6.3 关键属性位</h3>
+<table>
+<tr><th>Bit</th><th>名称</th><th>含义</th></tr>
+<tr><td>0-1</td><td>Type</td><td>00=invalid, 01=Block, 11=Table/Page</td></tr>
+<tr><td>2-4</td><td>AttrIndx</td><td>MAIR 寄存器索引，决定内存类型 (normal/device/cacheable)</td></tr>
+<tr><td>6-7</td><td>AP[2:1]</td><td>Access Permission (读写执行权限，与 PXN/UXN 配合)</td></tr>
+<tr><td>10</td><td>AF</td><td>Access Flag (硬件置 1 表示该页被访问过)</td></tr>
+<tr><td>52</td><td>Contiguous</td><td>连续块标志 (此处 idmap 不使用)</td></tr>
+<tr><td class="accent">53</td><td class="accent">PXN</td><td class="accent">Privileged Execute Never — EL1 不可执行</td></tr>
+<tr><td>54</td><td>UXN/XN</td><td>EL0 不可执行 / 所有特权级不可执行</td></tr>
+</table>
+
+<div class="note">💡 <strong>理解 PXN：</strong><code>PAGE_KERNEL_ROX</code> 清除了 PXN 位（允许 EL1 执行），而 <code>PAGE_KERNEL</code> 设置了 PXN 位（禁止执行）。这就是 W^X 在硬件层面的实现。</div>
+</section>
+
+<!-- ====== 8 ====== -->
+<section id="s8">
+<h2>8. 内存布局 &amp; 页表分配策略</h2>
+<h3>7.1 链接脚本布局 (vmlinux.lds.S)</h3>
+<pre><code>. = KIMAGE_VADDR;          // 内核高地址虚拟基址
+
+_stext = .;                // ★ 代码段起点
+  .head.text : { HEAD_TEXT }
+  .text      : { TEXT_TEXT ... }
+  .rodata    : { RODATA }
+
+__initdata_begin = .;      // ★ init 数据起点（第二段从此开始）
+
+__pi_init_idmap_pg_dir = .; // ★ idmap PGD (物理地址)
+  . += INIT_IDMAP_DIR_SIZE; // idmap 页表预留空间
+__pi_init_idmap_pg_end = .;
+
+  .init.data : { INIT_DATA ... }
+  .data   : { ... }
+  .bss    : { ... }
+
+  . = ALIGN(PAGE_SIZE);
+__pi_init_pg_dir = .;      // 正式内核页表
+  . += INIT_DIR_SIZE;
+  . += SZ_4K;              // ← early_init_stack (仅 4KB!)
+early_init_stack = .;
+
+_end = .;                  // ★ 内核镜像末尾</code></pre>
+
+<h3>7.2 页表分配策略 — 线性增长</h3>
+<div class="diagram">
+<span style="color:#94a3b8;">// ============ idmap 页表区域的线性分配 ============</span>
+
+  __pi_init_idmap_pg_dir ──┐
+  ┌────────────────────────┐
+  │  PGD (4KB)             │ ← pg_dir 参数，调用者传入
+  ├────────────────────────┤ ← ptep 初始值 = pg_dir + PAGE_SIZE
+  │  PUD (4KB)             │ ← map_range 中第一次分配
+  ├────────────────────────┤
+  │  PMD (4KB)             │ ← map_range 中第二次分配
+  ├────────────────────────┤
+  │  (可能更多 PMD/PTE)     │ ← 仅在 range 跨多个 PGD/PUD entry 时才分配
+  ├────────────────────────┤
+  │  <span style="color:#94a3b8;">unused</span>                 │
+  ├────────────────────────┤ ← ptep 返回值（= 使用结束地址）
+  │  <span style="color:#94a3b8;">unused</span>                 │
+  ├────────────────────────┤
+  │  early_init_stack       │
+  │  (4KB)                  │ ← 后面紧跟着（不在 idmap 页表区域内）
+  └────────────────────────┘
+
+  <span style="color:#2563eb;">分配的每一页都是物理页，没有复杂的内存管理器</span>
+  <span style="color:#2563eb;">ptep 只是一个递增的 phys_addr_t 指针</span>
+</div>
+
+<h3>7.3 分配代码</h3>
+<pre><code>// map_range 中，当需要创建下级页表时：
+if (pte_none(*tbl)) {
+    // 把当前空闲物理页作为下级页表
+    *tbl = __pte(__phys_to_pte_val(*pte) |
+                 PMD_TYPE_TABLE | PMD_TABLE_UXN);
+    // 前进到下一个空闲物理页 (512 entries &times; 8 bytes = 4096)
+    *pte += PTRS_PER_PTE * sizeof(pte_t);
+}</code></pre>
+<div class="note">💡 PGD 本身是调用者传入的（链接脚本预留），不需要分配。需要分配的是下级页表（PUD、PMD、可能的 PTE）。线性分配极简高效，适合 MMU-off 环境。</div>
+</section>
+
+<!-- ====== 9 ====== -->
+<section id="s9">
+<h2>9. 完整流程走读</h2>
+<div class="diagram">
+<span style="color:#94a3b8;">// ============ Cold Boot 完整流程 ============</span>
+
+  <span style="color:#2563eb;">硬件上电</span>
+    │
+    ▼
+  <span style="color:#94a3b8;">Bootloader (QEMU / U-Boot)</span>
+    │  x0 = FDT 物理地址
+    │  x1~x3 = 0
+    │
+    ▼
+  <span style="color:#2563eb;font-weight:700;">primary_entry</span> @ 物理地址
+    │
+    ├─ record_mmu_state     → x19 = 0 (MMU off)
+    ├─ preserve_boot_args   → 保存 boot_args[0..3]
+    │
+    ├─ adrp x1, early_init_stack     <span style="color:#94a3b8;">// ① 设栈</span>
+    ├─ mov  sp, x1
+    ├─ mov  x29, xzr
+    │
+    ├─ adrp x0, __pi_init_idmap_pg_dir   <span style="color:#94a3b8;">// ② 传参</span>
+    ├─ mov  x1, xzr                      <span style="color:#94a3b8;">// clrmask=0</span>
+    │
+    ├─ bl  __pi_create_init_idmap ──────────────────┐
+    │                                                │
+    │  <span style="color:#2563eb;">create_init_idmap():</span>                         │
+    │    ptep = pg_dir + PAGE_SIZE                   │
+    │    text_prot = ROX, data_prot = RW             │
+    │                                                 │
+    │    <span style="color:#059669;">map_range #1 (代码段 ROX)</span>                   │
+    │      level 0 → alloc PUD                       │
+    │      level 1 → alloc PMD                       │
+    │      level 2 → 放 Block entries (2MB each)     │
+    │                                                 │
+    │    <span style="color:#d97706;">map_range #2 (数据段 RW)</span>                    │
+    │      level 0 → reuse PUD                       │
+    │      level 1 → reuse PMD                       │
+    │      level 2 → 放 Block entries (2MB each)     │
+    │                                                 │
+    │    return ptep  ───────────────────────────────┘
+    │
+    ├─ cbnz x19, 0f              <span style="color:#94a3b8;">// ③ x19=0 → 执行 cache inval</span>
+    ├─ dmb sy
+    ├─ mov  x1, x0              <span style="color:#94a3b8;">// x1 = ptep</span>
+    ├─ adrp x0, __pi_init_idmap_pg_dir
+    ├─ blr  dcache_inval_poc    <span style="color:#94a3b8;">// invalidate [start..end)</span>
+    │
+    ├─ bl init_kernel_el        <span style="color:#94a3b8;">// ④ 设置异常级别</span>
+    ├─ bl __cpu_setup           <span style="color:#94a3b8;">// ⑤ 配置 TCR/MAIR 等</span>
+    │
+    ▼
+  <span style="color:#2563eb;font-weight:700;">__primary_switch</span>
+    │  <span style="color:#d97706;">enable_mmu() → MMU ON!</span>
+    │  此后 CPU 使用 VA，identity mapping 保证指令不断
+    │
+    ▼
+  <span style="color:#2563eb;">__primary_switched</span> → start_kernel → ...
+</div>
+</section>
+
+<!-- ====== 10 ====== -->
+<section id="s10">
+<h2>10. GDB 辅助验证与调试 ★</h2>
+
+<h3>9.1 调试目标</h3>
+<div class="note">💡 在 QEMU + GDB 环境中，可以单步跟踪 identity mapping 的构建过程，逐级观察页表项的写入，验证物理地址是否等于虚拟地址。</div>
+
+<h3>9.2 断点设置</h3>
+<div class="two-col">
+<div>
+<h4>关键断点</h4>
+<table>
+<tr><th>#</th><th>符号 / 地址目标</th><th>验证目的</th></tr>
+<tr>
+<td>BP1</td><td><code>__pi_create_init_idmap</code></td><td>检查传入参数：x0=PGD, x1=clrmask</td>
+</tr>
+<tr>
+<td>BP2</td><td><code>map_range</code> 入口</td><td>检查 level=0, tbl=pg_dir, may_use_cont=false</td>
+</tr>
+<tr>
+<td>BP3</td><td><code>map_range</code> PMD level</td><td>确认 level=2 时使用 Block descriptor</td>
+</tr>
+<tr>
+<td>BP4</td><td><code>create_init_idmap</code> 返回后</td><td>读返回值 ptep，dump 页表内容</td>
+</tr>
+<tr>
+<td>BP5</td><td>MMU 开启后（虚拟地址）</td><td>通过 idmap VA 访问验证映射正确</td>
+</tr>
+</table>
+</div>
+<div>
+<h4>GDB 脚本片段</h4>
+<pre><code># 断点 1：create_init_idmap 入口
+b __pi_create_init_idmap
+commands
+  silent
+  printf "create_init_idmap(pg_dir=%p, clrmask=%lx)\n", $x0, $x1
+  # 查看当前栈指针和 PGD 地址
+  printf "sp=%p, pg_dir=%p\n", $sp, $x0
+  continue
+end
+
+# 断点 2：map_range 入口
+b map_range
+commands
+  silent
+  printf "map_range(level=%d, start=%lx, end=%lx, pa=%lx)\n", \
+         $x5, $x1, $x2, $x3
+  continue
+end</code></pre>
+</div>
+</div>
+
+<h3>9.3 页表内容验证</h3>
+<p>在 <code>create_init_idmap</code> 返回后，可以 dump 页表内容，验证 identity mapping 是否正确建立：</p>
+<div class="two-col">
+<div>
+<h4>GDB 命令：dump PGD 项</h4>
+<pre><code># 假设 PGD 物理地址 = 0x4173xxxx
+# 需要根据实际符号值替换：
+
+# 获取 __pi_init_idmap_pg_dir 物理地址
+info address __pi_init_idmap_pg_dir
+
+# dump PGD 前 8 个 entry (64 字节)
+x/8xg &lt;pgd_phys_addr&gt;
+
+# 预期输出示例：
+# 0x41730000: 0x0000000041731003  ← PGD[0] = Table
+#                               ↓ 指向 PUD @ 0x41731000
+# 0x41730008: 0x0000000000000000  ← PGD[1] = invalid
+# 0x41730010: 0x0000000000000000  ← PGD[2..511] = invalid
+# ...
+
+# 解读 PGD[0] = 0x41731003:
+# bit[1:0] = 11 → Table descriptor ✓
+# PA[47:12] = 0x41731   → PUD 页表在 0x41731000
+# bit[60]   = 1         → UXN set</code></pre>
+</div>
+<div>
+<h4>GDB 命令：dump Block 映射</h4>
+<pre><code># 顺着 PGD → PUD → PMD
+
+# ① dump PUD (PGD[0] 指向的地址)
+x/8xg 0x41731000
+
+# PUD[0] = 0x41732003 → Table
+# PA[47:12] = 0x41732 → PMD @ 0x41732000
+
+# ② dump PMD (检查 Block entries)
+x/20xg 0x41732000
+
+# 预期：identity 映射的 Block entries
+# 0x41732000: 0x0000000040080001  → PMD[0] 空
+# 0x41732008: 0x0000000000000000  → 空
+# ...
+# 0x41732xxx: 0x0000000040080017  ← Block entry!
+# ↓ PA=0x40080000, bit[1:0]=01(Block)
+# PXN=0(可执行), AF=1, AP=Normal
+
+# ③ 验证 identity: VA == PA
+# 每个 block entry 的物理地址 = 2MB 对齐
+# 正是 _stext 对应物理地址的衍生</code></pre>
+</div>
+</div>
+
+<h3>9.4 编写 GDB 自定义命令快速验证</h3>
+<pre><code>define dump_pgtables
+    # 用法: dump_pgtables &lt;PGD_phys&gt;
+    # 功能: 递归 dump 4 级页表，验证 identity mapping
+    set $pgd = $arg0
+    printf "=== PGD @ %p ===\n", $pgd
+    x/4xg $pgd
+
+    # 检查 PGD[0] 是否为 Table descriptor
+    set $pud = $pgd[0] &amp; 0xffffffffff000
+    if $pud != 0
+        printf "=== PUD @ %p ===\n", $pud
+        x/4xg $pud
+
+        set $pmd = $pud[0] &amp; 0xffffffffff000
+        if $pmd != 0
+            printf "=== PMD (Block entries) @ %p ===\n", $pmd
+            x/16xg $pmd
+        end
+    end
+end
+
+# 使用示例：
+# dump_pgtables 0x41730000
+
+define verify_idmap
+    # 用法: verify_idmap &lt;VA&gt; &lt;PGD_phys&gt;
+    # 功能: 手动页表遍历查找 VA 的映射
+    set $va = $arg0
+    set $tbl = $arg1
+
+    # Level 0: index = VA[47:39]
+    set $idx = ($va &gt;&gt; 39) &amp; 0x1ff
+    set $desc = *(unsigned long long*)$tbl + $idx*8
+    printf "L0[%d] = 0x%llx\n", $idx, $desc
+    if ($desc &amp; 3) == 3
+        set $tbl = $desc &amp; 0xffffffffff000
+        # Level 1: index = VA[38:30]
+        set $idx = ($va &gt;&gt; 30) &amp; 0x1ff
+        set $desc = *(unsigned long long*)$tbl + $idx*8
+        printf "L1[%d] = 0x%llx\n", $idx, $desc
+        if ($desc &amp; 3) == 3
+            set $tbl = $desc &amp; 0xffffffffff000
+            # Level 2: index = VA[29:21]
+            set $idx = ($va &gt;&gt; 21) &amp; 0x1ff
+            set $desc = *(unsigned long long*)$tbl + $idx*8
+            printf "L2[%d] = 0x%llx\n", $idx, $desc
+            if ($desc &amp; 3) == 1
+                # Block mapping!
+                set $pa = $desc &amp; 0xfffffffe00000
+                printf "✅ Block map: VA=0x%lx → PA=0x%llx\n", $va, $pa
+                if ($va &amp; ~0x1fffff) == $pa
+                    printf "✅ Identity verified! VA == PA\n"
+                else
+                    printf "❌ NOT identity!\n"
+                end
+            else
+                # Page mapping, check L3
+                ...
+            end
+        end
+    end
+end</code></pre>
+
+<div class="note">💡 <strong>注意事项：</strong>MMU 关闭时 GDB 必须使用<strong>物理地址</strong>访问内存。直接 <code>x/g &lt;phys_addr&gt;</code> 即可，无需任何转换。MMU 开启后要区分 VA 和 PA。</div>
+
+<h3>9.5 验证清单</h3>
+<table>
+<tr><th>检查项</th><th>方法</th><th>预期</th></tr>
+<tr><td>PGD[0] 类型</td><td><code>x/g &amp;pg_dir[0]</code></td><td>低 2 位 = 11（Table）</td></tr>
+<tr><td>PUD/PMD 链式链接</td>
+<td>读取 desc 的 PA[47:12] 指向下一个页表</td>
+<td>非零，且下一个地址在 idmap 页表区域内</td></tr>
+<tr><td>Block 映射范围</td>
+<td>dump PMD entries</td>
+<td>从 <code>_stext &amp; ~0x1fffff</code> 开始连续</td></tr>
+<tr><td>代码段权限</td>
+<td>检查 Block entry 的 PXN 位 (bit 53)</td>
+<td>PXN=0（可执行）, W=0（只读）</td></tr>
+<tr><td>数据段权限</td>
+<td>检查 Block entry 的 PXN 位 (bit 53)</td>
+<td>PXN=1（不可执行）, W=1（可写）</td></tr>
+<tr><td>VA == PA</td>
+<td>PMD entry PA[47:21] == VA[47:21]</td>
+<td>完全相等</td></tr>
+<tr><td>页表不重叠</td>
+<td>计算 ptep - pg_dir</td>
+<td>仅使用了预期页数（PGD + PUD + PMD）</td></tr>
+</table>
+
+<h3>9.6 与调试 QEMU 启动流程的配合</h3>
+<p>可结合 <code>bili_arm64_head.S_debug_qemu_bootrom.html</code> 中的调试环境，在完整启动流程中定位 identity mapping 的构建时刻：</p>
+<div class="diagram">// ============ 调试会话示例 ============
+
+(gdb) b __pi_create_init_idmap
+(gdb) c
+Breakpoint 1, __pi_create_init_idmap (pg_dir=0x417a9000, clrmask=0)
+
+(gdb) p/x $x0     // PGD 物理地址
+$1 = 0x417a9000
+
+(gdb) p/x $x1    // clrmask = 0 (cold boot)
+$2 = 0x0
+
+(gdb) b map_range
+(gdb) c          // 进入第一次 map_range (代码段)
+Breakpoint 2, map_range (level=0, start=0xffff800080000000, ...)
+
+(gdb) c          // level 0 → alloc PUD
+(gdb) c          // level 1 → alloc PMD
+(gdb) c          // level 2 → block mapping! 放第一个 2MB entry
+(gdb) c          // 继续下一个 block entry ...
+...
+(gdb) c          // 第二次 map_range (数据段)
+(gdb) c          // 继续放 block entries ...
+
+// 返回后 dump 页表验证
+(gdb) fin
+(gdb) x/4xg 0x417a9000   // dump PGD
+(gdb) x/4xg 0x417aa000   // dump PUD
+(gdb) x/20xg 0x417ab000  // dump PMD block entries</div>
+</section>
+
+<!-- ====== 11 ====== -->
+<section id="s11">
+<h2>11. 总结 &amp; 关键要点</h2>
+<table>
+<tr><th>#</th><th>要点</th><th>说明</th></tr>
+<tr>
+<td>1</td>
+<td class="accent">Identity Mapping = VA == PA</td>
+<td>开启 MMU 瞬间 PC 还在物理地址，必须有 1:1 映射保证指令不断流</td>
+</tr>
+<tr>
+<td>2</td>
+<td class="accent">两段映射 + W^X</td>
+<td>代码段 ROX (Read-Only+Execute)，数据段 RW (no-Execute)，硬件级安全隔离</td>
+</tr>
+<tr>
+<td>3</td>
+<td class="green">2MB Block Mapping</td>
+<td>PMD level 使用 block descriptor，比逐页映射效率高 512 倍</td>
+</tr>
+<tr>
+<td>4</td>
+<td class="green">递归自顶向下</td>
+<td>map_range 只在必要时创建下级页表，PGD→PUD→PMD 逐级展开</td>
+</tr>
+<tr>
+<td>5</td>
+<td class="green">线性分配页表</td>
+<td>从 PGD 之后顺序取物理页，ptep 指针简单递增，无需内存管理器</td>
+</tr>
+<tr>
+<td>6</td>
+<td class="amber">clrmask 机制</td>
+<td>Cold boot 时 =0 (不需要)；Warm boot 时用来修正 non-cacheable→cacheable 的缓存属性差异</td>
+</tr>
+<tr>
+<td>7</td>
+<td class="amber">PIE 编译</td>
+<td>C 代码在物理地址上运行，全部使用 PC-relative 寻址，与 MMU 状态无关</td>
+</tr>
+<tr>
+<td>8</td>
+<td class="amber">Type bits[1:0]</td>
+<td>00=invalid, 01=Block(leaf), 11=Table(pointer) 或 Page(leaf)，bit1 区分 leaf vs pointer</td>
+</tr>
+</table>
+
+<h3>涉及文件</h3>
+<table>
+<tr><th>文件</th><th>作用</th></tr>
+<tr><td><code>arch/arm64/kernel/head.S</code></td><td>汇编入口，设置栈并调用 create_init_idmap</td></tr>
+<tr><td><code>arch/arm64/kernel/pi/map_range.c</code></td><td>create_init_idmap + map_range 核心实现</td></tr>
+<tr><td><code>arch/arm64/kernel/pi/pi.h</code></td><td>函数声明 + PIE 辅助宏</td></tr>
+<tr><td><code>arch/arm64/include/asm/kernel-pgtable.h</code></td><td>IDMAP_ROOT_LEVEL / INIT_IDMAP_DIR_SIZE 定义</td></tr>
+<tr><td><code>arch/arm64/include/asm/pgtable-hwdef.h</code></td><td>PTE/PMD 描述符格式、ARM64_HW_PGTABLE_LEVELS</td></tr>
+<tr><td><code>arch/arm64/include/asm/pgtable-prot.h</code></td><td>PAGE_KERNEL_ROX / PAGE_KERNEL 保护属性定义</td></tr>
+<tr><td><code>arch/arm64/kernel/vmlinux.lds.S</code></td><td>链接脚本：_stext, __initdata_begin, _end, early_init_stack</td></tr>
+</table>
+
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>
