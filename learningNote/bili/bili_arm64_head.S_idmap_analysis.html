@@ -143,6 +143,7 @@ tr:nth-child(even) td { background: #f8fafc; }
 			<a href="#s4_1" class="sub"><span class="num">4.1</span> 函数完整源码</a>
 			<a href="#s4_2" class="sub"><span class="num">4.2</span> 保护属性</a>
 			<a href="#s4_3" class="sub"><span class="num">4.3</span> 两段映射策略 — 为什么分成两段？</a>
+			<a href="#s4_4" class="sub"><span class="num">4.4</span> 核心机制：_stext 明明是链接高地址，运行时怎么变成物理地址？</a>
 			<a href="#s5"><span class="num">5.</span> map_range 核心递归算法 ★</a>
 			<a href="#s5_1" class="sub"><span class="num">5.1</span> 先理解问题：你要在空白页表上写什么？</a>
 			<a href="#s5_2" class="sub"><span class="num">5.2</span> 递归思想：自顶向下"按需展开"</a>
@@ -168,7 +169,7 @@ tr:nth-child(even) td { background: #f8fafc; }
 			<a href="#s8"><span class="num">8.</span> 内存布局 &amp; 页表分配策略</a>
 			<a href="#s8_1" class="sub"><span class="num">8.1</span> 链接脚本布局 (vmlinux.lds.S)</a>
 			<a href="#s8_2" class="sub"><span class="num">8.2</span> 页表分配策略 — 线性增长</a>
-			<a href="#s8_3" class="sub"><span class="num">8.3</span> 分配代码</a>
+			<a href="#s8_3" class="sub"><span class="num">8.3</span> 分配代码 — 逐层拆解</a>
 			<a href="#s9"><span class="num">9.</span> 完整流程走读</a>
 			<a href="#s10"><span class="num">10.</span> GDB 辅助验证与调试 ★</a>
 			<a href="#s10_1" class="sub"><span class="num">10.1</span> 断点设置</a>
@@ -501,6 +502,108 @@ $(obj)/%.pi.o: $(obj)/%.o $(obj)/relacheck FORCE
   .bss                 │
   _end ────────────────┘</div>
 <div class="note">💡 <strong>W^X 安全原则：</strong>代码不可写，数据不可执行。即使攻击者控制了数据段，也无法执行注入的代码。</div>
+
+<h3 id="s4_4">4.4 核心机制：_stext 明明是链接高地址，运行时怎么变成物理地址？</h3>
+
+<p>这是理解 identity mapping 最关键的认知转折点。<code>_stext</code> 在链接时被分配在 <code>0xffff800080010000</code>，但 idmap 声称 VA == PA。这两个值差了 <strong>0xffff80003FE00000</strong>，怎么相等？</p>
+
+<div class="diagram">// ============ _stext 的两重身份 ============
+
+  链接时 (linker视角):        _stext = 0xffff800080010000  (高 VA)
+  运行时 (MMU off):           _stext = 0x40210000          (物理地址)
+
+  同一个符号，两个不同的值。关键在 -fpie 的 PC-relative 寻址!</div>
+
+<h4>推导：PC-relative 如何"免费"得到物理地址</h4>
+
+<p>编译器处理 <code>(u64)_stext</code> 时，不会嵌入绝对地址 <code>0xffff800080010000</code>，而是生成：</p>
+<pre><code>adrp  x0, _stext           // x0 = PC + (_stext_VA - 当前指令_VA)
+add   x0, x0, :lo12:_stext // 加上页内偏移</code></pre>
+
+<p>链接器计算并固化的是 <strong>offset</strong>（符号 VA 和指令 VA 的差值），不是绝对地址。运行时 MMU 关闭，PC 是物理地址：</p>
+
+<div class="diagram">// ============ 运行时 adrp 解析 ============
+
+  adrp 结果 = PC_runtime + offset
+           = 指令_PA + (_stext_VA - 指令_VA)
+           = (指令_VA - voffset) + _stext_VA - 指令_VA
+           = _stext_VA - voffset
+           = 0xffff800080010000 - 0xffff80003FE00000
+           = <span style="color:#059669;">0x40210000  ← 物理地址!</span>
+
+  offset 在链接时固定，PC 在运行时是物理地址 → 结果天然是物理地址
+  不需要 kimage_voffset，不需要地址转换，物理地址"免费"获得</div>
+
+<h4>于是 idmap 中的 VA 和 PA 确实是同一个值</h4>
+
+<pre><code>// create_init_idmap() 中，运行时：
+map_range(&ptep,
+          (u64)_stext,              // start  = 0x40210000 ← 当作 VA
+          (u64)__initdata_begin,    // end    = 0x41530000 ← 当作 VA
+          (phys_addr_t)_stext,      // pa     = 0x40210000 ← 当作 PA
+          text_prot, ...);
+
+// start == pa == 0x40210000  → 纯正的 identity mapping!
+// 写进页表: PMD[1] = 0x40210000 | ROX | PMD_TYPE_SECT
+//                         ^^^^^^^^^^
+//                         既是 VA 段也是 PA 段</code></pre>
+
+<div class="two-col">
+<div>
+<h4>为什么链接器 VA 完全不参与运行时计算</h4>
+<ul>
+<li>链接器只负责计算 <strong>offset</strong>（相对差值）</li>
+<li>offset = 符号_VA - 指令_VA，一个固定常数</li>
+<li>VA 和 PA 的差值（voffset）对所有符号相同</li>
+<li>所以 offset 在 VA 空间和 PA 空间<strong>完全相等</strong></li>
+<li>用 PA 空间的 PC + offset → 自然得到 PA 空间的符号地址</li>
+</ul>
+</div>
+<div>
+<h4>你的内核实际数值验证</h4>
+<pre><code>KIMAGE_VADDR  = 0xffff800080000000
+物理加载       = 0x40200000
+voffset        = 0xffff80003FE00000
+
+_stext (linker) = 0xffff800080010000
+_stext (runtime) = 0x40210000
+
+__initdata_begin (linker) = 0xffff800081530000
+__initdata_begin (runtime) = 0x41530000
+
+idmap 映射: VA 0x40210000 → PA 0x40210000 ✓
+             VA 0x41530000 → PA 0x41530000 ✓</code></pre>
+
+<h4>0x40210000 是怎么得来的？</h4>
+<p>不需要 PC-relative 推导那么复杂——<strong>直接用 Image 扁平二进制的偏移量不变性</strong>就能算出来：</p>
+<div class="diagram">// ============ 从已知值推算 _stext 的物理地址 ============
+
+  已知:
+    _text   VA = 0xffff800080000000   (KIMAGE_VADDR, nm 输出)
+    _stext  VA = 0xffff800080010000   (nm 输出)
+    _text   PA = 0x40200000           (QEMU 加载地址, GDB 验证)
+
+  Image 是扁平二进制 (objcopy -O binary)，段间相对偏移量不变:
+    offset = _stext_VA - _text_VA
+           = 0xffff800080010000 - 0xffff800080000000
+           = 0x10000                     // .head.text 正好 64KB
+
+  _stext_PA = _text_PA + offset
+            = 0x40200000 + 0x10000
+            = 0x40210000
+
+  三个符号的运行时物理地址都可以这样推算:
+    _stext               → 0x40200000 + 0x10000  = 0x40210000
+    __initdata_begin     → 0x40200000 + 0x1530000 = 0x41530000
+    _end                 → 0x40200000 + 0x2320000 = 0x42320000</div>
+<p>可以用 GDB 在 MMU 关闭时直接验证：</p>
+<pre><code>(gdb) p/x (u64)&amp;_stext
+$1 = 0x40210000       // 拿到的确实是物理地址 ✓</code></pre>
+<p>这就是为什么 <code>map_range((u64)_stext, ..., (phys_addr_t)_stext, ...)</code> 中 start 和 pa 是同一个值——运行时 <code>_stext</code> 就是物理地址 0x40210000。</p>
+</div>
+</div>
+
+<div class="note">💡 <strong>总结：</strong>idmap 中 VA == PA 不是因为"链接器把符号分配在了低地址"，而是因为 <strong>-fpie 的 PC-relative 寻址在 MMU-off 环境下自动把符号值解析成了物理地址</strong>。map_range 的 start 和 pa 参数拿到的是同一个值，写进页表的 OA 字段就是这个值。这就是为什么注释说 "MMU is off; pointer casts to phys_addr_t are safe" — 不是因为 cast 改变了什么，而是运行时这两个指针本就指向同一个物理地址。</div>
 </section>
 
 <!-- ====== 5 ====== -->
@@ -968,14 +1071,78 @@ _end = .;                  // ★ 内核镜像末尾</code></pre>
 
   ptep 只是一个递增的 phys_addr_t 指针，没有复杂的内存管理器</div>
 
-<h3 id="s8_3">8.3 分配代码</h3>
-<pre><code>// map_range 中，当需要创建下级页表时：
-if (pte_none(*tbl)) {
-    *tbl = __pte(__phys_to_pte_val(*pte) |
-                 PMD_TYPE_TABLE | PMD_TABLE_UXN);
-    *pte += PTRS_PER_PTE * sizeof(pte_t); // 512 × 8 = 4096
-}</code></pre>
-<div class="note">💡 PGD 本身是调用者传入的（链接脚本预留），不需要分配。线性分配极简高效，适合 MMU-off 环境。</div>
+<h3 id="s8_3">8.3 分配代码 — 逐层拆解</h3>
+<p>当 <code>map_range</code> 发现当前 entry 为空（<code>pte_none(*tbl)</code>）且需要深入下一层时，会创建一个新的 Table descriptor。关键代码只有一行：</p>
+<pre><code>*tbl = __pte(__phys_to_pte_val(*pte) |
+             PMD_TYPE_TABLE | PMD_TABLE_UXN);
+*pte += PTRS_PER_PTE * sizeof(pte_t);  // *pte 前进一个页表页</code></pre>
+
+<h4>逐层拆解</h4>
+
+<table>
+<tr><th>层次</th><th>表达式</th><th>含义</th></tr>
+<tr>
+<td>输入</td><td><code>*pte</code></td>
+<td>当前空闲物理页的地址。例如 PGD 在 <code>0x41730000</code>，初始 <code>*pte = 0x41731000</code>（PGD 之后的第一个空闲页）</td>
+</tr>
+<tr>
+<td>①</td><td><code>__phys_to_pte_val(*pte)</code></td>
+<td>将物理地址转为 PTE 格式。对于标准 48-bit PA，这个函数直接返回 <code>*pte</code> 本身（identity transform）。对于 52-bit PA，会将高位 PA bits 折叠到 PTE 的正确位置</td>
+</tr>
+<tr>
+<td>②</td><td><code>| PMD_TYPE_TABLE</code></td>
+<td><code>PMD_TYPE_TABLE = 3</code>（bit[1:0] = 11）。标记此 entry 为 <strong>Table descriptor</strong> — 指向下一级页表，而非 leaf<br>注意：虽然宏名叫 <code>PMD_TYPE_TABLE</code>，但在 PGD/PUD/PMD 三级中都用它，因为 bits[1:0] 的 Table 编码（0b11）在所有层级都是相同的</td>
+</tr>
+<tr>
+<td>③</td><td><code>| PMD_TABLE_UXN</code></td>
+<td><code>PMD_TABLE_UXN = 1 &lt;&lt; 60</code>。设置 <strong>Unprivileged Execute Never</strong> — EL0 用户态不可执行此表中的任何代码。内核页表不需要被用户态执行，这是安全加固</td>
+</tr>
+<tr>
+<td>④</td><td><code>__pte(...)</code></td>
+<td>把最终的值包装为 <code>pte_t</code> 类型</td>
+</tr>
+</table>
+
+<h4>实例：分配第一个 PUD</h4>
+<div class="two-col">
+<div>
+<p>假设 PGD 在物理地址 <code>0x41730000</code>，初始 <code>*pte = 0x41731000</code>：</p>
+<pre><code>// 输入:
+*pte = 0x41731000   // 第一个空闲物理页
+
+// 运算:
+__phys_to_pte_val(0x41731000)  = 0x41731000
+| PMD_TYPE_TABLE               = 0x00000003
+| PMD_TABLE_UXN                = 0x10000000_00000000
+---------------------------------------------
+*tbl (PGD[0])                  = 0x10000000_41731003</code></pre>
+</div>
+<div>
+<p>写入后的 PGD[0] 含义：</p>
+<pre><code>PGD[0] = 0x10000000_41731003
+
+  bits[1:0]   = 11  → Table descriptor ✓
+  bits[47:12] = 0x41731 → 下一级在 0x41731000
+  bit 60      = 1  → UXN (EL0 不可执行)
+
+// 硬件读 PGD[0] 后:
+// → 知道下一级是 Table (不是 leaf)
+// → 从 bit[47:12] 提取 PUD 物理地址
+// → 继续遍历 PUD</code></pre>
+</div>
+</div>
+
+<h4>紧随其后：*pte 前进</h4>
+<pre><code>*pte += PTRS_PER_PTE * sizeof(pte_t);
+//    = 512 * 8 = 4096 = PAGE_SIZE
+
+// 如果 *pte 原来是 0x41731000，现在变成 0x41732000
+// 下次分配时用 0x41732000（下一空闲物理页）</code></pre>
+
+<div class="note">💡 <strong>三个关键理解：</strong><br>
+1. <code>*pte</code> 是<strong>物理地址</strong>（MMU off 时直接操作物理内存），被用作下一级页表的基址写入 descriptor 的 OA 字段<br>
+2. <strong>Table descriptor 不关心下一级是什么类型</strong> — 同一个宏 <code>PMD_TYPE_TABLE</code> 在 PGD/PUD/PMD 三级都用，因为 ARM64 的 Table 编码在各级是一致的（bits[1:0] = 0b11）<br>
+3. <strong>分配一次恰好消耗一个 4KB 物理页</strong> — <code>PTRS_PER_PTE * sizeof(pte_t) = 512 * 8 = 4096 = PAGE_SIZE</code>，所以 <code>*pte + 4096</code> 正好指向下一个空闲物理页。这是 ARM64 4KB 页表设计的一个优雅巧合</div>
 </section>
 
 <!-- ====== 9 ====== -->
