@@ -1022,6 +1022,145 @@ AP[2] (bit7) = 1 时页面只读，位域中表示为 <code>PTE_RDONLY</code></t
 
   <span style="color:#2563eb;">W^X 在硬件层面的实现: AP=10 + PXN=0 + XN=0 = Read+Execute, No-Write
                          AP=00 + PXN=1 + XN=1 = Read+Write, No-Execute</span></div>
+<h3 id="s7_4">7.4 52-bit PA 的分裂格式 (Split PTE)</h3>
+
+<p>上一节的图里 OA 标注到 bit 47。但你的内核配置了 52-bit PA，需要更多的地址位。ARM 架构的解决方式是把高位 PA 塞进描述符的空闲 bit 里—OA 从一连串变成了两截：</p>
+
+<div class="diagram">// ============ 48-bit PA (标准, OA 连续) ============
+
+  Page descriptor:
+  +------------------------------------------------+------------------+
+  |  OA[47:12]          (连续 36 bits)               | 属性            |
+  +------------------------------------------------+------------------+
+   63                                              12 11              0
+
+// ============ 52-bit PA (扩展, OA 分裂) ============
+
+  Page descriptor:
+  +----------------------------------------+-------+----+----+---------+
+  |  OA[49:12]     (连续 38 bits)           |  ...  | OA | ...| 属性    |
+  |                                         |       | 51 |    |         |
+  |                                         |       | 50 |    |         |
+  +----------------------------------------+-------+----+----+---------+
+   63                                      12 11  10 9 8  7           0
+                                                    ^^^^^
+                                                    bits[9:8]
+                                              被"挤"到这里的高位 PA</div>
+
+<h4>为什么会分裂？</h4>
+
+<p>ARM 从 ARMv8.0 (48-bit PA) 演化到 ARMv8.2 (52-bit PA) 时，PTE 描述符的高位已经被现有属性占满：</p>
+
+<pre><code>bits[63:50] — 已被 PXN(53), XN(54), Contiguous(52), DBM(51) 等属性占据
+bits[47:12] — 标准 OA 字段 (36 bits)
+bits[11:0]  — 低属性位 (AttrIndx, AP, SH, AF, nG, NS, Type)</code></pre>
+
+<p>多出的 4 个 PA 位 (bits[51:48]) 没地方放。ARM 的策略不是全部分裂——而是<strong>两截处理</strong>：</p>
+
+<div class="diagram">// ============ 4 个新增 PA 位的分配 ============
+
+  48-bit PA → 52-bit PA, 新增 4 bits: PA[51:48]
+
+  PA[49:48] → <span style="color:#059669;">原位扩容</span> — 扩展标准 OA 字段, PTE[49:48]
+               36 bits → 38 bits, 不需要分裂
+
+  PA[51:50] → <span style="color:#d97706;">分裂出去</span> — PTE[49:48] 上面是属性位没法再扩
+               只能塞进 bits[9:8] (PTE_ADDR_HIGH)
+
+  ┌────────────────────────────────────────────────────────────────┐
+  │ PA bit     →  PTE bit                                         │
+  ├────────────────────────────────────────────────────────────────┤
+  │ PA[51:50]  →  PTE[9:8]      (分裂, 2 bits, PTE_ADDR_HIGH)    │
+  │ PA[49:12]  →  PTE[49:12]    (原位扩容, 38 bits, PTE_ADDR_LOW) │
+  │                                  ↑ 标准 PA 只到 bit 47 (36b)   │
+  │                                    扩展到 bit 49 多了 2 bits   │
+  │ PA[11:0]   →  不用存         (VA offset)                      │
+  └────────────────────────────────────────────────────────────────┘
+  总计: 2 + 38 + 12 = <span style="color:#2563eb;">52 bits</span></div>
+
+<h4>硬件如何读回分裂的 OA？</h4>
+
+<pre><code>// 硬件拼接 PA:
+PA[49:12] = PTE[49:12]            // 低位字段（含扩容的 PA[49:48]）
+PA[51:50] = PTE[9:8]              // 高位字段从 bits[9:8] 恢复
+PA[11:0]  = VA[11:0]              // offset (Page descriptor)
+
+// 对 Block descriptor 同理，OA 是 bits[47:21] → bits[49:21]</code></pre>
+
+<h4>__phys_to_pte_val 的拆解</h4>
+
+<pre><code>return (phys | (phys >> 42)) & (PTE_ADDR_LOW | PTE_ADDR_HIGH);
+
+// PTE_ADDR_LOW  = 0x3FFFFFFF_F000   ← bits[49:12], 38 bits
+// PTE_ADDR_HIGH = 0x300             ← bits[9:8],   2 bits
+// MASK = 0x3FFFFFFF_F300           ← 两者的 OR，互不重叠
+// PTE_ADDR_HIGH_SHIFT = 42</code></pre>
+
+<h4>为什么 `phys | (phys>>42)` 不会互相污染？— MASK 的精准切割</h4>
+
+<p>以 <code>phys = 0x000C0000_00000000</code>（PA[51:50]=11, PA[49:12]=0）为例，逐步推演：</p>
+
+<div class="diagram">// ============ 逐步推演 ============
+
+  phys       = 0x000C 0000 0000 0000
+                    ^^
+                 PA[51:50] = 11  (原位，在 bits[51:50])
+
+  phys >> 42 = 0x0000 0000 0000 0300
+                               ^^
+                 PA[51:50] 挪到 bits[9:8] ✓
+                 <span style="color:#d97706;">PA[49:42] 的垃圾也下来了, 在 bits[7:0]</span>
+                 <span style="color:#d97706;">(但马上会被 MASK 切掉!)</span>
+
+  phys | (phys>>42) = 0x000C 0000 0000 0300
+                      ^^^^              ^^^^
+                  PA[51:50] 原位    折叠后
+                  (∉ MASK，被切!)   (∈ MASK bits[9:8]，保留!)
+
+  & MASK = & 0x3FFF FFFF F300
+           ───────────── ───
+           PTE_ADDR_LOW   PTE_ADDR_HIGH
+           bits[49:12]    bits[9:8]
+           (38 bits)      (2 bits)
+
+  结果 = 0x0000 0000 0000 0300
+         ^^^^^^^^^^^^^^ ^^ ^^^
+         原位 PA[51:50]  0  只有 bits[9:8]=11 幸存
+         被 MASK 切除!     → OA[51:50] = 11 ✓</div>
+
+<p><strong>三步各自的角色：</strong></p>
+<table>
+<tr><th>步骤</th><th>表达式</th><th>作用</th></tr>
+<tr><td>① 折叠</td><td><code>phys >> 42</code></td><td>把 PA[51:50] 从 bits[51:50] 挪到 bits[9:8]<br>附带把 PA[49:42] 也挪下来了（垃圾）</td></tr>
+<tr><td>② 合并</td><td><code>phys | ...</code></td><td>原位 OA[49:12] + 折叠后 OA[51:50]@bits[9:8]，两段互不重叠（一个在 [49:12]，一个在 [9:8]），OR 安全</td></tr>
+<tr><td class="accent">③ 切除</td><td class="accent"><code>& MASK</code></td><td class="accent">MASK = PTE_ADDR_LOW | PTE_ADDR_HIGH<br>两者没有交集且覆盖了 PTE 描述符中所有合法的地址位<br><strong>垃圾 bits[7:0]</strong> 和 <strong>原位 PA[51:50]</strong> 都被精准切除</td></tr>
+</table>
+
+<div class="note">💡 <strong>关键理解：</strong>MASK 两个子字段 PTE_ADDR_LOW(bits[49:12]) 和 PTE_ADDR_HIGH(bits[9:8]) <strong>完全分离、互不重叠</strong>。phys>>42 折叠下来的 bits[9:8] 恰好落在 PTE_ADDR_HIGH 窗内被保留；落在别处的垃圾（bits[7:0]、原位 bits[51:50]）全部被 MASK 挡掉。这就是为什么一条无分支语句能完美完成格式转换。</div>
+
+<div class="two-col">
+<div>
+<h4>idmap 地址 (PA &lt; 2^50)</h4>
+<pre><code>phys = 0x40210000
+phys >> 42 = 0
+
+(0x40210000 | 0) & MASK
+= 0x40210000   // 原样通过 ✓</code></pre>
+<p>PA[51:50] = 00，折叠操作是 no-op。<br>idmap 完全不感知分裂格式。</p>
+</div>
+<div>
+<h4>高位 PA (PA ≥ 2^50)</h4>
+<pre><code>phys = 0xC0000_00000000
+//          ^^ PA[51:50] = 11
+
+phys >> 42 = 0x300  // 落到 bits[9:8]
+(0xC0000_00000000 | 0x300) & MASK
+= 0x300  // 全部地址在高位字段 ✓</code></pre>
+<p>低位全是 0，只有 bits[9:8] = 11。<br>硬件读回：PA[51:50] = PTE[9:8] = 11。</p>
+</div>
+</div>
+
+<div class="note">💡 <strong>总结：</strong><code>__phys_to_pte_val</code> 做的是格式转换——把人类习惯的连续物理地址，转成 ARM 硬件理解的分裂 PTE 布局。对 idmap 来说这是一个透明的 no-op，因为它的 PA 全部 &lt; 2^48，永远碰不到 bits[51:50]。</div>
 </section>
 
 <!-- ====== 8 ====== -->
