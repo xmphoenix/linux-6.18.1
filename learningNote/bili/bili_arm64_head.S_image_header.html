@@ -134,18 +134,20 @@ tr:nth-child(even) td { background: #f8fafc; }
 
 <div class="diagram">// ============ Image = vmlinux 剥离 ELF 头后的裸二进制 ============
 
-  vmlinux (ELF)                     Image (raw binary)
-  ┌────────────────┐                ┌──────────────────────────┐
-  │  ELF Header     │   objcopy -O   │  <span style="color:#2563eb;">0x00  64-byte Image Header</span> │ ← 本文分析对象
-  │  Program Hdrs   │   binary  ────▶│                           │
-  │  Section Hdrs   │   (--strip)    ├──────────────────────────┤
-  ├────────────────┤                │  <span style="color:#94a3b8;">0x40  .head.text / .text</span>     │
-  │  .head.text     │                │  (代码段)                 │
-  │  .text          │                │                           │
-  │  .rodata        │                ├──────────────────────────┤
-  │  .init.text     │                │  <span style="color:#94a3b8;">.init.text / .init.data</span>   │
-  │  ...            │                │                           │
-  └────────────────┘                └──────────────────────────┘</div>
+  +------------- vmlinux (ELF) -----------+          +--------- Image (raw binary) --------+
+  | ELF Header   |                        |          |                                    |
+  | Program Hdrs |  objcopy -O binary     |          | 0x00  64-byte Image Header  (*)    |
+  | Section Hdrs |  --strip      -------> |          |                                    |
+  |              |                        |          +------------------------------------+
+  +---------------------------------------+          |                                    |
+  | .head.text   |                        |          | 0x40  .head.text / .text (code)    |
+  | .text        |                        |          |                                    |
+  | .rodata      |                        |          +------------------------------------+
+  |              |                        |          |                                    |
+  +---------------------------------------+          | .init.text / .init.data            |
+  | .init.text   |                        |          |                                    |
+  | ...          |                        |          +------------------------------------+
+  +---------------------------------------+</div>
 
 <h3>核心问题：为什么需要 64 字节头部？</h3>
 <div class="two-col">
@@ -188,7 +190,57 @@ tr:nth-child(even) td { background: #f8fafc; }
 <span style="color:#d97706;">0x38    4      魔数                   .ascii "ARM\x64"             标识为 ARM64 Linux Image</span>
 <span style="color:#d97706;">0x3C    4      PE header offset       .long .Lpe_header_offset     指向 PE/COFF 头的偏移</span></div>
 
-<h3>2.1 逐字段详解</h3>
+<h3>2.1 真实 hexdump 验证</h3>
+<p>下面是本机编译的 <code>arch/arm64/boot/Image</code> 前 64 字节的真实 hexdump，逐字段标注解码结果：</p>
+<pre><code>$ hexdump -C -n 64 arch/arm64/boot/Image
+
+00000000  <span style="color:#2563eb;">4d 5a 40 fa</span> <span style="color:#2563eb;">3b f0 50 14</span>  <span style="color:#059669;">00 00 00 00 00 00 00 00</span>  |MZ@.;.P.........|
+00000010  <span style="color:#059669;">00 00 32 02 00 00 00 00</span>  <span style="color:#d97706;">0a 00 00 00 00 00 00 00</span>  |..2.............|
+00000020  <span style="color:#94a3b8;">00 00 00 00 00 00 00 00</span>  <span style="color:#94a3b8;">00 00 00 00 00 00 00 00</span>  |................|
+00000030  <span style="color:#94a3b8;">00 00 00 00 00 00 00 00</span>  <span style="color:#059669;">41 52 4d 64</span> <span style="color:#d97706;">40 00 00 00</span>  |........ARMd@...|</code></pre>
+
+<div class="diagram">// ============ 逐字节解码 ============
+
+  Offset  Field                   Hex bytes                        Decoded value
+  ──────  ──────────────────────  ──────────────────────────────   ──────────────────────────
+<span style="color:#2563eb;">  0x00    efi_signature_nop        4d 5a 40 fa                      "MZ" + ccmp opcode suffix</span>
+<span style="color:#2563eb;">  0x04    b primary_entry          3b f0 50 14                      0x1450f03b (unconditional branch)</span>
+<span style="color:#059669;">  0x08    text_offset              00 00 00 00 00 00 00 00          0 (kernel doesn't care about load offset)</span>
+<span style="color:#059669;">  0x10    _kernel_size_le          00 00 32 02 00 00 00 00          0x02320000 = 36,831,232 bytes ≈ 35.1 MB</span>
+<span style="color:#d97706;">  0x18    _kernel_flags_le         0a 00 00 00 00 00 00 00          0x0a = LE + 4K pages + fixed PA ★</span>
+<span style="color:#94a3b8;">  0x20    reserved 1               00 00 00 00 00 00 00 00          0</span>
+<span style="color:#94a3b8;">  0x28    reserved 2               00 00 00 00 00 00 00 00          0</span>
+<span style="color:#94a3b8;">  0x30    reserved 3               00 00 00 00 00 00 00 00          0</span>
+<span style="color:#059669;">  0x38    ARM64_IMAGE_MAGIC        41 52 4d 64                      "ARMd" (ARM\x64, byte 0x64 = ASCII 'd')</span>
+<span style="color:#d97706;">  0x3C    PE header offset         40 00 00 00                      0x40 = 64 (PE header starts right after)</span></div>
+
+<h4>_kernel_flags 逐位解码 (0x0a)</h4>
+<div class="two-col">
+<div>
+<pre><code>flags = 0x000000000000000a
+      = 0b 00000000 00000000 ... 0000 1010
+
+Bit 0:  0  →  BE = 0 (Little Endian)
+Bit 1:  1  ┐
+Bit 2:  0  ┘  PAGE_SIZE = 01 = 4K pages
+Bit 3:  1  →  PHYS_BASE = 1 (fixed physical base)
+Bit 4-63: 0 →  reserved</code></pre>
+</div>
+<div>
+<pre><code>解码结论:
+  本内核编译为:
+    ✓ LE (Little Endian)
+    ✓ 4K page size
+    ✓ Fixed physical base (启用 KASLR 时为 0)
+
+  任何不支持 4K 页面的硬件无法启动此内核
+  bootloader 在加载前即可通过解析 flags 获知</code></pre>
+</div>
+</div>
+
+<div class="note">💡 <strong>有趣的细节 — "ARMd" 的由来：</strong>魔数字段在 hexdump 中显示为 <code>41 52 4d 64</code>，即 ASCII 字符串 "ARMd"。"d" 的十六进制值是 0x64，而 0x64 十进制就是 100。但 ARM64 中的 64 不是十进制 100 → 0x64，而是 "64-bit" 的含义。这里 <code>\x64</code> 恰好是 C 字符串转义中十六进制值 0x64 = ASCII 'd'。所以魔数 "ARM\x64" 在二进制中呈现为 "ARMd"，这并非刻意为之，而是 C 字符串转义的巧合。</div>
+
+<h3>2.2 逐字段详解</h3>
 
 <h4>字段 1: 偏移 0x00 — efi_signature_nop (4 bytes)</h4>
 <div class="two-col">
@@ -285,21 +337,21 @@ nop
 
   偏移 0x00 的 4 字节，在 <span class="accent">三个不同视角</span> 下有不同的含义：
 
-  ┌─────────────────────────────────────────────────────┐
-  │  二进制:        5A 0D 40 FA                         │
-  │                                                      │
-  │  <span style="color:#2563eb;">视角 1: ARM64 指令解码器</span>                              │
-  │      → ccmp x18, #0, #0xd, pl                       │
-  │      → 一条无实际效果的"条件比较"指令                    │
-  │                                                      │
-  │  <span style="color:#059669;">视角 2: UEFI PE/COFF 加载器</span>                           │
-  │      → 前 2 字节: 5A 4D = "MZ"                       │
-  │      → "这是一个有效的 PE 可执行文件"                    │
-  │                                                      │
-  │  <span style="color:#d97706;">视角 3: 传统 Linux bootloader</span>                         │
-  │      → 这是一条 ARM64 指令，CPU 会正常执行它             │
-  │      → 执行完毕后，下一条是 b primary_entry              │
-  └─────────────────────────────────────────────────────┘</div>
+  +----------------------------------------------------------+
+  |  Binary:  5A 0D 40 FA                                    |
+  |                                                           |
+  |  View 1: ARM64 Instruction Decoder                        |
+  |      -> ccmp x18, #0, #0xd, pl                           |
+  |      -> a conditional compare with no side effects        |
+  |                                                           |
+  |  View 2: UEFI PE/COFF Loader                              |
+  |      -> first 2 bytes: 5A 4D = "MZ"                      |
+  |      -> "This is a valid PE executable"                   |
+  |                                                           |
+  |  View 3: Traditional Linux Bootloader                     |
+  |      -> This is an ARM64 instruction, CPU executes it     |
+  |      -> After execution, next is `b primary_entry`        |
+  +----------------------------------------------------------+</div>
 
 <h3>3.1 为什么选择 CCMP？而不是其他 "MZ" 指令？</h3>
 
@@ -329,18 +381,18 @@ nop
 
 <div class="diagram">// ============ PE/COFF 结构嵌入 ============
 
-  Image 物理布局:
-  ┌──────────────────────────┐ ← offset 0x000
-  │  <span style="color:#2563eb;">Image Header (64 bytes)</span> │   Linux boot protocol 头部
-  │   0x3C: PE Header Offset  │ ← 指向 PE signature
-  ├──────────────────────────┤
-  │  <span style="color:#059669;">PE Signature              │   "PE\0\0" (PE签名+IMAGE_NT_SIGNATURE)
-  │  COFF Header              │   机器类型: ARM64 (0xAA64)
-  │  Optional Header          │   入口: __efistub_efi_pe_entry
-  │  Section Table            │   .text/.data 段描述
-  ├──────────────────────────┤
-  │  <span style="color:#94a3b8;">.head.text (代码)</span>        │   _text = primary_entry
-  └──────────────────────────┘</div>
+  Image Physical Layout:
+  +---------------------------+ <-- offset 0x000
+  | Image Header (64 bytes)   |     Linux boot protocol header
+  |   0x3C: PE Header Offset  | <-- points to PE signature
+  +---------------------------+
+  | PE Signature               |     "PE\0\0" (PE signature + IMAGE_NT_SIGNATURE)
+  | COFF Header                |     Machine: ARM64 (0xAA64)
+  | Optional Header            |     Entry: __efistub_efi_pe_entry
+  | Section Table              |     .text / .data section descriptors
+  +---------------------------+
+  | .head.text                 |     _text = primary_entry
+  +---------------------------+</div>
 
 <h3>UEFI 启动流程</h3>
 <div class="flow">

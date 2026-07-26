@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 early boot Cache 维护：为什么需要两条路径</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease;
+    overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 1px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num, .sidebar a[href^="#s3"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s4"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s6"] .num { color: #7c3aed; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green { color: var(--green); font-weight: 600; }
+.amber { color: var(--amber); font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .toggle-btn { top: 14px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 问题的根源</a>
+<a href="#s2"><span class="num">2.</span> 两条路径的总览</a>
+<a href="#s3"><span class="num">3.</span> D-cache OFF 路径：Invalidate</a>
+<a href="#s4"><span class="num">4.</span> D-cache ON 路径：Clean</a>
+<a href="#s5"><span class="num">5.</span> dcache_inval_poc 实现剖析 ★</a>
+<a href="#s6"><span class="num">6.</span> 总结与设计哲学</a>
+</div>
+</nav>
+
+<div class="main-content">
+
+<header>
+<h1>ARM64 Early Boot Cache 维护<br>为什么需要两条完全相反的路径</h1>
+<div class="subtitle">
+<p>📁 <code>arch/arm64/kernel/head.S:96-117</code> + <code>arch/arm64/mm/cache.S:135-163</code></p>
+<p>🎯 目标: 理解 identity mapping 建立后为什么根据 D-cache 状态分两条 cache 维护路径</p>
+<p>🛠 涉及: D-cache inval / clean / PoC / speculative load / dcache_inval_poc 实现</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">head.S</span><span class="tag tag-green">cache.S</span><span class="tag tag-amber">D-cache</span><span class="tag tag-gray">D-cache</span><span class="tag tag-gray">speculative load</span><span class="tag tag-gray">PoC</span>
+</div>
+</header>
+
+<main>
+
+<!-- ====== 1 ====== -->
+<section id="s1">
+<h2>1. 问题的根源：D-cache 状态的两种可能</h2>
+
+<h3>1.1 核心问题不在于 MMU，而在于 D-cache</h3>
+
+<p>很多资料将这两条路径描述为"Cold Boot"和"Warm Boot"的差异，但<strong>真正决定路径的不是启动类型，而是 bootloader 是否开启了 D-cache</strong>。</p>
+
+<div class="diagram">// ============ record_mmu_state 的返回值逻辑 ============
+
+  mrs  x19, sctlr_el1 (或 sctlr_el2)   <span style="color:#94a3b8;">// 读取 bootloader 留下的 SCTLR 配置</span>
+       │
+  tst  x19, #SCTLR_ELx_C              <span style="color:#94a3b8;">// ★ C bit (bit 2): D-cache 是否开启？</span>
+       │                                  <span style="color:#94a3b8;">// Z = (C == 0)</span>
+  and  x19, x19, #SCTLR_ELx_M         <span style="color:#94a3b8;">// 提取 M bit (bit 0): MMU 是否开启？</span>
+  csel x19, xzr, x19, eq              <span style="color:#94a3b8;">// if Z (即 C==0), x19 = 0</span>
+       │                                  <span style="color:#94a3b8;">// if C==1, x19 = M (0 或 1)</span>
+
+  <span style="color:#2563eb;">最终 x19 的值不是 "MMU state"，而是：</span>
+    <span style="color:#059669;">x19 = 0  →  D-cache 是关闭的 (C==0)</span>
+    <span style="color:#d97706;">x19 = 1  →  D-cache 是开启的 (C==1)，且 MMU 也开启 (M==1)</span>
+    <span style="color:#94a3b8;">x19 = 0 (边缘情况) → D-cache 开启 (C==1) 但 MMU 关闭 (M==0)
+                         这是 broken bootloader，内核保守处理，走 x19=0 路径</span></div>
+
+<h3>1.2 两种 D-cache 状态的完全不同需求</h3>
+<div class="two-col">
+<div>
+<h4>D-cache OFF (x19=0)</h4>
+<ul>
+<li>bootloader（如 U-Boot）<strong>未开启 D-cache</strong></li>
+<li><code>create_init_idmap</code> 的 STP 指令 → 数据<strong>直达物理内存</strong>（non-cacheable）</li>
+<li>但 CPU 的 <strong>speculative load</strong> 不经过 MMU，可能在后台把旧数据预取到了 D-cache</li>
+<li>→ 需要 <strong>Invalidate</strong>：丢弃 D-cache 中 speculative 预取的旧数据</li>
+</ul>
+</div>
+<div>
+<h4>D-cache ON (x19=1)</h4>
+<ul>
+<li>bootloader / 前一内核实例<strong>开启了 D-cache</strong></li>
+<li><code>create_init_idmap</code> 的 STP 指令 → 数据<strong>先进入 D-cache</strong>（cacheable）</li>
+<li>D-cache 中的脏行尚未写回内存</li>
+<li>后续 <code>enable_mmu()</code> 会短暂关闭 MMU → 需要 <strong>Clean</strong>：把脏数据写回内存</li>
+</ul>
+</div>
+</div>
+
+<div class="note">💡 <strong>核心理解：</strong>分叉依据是 bootloader 的 <strong>D-cache 状态</strong>（SCTLR_ELx.C bit），而不是 cold/warm boot 本身。U-Boot 通常关闭 D-cache → x19=0 → inval 路径。kexec/EFI stub 通常开启 D-cache → x19=1 → clean 路径。但严格来说这是一个"D-cache 状态"判断，不是"启动类型"判断。</div>
+
+<h3>1.2 Speculative Load 详解 — 为什么 D-cache OFF 也逃不过 Cache</h3>
+<div class="diagram">// ============ D-cache OFF 下的 Speculative Load 问题 ============
+
+  时间线:
+  ─────────────────────────────────────────────────────────────▶
+
+  1. CPU 上电, MMU off, D-cache = unknown state
+     │
+  2. create_init_idmap() 写入页表                              <span style="color:#94a3b8;">// STP 指令，non-cacheable 直达内存</span>
+     │  内存: [PGD] = 0x41731003  (正确)
+     │
+  3. CPU 的预取器 (prefetcher) 在后台悄悄工作                     <span style="color:#d97706;">// 不经过 MMU，直接看物理地址</span>
+     │  speculative load: 把 0x41731000 附近的数据预取到 D-cache   <span style="color:#d97706;">// 此时 D-cache 中存的是旧值！</span>
+     │
+  4. D-cache: [0x41731000] = 0x00000000  (旧值/垃圾)            <span style="color:#d97706;">// 与内存不一致！</span>
+     │  内存:   [0x41731000] = 0x41731003  (正确)
+     │
+  5. __primary_switch → enable_mmu() → MMU ON!                <span style="color:#2563eb;">// 此后访问变成 cacheable</span>
+     │
+  6. MMU 查表: 读 PGD → <span style="color:#d97706;">命中 D-cache → 返回旧值 0x00000000 → 无效的页表项 → 异常！</span>
+
+  <span style="color:#2563eb;font-weight:700;">解决方案: 在步骤 5 之前，执行 D-cache invalidate，清除所有 speculatively loaded 的旧数据</span></div>
+
+<div class="warn">⚠ <strong>关键认知：</strong>即使 MMU 关闭、即使页表写入是 non-cacheable 的，CPU 硬件预取器仍然可能在后台将物理地址的数据加载到 D-cache。这不是 bug，而是现代 CPU 的正常行为 — speculative execution 和 prefetching 不经过 MMU 检查。</div>
+</section>
+
+<!-- ====== 2 ====== -->
+<section id="s2">
+<h2>2. 两条路径的总览</h2>
+
+<div class="diagram">// ============ primary_entry 中的 cache 维护分流 ============
+
+  bl  __pi_create_init_idmap   <span style="color:#94a3b8;">// 返回值 x0 = ptep (页表区域结束地址)</span>
+       │
+       ▼
+  <span style="color:#2563eb;">cbnz    x19, 0f</span>             <span style="color:#94a3b8;">// ★ 分叉点: x19 来自 record_mmu_state</span>
+       │
+       ├── x19 == 0 (D-cache was OFF) ──▶ <span style="color:#059669;">Invalidate 路径</span>
+       │        │
+       │     dmb     sy                       <span style="color:#94a3b8;">// 内存屏障</span>
+       │     mov     x1, x0                   <span style="color:#94a3b8;">// x1 = ptep (结束地址)</span>
+       │     adrp    x0, __pi_init_idmap_pg_dir  <span style="color:#94a3b8;">// x0 = 起始地址</span>
+       │     adr_l   x2, dcache_inval_poc
+       │     blr     x2                       <span style="color:#94a3b8;">// invalidate [pg_dir .. ptep)</span>
+       │     b       1f
+       │
+       └── x19 != 0 (D-cache was ON)  ──▶ <span style="color:#d97706;">Clean 路径</span>
+           0:
+                adrp    x0, __idmap_text_start    <span style="color:#94a3b8;">// x0 = idmap 代码起始</span>
+                adr_l   x1, __idmap_text_end      <span style="color:#94a3b8;">// x1 = idmap 代码结束</span>
+                adr_l   x2, dcache_clean_poc
+                blr     x2                       <span style="color:#94a3b8;">// clean [__idmap_text_start .. end)</span>
+
+  1:  mov     x0, x19
+      bl      init_kernel_el              <span style="color:#94a3b8;">// 继续启动</span></div>
+
+<h3>两条路径对比</h3>
+<table>
+<tr><th></th><th class="accent">D-cache OFF (x19=0)</th><th class="amber">D-cache ON (x19=1)</th></tr>
+<tr><td>x19 值</td><td>0</td><td>1 (SCTLR_ELx.M bit)</td></tr>
+<tr><td>页表写入方式</td><td>Non-cacheable (直达内存)</td><td>Cacheable (先到 D-cache)</td></tr>
+<tr><td>缓存中的风险</td><td>Speculative load 可能预取了旧数据</td><td>Dirty cache lines 未写回内存</td></tr>
+<tr><td>需要的操作</td><td class="green">Invalidate</td><td class="green">Clean</td></tr>
+<tr><td>操作范围</td><td><code>[__pi_init_idmap_pg_dir .. ptep)</code></td><td><code>[__idmap_text_start .. __idmap_text_end)</code></td></tr>
+<tr><td>调用函数</td><td><code>dcache_inval_poc</code></td><td><code>dcache_clean_poc</code></td></tr>
+<tr><td>DC 指令</td><td>DC IVAC / DC CIVAC</td><td>DC CVAC</td></tr>
+</table>
+
+<div class="note">💡 <strong>操作范围为什么不同？</strong><br>
+D-cache OFF 路径需要对<strong>刚刚写的页表</strong>（<code>[pg_dir .. ptep)</code>）做 invalidate — 清除 speculative load 带来的旧数据。页表区域恰好也是 identity mapping 映射的目标范围之外的区域。<br>
+D-cache ON 路径需要对<strong>idmap 代码段</strong>做 clean — 因为后续 <code>enable_mmu()</code> → MMU off 后，会执行 idmap 代码。CPU 关闭 MMU 时可能仍有 dirty cache lines，所以必须先 clean 回内存。</div>
+</section>
+
+<!-- ====== 3 ====== -->
+<section id="s3">
+<h2>3. D-cache OFF 路径详解：Invalidate</h2>
+
+<h3>3.1 流程分析</h3>
+<ol class="step-list">
+<li><strong><code>dmb sy</code></strong> — 全系统数据内存屏障。确保 <code>create_init_idmap</code> 中所有的页表写入（<code>STP</code>）已经全局可见（到达 PoC — Point of Coherency）。在 non-cacheable 写入中，虽然数据直达内存，但仍然需要屏障确保写入完成。</li>
+<li><strong><code>mov x1, x0</code></strong> — x0 是 <code>create_init_idmap</code> 的返回值 <code>ptep</code>（页表使用区域的结束物理地址）。x1 = 结束地址。</li>
+<li><strong><code>adrp x0, __pi_init_idmap_pg_dir</code></strong> — x0 = 页表区域的起始物理地址（PGD）。</li>
+<li><strong><code>blr x2 (dcache_inval_poc)</code></strong> — 对 <code>[x0, x1)</code> 范围内的所有 cache lines 执行 DC IVAC（Invalidate by VA to PoC）。</li>
+</ol>
+
+<h3>3.2 为什么放在这个位置？</h3>
+<div class="diagram">// ============ 时间窗口分析 ============
+
+  create_init_idmap 写入页表 (non-cacheable)
+       │
+       ▼
+  <span style="color:#d97706;font-weight:700;">speculative load 窗口打开 ← 此时 D-cache 中可能已有旧数据</span>
+       │
+       ▼
+  dcache_inval_poc             <span style="color:#059669;">← 清除 D-cache 中的旧数据</span>
+       │
+       ▼
+  <span style="color:#d97706;font-weight:700;">speculative load 窗口继续</span>
+       │
+       ▼
+  enable_mmu()                 <span style="color:#2563eb;">← 此后访问变为 cacheable</span>
+       │
+       ▼
+  MMU ON, reads are cacheable → 如果 D-cache 中还有旧数据 → 读到错误的页表项
+
+  <span style="color:#2563eb;font-weight:700;">Inval 之后到 MMU ON 之间，speculative load 仍可能再次预取。
+  但这次预取的是我们已经写入内存的正确数据（因为 inval 清空了 cache）。
+  新的预取会拿到正确的值。</span></div>
+
+<div class="note">💡 <strong>为什么不在 create_init_idmap 内部做 inval？</strong> 因为 speculative load 在写入完成后的任何时刻都可能发生。把 inval 放在 MMU 开启前的最晚时刻，可以最小化 inval 之后到 MMU ON 之间的窗口。如果在 create_init_idmap 中做，那之后到 MMU ON 还有大段代码（init_kernel_el、__cpu_setup 等），窗口更大。</div>
+</section>
+
+<!-- ====== 4 ====== -->
+<section id="s4">
+<h2>4. D-cache ON 路径详解：Clean</h2>
+
+<h3>4.1 场景分析：为什么 D-cache ON 的问题完全不同</h3>
+<div class="diagram">// ============ D-cache ON (kexec / 休眠唤醒) 的缓存状态 ============
+
+  进入 primary_entry 时的状态:
+  ┌─────────────────────────────────────────────────────────┐
+  │  MMU ON  → 前面的代码已经通过 identity mapping 正确运行  │
+  │              而 identity mapping 本身尚未 "重新建立"      │
+  │                                                         │
+  │  D-cache 中:                                            │
+  │    ✓ idmap 代码段 (cacheable, 已在使用)                  │
+  │    ✓ 各种内核数据 (上一个内核实例留下的)                   │
+  │                                                         │
+  │  内存中:                                                │
+  │    ⚠ 某些 cache lines 是 dirty 的，内存可能不是最新的     │
+  └─────────────────────────────────────────────────────────┘
+
+  后续 __primary_switch 流程:
+  ┌─────────────────────────────────────────────────────────┐
+  │  1. 重新创建 identity mapping 页表                       │
+  │  2. 切换到新的 TTBR                                     │
+  │  3. <span style="color:#d97706;">enable_mmu() → 短暂关闭 MMU → 重新开启</span>            │
+  │                                                         │
+  │  在 MMU 关闭的瞬间:                                       │
+  │    → CPU 无法通过 cacheable 方式访问内存                  │
+  │    → 但 idmap 代码是放在 identity mapped 区域的          │
+  │    → 这些代码必须在内存中是干净的（clean）                │
+  └─────────────────────────────────────────────────────────┘</div>
+
+<h3>4.2 Clean 的范围：为什么是 idmap 代码段？</h3>
+
+<p>D-cache ON 路径 clean 的范围是 <code>[__idmap_text_start .. __idmap_text_end)</code>，而不是页表区域。原因：</p>
+
+<ul>
+<li><strong>idmap 代码段</strong>：包含 <code>__primary_switch</code>、<code>enable_mmu</code>、<code>__cpu_setup</code> 等关键代码。这些代码在 MMU 关闭后仍会被执行（通过 identity mapping），所以必须在内存中是 clean 的。</li>
+<li><strong>页表区域不需要 clean</strong>：<code>create_init_idmap</code> 刚写入的页表还在 D-cache 中（dirty 状态），但在新 TTBR 设置后、MMU 关闭前会通过 ISB 被硬件感知。MMU 重新开启后会重新读取这些页表，而 cacheable 访问会自然命中 D-cache 中的最新值。</li>
+</ul>
+
+<h3>4.3 时序图</h3>
+<div class="diagram">// ============ D-cache ON 的完整 Cache 维护时序 ============
+
+  primary_entry (kexec 入口):
+    │
+    ├─ record_mmu_state          → x19 = 1 (MMU on)
+    ├─ preserve_boot_args        → x19 = 1 → 跳过 inval，记录 mmu_enabled_at_boot
+    ├─ create_init_idmap         → 写入新页表 (cacheable, dirty in D-cache)
+    │
+    ├─ <span style="color:#d97706;">clean [__idmap_text_start .. end)</span>  → <span style="color:#d97706;">★ 把 idmap 代码写回内存</span>
+    │
+    ├─ init_kernel_el
+    ├─ __cpu_setup                → 配置 TCR/MAIR
+    │
+    ▼
+  __primary_switch:
+    ├─ 设置新的 TTBR
+    ├─ <span style="color:#d97706;">enable_mmu() → MMU 短暂关闭</span>      <span style="color:#94a3b8;">// 此时执行 idmap 代码，需要内存中有最新版本</span>
+    ├─ MMU 重新开启
+    ▼
+  __primary_switched (VA 空间)</div>
+</section>
+
+<!-- ====== 5 ====== -->
+<section id="s5">
+<h2>5. dcache_inval_poc 实现剖析 ★</h2>
+
+<h3>5.1 完整源码</h3>
+<pre><code>// arch/arm64/mm/cache.S:135-177
+
+/*
+ * dcache_inval_poc(start, end)
+ *
+ * Invalidate D-cache lines in [start, end).  Partially covered cache
+ * lines at the boundaries are cleaned FIRST to avoid data loss, then
+ * all lines are invalidated.
+ *
+ *  x0 = start (inclusive)
+ *  x1 = end   (exclusive)
+ */
+SYM_FUNC_START(__pi_dcache_inval_poc)
+    dcache_line_size x2, x3          // ① 读取 cache line 大小 → x2
+    sub     x3, x2, #1               // ② x3 = line_size - 1 (对齐掩码)
+    tst     x1, x3                   // ③ end 是否对齐？
+    bic     x1, x1, x3               //    向下对齐 end
+    b.eq    1f                        //    对齐 → 跳转到 1f
+    dc      civac, x1                // ④ 不对齐: 先 CIVAC (clean+inval) 尾部
+1:  tst     x0, x3                   // ⑤ start 是否对齐？
+    bic     x0, x0, x3               //    向下对齐 start
+    b.eq    2f                        //    对齐 → 跳转到 2f
+    dc      civac, x0                // ⑥ 不对齐: CIVAC (clean+inval) 首部
+    b       3f
+2:  dc      ivac, x0                 // ⑦ 对齐: 直接 IVAC (inval only)
+3:  add     x0, x0, x2               // ⑧ x0 += line_size
+    cmp     x0, x1                   // ⑨ 还有更多行？
+    b.lo    2b                       //    是 → 继续循环
+    dsb     sy                       // ⑩ 全系统数据屏障
+    ret
+
+SYM_FUNC_END(__pi_dcache_inval_poc)
+
+
+/*
+ * dcache_clean_poc(start, end)    — 对比: dcache_clean 简洁得多
+ * x0 = start, x1 = end
+ */
+SYM_FUNC_START(__pi_dcache_clean_poc)
+    dcache_by_line_op cvac, sy, x0, x1, x2, x3
+    ret
+SYM_FUNC_END(__pi_dcache_clean_poc)</code></pre>
+
+<h3>5.2 逐行剖析</h3>
+
+<h4>① <code>dcache_line_size x2, x3</code> — 读取 cache line 大小</h4>
+<pre><code>// 展开为:
+read_ctr  x3              // 读取 CTR_EL0 (Cache Type Register)
+ubfm      x3, x3, #16, #19  // 提取 bits[19:16] = DminLine (log2 of line size in words)
+mov       x2, #4           // 4 bytes per word
+lsl       x2, x2, x3       // x2 = 4 << DminLine = actual cache line size in bytes
+// 典型值: DminLine = 4 → x2 = 4 << 4 = 64 bytes (常见 cache line)</code></pre>
+
+<h4>② 首尾不对齐的 "Clean First" 策略</h4>
+<div class="diagram">// ============ 为什么不对齐部分要做 CIVAC 而不是直接 IVAC？============
+
+  Cache line 边界:     |<-- 64 bytes -->|
+                                  │
+  内存地址空间:      ─────────────────────────────────────────────▶
+              │◄────── invalidate range [start, end) ──────▶│
+                   │                               │
+               start (不对齐)                      end (不对齐)
+
+  <span style="color:#d97706;">问题: start 和 end 可能落在 cache line 中间</span>
+
+  如果对首部做 IVAC (invalidate only):
+    - 整个 cache line 被丢弃，包括 start 之前的合法数据
+    - start 之前的数据还没被写回内存 → <span style="color:#d97706;">数据丢失！</span>
+
+  正确做法 — CIVAC (Clean + Invalidate):
+    - 先把整个 cache line 写回内存 (clean)
+    - 再丢弃 cache line (invalidate)
+    - start 之前的数据安全写回，start 之后的数据被丢弃 ✓
+
+  中间的对齐部分 — IVAC (Invalidate only):
+    - 不需要写回 (我们知道这些页表数据是 non-cacheable 写入的)
+    - 直接丢弃整个 cache line</div>
+
+<h4>④ <code>dc civac, x1</code> — 尾部对齐修正</h4>
+<ul>
+<li><code>tst x1, x3</code> — 测试 end 地址的低位（cache line 对齐检查）</li>
+<li>如果不对齐 → <code>DC CIVAC</code>（Clean and Invalidate by VA to PoC）</li>
+<li>CIVAC：先 clean（写回脏数据），再 invalidate（丢弃缓存行）</li>
+<li><code>bic x1, x1, x3</code> — 向下对齐到 cache line 边界</li>
+</ul>
+
+<h4>⑥~⑦ 循环体：首部修正 + 对齐部分全 invalidate</h4>
+<pre><code>// 首部 (start 不对齐): CIVAC → 安全清理
+dc      civac, x0           // Clean + Invalidate
+
+// 中间 (对齐): IVAC → 快速 invalidate
+dc      ivac, x0            // Invalidate only (无需 clean)
+
+// 循环:
+add     x0, x0, x2          // x0 += line_size
+cmp     x0, x1              // x0 < end ?
+b.lo    2b                   // 是 → 继续循环</code></pre>
+
+<h4>⑩ <code>dsb sy</code> — 全系统数据屏障</h4>
+<ul>
+<li>确保所有 DC IVAC/DC CIVAC 操作对整个 Shareability Domain 可见</li>
+<li>在此之后，所有缓存行都被 invalidated，后续的 cacheable 访问将强制从内存重新读取</li>
+</ul>
+
+<h3>5.3 dcache_clean_poc — 对比的简洁</h3>
+<pre><code>SYM_FUNC_START(__pi_dcache_clean_poc)
+    dcache_by_line_op cvac, sy, x0, x1, x2, x3   // 展开为:
+    //   ① 读 cache line size
+    //   ② sub tmp, linesz, #1
+    //   ③ bic start, start, tmp    (对齐 start)
+    //   ④ 循环: DC CVAC, start  (Clean by VA to PoC)
+    //      start += linesz
+    //   ⑤ dsb sy
+    ret
+SYM_FUNC_END(__pi_dcache_clean_poc)</code></pre>
+
+<p><code>dcache_clean_poc</code> 比 <code>dcache_inval_poc</code> 简单得多：不需要首尾 CIVAC 处理，因为 Clean 操作不会丢失数据 — 它只是把 dirty cache lines 写回内存，不丢弃缓存行。即使覆盖了范围外的数据也无害。</p>
+
+<h3>5.4 ARM64 Cache 维护指令速查</h3>
+<table>
+<tr><th>指令</th><th>全称</th><th>操作</th><th>使用场景</th></tr>
+<tr><td><code>DC IVAC</code></td><td>Invalidate by VA to PoC</td><td>丢弃缓存行（不写回）</td><td>缓存行数据无效时（如 speculative load 的旧数据）</td></tr>
+<tr><td><code>DC CVAC</code></td><td>Clean by VA to PoC</td><td>写回脏数据（保留缓存行）</td><td>需要在 PoC 级别看到最新数据时</td></tr>
+<tr><td><code>DC CIVAC</code></td><td>Clean + Invalidate by VA to PoC</td><td>先写回，再丢弃</td><td>缓存行部分有效、需要安全丢弃时（不对齐边界）</td></tr>
+<tr><td><code>DSB SY</code></td><td>Data Synchronization Barrier</td><td>等待所有操作全局完成</td><td>所有 DC 操作之后，确保一致</td></tr>
+</table>
+</section>
+
+<!-- ====== 6 ====== -->
+<section id="s6">
+<h2>6. 总结与设计哲学</h2>
+
+<h3>6.1 为什么这是"第一阶段"的关键设计</h3>
+<div class="diagram">// ============ 第一阶段（Identity Mapping）的子阶段 ============
+
+  primary_entry:
+    ├─ <span style="color:#94a3b8;">record_mmu_state()</span>     → 感知当前状态
+    ├─ <span style="color:#94a3b8;">preserve_boot_args()</span>   → 保存 boot 参数
+    ├─ <span style="color:#94a3b8;">create_init_idmap()</span>    → 构建页表
+    │
+    ├─ <span style="color:#2563eb;">★ Cache 维护 (本次分析)</span>
+    │    ├─ MMU off → invalidate 页表区
+    │    └─ MMU on  → clean idmap 代码
+    │
+    ├─ <span style="color:#94a3b8;">init_kernel_el()</span>       → 配置异常级别
+    ├─ <span style="color:#94a3b8;">__cpu_setup()</span>          → 配置 TCR/MAIR
+    │
+    ▼
+  __primary_switch:
+    └─ enable_mmu()              → MMU ON (关键转换点)</div>
+
+<h3>6.2 设计哲学</h3>
+<table>
+<tr><th>#</th><th>哲学</th><th>体现</th></tr>
+<tr><td>1</td><td class="accent">单一变量决策</td><td>只用 x19 一个寄存器决定两条完全不同的路径，简洁高效</td></tr>
+<tr><td>2</td><td class="accent">最小化窗口</td><td>cache inval 放在 MMU 开启前最后时刻，最小化 speculative load 重新预取的窗口</td></tr>
+<tr><td>3</td><td class="green">Clean First 策略</td><td>不对齐的 cache line 先 clean 再 invalidate，保护共享数据</td></tr>
+<tr><td>4</td><td class="green">精确范围</td><td>只操作确实需要的地址范围（页表区域 / idmap 代码段），不 flush 整个 D-cache</td></tr>
+<tr><td>5</td><td class="amber">操作对称性</td><td>Cold→Invalidate (废)，Warm→Clean (保)，两种操作语义完全对称</td></tr>
+<tr><td>6</td><td class="amber">PoC 级别</td><td>所有 cache 维护都到 PoC（Point of Coherency）——保证所有 observer 看到一致数据</td></tr>
+</table>
+
+<h3>6.3 关键要点</h3>
+<ol class="step-list">
+<li><strong>D-cache OFF 的核心矛盾：</strong>Non-cacheable 写入 vs Speculative Load 预取。即使 MMU 关闭、写入绕过 cache，CPU 预取器仍可能在后台将旧数据加载到 D-cache。必须在 MMU 开启前 invalidate。</li>
+<li><strong>D-cache ON 的核心矛盾：</strong>Cacheable 写入 vs 即将关闭 MMU。页表写入在 D-cache 中（dirty），而 idmap 代码在 MMU 关闭后会从内存执行。必须 clean 写回。</li>
+<li><strong>dcache_inval_poc 的 Clean First：</strong>不对齐的首尾缓存行用 CIVAC（先 clean 再 inval），保护共享数据。中间对齐部分用 IVAC（直接 inval），高效。</li>
+<li><strong>DMB 的位置：</strong>在 dcache_inval_poc 调用前放 <code>dmb sy</code> 确保所有 STP（页表写入）完成。dsb sy 在 dcache_inval_poc 内部确保所有 DC 指令完成。</li>
+</ol>
+
+<h3>涉及文件</h3>
+<table>
+<tr><th>文件</th><th>作用</th></tr>
+<tr><td><code>arch/arm64/kernel/head.S</code></td><td>cache 维护分流逻辑（primary_entry 中 line 96-117）</td></tr>
+<tr><td><code>arch/arm64/mm/cache.S</code></td><td>dcache_inval_poc / dcache_clean_poc 实现</td></tr>
+<tr><td><code>arch/arm64/include/asm/assembler.h</code></td><td>dcache_line_size / dcache_by_line_op / dcache_by_myline_op 宏</td></tr>
+<tr><td><code>arch/arm64/kernel/vmlinux.lds.S</code></td><td>__idmap_text_start / __idmap_text_end 段定义</td></tr>
+</table>
+
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>
