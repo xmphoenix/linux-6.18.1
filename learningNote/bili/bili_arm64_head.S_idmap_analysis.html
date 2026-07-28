@@ -789,6 +789,53 @@ if (... || (level == 2 &&
 
 <div class="note">💡 <strong>关键理解：</strong>递归不是"全有或全无"。90.6% 的区域用 2MB block mapping（高效），只有 9.4% 的边界碎片用 4KB page mapping。两个穿透点：<strong>段边界</strong>（ROX↔RW 属性切换）和 <strong>镜像尾部</strong>（不对齐 2MB）。这就是这个递归设计兼顾效率与正确性的核心。</div>
 
+<h4>段→页的类型切换：并非"修正"，而是新调用实例的独立赋值</h4>
+
+<p>前面提到递归时 Type 位从 <code>PMD_TYPE_SECT</code>（段）变成了 <code>PTE_TYPE_PAGE</code>（页）。这容易让人觉得是某种"修正"——其实是 <strong>递归创建了一个全新的调用实例，第 49 行在该实例里重新执行</strong>：</p>
+
+<pre><code>// 第 49 行：每个 map_range 调用实例执行一次
+protval |= (level == 2) ? PMD_TYPE_SECT : PTE_TYPE_PAGE;</code></pre>
+
+<div class="diagram">// ============ 两次递归, 两个独立实例, 49行各执行一次 ============
+
+<span style="color:#2563eb;">map_range(level=2, ...)</span>           <span style="color:#94a3b8;">// 调用实例 A</span>
+  │  49行: protval |= <span style="color:#2563eb;">PMD_TYPE_SECT</span>   <span style="color:#94a3b8;">// level=2 → 段映射</span>
+  │
+  │  处理对齐的 2MB 块: else → 83行 → Block 落地 → tbl++
+  │  处理多个...
+  │
+  │  遇到尾部碎片: 54行条件成立 → if
+  │    64行: <span style="color:#d97706;">map_range(level=3, tbl=新PTE页, ...)</span>  <span style="color:#94a3b8;">// 调用实例 B</span>
+  │             │
+  │             │  <span style="color:#d97706;">49行: protval |= PTE_TYPE_PAGE</span>   <span style="color:#94a3b8;">// level=3 → 页映射!</span>
+  │             │       <span style="color:#94a3b8;">// 不是"修正"PMD_TYPE_SECT</span>
+  │             │       <span style="color:#94a3b8;">// 而是新实例的独立赋值</span>
+  │             │
+  │             │  else → 83行 → Page 逐页落地 → tbl++
+  │             │
+  │             └─ 返回实例 A
+  │
+  └─ 继续, 或退出 while
+
+  实例 A 的 protval 始终是 PMD_TYPE_SECT, 没有变过
+  实例 B 的 protval 从头就是 PTE_TYPE_PAGE, 没有变过
+  两个实例各自独立, 互不干扰</div>
+
+<p><strong>以你的内核为例，第 49 行总共执行了 9 次</strong>（create_init_idmap 调 2 次 map_range × 递归链）：</p>
+<table>
+<tr><th>调用</th><th>level</th><th>49行结果</th><th>是否用到</th></tr>
+<tr><td>ROX: level=0</td><td>0</td><td>PTE_TYPE_PAGE</td><td>否 (level&lt;2 永远走 if, 不进 else)</td></tr>
+<tr><td>ROX: → level=1</td><td>1</td><td>PTE_TYPE_PAGE</td><td>否 (同理)</td></tr>
+<tr><td class="green">ROX: → level=2</td><td>2</td><td class="green">PMD_TYPE_SECT</td><td class="green">✓ 9 个 Block (对齐的 2MB)</td></tr>
+<tr><td class="amber">ROX: → → level=3</td><td>3</td><td class="amber">PTE_TYPE_PAGE</td><td class="amber">✓ 304 个 Page (段边界碎片)</td></tr>
+<tr><td>RW: level=0</td><td>0</td><td>PTE_TYPE_PAGE</td><td>否</td></tr>
+<tr><td>RW: → level=1</td><td>1</td><td>PTE_TYPE_PAGE</td><td>否</td></tr>
+<tr><td class="green">RW: → level=2</td><td>2</td><td class="green">PMD_TYPE_SECT</td><td class="green">✓ 6 个 Block (对齐的 2MB)</td></tr>
+<tr><td class="amber">RW: → → level=3</td><td>3</td><td class="amber">PTE_TYPE_PAGE</td><td class="amber">✓ 208 个 Page (段边界)</td></tr>
+<tr><td class="amber">RW: → → level=3</td><td>3</td><td class="amber">PTE_TYPE_PAGE</td><td class="amber">✓ 288 个 Page (尾部)</td></tr>
+</table>
+<p>4 次 level 0/1 的调用算了白算（永远进 if 不进 else）；3 次 level 2 的调用生产了 15 个 Block；3 次 level 3 的调用生产了 800 个 Page。没有"修正"——每个调用实例独立决定自己的 Type 位。</p>
+
 <h3 id="s5_5">5.5 混合映射不会有问题吗？</h3>
 <p>同一个 PMD 里同时存在 Block entries（映射 2MB）和 Table entries（指向 PTE）。ARM64 MMU 在页表遍历的每一步都检查描述符的 bits[1:0]：遇到 Block (01) 就停，遇到 Table (11) 就继续。同一个 PMD 表中不同 entry 的类型可以完全不同，MMU 按 entry 逐个判断，互不干扰。</p>
 
