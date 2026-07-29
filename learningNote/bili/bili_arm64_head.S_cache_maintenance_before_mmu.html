@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 内核启动：开启 MMU 之前的 Cache 维护决策深度分析</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease;
+    overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 1px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num, .sidebar a[href^="#s3"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s4"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s6"] .num { color: #7c3aed; font-weight: 600; }
+.sidebar a[href^="#s7"] .num { color: #0891b2; font-weight: 600; }
+.sidebar a[href^="#s8"] .num { color: #be185d; font-weight: 600; }
+.sidebar a[href^="#s9"] .num { color: #dc2626; font-weight: 600; }
+.sidebar a[href^="#s10"] .num { color: #059669; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; font-family: monospace; font-size: 0.8em; }
+.flow-box { background: var(--accent-light); color: var(--accent); padding: 6px 12px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe; font-weight: 500; }
+.flow-arrow { color: #94a3b8; font-size: 1.2em; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+.str { font-size: 0.82em; }
+.step-list { counter-reset: step; list-style: none; margin-left: 0; }
+.step-list li { counter-increment: step; margin-bottom: 8px; padding-left: 28px; position: relative; color: var(--text-secondary); font-size: 0.85em; }
+.step-list li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 1px;
+    width: 18px; height: 18px;
+    background: var(--accent); color: #fff;
+    border-radius: 50%; text-align: center;
+    font-size: 10px; font-weight: 700; line-height: 18px;
+}
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .toggle-btn { top: 14px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 概述：这段代码做什么</a>
+<a href="#s2"><span class="num">2.</span> 完整源码与上下文</a>
+<a href="#s3"><span class="num">3.</span> 核心问题：两条 Cache 路径</a>
+<a href="#s4"><span class="num">4.</span> 冷启动路径逐条分析</a>
+<a href="#s5"><span class="num">5.</span> 热启动路径逐条分析</a>
+<a href="#s6"><span class="num">6.</span> 两条路径的根源对比</a>
+<a href="#s7"><span class="num">7.</span> dcache_inval_poc vs dcache_clean_poc</a>
+<a href="#s8"><span class="num">8.</span> 完整决策流程图</a>
+<a href="#s9"><span class="num">9.</span> GDB 调试验证</a>
+<a href="#s10"><span class="num">10.</span> 总结 &amp; 关键要点</a>
+</div>
+</nav>
+
+<div class="main-content">
+
+<header>
+<h1>开启 MMU 之前的 Cache 维护<br>ARM64 内核启动关键决策深度分析</h1>
+<div class="subtitle">
+<p>📁 <code>arch/arm64/kernel/head.S:96-117</code></p>
+<p>🎯 目标: 理解为何在开启 MMU 前必须做 Cache 维护，以及两条路径的根本差异</p>
+<p>🛠 涉及: MMU 开关 / Cache inval vs clean / speculative load / PoC / x19 MMU 状态 / idmap</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">head.S</span><span class="tag tag-green">ARM64</span><span class="tag tag-amber">Cache</span><span class="tag tag-amber">MMU</span><span class="tag tag-gray">invalidate</span><span class="tag tag-gray">clean</span><span class="tag tag-gray">early boot</span><span class="tag tag-gray">idmap</span>
+</div>
+</header>
+
+<main>
+
+<!-- ====== 1 ====== -->
+<section id="s1">
+<h2>1. 概述：这段代码做什么</h2>
+
+<p>这段代码位于 <code>__pi_create_init_idmap</code>（创建初始 identity mapping 页表）<strong>之后</strong>、<code>init_kernel_el</code>（初始化内核异常级别）<strong>之前</strong>。它在 <strong>即将开启 MMU 之前</strong>，根据内核是以什么方式启动的，选择执行不同的 Cache 维护操作。</p>
+
+<div class="two-col">
+<div>
+<h3>位置：启动序列中的关键节点</h3>
+<pre><code>primary_entry:
+    bl  record_mmu_state       // x19 = 0(冷启动) 或 1(热启动)
+    bl  preserve_boot_args
+    bl  __pi_create_init_idmap // 创建 identity 映射页表
+    <span style="color:#2563eb;">// ★ 我们分析的代码在此 ★</span>
+    cbnz x19, 0f               // x19 决定走哪条路
+    // x19==0: invalidate        x19!=0: clean
+    ...
+1:  mov x0, x19
+    bl  init_kernel_el          // 初始化 CPU 异常级别
+    bl  __cpu_setup             // 配置 TCR/MAIR 等 MMU 寄存器
+    b   __primary_switch        // ★ 真正开启 MMU</code></pre>
+</div>
+<div>
+<h3>一句话概括</h3>
+<p>在开启 MMU 之前，<strong>确保 CPU 能正确看到页表和启动代码</strong>。</p>
+<ul>
+<li><span class="green">冷启动</span>：页表是用 non-cacheable 方式写入的，需要 <strong>invalidate（无效化）</strong> 被 speculative load 污染的 cache 行，保证 MMU 读取到正确的页表内容</li>
+<li><span class="amber">热启动</span>：idmap 代码是用 cacheable 方式运行的，需要 <strong>clean（清洗）</strong> dirty cache 行到内存，保证关闭 MMU 后依然能正确执行</li>
+</ul>
+</div>
+</div>
+
+<div class="note">💡 <strong>核心矛盾：</strong>开启 MMU 之前，CPU 对内存的所有访问都是物理地址。但 Cache 可能包含了与内存不一致的数据（speculative loads 写入了旧值，或者 dirty cache 行还没写回）。如果不做维护直接开 MMU，MMU 翻译后的地址访问可能读取到错误的缓存数据。</div>
+</section>
+
+<!-- ====== 2 ====== -->
+<section id="s2">
+<h2>2. 完整源码与上下文</h2>
+
+<h3>2.1 分析代码段（head.S:96-117）</h3>
+<pre><code>    /*
+     * If the page tables have been populated with non-cacheable
+     * accesses (MMU disabled), invalidate those tables again to
+     * remove any speculatively loaded cache lines.
+     */
+    cbnz    x19, 0f                        // ★ 关键分支：x19 决定走哪条路
+    dmb     sy                              // 内存屏障
+    mov     x1, x0                          // x1 = 页表使用结束地址
+    adrp    x0, __pi_init_idmap_pg_dir      // x0 = 页表起始地址
+    adr_l   x2, dcache_inval_poc            // x2 = 函数指针
+    blr     x2                              // → dcache_inval_poc(x0, x1)
+    b       1f
+
+    /*
+     * If we entered with the MMU and caches on, clean the ID mapped part
+     * of the primary boot code to the PoC so we can safely execute it with
+     * the MMU off.
+     */
+0:  adrp    x0, __idmap_text_start          // x0 = idmap 代码段起始
+    adr_l   x1, __idmap_text_end            // x1 = idmap 代码段结束
+    adr_l   x2, dcache_clean_poc            // x2 = 函数指针
+    blr     x2                              // → dcache_clean_poc(x0, x1)
+
+1:  mov     x0, x19                         // x0 = MMU 状态（传给 init_kernel_el）
+    bl      init_kernel_el                  // 初始化内核异常级别</code></pre>
+
+<h3>2.2 x19 的前世今生 —— 这个决定一切的寄存器从哪来</h3>
+<div class="diagram">// ============ x19 的完整生命周期 ============
+
+record_mmu_state():                          <span style="color:#94a3b8;">// head.S:134  ← 详见上期视频</span>
+    mrs  x19, CurrentEL                     <span style="color:#94a3b8;">// 读异常级别 (EL1/EL2)</span>
+    ... (投机执行 + 条件覆盖) ...
+    and  x19, x19, #SCTLR_ELx_M             <span style="color:#94a3b8;">// 提取 M 位 (bit 0)</span>
+    csel x19, xzr, x19, eq                  <span style="color:#94a3b8;">// C=0 时强制清零</span>
+    ret                                      <span style="color:#2563eb;">// x19 = 0(冷启动) 或 1(热启动)</span>
+
+preserve_boot_args():                        <span style="color:#94a3b8;">// head.S:168</span>
+    cbnz x19, 0f                            <span style="color:#94a3b8;">// 热启动 → 跳过 cache inval</span>
+    dmb  sy
+    b    dcache_inval_poc                    <span style="color:#94a3b8;">// 冷启动 → 无效化 boot_args 区域</span>
+0:  ret
+
+__pi_create_init_idmap()                     <span style="color:#94a3b8;">// head.S + map_kernel.c</span>
+    <span style="color:#94a3b8;">// 创建 identity mapping 页表</span>
+    <span style="color:#94a3b8;">// x0 = ptep (页表已使用区域的结束地址)</span>
+
+<span style="color:#2563eb;">// ★ 我们分析的核心代码 (head.S:96-117)</span>
+cbnz x19, 0f                               <span style="color:#2563eb;">// x19 在此做最终决策</span>
+    <span style="color:#059669;">// x19==0: invalidate 页表 region</span>
+<span style="color:#d97706;">    // x19!=0: clean idmap code region</span>
+
+1:  mov  x0, x19
+    bl   init_kernel_el                     <span style="color:#94a3b8;">// 此后 x19 不再使用</span></div>
+
+<div class="note">💡 <strong>x19 为什么重要：</strong>它是 <code>record_mmu_state</code> 的返回值，编码了内核启动时 MMU 是否已经开启。这个单一比特决定了整个 early boot 阶段的 Cache 维护策略——在 3 个地方被检查（preserve_boot_args、本段代码、primary_entry 末尾传给 init_kernel_el）。</div>
+</section>
+
+<!-- ====== 3 ====== -->
+<section id="s3">
+<h2>3. 核心问题：为什么有两条截然不同的 Cache 路径？</h2>
+
+<p>代码的核心是一个二分叉：<code>cbnz x19, 0f</code>，根据 x19 的值走向完全不同的 Cache 操作。这两条路径反映了内核的两种启动方式：</p>
+
+<table>
+<tr><th>维度</th><th><span class="green">x19 == 0（冷启动）</span></th><th><span class="amber">x19 != 0（热启动）</span></th></tr>
+<tr><td><strong>启动方式</strong></td><td>从 bootloader 直接启动</td><td>kexec / hibernate 唤醒</td></tr>
+<tr><td><strong>当前 MMU</strong></td><td>关闭 (M=0)</td><td>开启 (M=1)</td></tr>
+<tr><td><strong>当前 Cache</strong></td><td>关闭 (C=0)</td><td>开启 (C=1)</td></tr>
+<tr><td><strong>页表写入方式</strong></td><td>Non-cacheable（绕过 Cache，直写内存）</td><td>Cacheable（写入 Cache，可能未回内存）</td></tr>
+<tr><td><strong>核心风险</strong></td><td>Speculative load 可能缓存了别的数据到页表地址</td><td>idmap 代码的 dirty cache 行末写回，MMU 关后指令读取失败</td></tr>
+<tr><td><strong>Cache 操作</strong></td><td><strong>Invalidate</strong> [pg_dir, ptep)</td><td><strong>Clean</strong> [__idmap_text_start, end)</td></tr>
+<tr><td><strong>操作对象</strong></td><td>页表区域</td><td>idmap 代码段</td></tr>
+</table>
+
+<div class="warn">⚠ <strong>关键直觉：</strong>两条路径之所以不同，是因为"内存写入者"不同。冷启动时页表是 <strong>CPU 绕过 Cache 写的</strong>（non-cacheable），但 speculative loads 可能把<strong>别的</strong>数据拉到了这些地址的 cache line——所以需要 invalidate。热启动时 idmap 代码是 <strong>CPU 通过 Cache 写的</strong>（cacheable），dirty lines 还没写回——所以需要 clean。</div>
+</section>
+
+<!-- ====== 4 ====== -->
+<section id="s4">
+<h2>4. 冷启动路径逐条分析（x19 == 0）</h2>
+
+<h3>4.1 完整指令序列</h3>
+<pre><code>    cbnz    x19, 0f            <span style="color:#94a3b8;">// x19==0 → 不跳转，顺序执行</span>
+    dmb     sy                  <span style="color:#94a3b8;">// ① 全系统内存屏障</span>
+    mov     x1, x0              <span style="color:#94a3b8;">// ② x1 = ptep (__pi_create_init_idmap 的返回值)</span>
+    adrp    x0, __pi_init_idmap_pg_dir  <span style="color:#94a3b8;">// ③ x0 = 页表起始地址</span>
+    adr_l   x2, dcache_inval_poc        <span style="color:#94a3b8;">// ④ x2 = dcache_inval_poc 函数地址</span>
+    blr     x2                  <span style="color:#94a3b8;">// ⑤ 调用 dcache_inval_poc(x0, x1)</span>
+    b       1f                  <span style="color:#94a3b8;">// ⑥ 跳过热启动路径</span></code></pre>
+
+<h3>4.2 逐条详解</h3>
+
+<h4>① <code>dmb sy</code> —— 全系统内存屏障</h4>
+<ul>
+<li><code>dmb</code> = Data Memory Barrier，<code>sy</code> = 全系统范围</li>
+<li>确保在 barrier 之前的所有内存访问（包括 <code>__pi_create_init_idmap</code> 中的页表写入）对所有观察者可见</li>
+<li><strong>为什么需要：</strong>页表写入可能还在 write buffer 中，没有真正到达内存。此时如果 speculative load 从内存拉数据，拉到的可能是旧值</li>
+</ul>
+
+<h4>② <code>mov x1, x0</code> —— 设置结束地址</h4>
+<ul>
+<li><code>x0</code> 是 <code>__pi_create_init_idmap</code> 返回的 <code>ptep</code>——指向页表已使用区域的下一个空闲位置</li>
+<li>作为 <code>dcache_inval_poc</code> 的第二个参数（结束地址）</li>
+</ul>
+
+<h4>③ <code>adrp x0, __pi_init_idmap_pg_dir</code> —— 设置起始地址</h4>
+<ul>
+<li><code>__pi_init_idmap_pg_dir</code> 是 identity mapping 页表的基地址</li>
+<li><code>adrp</code> = 加载页地址（4KB 对齐），用于获取符号所在的 4KB 页基址</li>
+<li>作为 <code>dcache_inval_poc</code> 的第一个参数（起始地址）</li>
+</ul>
+
+<h4>④ <code>adr_l x2, dcache_inval_poc</code> —— 获取函数指针</h4>
+<ul>
+<li><code>adr_l</code> = 加载 64 位绝对地址的宏（在 head.S 中用两条指令实现：adrp + add）</li>
+<li>dcache_inval_poc 是 arch/arm64/mm/cache.S 中实现的底层 Cache 操作函数</li>
+</ul>
+
+<h4>⑤ <code>blr x2</code> —— 调用 dcache_inval_poc</h4>
+<ul>
+<li>对地址范围 <code>[__pi_init_idmap_pg_dir, ptep)</code> 执行 <strong>DC IVAC</strong>（Data Cache Invalidate by VA to PoC）</li>
+<li>逐 cache line 做：使该 VA 对应的所有 cache 行失效，强制后续访问从 PoC 重取</li>
+</ul>
+
+<h4>⑥ <code>b 1f</code> —— 跳过热启动路径</h4>
+<ul>
+<li>无条件跳转到标签 <code>1:</code>，跳过 <code>0:</code> 处的热启动路径</li>
+</ul>
+
+<h3>4.3 为什么要 invalidate 页表区域？</h3>
+
+<div class="diagram">// ============ Speculative Load 污染的视觉解释 ============
+
+时间线：页表创建过程
+
+  T1: __pi_create_init_idmap 写入页表
+      写入方式: STR xN, [ptep]    ← MMU off, 绕过 cache (non-cacheable)
+      数据到了: DRAM
+      没有到:   L1/L2 D-cache
+
+  T2: 与此同时... CPU 的 speculative execution (推测执行)
+      可能在 T1 之前就投机地 LDR 了页表地址
+      → 把 DRAM 中的 <span style="color:#dc2626;">旧数据</span> (全 0 或垃圾) 拉到了 D-cache
+
+  T3: 现在 Cache 中的页表地址 = <span style="color:#dc2626;">旧数据</span>
+      但 DRAM 中的页表地址 = <span style="color:#059669;">正确数据</span> (刚写入的)
+      → <span style="color:#dc2626;">D-cache 和 DRAM 不一致！</span>
+
+  T4: 开启 MMU 后... MMU 做页表 walk
+      如果 Cache 命中 → 返回 <span style="color:#dc2626;">旧数据</span>
+      → 翻译错误 → 系统崩溃 💥
+
+  ★ 解决：在 T3 之后、T4 之前，执行 dcache_inval_poc
+     → 强制 invalidate 页表地址对应的 cache 行
+     → T4 时 MMU 必然从 DRAM 重取 → 读到正确数据 ✅</div>
+
+<div class="note">💡 <strong>Speculative Load 的本质：</strong>ARM64 是弱序内存模型 + 推测执行的架构。即使 MMU 关闭，CPU 的预取器 (prefetcher) 和分支预测器可能在任何时候投机地发出内存读取请求。这些 speculative loads 完全可能刚好命中了页表所在的地址范围——因为它们和内核代码的地址接近。一旦拉进 Cache，就产生了"dirty by speculation"的 cache line。</div>
+</section>
+
+<!-- ====== 5 ====== -->
+<section id="s5">
+<h2>5. 热启动路径逐条分析（x19 != 0）</h2>
+
+<h3>5.1 完整指令序列</h3>
+<pre><code>    cbnz    x19, 0f            <span style="color:#94a3b8;">// x19!=0 → 跳转到 0:</span>
+    <span style="color:#94a3b8;">// ... 冷启动路径 ...</span>
+    b       1f
+
+0:  adrp    x0, __idmap_text_start  <span style="color:#94a3b8;">// ① x0 = idmap 代码段起始</span>
+    adr_l   x1, __idmap_text_end    <span style="color:#94a3b8;">// ② x1 = idmap 代码段结束</span>
+    adr_l   x2, dcache_clean_poc    <span style="color:#94a3b8;">// ③ x2 = dcache_clean_poc 函数地址</span>
+    blr     x2                      <span style="color:#94a3b8;">// ④ 调用 dcache_clean_poc(x0, x1)</span>
+
+1:  mov     x0, x19                 <span style="color:#94a3b8;">// x0 = MMU 状态</span></code></pre>
+
+<h3>5.2 逐条详解</h3>
+
+<h4>① <code>adrp x0, __idmap_text_start</code> —— idmap 代码段起始</h4>
+<ul>
+<li><code>__idmap_text_start</code> 是链接脚本中标记的 <code>.idmap.text</code> 段起始</li>
+<li>这个段包含<strong>所有需要在 MMU 关闭期间执行的代码</strong></li>
+<li>包括：<code>primary_entry</code>、<code>__primary_switch</code>、<code>__enable_mmu</code> 等</li>
+</ul>
+
+<h4>② <code>adr_l x1, __idmap_text_end</code> —— idmap 代码段结束</h4>
+<ul>
+<li>标记 <code>.idmap.text</code> 段的结束位置</li>
+</ul>
+
+<h4>③ <code>adr_l x2, dcache_clean_poc</code> —— 获取 clean 函数指针</h4>
+<ul>
+<li>与冷启动路径不同，这里是 <code>dcache_clean_poc</code>（不是 <code>dcache_inval_poc</code>）</li>
+</ul>
+
+<h4>④ <code>blr x2</code> —— 调用 dcache_clean_poc</h4>
+<ul>
+<li>对地址范围 <code>[__idmap_text_start, __idmap_text_end)</code> 执行 <strong>DC CVAC</strong>（Data Cache Clean by VA to PoC）</li>
+<li>逐 cache line 做：如果该 cache line 是 dirty 的，写回 DRAM；<strong>保留 cache 中的有效数据</strong></li>
+</ul>
+
+<h3>5.3 为什么要 clean idmap 代码段？</h3>
+
+<div class="diagram">// ============ 热启动的 Dirty Cache 问题 ============
+
+场景：从 kexec 启动新内核
+
+  T0: 旧内核运行中，MMU=on, Cache=on
+      代码段 .idmap.text 被加载到内存，进入 D-cache
+      D-cache 可能标记了 dirty lines (修改过的数据未写回)
+
+  T1: kexec 跳转到新内核入口
+      → 新内核的 primary_entry 开始执行
+      → 新代码覆盖了部分 .idmap.text
+      → 这些修改可能还在 D-cache 中，没写到 DRAM
+
+  T2: __cpu_setup → __primary_switch 准备开启 MMU
+      → 先要关闭 MMU，执行 __enable_mmu 中的代码
+
+  T3: ★ 问题来了 ★
+      MMU 关闭后，CPU 直接从物理地址读取指令
+      但 .idmap.text 的 dirty cache 行还没写回！
+      → CPU 取指时可能：
+        方案 A（Cache hit）：从 D-cache 读到正确数据 ✅
+        方案 B（Cache miss）：从 DRAM 读到旧数据 💥
+      → 不可预测！取决于 cache 状态和替换策略
+
+  ★ 解决：在 T2 之前、T1 之后，执行 dcache_clean_poc
+     → 强制将 .idmap.text 的 dirty cache 行写回 DRAM
+     → T3 时不管 Cache 命中与否，DRAM 都是最新的 ✅</div>
+
+<div class="note">💡 <strong>为什么是 clean 而不是 invalidate？</strong>如果 invalidate，相当于丢弃了 dirty cache 行中还没写回的正确数据——之后必须从 DRAM 重读，但 DRAM 中可能是旧的值。Clean 保留了 cache 中的正确数据，同时把它写回 DRAM，确保两处都是最新的。</div>
+</section>
+
+<!-- ====== 6 ====== -->
+<section id="s6">
+<h2>6. 两条路径的根源对比</h2>
+
+<div class="two-col">
+<div>
+<h3><span class="green">冷启动：Invalidate 页表</span></h3>
+<pre><code>问题源：Speculative Load
+──────────────────────────
+页表写入:
+  STR →绕过Cache→ DRAM ✅
+
+并发发生:
+  Speculative LDR → Cache ← DRAM(旧) ❌
+
+Cache 中: 旧数据（污染）
+DRAM 中: 新数据（正确）
+
+需要: Invalidate
+  → 丢弃 Cache 中的旧数据
+  → 强制从 DRAM 重取
+  → 得到正确的新数据</code></pre>
+</div>
+<div>
+<h3><span class="amber">热启动：Clean idmap 代码</span></h3>
+<pre><code>问题源：Dirty Cache Lines
+──────────────────────────
+代码执行:
+  STR → D-Cache (dirty) → DRAM(旧) ❌
+
+MMU 关闭后:
+  取指 → Cache hit → 正确 ✅
+  取指 → Cache miss → DRAM(旧) 💥
+
+Cache 中: 新数据（dirty，未写回）
+DRAM 中: 旧数据
+
+需要: Clean
+  → 保留 Cache 中的新数据
+  → 写回 DRAM
+  → 两处都是最新的</code></pre>
+</div>
+</div>
+
+<table>
+<tr><th>对比维度</th><th><span class="green">Invalidate（冷启动）</span></th><th><span class="amber">Clean（热启动）</span></th></tr>
+<tr><td><strong>问题本质</strong></td><td>Cache 有错误数据，DRAM 正确</td><td>Cache 有正确数据，DRAM 可能错误</td></tr>
+<tr><td><strong>操作结果</strong></td><td>Cache 行失效，下次 Miss→DRAM</td><td>Cache 数据写回 DRAM，Cache 保留</td></tr>
+<tr><td><strong>数据流向</strong></td><td>丢弃（←无效化）</td><td>Cache → DRAM（←清洗）</td></tr>
+<tr><td><strong>ARM64 指令</strong></td><td><code>DC IVAC</code></td><td><code>DC CVAC</code></td></tr>
+<tr><td><strong>目标区域</strong></td><td>页表 (identity mapping pgd)</td><td>idmap 代码段 (.idmap.text)</td></tr>
+<tr><td><strong>失败后果</strong></td><td>MMU 翻译错误 → 取指/数据 abort</td><td>关闭 MMU 后取指失败 → CPU 挂死</td></tr>
+</table>
+</section>
+
+<!-- ====== 7 ====== -->
+<section id="s7">
+<h2>7. dcache_inval_poc 与 dcache_clean_poc 源码分析</h2>
+
+<h3>7.1 这两个函数在哪里</h3>
+<pre><code>// arch/arm64/mm/cache.S
+
+SYM_FUNC_START_LOCAL(dcache_inval_poc)
+    dcache_by_line_op ivac, sy, x0, x1, x2, x3
+    ret
+SYM_FUNC_END(dcache_inval_poc)
+
+SYM_FUNC_START_LOCAL(dcache_clean_poc)
+    dcache_by_line_op cvac, sy, x0, x1, x2, x3
+    ret
+SYM_FUNC_END(dcache_clean_poc)</code></pre>
+
+<h3>7.2 核心宏：dcache_by_line_op</h3>
+<pre><code>// arch/arm64/include/asm/assembler.h
+// 对地址范围 [x0, x1) 逐 cache line 执行指定的 op
+
+.macro dcache_by_line_op op, domain, start, end, tmp1, tmp2
+    // 将 start 和 end 对齐到 cache line 边界
+    add     \start, \start, \tmp1   // 修正起始对齐
+    sub     \tmp1, \tmp2, \tmp1     // 计算需要操作的字节数
+    // ...
+1:  dc      \op, \start             // ★ 对当前地址执行 DC 操作
+    add     \start, \start, \tmp2   // 地址 += cache line 大小
+    subs    \tmp1, \tmp1, \tmp2     // 剩余字节 -= cache line 大小
+    b.hi    1b                       // 还有剩余 → 继续
+.endm
+
+// op = ivac → DC IVAC = Invalidate by VA to PoC
+// op = cvac → DC CVAC = Clean by VA to PoC</code></pre>
+
+<h3>7.3 ARM64 Cache 维护指令速查</h3>
+<table>
+<tr><th>指令</th><th>全称</th><th>操作</th><th>Cache 行最终在哪</th><th>DRAM 最终状态</th></tr>
+<tr><td><code>DC IVAC</code></td><td>Invalidate by VA to PoC</td><td>使指定 VA 的 cache 行失效</td><td>被丢弃</td><td>不变（下次 Miss 从 DRAM 读）</td></tr>
+<tr><td><code>DC CVAC</code></td><td>Clean by VA to PoC</td><td>将 dirty 行写回 PoC</td><td>保留，标记为 clean</td><td>被更新为最新数据</td></tr>
+<tr><td><code>DC CIVAC</code></td><td>Clean+Invalidate by VA to PoC</td><td>先 Clean 再 Invalidate</td><td>被丢弃</td><td>被更新为最新数据</td></tr>
+</table>
+
+<div class="note">💡 <strong>PoC = Point of Coherency：</strong>指系统中所有能访问内存的单元（CPU 核、DMA 控制器、GPU 等）都能看到一致数据的那一点。在大多数 ARM64 SoC 中，PoC 通常在最后一级共享 Cache（L3/SCF）或 DRAM 控制器处。</div>
+</section>
+
+<!-- ====== 8 ====== -->
+<section id="s8">
+<h2>8. 完整决策流程图</h2>
+
+<div class="diagram">// ============ 完整 Cache 维护决策流程 ============
+
+                    primary_entry
+                         │
+                         ▼
+              record_mmu_state()
+                │           │
+           MMU=off       MMU=on
+           x19=0         x19=1
+                │           │
+                └─────┬─────┘
+                      │
+                      ▼ x19 被 preserve_boot_args 使用
+                      │    ├── x19=0 → dmb+inval boot_args
+                      │    └── x19=1 → 跳过, 直接返回
+                      │
+                      ▼
+           __pi_create_init_idmap()  <span style="color:#94a3b8;">// 创建 identity mapping 页表</span>
+                │           │        <span style="color:#94a3b8;">// x0 = ptep (页表结束地址)</span>
+           MMU=off       MMU=on
+                │           │
+                ▼           ▼
+    <span style="color:#059669;">╔══════════════╗</span>   <span style="color:#d97706;">╔══════════════╗</span>
+    <span style="color:#059669;">║ 冷启动路径  ║</span>   <span style="color:#d97706;">║ 热启动路径  ║</span>
+    <span style="color:#059669;">╠══════════════╣</span>   <span style="color:#d97706;">╠══════════════╣</span>
+    <span style="color:#059669;">║ cbnz→no跳转 ║</span>   <span style="color:#d97706;">║ cbnz→跳转  ║</span>
+    <span style="color:#059669;">║ dmb sy      ║</span>   <span style="color:#d97706;">║ 0:         ║</span>
+    <span style="color:#059669;">║             ║</span>   <span style="color:#d97706;">║            ║</span>
+    <span style="color:#059669;">║ invalidate  ║</span>   <span style="color:#d97706;">║ clean      ║</span>
+    <span style="color:#059669;">║ 页表区域    ║</span>   <span style="color:#d97706;">║ idmap代码段║</span>
+    <span style="color:#059669;">║             ║</span>   <span style="color:#d97706;">║            ║</span>
+    <span style="color:#059669;">║ x0=pgd      ║</span>   <span style="color:#d97706;">║ x0=start   ║</span>
+    <span style="color:#059669;">║ x1=ptep     ║</span>   <span style="color:#d97706;">║ x1=end     ║</span>
+    <span style="color:#059669;">║ blr ivac    ║</span>   <span style="color:#d97706;">║ blr cvac   ║</span>
+    <span style="color:#059669;">╚══════════════╝</span>   <span style="color:#d97706;">╚══════════════╝</span>
+                │           │
+                └─────┬─────┘
+                      │
+                      ▼
+                1: mov x0, x19
+                bl  init_kernel_el
+                      │
+                      ▼
+                __cpu_setup()  <span style="color:#94a3b8;">// 配置 TCR/MAIR/TTBR</span>
+                      │
+                      ▼
+                __primary_switch
+                      │
+                      ▼
+                __enable_mmu    <span style="color:#2563eb;">// ★ 真正开启 MMU！</span>
+                      │
+                      ▼
+                start_kernel()  <span style="color:#94a3b8;">// 进入 C 代码世界</span></div>
+
+<div class="note">💡 <strong>理解这个流程的关键：</strong>Cache 维护操作必须在"数据生产者"之后、"数据消费者"之前执行。冷启动路径的"生产者"是绕过 Cache 的 STR 指令，"消费者"是即将开启的 MMU page table walker。热启动路径的"生产者"是带 Cache 的代码执行，"消费者"是关闭 MMU 后的直接取指。</div>
+</section>
+
+<!-- ====== 9 ====== -->
+<section id="s9">
+<h2>9. GDB 调试验证</h2>
+
+<h3>9.1 断点设置</h3>
+<table>
+<tr><th>#</th><th>位置</th><th>验证目标</th></tr>
+<tr><td>BP1</td><td><code>cbnz x19, 0f</code> 处</td><td>检查 x19 值，确认走哪条路径</td></tr>
+<tr><td>BP2</td><td>冷启动路径 <code>blr x2</code> 处</td><td>x0=页表起始, x1=页表结束</td></tr>
+<tr><td>BP3</td><td>热启动路径 <code>blr x2</code> 处</td><td>x0=idmap_start, x1=idmap_end</td></tr>
+<tr><td>BP4</td><td><code>1: mov x0, x19</code> 处</td><td>Cache 操作完成，确认 x19 传递给 init_kernel_el</td></tr>
+</table>
+
+<h3>9.2 GDB 命令</h3>
+<pre><code># 断到 cbnz x19, 0f
+(gdb) p/x $x19
+$1 = 0x0                          # 冷启动: x19=0 → 不跳转
+
+# 单步到 blr x2 (dcache_inval_poc)
+(gdb) p/x $x0
+$2 = 0x4012d000                   # __pi_init_idmap_pg_dir 地址
+(gdb) p/x $x1
+$3 = 0x4012d800                   # ptep (页表结束地址)
+(gdb) p/x $x1 - $x0
+$4 = 0x800                        # 页表使用了 2KB
+
+# 继续执行
+(gdb) fin                          # 从 dcache_inval_poc 返回
+(gdb) p/x $x19
+$5 = 0x0
+
+# 断到 1: (mov x0, x19)
+(gdb) p/x $x0
+$6 = 0x0                          # x0 = x19 = 0
+
+# 进入 init_kernel_el
+(gdb) si                           # bl init_kernel_el</code></pre>
+
+<h3>9.3 验证 speculative load 问题（冷启动场景）</h3>
+<pre><code># 在 __pi_create_init_idmap 之后、cache 维护之前
+# 检查页表区域的 cache 状态
+
+# 方法: 读取页表区域的某个地址
+(gdb) x/gx 0x4012d000
+0x4012d000: 0x0040100f00000711   # 页表项的值
+
+# 强制 invalidate 该 cache line
+(gdb) # (需要从内核代码中调用，GDB 不能直接执行 DC IVAC)
+
+# 验证: invalidate 之后读到的值应该相同
+(gdb) x/gx 0x4012d000
+0x4012d000: 0x0040100f00000711   # 值不变 → 说明 DRAM 和 Cache 一致</code></pre>
+
+<div class="warn">⚠ 由于本段代码在 <code>.idmap.text</code> 段（使用 <code>SYM_CODE_START</code> 定义），GDB 中直接用符号名设断点需要加载 debug 符号表。建议使用物理地址断点：<code>b *0x&lt;phys_addr&gt;</code>（参考 <code>bili_arm64_head.S_debug_qemu_bootrom.html</code> 中的地址计算方法）。</div>
+</section>
+
+<!-- ====== 10 ====== -->
+<section id="s10">
+<h2>10. 总结 &amp; 关键要点</h2>
+
+<table>
+<tr><th>#</th><th>要点</th><th>说明</th></tr>
+<tr>
+<td>1</td>
+<td class="accent">x19 是唯一的决策变量</td>
+<td><code>cbnz x19, 0f</code> 根据 MMU 状态选择 Cache 维护策略，0=冷启动，非0=热启动</td>
+</tr>
+<tr>
+<td>2</td>
+<td class="accent">冷启动 invalidate 页表</td>
+<td>解决 speculative load 污染 cache 的问题：丢弃错误 cache 行，强制从 DRAM 重取</td>
+</tr>
+<tr>
+<td>3</td>
+<td class="amber">热启动 clean idmap 代码</td>
+<td>解决 dirty cache 未写回的问题：保留正确数据同时写回，保证 MMU 关闭后取指正确</td>
+</tr>
+<tr>
+<td>4</td>
+<td class="green">操作对象完全不同</td>
+<td>冷启动操作的是<strong>页表数据</strong>（MMU 要读的），热启动操作的是<strong>idmap 代码</strong>（CPU 要执行的）</td>
+</tr>
+<tr>
+<td>5</td>
+<td class="green">ARM64 指令区别</td>
+<td>invalidate = <code>DC IVAC</code>（丢弃 cache 行），clean = <code>DC CVAC</code>（写回并保留）</td>
+</tr>
+<tr>
+<td>6</td>
+<td class="amber">都操作到 PoC</td>
+<td>两者都操作到 Point of Coherency，保证所有观察者（CPU 核、MMU page table walker）能看到一致结果</td>
+</tr>
+<tr>
+<td>7</td>
+<td class="amber">x19 在此之后传给 init_kernel_el</td>
+<td><code>mov x0, x19</code> 然后 <code>bl init_kernel_el</code>，MMU 状态用于判断 warm boot 逻辑</td>
+</tr>
+<tr>
+<td>8</td>
+<td class="accent">这是开启 MMU 前的最后一道 Cache 关卡</td>
+<td>执行完本段代码后，经过 <code>init_kernel_el</code> + <code>__cpu_setup</code>，就进入 <code>__primary_switch</code> → <code>__enable_mmu</code> 真正开启 MMU</td>
+</tr>
+</table>
+
+<h3>涉及文件</h3>
+<table>
+<tr><th>文件</th><th>作用</th></tr>
+<tr><td><code>arch/arm64/kernel/head.S</code></td><td>本段代码所在，early boot 主入口</td></tr>
+<tr><td><code>arch/arm64/mm/cache.S</code></td><td>dcache_inval_poc / dcache_clean_poc 定义</td></tr>
+<tr><td><code>arch/arm64/include/asm/assembler.h</code></td><td>dcache_by_line_op 宏定义</td></tr>
+<tr><td><code>arch/arm64/kernel/vmlinux.lds.S</code></td><td>__idmap_text_start/end 链接脚本符号</td></tr>
+<tr><td><code>arch/arm64/kernel/pi/map_kernel.c</code></td><td>__pi_create_init_idmap 实现</td></tr>
+</table>
+
+<h3>学习建议</h3>
+<ol>
+<li><strong>先看懂"为什么需要 Cache 维护"</strong>——理解 speculative load 和 dirty cache 两个问题源，比背指令更重要</li>
+<li><strong>再理解两条路径的差异</strong>——invalidate vs clean 的选择取决于"正确数据在哪"</li>
+<li><strong>最后看 ARM64 指令细节</strong>——DC IVAC/DC CVAC 的区别、dcache_by_line_op 的逐行循环逻辑</li>
+<li><strong>结合上一期 record_mmu_state 的视频</strong>——理解 x19 是如何获得的，才能完整理解整个决策链</li>
+</ol>
+
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>
