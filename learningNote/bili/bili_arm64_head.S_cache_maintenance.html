@@ -128,21 +128,127 @@ tr:nth-child(even) td { background: #f8fafc; }
 
 <p>很多资料将这两条路径描述为"Cold Boot"和"Warm Boot"的差异，但<strong>真正决定路径的不是启动类型，而是 bootloader 是否开启了 D-cache</strong>。</p>
 
-<div class="diagram">// ============ record_mmu_state 的返回值逻辑 ============
+<h4>逐步演算：三个典型场景</h4>
 
-  mrs  x19, sctlr_el1 (或 sctlr_el2)   <span style="color:#94a3b8;">// 读取 bootloader 留下的 SCTLR 配置</span>
-       │
-  tst  x19, #SCTLR_ELx_C              <span style="color:#94a3b8;">// ★ C bit (bit 2): D-cache 是否开启？</span>
-       │                                  <span style="color:#94a3b8;">// Z = (C == 0)</span>
-  and  x19, x19, #SCTLR_ELx_M         <span style="color:#94a3b8;">// 提取 M bit (bit 0): MMU 是否开启？</span>
-  csel x19, xzr, x19, eq              <span style="color:#94a3b8;">// if Z (即 C==0), x19 = 0</span>
-       │                                  <span style="color:#94a3b8;">// if C==1, x19 = M (0 或 1)</span>
+<p>这四条汇编指令的目的：<strong>用 SCTLR 的 C 和 M 两位确定 x19 的最终值</strong>。关键技巧——<code>tst</code> 在 <code>and</code> 之前执行，利用 <code>tst</code> 设置的 Z 标志驱动 <code>csel</code>，而 <code>and</code> 不影响标志位。</p>
 
-  <span style="color:#2563eb;">最终 x19 的值不是 "MMU state"，而是：</span>
-    <span style="color:#059669;">x19 = 0  →  D-cache 是关闭的 (C==0)</span>
-    <span style="color:#d97706;">x19 = 1  →  D-cache 是开启的 (C==1)，且 MMU 也开启 (M==1)</span>
-    <span style="color:#94a3b8;">x19 = 0 (边缘情况) → D-cache 开启 (C==1) 但 MMU 关闭 (M==0)
-                         这是 broken bootloader，内核保守处理，走 x19=0 路径</span></div>
+<div class="diagram">// ============ 场景一：U-Boot Cold Boot (C=0, M=0) ============
+
+  SCTLR = 0x00000000_30C50800          <span style="color:#94a3b8;">// U-Boot 未开启 MMU 和 D-cache</span>
+
+  [mrs]   x19 = 0x00000000_30C50800    <span style="color:#94a3b8;">// 读取 SCTLR 全部 64 位</span>
+  [tst C] x19 & 0x4 = <span style="color:#d97706;">0x0</span>             <span style="color:#94a3b8;">// bit2 = 0 → C=0</span>
+          标志位: <span style="color:#2563eb;">Z=1 (C==0)</span>          <span style="color:#94a3b8;">// tst: AND 但不存结果, 只设标志</span>
+          x19 不变: 0x30C50800          <span style="color:#94a3b8;">// 指令未修改目标寄存器</span>
+  [and M] x19 & 0x1 = <span style="color:#d97706;">0x0</span>             <span style="color:#94a3b8;">// bit0 = 0 → M=0</span>
+          x19 = <span style="color:#059669;">0x00000000_00000000</span>      <span style="color:#94a3b8;">// 只保留 bit 0</span>
+  [csel]  Z=1 → 选 xzr                 <span style="color:#94a3b8;">// 因为 C==0 (Z=1)</span>
+  ====== x19 = 0 ======                <span style="color:#059669;">// 走 Inval 路径 ✓</span>
+
+// ============ 场景二：kexec Warm Boot (C=1, M=1) ============
+
+  SCTLR = 0x00000000_34D5D91D          <span style="color:#94a3b8;">// kexec 启动, MMU 和 D-cache 都在运行</span>
+
+  [mrs]   x19 = 0x00000000_34D5D91D
+  [tst C] x19 & 0x4 = <span style="color:#d97706;">0x4</span>             <span style="color:#94a3b8;">// bit2 = 1 → C=1</span>
+          标志位: <span style="color:#d97706;">Z=0 (C==1)</span>
+          x19 不变: 0x34D5D91D
+  [and M] x19 & 0x1 = <span style="color:#d97706;">0x1</span>             <span style="color:#94a3b8;">// bit0 = 1 → M=1</span>
+          x19 = <span style="color:#d97706;">0x00000000_00000001</span>
+  [csel]  Z=0 → 选 x19(保留 M=1)       <span style="color:#94a3b8;">// 因为 C==1 (Z=0)</span>
+  ====== x19 = 1 ======                <span style="color:#d97706;">// 走 Clean 路径 ✓</span>
+
+// ============ 场景三：Broken Bootloader (C=1, M=0) ============
+
+  SCTLR = 0x00000000_00000004          <span style="color:#94a3b8;">// D-cache 开着但 MMU 关了 (非法状态)</span>
+
+  [mrs]   x19 = 0x00000000_00000004
+  [tst C] x19 & 0x4 = <span style="color:#d97706;">0x4</span>             <span style="color:#94a3b8;">// bit2 = 1 → C=1</span>
+          标志位: <span style="color:#d97706;">Z=0 (C==1)</span>
+          x19 不变: 0x00000004
+  [and M] x19 & 0x1 = <span style="color:#d97706;">0x0</span>             <span style="color:#94a3b8;">// bit0 = 0 → M=0</span>
+          x19 = <span style="color:#059669;">0x00000000_00000000</span>
+  [csel]  Z=0 → 选 x19(保留 M=0)       <span style="color:#94a3b8;">// 虽 C==1, 但 M=0</span>
+  ====== x19 = 0 ======                <span style="color:#059669;">// 走 Inval 路径 ✓ (保守处理)</span></div>
+
+<h4>设计精髓：为什么 `tst` 放在 `and` 之前</h4>
+<div class="two-col">
+<div>
+<p><strong>如果反过来写（先 and 再 tst）：</strong></p>
+<pre><code>and x19, x19, #SCTLR_ELx_M   // x19 只剩 bit 0
+tst x19, #SCTLR_ELx_C         // C=0x4, 但 x19 已经被 and 截断!
+                               // 永远测到 0 → Z 永远为 1
+csel x19, xzr, x19, eq        // 永远清 0 → 永远走 Inval</code></pre>
+<p class="amber">Warm Boot 永远被误判为 Cold Boot。</p>
+</div>
+<div>
+<p><strong>正确的顺序（先 tst 再 and）：</strong></p>
+<pre><code>tst x19, #SCTLR_ELx_C         // C bit 还在 → Z 正确
+and x19, x19, #SCTLR_ELx_M   // 提取 M bit, 不影响 Z
+csel x19, xzr, x19, eq        // 用 tst 留下的 Z 做判决</code></pre>
+<p class="green">`and` 不改变标志位，Z 保持 tst 的结果 ✓</p>
+</div>
+</div>
+
+<div class="note">💡 <strong>最终公式：</strong><code>x19 = (C==0 || M==0) ? 0 : 1</code>。即只有 D-cache <strong>和</strong> MMU 同时开启时 x19=1，其余所有情况 x19=0。这是<strong>防御性编程</strong>——除非非常确定 cache 和 MMU 都在正常运行，否则按最坏情况（non-cacheable 写入）处理。</div>
+
+<h3>ARM64 SCTLR_EL1 寄存器详解</h3>
+<p><code>SCTLR_EL1</code>（System Control Register, EL1）是 ARM64 最核心的系统控制寄存器。early boot 阶段只关心其中三个位，但理解完整布局有助于看清全貌。</p>
+
+<div class="diagram">// ============ SCTLR_EL1 位域布局 (64-bit) ============
+
+  63                                                    32 31                     0
+  +------------------------------------------------------+------------------------+
+  | 高位 (扩展功能, ARMv8.x 新增)                         | 低位 (经典功能)        |
+  +------------------------------------------------------+------------------------+
+   60       44  43  42-37  31  30  29  28  27  26  25  22  21  20  19  13  12  11  3  2  1  0
+   │        │   │    │    │   │   │   │   │   │   │   │   │   │   │   │   │   │   │  │  │  │
+   ENTP2  DSSBS ATA ITFSB ENIA ENIB nTLSMD ENDA EIS EE EOS TSCXT WXN ENDB I  SA C  A  M</div>
+
+<h4>Early boot 相关的三个关键位</h4>
+<table>
+<tr><th>位</th><th>宏</th><th>名称</th><th>作用</th></tr>
+<tr>
+<td class="accent">0</td><td class="accent"><code>SCTLR_ELx_M</code></td><td class="accent"><strong>MMU Enable</strong></td>
+<td class="accent">0 = MMU 关闭（所有地址直接当物理地址）<br>1 = MMU 开启（地址经页表翻译）</td>
+</tr>
+<tr>
+<td class="green">2</td><td class="green"><code>SCTLR_ELx_C</code></td><td class="green"><strong>Data Cache Enable</strong></td>
+<td class="green">0 = D-cache 关闭（所有数据访问 non-cacheable）<br>1 = D-cache 开启（根据页表属性决定缓存策略）<br>★ record_mmu_state 用 C 位而非 M 位做分叉决策</td>
+</tr>
+<tr>
+<td class="amber">25</td><td class="amber"><code>SCTLR_ELx_EE</code></td><td class="amber"><strong>Exception Endianness</strong></td>
+<td class="amber">0 = 小端（Little Endian）<br>1 = 大端（Big Endian）<br>★ CPU 上电时的字节序；record_mmu_state 检测它是否匹配内核编译设置</td>
+</tr>
+</table>
+
+<h4>完整位域速查</h4>
+<table>
+<tr><th>位</th><th>宏</th><th>含义</th><th>Early boot 相关？</th></tr>
+<tr><td>0</td><td><code>SCTLR_ELx_M</code></td><td>MMU Enable</td><td class="accent">★ record_mmu_state 提取</td></tr>
+<tr><td>1</td><td><code>SCTLR_ELx_A</code></td><td>Alignment Check Enable</td><td>—</td></tr>
+<tr><td>2</td><td><code>SCTLR_ELx_C</code></td><td>Data Cache Enable</td><td class="accent">★ record_mmu_state 判决依据</td></tr>
+<tr><td>3</td><td><code>SCTLR_ELx_SA</code></td><td>Stack Alignment Check</td><td>—</td></tr>
+<tr><td>11</td><td><code>SCTLR_ELx_EOS</code></td><td>Exception Exit is Context Synchronizing</td><td>—</td></tr>
+<tr><td>12</td><td><code>SCTLR_ELx_I</code></td><td>Instruction Cache Enable</td><td>—</td></tr>
+<tr><td>13</td><td><code>SCTLR_ELx_ENDB</code></td><td>Enables Use of the DC PODRB Instruction</td><td>—</td></tr>
+<tr><td>19</td><td><code>SCTLR_ELx_WXN</code></td><td>Write Permission Implies XN</td><td>—</td></tr>
+<tr><td>20</td><td><code>SCTLR_ELx_TSCXT</code></td><td>Trap EL0 Access to SCXTNUM_EL0</td><td>—</td></tr>
+<tr><td>22</td><td><code>SCTLR_ELx_EIS</code></td><td>Exception Entry is Context Synchronizing</td><td>—</td></tr>
+<tr><td>25</td><td><code>SCTLR_ELx_EE</code></td><td>Exception Endianness (0=LE, 1=BE)</td><td class="amber">★ 字节序检测</td></tr>
+<tr><td>26</td><td><code>SCTLR_EL1_EnRCTX</code></td><td>Enable Access to RCTX Registers</td><td>—</td></tr>
+<tr><td>27</td><td><code>SCTLR_ELx_ENDA</code></td><td>Enables Use of the DC PODRA Instruction</td><td>—</td></tr>
+<tr><td>28</td><td><code>SCTLR_ELx_nTLSMD</code></td><td>No Trap Load/Store Multiple</td><td>—</td></tr>
+<tr><td>29</td><td><code>SCTLR_ELx_LSMAOE</code></td><td>Load/Store Multiple Atomicity and Ordering Enable</td><td>—</td></tr>
+<tr><td>30</td><td><code>SCTLR_ELx_ENIB</code></td><td>Enables Use of the IC PODRIB Instruction</td><td>—</td></tr>
+<tr><td>31</td><td><code>SCTLR_ELx_ENIA</code></td><td>Enables Use of the IC PODRIA Instruction</td><td>—</td></tr>
+<tr><td>37</td><td><code>SCTLR_ELx_ITFSB</code></td><td>Force DSB upon DC instructions</td><td>—</td></tr>
+<tr><td>43</td><td><code>SCTLR_ELx_ATA</code></td><td>Allocation Tag Access</td><td>—</td></tr>
+<tr><td>44</td><td><code>SCTLR_ELx_DSSBS</code></td><td>Disable Speculative Store Bypass</td><td>—</td></tr>
+<tr><td>60</td><td><code>SCTLR_ELx_ENTP2</code></td><td>Enhanced Nested Translation</td><td>—</td></tr>
+</table>
+
+<div class="note">💡 <strong>总结：</strong>early boot 阶段（record_mmu_state + cache 维护分流）只关心 SCTLR 的三个位：<strong>M(0)</strong> = MMU 开关、<strong>C(2)</strong> = D-cache 开关、<strong>EE(25)</strong> = 字节序。其余位控制的分页粒度、对齐检查、缓存属性等都是后续 <code>__cpu_setup</code> 阶段才会配置的。这就是为什么 record_mmu_state 能只用 15 条指令完成任务——它只提取最关键的信息。</div>
 
 <h3>1.2 两种 D-cache 状态的完全不同需求</h3>
 <div class="two-col">
