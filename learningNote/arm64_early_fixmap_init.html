@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 early_fixmap_init() 深度分析</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease; overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; height: 100%; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 2px 0; border-radius: 3px; white-space: nowrap; font-size: 0.9em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); }
+.sidebar a.sub { padding-left: 16px; font-size: 0.85em; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin: 20px 0 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目录</h4>
+<a href="#arm64-early-fixmap-init---深度分析" class="">ARM64 early_fixmap_init() 深度分析</a>
+<a href="#1--概述" class="sub">1. 概述</a>
+<a href="#2--fixmap-地址范围" class="sub">2. Fixmap 地址范围</a>
+<a href="#2-1-关键宏定义" class="sub2">2.1 关键宏定义</a>
+<a href="#2-2-fixmap-枚举槽位-从高地址到低地址增长" class="sub2">2.2 fixmap 枚举槽位（从高地址到低地址增长）</a>
+<a href="#2-3-在页表中的索引" class="sub2">2.3 在页表中的索引</a>
+<a href="#3--页表存储位置" class="sub">3. 页表存储位置</a>
+<a href="#3-1-分配方式对比" class="sub2">3.1 分配方式对比</a>
+<a href="#3-2-实际-vmlinux-符号地址" class="sub2">3.2 实际 vmlinux 符号地址</a>
+<a href="#3-3-bss-数组维度" class="sub2">3.3 BSS 数组维度</a>
+<a href="#3-4-内存布局示意图" class="sub2">3.4 内存布局示意图</a>
+<a href="#4--执行前状态" class="sub">4. 执行前状态</a>
+<a href="#5--执行过程-4-步建立骨架" class="sub">5. 执行过程（4 步建立骨架）</a>
+<a href="#5-1-入口-early-fixmap-init" class="sub2">5.1 入口：early_fixmap_init()</a>
+<a href="#5-2-第-1-步-填充-pgd-511----bm-pud" class="sub2">5.2 第 1 步：填充 PGD[511] → bm_pud</a>
+<a href="#5-3-第-2-步-填充-bm-pud-511----bm-pmd" class="sub2">5.3 第 2 步：填充 bm_pud[511] → bm_pmd</a>
+<a href="#5-4-第-3-步-循环填充-bm-pmd-idx----bm-pte-i" class="sub2">5.4 第 3 步：循环填充 bm_pmd[idx] → bm_pte[i]</a>
+<a href="#5-5-第-4-步-pte-层----不填充" class="sub2">5.5 第 4 步：PTE 层 —— 不填充</a>
+<a href="#6--执行后的页表结构" class="sub">6. 执行后的页表结构</a>
+<a href="#7--地址转换-为什么用--kimg-而非--virt" class="sub">7. 地址转换：为什么用 _kimg 而非 _virt</a>
+<a href="#7-1-问题" class="sub2">7.1 问题</a>
+<a href="#7-2-两套地址转换" class="sub2">7.2 两套地址转换</a>
+<a href="#7-3-kimage-voffset-的赋值" class="sub2">7.3 kimage_voffset 的赋值</a>
+<a href="#7-4-代码中的体现" class="sub2">7.4 代码中的体现</a>
+<a href="#7-5-pgdp---p4dp-的地址性质" class="sub2">7.5 pgdp / p4dp 的地址性质</a>
+<a href="#8--16k-页的特殊处理" class="sub">8. 16K 页的特殊处理</a>
+<a href="#9----set-fixmap---填充-pte" class="sub">9. __set_fixmap()：填充 PTE</a>
+<a href="#10--第一个使用者-fixmap-remap-fdt" class="sub">10. 第一个使用者：fixmap_remap_fdt()</a>
+<a href="#11--总结" class="sub">11. 总结</a>
+<a href="#12--源码索引" class="sub">12. 源码索引</a>
+</div>
+</nav>
+<div class="main-content">
+<header><h1>ARM64 early_fixmap_init() 深度分析</h1></header>
+<main>
+<p>> 基于 Linux 6.18.1, ARM64, 4KB 页 / 48-bit VA / 4 级页表配置</p>
+<p>---</p>
+<section>
+<h3>1. 概述</h3>
+</section>
+<p><code>early_fixmap_init()</code> 在 <code>setup_arch()</code> 早期被调用，负责在 <code>swapper_pg_dir</code> 中建立 fixmap 区域的 <strong>页表骨架</strong>（PGD → PUD → PMD → PTE 的链路），但 <strong>不填入任何最终映射</strong>。后续通过 <code>__set_fixmap()</code> 按需将物理地址写入 PTE 条目。</p>
+<pre><code>setup_arch()
+  └─ early_fixmap_init()        ← 建立骨架
+  └─ early_ioremap_init()       ← 初始化 early_ioremap 基础设施
+  └─ fixmap_remap_fdt()         ← 第一个使用者：映射 FDT
+  └─ ...
+  └─ paging_init()              ← 建立完整的 swapper_pg_dir</code></pre>
+<p>---</p>
+<section>
+<h3>2. Fixmap 地址范围</h3>
+</section>
+<section>
+<h4>2.1 关键宏定义</h4>
+</section>
+<table>
+<tr><th>宏</th><th>值 (4KB/48-bit)</th><th>来源</th></tr>
+<tr><td><code>FIXADDR_TOP</code></td><td><code>0xFFFF_FFFF_FF80_0000</code></td><td><code>memory.h:54</code> → <code>-UL(SZ_8M)</code></td></tr>
+<tr><td><code>__end_of_fixed_addresses</code></td><td>~数百（取决于 CONFIG）</td><td><code>fixmap.h</code> enum</td></tr>
+<tr><td><code>FIXADDR_TOT_SIZE</code></td><td><code>__end_of_fixed_addresses << PAGE_SHIFT</code> ≈ 数 MB</td><td><code>fixmap.h:95</code></td></tr>
+<tr><td><code>FIXADDR_TOT_START</code></td><td><code>FIXADDR_TOP - FIXADDR_TOT_SIZE</code></td><td><code>fixmap.h:96</code></td></tr>
+</table>
+<section>
+<h4>2.2 fixmap 枚举槽位（从高地址到低地址增长）</h4>
+</section>
+<pre><code>FIXADDR_TOP = 0xFFFF_FFFF_FF80_0000
+  │
+  │  FIX_HOLE                    ← 第 0 号，紧贴 FIXADDR_TOP
+  │  FIX_FDT_END ... FIX_FDT    ← FDT 窗口 (MAX_FDT_SIZE + 1 页)
+  │  FIX_EARLYCON_MEM_BASE      ← early console
+  │  FIX_TEXT_POKE0              ← text poke
+  │  FIX_VNCR_END ... FIX_VNCR  ← KVM (如果启用)
+  │  FIX_APEI_GHES_*            ← GHES (如果启用)
+  │  FIX_ENTRY_TRAMP_TEXT*       ← KPTI trampoline (如果启用)
+  │  __end_of_permanent_fixed_addresses
+  │  FIX_BTMAP_END ... FIX_BTMAP_BEGIN  ← early_ioremap (7 slots × 64 pages)
+  │  FIX_PTE, FIX_PMD, FIX_PUD, FIX_P4D, FIX_PGD  ← 页表创建临时窗口
+  │  __end_of_fixed_addresses
+  │
+  ▼
+FIXADDR_TOT_START ≈ 0xFFFF_FFFF_FB3x_xxxx</code></pre>
+<p><strong>注意</strong>：fixmap 的虚拟地址是 <strong>从高往低增长</strong> 的。<code>__fix_to_virt(idx) = FIXADDR_TOP - ((idx) << PAGE_SHIFT)</code>。</p>
+<section>
+<h4>2.3 在页表中的索引</h4>
+</section>
+<table>
+<tr><th>页表层级</th><th>索引</th><th>说明</th></tr>
+<tr><td>PGD</td><td><strong>511</strong></td><td>bits [47:39] = 0x1FF，内核虚拟地址空间最后一个条目</td></tr>
+<tr><td>PUD</td><td><strong>511</strong></td><td>bits [38:30] = 0x1FF</td></tr>
+<tr><td>PMD</td><td>多个</td><td>跨越约 3 个 2MB PMD 条目（取决于 fixmap 总大小）</td></tr>
+</table>
+<p>---</p>
+<section>
+<h3>3. 页表存储位置</h3>
+</section>
+<section>
+<h4>3.1 分配方式对比</h4>
+</section>
+<table>
+<tr><th>页表</th><th>分配方式</th><th>所在段</th><th>分配位置</th></tr>
+<tr><td><code>swapper_pg_dir</code> (PGD)</td><td>linker script 手动分配</td><td><code>.rodata</code> 后</td><td><code>vmlinux.lds.S:235</code></td></tr>
+<tr><td><code>bm_pud</code></td><td>C static 变量</td><td><code>.bss..page_aligned</code></td><td><code>fixmap.c:37</code></td></tr>
+<tr><td><code>bm_pmd</code></td><td>C static 变量</td><td><code>.bss..page_aligned</code></td><td><code>fixmap.c:36</code></td></tr>
+<tr><td><code>bm_pte[N]</code></td><td>C static 变量</td><td><code>.bss..page_aligned</code></td><td><code>fixmap.c:34</code></td></tr>
+</table>
+<section>
+<h4>3.2 实际 vmlinux 符号地址</h4>
+</section>
+<pre><code>符号                    虚拟地址                  大小      所在段
+──────────────────────────────────────────────────────────────────
+swapper_pg_dir          0xffff_8000_8145_f000     4KB       linker script (紧跟 .text)
+__bss_start             0xffff_8000_8227_c000     ---       BSS 段起始
+bm_pud                  0xffff_8000_8227_f000     4KB       .bss..page_aligned
+bm_pmd                  0xffff_8000_8228_0000     4KB       .bss..page_aligned
+bm_pte[0]              0xffff_8000_8228_1000     4KB       .bss..page_aligned
+bm_pte[1]              0xffff_8000_8228_2000     4KB       .bss..page_aligned
+bm_pte[2]              0xffff_8000_8228_3000     4KB       .bss..page_aligned</code></pre>
+<p><strong>PGD 与 PUD/PMD/PTE 相距约 14MB</strong>，完全不连续。这无关紧要 —— MMU 硬件通过页表描述符里的物理地址定位下一级表。</p>
+<section>
+<h4>3.3 BSS 数组维度</h4>
+</section>
+<pre><code>// PTRS_PER_PTE = PTRS_PER_PMD = PTRS_PER_PUD = 512 (4KB 页)
+
+static pud_t bm_pud[512]    __page_aligned_bss;   // 512 × 8B = 4KB = 1 页
+static pmd_t bm_pmd[512]    __page_aligned_bss;   // 512 × 8B = 4KB = 1 页
+static pte_t bm_pte[3][512] __page_aligned_bss;   // 3 × 512 × 8B = 12KB = 3 页</code></pre>
+<p><code>NR_BM_PTE_TABLES = 3</code> 由宏计算得出：</p>
+<pre><code>#define NR_BM_PTE_TABLES  SPAN_NR_ENTRIES(FIXADDR_TOT_START, FIXADDR_TOP, PMD_SHIFT)
+// = ((FIXADDR_TOP - 1) &gt;&gt; 21) - (FIXADDR_TOT_START &gt;&gt; 21) + 1
+// fixmap 范围跨 3 个 2MB PMD 条目 → 需要 3 个 PTE 页</code></pre>
+<p><code>NR_BM_PMD_TABLES = 1</code>（fixmap 只跨 1 个 1GB PUD 条目），代码中有 <code>static_assert</code> 验证。</p>
+<section>
+<h4>3.4 内存布局示意图</h4>
+</section>
+<pre><code>低地址                                                              高地址
+────────────────────────────────────────────────────────────────────────
+│ .text          │ PGD 区域        │ .init          │ .data │ .bss            │
+│                │                 │                │       │                  │
+│ 内核代码       │ idmap_pg_dir    │ init_idmap_    │       │ bm_pud   (4KB)  │
+│                │ tramp_pg_dir    │   pg_dir       │       │ bm_pmd   (4KB)  │
+│                │ reserved_pg_dir │ init_pg_dir    │       │ bm_pte[0](4KB)  │
+│                │ swapper_pg_dir★│                │       │ bm_pte[1](4KB)  │
+│                │                 │                │       │ bm_pte[2](4KB)  │
+────────────────────────────────────────────────────────────────────────
+           0x8145c000       0x81460000                  0x8227f000</code></pre>
+<p>---</p>
+<section>
+<h3>4. 执行前状态</h3>
+</section>
+<p><code>early_fixmap_init()</code> 在 <code>setup_arch()</code> 中调用时：</p>
+<ul>
+<li><code>swapper_pg_dir</code> 已通过 <code>memcpy</code> 从 <code>init_pg_dir</code> 拷入根 PGD 条目</li>
+<li>PGD 中 <strong>只有内核映像的条目</strong>（PGD index ≈ 256）</li>
+<li><strong>fixmap 区域的 PGD[511] 为空</strong></li>
+<li><code>bm_pud</code>/<code>bm_pmd</code>/<code>bm_pte</code> 全在 BSS 段，<strong>初始全零</strong></li>
+<li><strong>linear map 尚未建立</strong>（paging_init 还没跑）</li>
+<li>只能用 <code>__pa_symbol()</code> (基于 <code>kimage_voffset</code>) 做地址转换，不能用 <code>virt_to_phys()</code> (依赖 linear map)</li>
+</ul>
+<p>---</p>
+<section>
+<h3>5. 执行过程（4 步建立骨架）</h3>
+</section>
+<section>
+<h4>5.1 入口：early_fixmap_init()</h4>
+</section>
+<pre><code>void __init early_fixmap_init(void)
+{
+    unsigned long addr = FIXADDR_TOT_START;
+    unsigned long end = FIXADDR_TOP;
+
+    pgd_t *pgdp = pgd_offset_k(addr);        // → &amp;swapper_pg_dir[511]
+    p4d_t *p4dp = p4d_offset_kimg(pgdp, addr); // 4级: P4D 折叠, p4dp == pgdp
+    early_fixmap_init_pud(p4dp, addr, end);
+}</code></pre>
+<ul>
+<li><code>pgd_offset_k(addr)</code> = <code>init_mm.pgd + pgd_index(addr)</code> = <code>&swapper_pg_dir[511]</code></li>
+<li>4 级页表下 P4D 被折叠：<code>p4d_offset_kimg</code> 直接返回 <code>pgdp</code> 本身（强转类型）</li>
+</ul>
+<section>
+<h4>5.2 第 1 步：填充 PGD[511] → bm_pud</h4>
+</section>
+<pre><code>// early_fixmap_init_pud()
+p4d = READ_ONCE(*p4dp);           // 读 swapper_pg_dir[511], 为 0 (空)
+if (p4d_none(p4d))
+    __p4d_populate(p4dp, __pa_symbol(bm_pud), P4D_TYPE_TABLE | P4D_TABLE_AF);</code></pre>
+<p><strong>写入：</strong></p>
+<pre><code>swapper_pg_dir[511] = PA(bm_pud) | 0x3    ← TABLE descriptor + AF bit</code></pre>
+<section>
+<h4>5.3 第 2 步：填充 bm_pud[511] → bm_pmd</h4>
+</section>
+<pre><code>// early_fixmap_init_pmd()
+pudp = pud_offset_kimg(p4dp, addr);  // → &amp;bm_pud[511]
+pud = READ_ONCE(*pudp);              // 为 0 (空)
+if (pud_none(pud))
+    __pud_populate(pudp, __pa_symbol(bm_pmd), PUD_TYPE_TABLE | PUD_TABLE_AF);</code></pre>
+<p><strong>写入：</strong></p>
+<pre><code>bm_pud[511] = PA(bm_pmd) | 0x3    ← TABLE descriptor + AF bit</code></pre>
+<section>
+<h4>5.4 第 3 步：循环填充 bm_pmd[idx] → bm_pte[i]</h4>
+</section>
+<pre><code>pmdp = pmd_offset_kimg(pudp, addr);   // → &amp;bm_pmd[pmd_index(FIXADDR_TOT_START)]
+do {
+    next = pmd_addr_end(addr, end);
+    early_fixmap_init_pte(pmdp, addr); // 对每个 PMD 条目填 PTE
+} while (pmdp++, addr = next, addr != end);</code></pre>
+<p>循环 3 次（<code>NR_BM_PTE_TABLES = 3</code>），每次：</p>
+<pre><code>// early_fixmap_init_pte()
+pmd = READ_ONCE(*pmdp);            // 为 0
+if (pmd_none(pmd)) {
+    ptep = bm_pte[BM_PTE_TABLE_IDX(addr)];
+    __pmd_populate(pmdp, __pa_symbol(ptep), PMD_TYPE_TABLE | PMD_TABLE_AF);
+}</code></pre>
+<p><strong>写入（3 次循环）：</strong></p>
+<pre><code>bm_pmd[idx+0] = PA(bm_pte[0]) | 0x3
+bm_pmd[idx+1] = PA(bm_pte[1]) | 0x3
+bm_pmd[idx+2] = PA(bm_pte[2]) | 0x3</code></pre>
+<section>
+<h4>5.5 第 4 步：PTE 层 —— 不填充</h4>
+</section>
+<p><strong>所有 <code>bm_pte[<em>][</em>]</code> 保持为 0</strong>。只建骨架，具体物理映射留给 <code>__set_fixmap()</code> 按需填入。</p>
+<p>---</p>
+<section>
+<h3>6. 执行后的页表结构</h3>
+</section>
+<pre><code>swapper_pg_dir (PGD)
+├─ [0..255]    = (可能为空或内核映像条目)
+├─ [256..]     = PA(内核映像的 PUD 表) | TABLE    ← 之前已有
+├─ ...
+└─ [511]       = PA(bm_pud) | TABLE | AF          ← ★ 新写入
+                   │
+                   ▼
+                   bm_pud[512 entries]
+                   ├─ [0..510]  = 0 (空)
+                   └─ [511]     = PA(bm_pmd) | TABLE | AF    ← ★ 新写入
+                                    │
+                                    ▼
+                                    bm_pmd[512 entries]
+                                    ├─ [0..N-1]    = 0 (空)
+                                    ├─ [idx+0]     = PA(bm_pte[0]) | TABLE | AF  ← ★
+                                    ├─ [idx+1]     = PA(bm_pte[1]) | TABLE | AF  ← ★
+                                    ├─ [idx+2]     = PA(bm_pte[2]) | TABLE | AF  ← ★
+                                    └─ [idx+3..511]= 0 (空)
+                                                       │
+                                                       ▼
+                                                       bm_pte[3][512]
+                                                       └─ 全部 = 0  ← 等 __set_fixmap() 填充</code></pre>
+<p><strong>总计写入：1 (PGD) + 1 (PUD) + 3 (PMD) = 5 个页表描述符。</strong></p>
+<p>---</p>
+<section>
+<h3>7. 地址转换：为什么用 _kimg 而非 _virt</h3>
+</section>
+<section>
+<h4>7.1 问题</h4>
+</section>
+<p><code>early_fixmap_init()</code> 运行时 <strong>linear map 还没建立</strong>（<code>paging_init()</code> 还没跑），所以不能用 <code>virt_to_phys()</code>（它依赖 linear map 的 <code>PAGE_OFFSET - PHYS_OFFSET</code> 偏移）。</p>
+<section>
+<h4>7.2 两套地址转换</h4>
+</section>
+<table>
+<tr><th>接口</th><th>公式</th><th>适用时机</th></tr>
+<tr><td><code>__pa_symbol(x)</code> / <code>__kimg_to_phys(x)</code></td><td><code>VA - kimage_voffset</code></td><td>内核映像内符号，任何时候可用</td></tr>
+<tr><td><code>virt_to_phys(x)</code> / <code>__virt_to_phys(x)</code></td><td><code>VA - PAGE_OFFSET + PHYS_OFFSET</code></td><td>linear map 地址，paging_init 后可用</td></tr>
+</table>
+<section>
+<h4>7.3 kimage_voffset 的赋值</h4>
+</section>
+<p>在 <code>head.S</code> 的 <code>__primary_switched</code>（第 233-235 行）中赋值：</p>
+<pre><code>adrp    x4, _text          // x4 = _text 的运行时物理地址 (通过 PC-relative)
+sub     x4, x4, x0         // x4 = _text_PA - _text_VA（实际是负值）
+                            // 注: x0 此时 = __pa(_text)，但上面已经是 PA
+str_l   x4, kimage_voffset  // 存入全局变量</code></pre>
+<p>实际关系：<code>kimage_voffset = VA(kernel) - PA(kernel)</code>，所以 <code>PA = VA - kimage_voffset</code>。</p>
+<section>
+<h4>7.4 代码中的体现</h4>
+</section>
+<p>注释（<code>fixmap.c:103-107</code>）明确指出：</p>
+<pre><code>/*
+ * The p*d_populate functions call virt_to_phys implicitly so they can't be used
+ * directly on kernel symbols (bm_p*d). This function is called too early to use
+ * lm_alias so __p*d_populate functions must be used to populate with the
+ * physical address from __pa_symbol.
+ */</code></pre>
+<p>因此代码中：</p>
+<ul>
+<li>取 PGD/PUD/PMD 指针用 <code>*_offset_kimg()</code>（通过 <code>__phys_to_kimg</code> 转换）</li>
+<li>填充描述符用 <code>__p*d_populate()</code> + <code>__pa_symbol()</code>（直接写物理地址）</li>
+<li><strong>不用</strong> 普通的 <code>p*d_populate()</code>（内部调用 <code>virt_to_phys</code>，此时会出错）</li>
+</ul>
+<section>
+<h4>7.5 pgdp / p4dp 的地址性质</h4>
+</section>
+<p><code>early_fixmap_init()</code> 中的 <code>pgdp</code>、<code>p4dp</code>、<code>pudp</code>、<code>pmdp</code> 指针都是 <strong>虚拟地址</strong>（在内核映像映射 kimg 空间中），不是物理地址。CPU 可以直接解引用它们，因为此时内核映像的映射已经建好了（由 <code>init_pg_dir</code> → <code>swapper_pg_dir</code> 传递）。</p>
+<p>---</p>
+<section>
+<h3>8. 16K 页的特殊处理</h3>
+</section>
+<pre><code>if (CONFIG_PGTABLE_LEVELS &gt; 3 &amp;&amp; !p4d_none(p4d) &amp;&amp;
+    p4d_page_paddr(p4d) != __pa_symbol(bm_pud)) {
+    BUG_ON(!IS_ENABLED(CONFIG_ARM64_16K_PAGES));
+}</code></pre>
+<p>在 16KB 页 + 4 级页表配置下，内核映像和 fixmap 可能共享同一个顶层 PGD 条目。此时 PGD[idx] 已经被 kernel mapping 填充，指向一个由 <code>map_kernel</code> 创建的 PUD 表（不是 <code>bm_pud</code>）。代码允许这种情况但加了 <code>BUG_ON</code> 确保只在 16K 页模式下发生。</p>
+<p>4KB 页 / 48-bit VA 下此分支不会触发，因为 kernel image（PGD ≈ 256）和 fixmap（PGD = 511）使用不同的 PGD 条目。</p>
+<p>---</p>
+<section>
+<h3>9. __set_fixmap()：填充 PTE</h3>
+</section>
+<p>骨架建好后，通过 <code>__set_fixmap()</code> 映射具体物理页：</p>
+<pre><code>void __set_fixmap(enum fixed_addresses idx, phys_addr_t phys, pgprot_t flags)
+{
+    unsigned long addr = __fix_to_virt(idx);   // idx → 虚拟地址
+    pte_t *ptep = fixmap_pte(addr);            // 直接用 C 数组索引取 PTE 指针
+
+    if (pgprot_val(flags))
+        __set_pte(ptep, pfn_pte(phys &gt;&gt; PAGE_SHIFT, flags));  // 映射
+    else {
+        __pte_clear(&amp;init_mm, addr, ptep);                     // 取消映射
+        flush_tlb_kernel_range(addr, addr + PAGE_SIZE);
+    }
+}</code></pre>
+<p><strong><code>fixmap_pte()</code> 直接用 C 数组索引，不走页表遍历</strong>：</p>
+<pre><code>static inline pte_t *fixmap_pte(unsigned long addr)
+{
+    return &amp;bm_pte[BM_PTE_TABLE_IDX(addr)][pte_index(addr)];
+}</code></pre>
+<p>这是因为 <code>bm_pte</code> 数组既是页表本身（MMU 硬件通过物理地址访问），又是内核可直接寻址的 BSS 变量（CPU 通过虚拟地址访问）。两者指向同一块物理内存。</p>
+<p>---</p>
+<section>
+<h3>10. 第一个使用者：fixmap_remap_fdt()</h3>
+</section>
+<pre><code>void *__init fixmap_remap_fdt(phys_addr_t dt_phys, int *size, pgprot_t prot)
+{
+    const u64 dt_virt_base = __fix_to_virt(FIX_FDT);  // FDT 的 fixmap 虚拟地址
+
+    // 1. 映射第一页，读取 FDT header
+    create_mapping_noalloc(dt_phys_base, dt_virt_base, PAGE_SIZE, prot);
+    // → 内部调用 __set_fixmap() 填充 bm_pte 中对应的 PTE
+
+    // 2. 验证 FDT magic，获取 size
+    *size = fdt_totalsize(dt_virt);
+
+    // 3. 如果 FDT 跨页，映射剩余页
+    create_mapping_noalloc(dt_phys_base, dt_virt_base, offset + *size, prot);
+
+    return dt_virt;  // 返回 fixmap 空间中的虚拟地址
+}</code></pre>
+<p>此时通过 fixmap 窗口（<code>FIX_FDT_END ~ FIX_FDT</code>）可以访问设备树，而不需要完整的 linear map。</p>
+<p>---</p>
+<section>
+<h3>11. 总结</h3>
+</section>
+<table>
+<tr><th>要点</th><th>说明</th></tr>
+<tr><td><strong>目的</strong></td><td>在 swapper_pg_dir 中建立 fixmap 区域的 4 级页表骨架</td></tr>
+<tr><td><strong>写入的描述符</strong></td><td>5 个 (1 PGD + 1 PUD + 3 PMD)，全是 TABLE 描述符</td></tr>
+<tr><td><strong>PTE 层</strong></td><td>全部保持为 0，由 <code>__set_fixmap()</code> 按需填充</td></tr>
+<tr><td><strong>页表存储</strong></td><td>PGD 在 linker script 分配区(.text 后)；PUD/PMD/PTE 在 BSS 段的静态数组</td></tr>
+<tr><td><strong>地址转换</strong></td><td>只用 <code>__pa_symbol()</code> + <code>*_offset_kimg()</code>，不用 <code>virt_to_phys()</code></td></tr>
+<tr><td><strong>不用 virt_to_phys 的原因</strong></td><td>linear map 还没建立，只有 kimage_voffset 可用</td></tr>
+<tr><td><strong>调用时机</strong></td><td><code>setup_arch()</code> 早期，在 paging_init() 之前</td></tr>
+<tr><td><strong>第一个使用者</strong></td><td><code>fixmap_remap_fdt()</code> — 映射设备树</td></tr>
+<tr><td><strong>特殊情况</strong></td><td>16K 页下 kernel 和 fixmap 可能共享 PGD 条目</td></tr>
+</table>
+<p>---</p>
+<section>
+<h3>12. 源码索引</h3>
+</section>
+<table>
+<tr><th>文件</th><th>行号</th><th>内容</th></tr>
+<tr><td><code>arch/arm64/mm/fixmap.c:104-113</code></td><td><code>early_fixmap_init()</code></td><td>入口函数</td></tr>
+<tr><td><code>arch/arm64/mm/fixmap.c:79-101</code></td><td><code>early_fixmap_init_pud()</code></td><td>PUD 层：填充 PGD→PUD，调用 PMD</td></tr>
+<tr><td><code>arch/arm64/mm/fixmap.c:57-73</code></td><td><code>early_fixmap_init_pmd()</code></td><td>PMD 层：填充 PUD→PMD，循环调用 PTE</td></tr>
+<tr><td><code>arch/arm64/mm/fixmap.c:43-53</code></td><td><code>early_fixmap_init_pte()</code></td><td>PTE 层：填充 PMD→PTE</td></tr>
+<tr><td><code>arch/arm64/mm/fixmap.c:34-37</code></td><td><code>bm_pte/pmd/pud</code></td><td>静态 BSS 页表数组定义</td></tr>
+<tr><td><code>arch/arm64/mm/fixmap.c:117-131</code></td><td><code>__set_fixmap()</code></td><td>运行时填充/清除单个 PTE</td></tr>
+<tr><td><code>arch/arm64/mm/fixmap.c:133-168</code></td><td><code>fixmap_remap_fdt()</code></td><td>映射设备树</td></tr>
+<tr><td><code>arch/arm64/include/asm/fixmap.h:34-89</code></td><td><code>enum fixed_addresses</code></td><td>fixmap 槽位定义</td></tr>
+<tr><td><code>arch/arm64/include/asm/fixmap.h:93-96</code></td><td><code>FIXADDR_*</code> 宏</td><td>fixmap 地址范围</td></tr>
+<tr><td><code>arch/arm64/include/asm/memory.h:54</code></td><td><code>FIXADDR_TOP</code></td><td><code>-UL(SZ_8M)</code></td></tr>
+<tr><td><code>arch/arm64/include/asm/pgtable.h:1223</code></td><td><code>p4d_offset_kimg()</code></td><td>4 级折叠版（返回 pgdp）</td></tr>
+<tr><td><code>arch/arm64/include/asm/pgtable.h:1081</code></td><td><code>pud_offset_kimg()</code></td><td>PUD 查找（kimg 版）</td></tr>
+<tr><td><code>arch/arm64/include/asm/pgtable.h:958</code></td><td><code>pmd_offset_kimg()</code></td><td>PMD 查找（kimg 版）</td></tr>
+<tr><td><code>arch/arm64/include/asm/memory.h:354</code></td><td><code>__phys_to_kimg()</code></td><td><code>PA + kimage_voffset → VA</code></td></tr>
+<tr><td><code>arch/arm64/include/asm/memory.h:341</code></td><td><code>__kimg_to_phys()</code></td><td><code>VA - kimage_voffset → PA</code></td></tr>
+<tr><td><code>arch/arm64/mm/mmu.c:54</code></td><td><code>kimage_voffset</code></td><td>定义（<code>__ro_after_init</code>）</td></tr>
+<tr><td><code>arch/arm64/kernel/head.S:233-235</code></td><td><code>kimage_voffset</code> 赋值</td><td><code>__primary_switched</code> 中</td></tr>
+<tr><td><code>arch/arm64/kernel/vmlinux.lds.S:235</code></td><td><code>swapper_pg_dir</code></td><td>linker script 分配位置</td></tr>
+<tr><td><code>include/linux/linkage.h:40</code></td><td><code>__page_aligned_bss</code></td><td><code>→ .bss..page_aligned</code></td></tr>
+<tr><td><code>include/asm-generic/vmlinux.lds.h:771</code></td><td>BSS 布局</td><td><code>*(.bss..page_aligned)</code></td></tr>
+</table>
+</main>
+</div></div>
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>

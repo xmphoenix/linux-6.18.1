@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 Linux 恒等映射与 MMU 开启：关键细节与设计总结</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease; overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; height: 100%; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 2px 0; border-radius: 3px; white-space: nowrap; font-size: 0.9em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); }
+.sidebar a.sub { padding-left: 16px; font-size: 0.85em; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin: 20px 0 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目录</h4>
+<a href="#arm64-linux-恒等映射与-mmu-开启-关键细节与设计总结" class="">ARM64 Linux 恒等映射与 MMU 开启：关键细节与设计总结</a>
+<a href="#一-问题的根源" class="sub">一、问题的根源</a>
+<a href="#二-解决方案-两张页表同时生效" class="sub">二、解决方案：两张页表同时生效</a>
+<a href="#三-恒等映射的本质" class="sub">三、恒等映射的本质</a>
+<a href="#恒等映射中的-虚拟地址-到底是什么值" class="sub2">恒等映射中的"虚拟地址"到底是什么值？</a>
+<a href="#四-关键执行流程" class="sub">四、关键执行流程</a>
+<a href="#对应源码位置" class="sub2">对应源码位置</a>
+<a href="#五-两种关键寻址方式" class="sub">五、两种关键寻址方式</a>
+<a href="#adrp----pc-相对寻址" class="sub2">`adrp` — PC 相对寻址</a>
+<a href="#ldr------字面量池加载" class="sub2">`ldr =` — 字面量池加载</a>
+<a href="#对应-objdump-验证" class="sub2">对应 objdump 验证</a>
+<a href="#六-恒等映射的页表结构" class="sub">六、恒等映射的页表结构</a>
+<a href="#页表分配机制" class="sub2">页表分配机制</a>
+<a href="#映射类型" class="sub2">映射类型</a>
+<a href="#预留空间" class="sub2">预留空间</a>
+<a href="#七----pi---前缀-位置无关代码" class="sub">七、`__pi_` 前缀：位置无关代码</a>
+<a href="#生成机制" class="sub2">生成机制</a>
+<a href="#arch-arm64-kernel-pi-makefile" class="">arch/arm64/kernel/pi/Makefile</a>
+<a href="#编译选项" class="sub2">编译选项</a>
+<a href="#设计目的" class="sub2">设计目的</a>
+<a href="#八-为什么这样设计" class="sub">八、为什么这样设计</a>
+<a href="#1--为什么不能直接跳到虚拟地址开-mmu" class="sub2">1. 为什么不能直接跳到虚拟地址开 MMU？</a>
+<a href="#2--为什么用-ttbr0-放恒等映射" class="sub2">2. 为什么用 TTBR0 放恒等映射？</a>
+<a href="#3--为什么恒等映射用-2mb-段映射" class="sub2">3. 为什么恒等映射用 2MB 段映射？</a>
+<a href="#4--为什么恒等映射是临时的" class="sub2">4. 为什么恒等映射是临时的？</a>
+<a href="#5--为什么用----pi---前缀的位置无关代码" class="sub2">5. 为什么用 `__pi_` 前缀的位置无关代码？</a>
+<a href="#九-一句话总结" class="sub">九、一句话总结</a>
+</div>
+</nav>
+<div class="main-content">
+<header><h1>ARM64 Linux 恒等映射与 MMU 开启：关键细节与设计总结</h1></header>
+<main>
+<p>> 基于 Linux 6.18.1，arch/arm64</p>
+<p>---</p>
+<section>
+<h3>一、问题的根源</h3>
+</section>
+<p>ARM64 内核链接在高虚拟地址（如 <code>0xffff_8000_8000_0000</code>），但 bootloader 加载到的是低物理地址（如 <code>0x4020_0000</code>）。MMU 开启前 PC 是物理地址，开启后 CPU 立刻用 PC 值查页表。<strong>这中间存在一个断裂点</strong>——如果页表中只有虚拟地址映射，PC 的物理地址值查不到，CPU 立即 fault。</p>
+<p>---</p>
+<section>
+<h3>二、解决方案：两张页表同时生效</h3>
+</section>
+<p>ARM64 硬件将虚拟地址空间一分为二，<strong>由地址 bit[55] 决定查哪张页表</strong>：</p>
+<table>
+<tr><th>地址范围</th><th>bit[55]</th><th>页表寄存器</th><th>用途</th></tr>
+<tr><td><code>0x0000_xxxx_xxxx_xxxx</code></td><td>0</td><td>TTBR0_EL1</td><td>恒等映射（identity map） / 用户空间</td></tr>
+<tr><td><code>0xffff_xxxx_xxxx_xxxx</code></td><td>1</td><td>TTBR1_EL1</td><td>内核映射（kernel map）</td></tr>
+</table>
+<p>这是<strong>硬件自动选择</strong>，不需要软件切换。两张页表从 MMU 开启那一刻起同时存在。</p>
+<p>---</p>
+<section>
+<h3>三、恒等映射的本质</h3>
+</section>
+<p>恒等映射就是：<strong>虚拟地址 = 物理地址</strong>。</p>
+<pre><code>页表内容：VA 0x4020_0000 → PA 0x4020_0000</code></pre>
+<p>它的唯一目的：让<strong>开启 MMU 前后 PC 值都能在页表中找到</strong>。因为 PC 在 MMU 开启前是物理地址，开启后 CPU 拿同一个值去查页表，恒等映射保证查得到。</p>
+<section>
+<h4>恒等映射中的"虚拟地址"到底是什么值？</h4>
+</section>
+<p><strong>是物理地址。</strong> 此时 MMU 关闭，所有符号通过 PC 相对寻址获取，PC 是物理地址，所以算出的值也是物理地址。恒等映射里 VA 和 PA 在数值上完全相同，都等于内核在内存中的实际加载地址。</p>
+<p>---</p>
+<section>
+<h3>四、关键执行流程</h3>
+</section>
+<pre><code>┌────────────────────────────────────────────────────────────────────┐
+│ ① create_init_idmap()                                              │
+│    建恒等映射页表：VA=PA                                             │
+│    代码段: 0x4020_0000 → 0x4020_0000 (ROX)                         │
+│    数据段: 0x4090_0000 → 0x4090_0000 (RW)                          │
+│    使用 2MB 段映射（PMD block descriptor）                           │
+│    页表存在 init_idmap_pg_dir                                       │
+├────────────────────────────────────────────────────────────────────┤
+│ ② __pi_early_map_kernel()                                          │
+│    建内核映射页表：高虚拟地址 → 物理地址                               │
+│    0xffff_8000_8xxx → 0x4020_xxxx                                   │
+│    页表存在 init_pg_dir                                             │
+├────────────────────────────────────────────────────────────────────┤
+│ ③ __enable_mmu()                                                   │
+│    TTBR0 ← init_idmap_pg_dir （恒等映射）                           │
+│    TTBR1 ← init_pg_dir       （内核映射）                           │
+│    写 SCTLR_EL1.M = 1        （MMU 开启！）                         │
+│                                                                     │
+│    此刻 PC = 0x4020_xxxx → bit[55]=0 → 查 TTBR0 → 恒等映射 ✓      │
+├────────────────────────────────────────────────────────────────────┤
+│ ④ ldr x8, =__primary_switched  // x8 = 0xffff_8000_8146_a7f4      │
+│    br  x8                                                          │
+│                                                                     │
+│    PC 变为 0xffff... → bit[55]=1 → 查 TTBR1 → 内核映射 ✓           │
+│    从此运行在内核虚拟地址空间                                         │
+├────────────────────────────────────────────────────────────────────┤
+│ ⑤ 后续清理                                                         │
+│    TTBR0 被替换为用户进程页表                                        │
+│    init_idmap_pg_dir 内存被回收（标记为 __initdata）                 │
+└────────────────────────────────────────────────────────────────────┘</code></pre>
+<section>
+<h4>对应源码位置</h4>
+</section>
+<table>
+<tr><th>步骤</th><th>源码</th></tr>
+<tr><td>① 建恒等映射</td><td><code>arch/arm64/kernel/pi/map_range.c: create_init_idmap()</code></td></tr>
+<tr><td>② 建内核映射</td><td><code>arch/arm64/kernel/pi/map_kernel.c: __pi_early_map_kernel()</code></td></tr>
+<tr><td>③ 开启 MMU</td><td><code>arch/arm64/kernel/head.S: __enable_mmu</code> (line 459)</td></tr>
+<tr><td>④ 跳转到虚拟地址</td><td><code>arch/arm64/kernel/head.S: __primary_switch</code> (line 508)</td></tr>
+<tr><td>⑤ 内核正式启动</td><td><code>arch/arm64/kernel/head.S: __primary_switched</code> (line 220)</td></tr>
+</table>
+<p>---</p>
+<section>
+<h3>五、两种关键寻址方式</h3>
+</section>
+<p>这是整个机制能工作的编程技巧：</p>
+<table>
+<tr><th>指令</th><th>机制</th><th>MMU off 时得到</th><th>用途</th></tr>
+<tr><td><code>adrp x0, sym</code></td><td>PC + 偏移 <strong>（计算）</strong></td><td>物理地址</td><td>访问物理内存中的数据/页表</td></tr>
+<tr><td><code>ldr x8, =sym</code></td><td>从字面量池读常量 <strong>（查表）</strong></td><td>链接时虚拟地址</td><td>获取虚拟地址用于跳转到内核空间</td></tr>
+</table>
+<section>
+<h4>`adrp` — PC 相对寻址</h4>
+</section>
+<pre><code>adrp x2, __pi_init_idmap_pg_dir
+; 硬件执行: x2 = PC + 编码偏移
+; PC 是物理地址 → x2 是物理地址</code></pre>
+<p>偏移量是链接器计算的 <code>symbol - 当前指令</code> 的相对值。无论加载到哪个物理地址，PC 相对寻址都能正确找到目标。</p>
+<section>
+<h4>`ldr =` — 字面量池加载</h4>
+</section>
+<pre><code>ldr x8, =__primary_switched
+; 汇编器翻译为:
+;   ldr x8, [PC, #offset_to_pool]   // 从代码旁边读 8 字节
+;
+; 字面量池内容（链接器填入）:
+;   .quad 0xffff80008146a7f4         // __primary_switched 的链接地址</code></pre>
+<p>CPU 从内存读出一个 8 字节整数（用 PC 相对寻址找到字面量池的物理位置），读出的值是链接器写死的虚拟地址。</p>
+<section>
+<h4>对应 objdump 验证</h4>
+</section>
+<pre><code>ffff80008145b680:  ldr  x8, 0xffff80008145b698   // 从字面量池加载
+ffff80008145b688:  br   x8                        // 跳转到虚拟地址
+
+// 字面量池存储的值:
+__primary_switched = 0xffff80008146a7f4</code></pre>
+<p><code>adrp</code> 用来干活（操作物理内存），<code>ldr =</code> 用来跳转（进入虚拟地址世界）。</p>
+<p>---</p>
+<section>
+<h3>六、恒等映射的页表结构</h3>
+</section>
+<section>
+<h4>页表分配机制</h4>
+</section>
+<p>页表页不是定义在固定偏移位置的，而是 <code>map_range()</code> 递归过程中通过 <code>ptep</code> <strong>线性分配器（bump allocator）</strong> 按需分配的：</p>
+<pre><code>phys_addr_t ptep = (phys_addr_t)pg_dir + PAGE_SIZE; // 从 PGD 之后开始分配
+
+// map_range() 中每次需要新页表页时:
+if (pte_none(*tbl)) {
+    *tbl = __pte(__phys_to_pte_val(*pte) | PMD_TYPE_TABLE | PMD_TABLE_UXN);
+    *pte += PTRS_PER_PTE * sizeof(pte_t);  // ptep 前进 4KB
+}</code></pre>
+<section>
+<h4>映射类型</h4>
+</section>
+<p>在 4KB 页面 + 2MB 对齐（ARM64 boot 规范要求）的典型配置下，恒等映射使用 <strong>2MB 段映射（PMD block mapping）</strong>：</p>
+<ul>
+<li>页表只需 PGD → PUD → PMD 三级</li>
+<li>PMD 条目直接映射 2MB 物理块，不需要 PTE 级</li>
+<li>由 <code>kernel-pgtable.h</code> 中的配置决定：</li>
+</ul>
+<pre><code>// arch/arm64/include/asm/kernel-pgtable.h
+#if defined(PMD_SIZE) &amp;&amp; PMD_SIZE &lt;= MIN_KIMG_ALIGN
+#define SWAPPER_BLOCK_SHIFT   PMD_SHIFT      // 使用 2MB 段映射
+#define SWAPPER_SKIP_LEVEL    1               // 跳过 PTE 级</code></pre>
+<section>
+<h4>预留空间</h4>
+</section>
+<p>总大小由 <code>INIT_IDMAP_DIR_SIZE</code> 在链接脚本中预留：</p>
+<pre><code>// arch/arm64/include/asm/kernel-pgtable.h
+#define INIT_IDMAP_DIR_SIZE  ((INIT_IDMAP_DIR_PAGES + EARLY_IDMAP_EXTRA_PAGES) * PAGE_SIZE)
+
+// arch/arm64/kernel/vmlinux.lds.S
+__pi_init_idmap_pg_dir = .;
+. += INIT_IDMAP_DIR_SIZE;
+__pi_init_idmap_pg_end = .;</code></pre>
+<p>---</p>
+<section>
+<h3>七、`__pi_` 前缀：位置无关代码</h3>
+</section>
+<section>
+<h4>生成机制</h4>
+</section>
+<pre><code># arch/arm64/kernel/pi/Makefile
+$(obj)/%.pi.o: OBJCOPYFLAGS := --prefix-symbols=__pi_
+$(obj)/%.pi.o: $(obj)/%.o $(obj)/relacheck FORCE
+	$(call if_changed,piobjcopy)</code></pre>
+<ul>
+<li><code>map_range.c</code> 编译为 <code>map_range.o</code>（符号名：<code>create_init_idmap</code>）</li>
+<li><code>objcopy --prefix-symbols=__pi_</code> → <code>map_range.pi.o</code>（符号名：<code>__pi_create_init_idmap</code>）</li>
+</ul>
+<section>
+<h4>编译选项</h4>
+</section>
+<pre><code>KBUILD_CFLAGS := ... -fpie -Os ...
+CFLAGS_map_range.o += -mstrict-align  # MMU off 时禁止非对齐访问</code></pre>
+<section>
+<h4>设计目的</h4>
+</section>
+<ul>
+<li><code>-fpie</code> 确保所有地址引用都是 PC 相对的</li>
+<li><code>__pi_</code> 前缀避免与内核主体代码中的同名符号冲突</li>
+<li>明确标记这些符号在 MMU 关闭时可安全运行</li>
+</ul>
+<p>---</p>
+<section>
+<h3>八、为什么这样设计</h3>
+</section>
+<section>
+<h4>1. 为什么不能直接跳到虚拟地址开 MMU？</h4>
+</section>
+<p>MMU 开启是一条指令（<code>msr sctlr_el1, x0</code>），执行它时 PC 是物理地址，下一条指令 PC+4 也是物理地址。如果页表里只有虚拟地址映射，MMU 开启瞬间 CPU 就找不到下一条指令。</p>
+<section>
+<h4>2. 为什么用 TTBR0 放恒等映射？</h4>
+</section>
+<p>物理地址都是低地址（<code>0x4020_xxxx</code>，bit[55]=0），自然落在 TTBR0 管辖范围。内核虚拟地址都是高地址（<code>0xffff...</code>，bit[55]=1），落在 TTBR1。ARM64 的双页表硬件设计天然适合这个用途。</p>
+<section>
+<h4>3. 为什么恒等映射用 2MB 段映射？</h4>
+</section>
+<ul>
+<li>bootloader 保证内核加载地址 2MB 对齐</li>
+<li>段映射只需 PGD→PUD→PMD 三级，不需要 PTE 级</li>
+<li>页表页数少，分配快，内存占用小</li>
+<li>这只是临时映射，够用即可</li>
+</ul>
+<section>
+<h4>4. 为什么恒等映射是临时的？</h4>
+</section>
+<p>恒等映射占用了用户空间的虚拟地址范围（TTBR0），内核启动完成后 TTBR0 要交给用户进程使用。而且恒等映射的虚拟地址值等于物理地址，在运行时没有实际意义，纯粹是为了过渡。</p>
+<section>
+<h4>5. 为什么用 `__pi_` 前缀的位置无关代码？</h4>
+</section>
+<p>MMU 开启前，所有代码必须用 PC 相对寻址（PC 是物理地址，不是链接时虚拟地址）。<code>__pi_</code> 代码用 <code>-fpie</code> 编译，所有地址引用都是 PC 相对的，确保无论加载到哪个物理地址都能正确运行。</p>
+<p>---</p>
+<section>
+<h3>九、一句话总结</h3>
+</section>
+<p><strong>恒等映射是一座桥：让 CPU 从"物理地址世界"安全走到"虚拟地址世界"。桥的两端分别由 TTBR0 和 TTBR1 承载，跨过桥之后（<code>br x8</code> 跳到 <code>0xffff...</code>），桥就被拆掉了。</strong></p>
+</main>
+</div></div>
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>

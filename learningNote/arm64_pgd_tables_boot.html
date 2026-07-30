@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 Linux 6.18.1 — 从 head.S 到 start_kernel 的 PGD 页表全览</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease; overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; height: 100%; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 2px 0; border-radius: 3px; white-space: nowrap; font-size: 0.9em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); }
+.sidebar a.sub { padding-left: 16px; font-size: 0.85em; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin: 20px 0 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目录</h4>
+<a href="#arm64-linux-6-18-1---从-head-s-到-start-kernel-的-pgd-页表全览" class="">ARM64 Linux 6.18.1 — 从 head.S 到 start_kernel 的 PGD 页表全览</a>
+<a href="#概述" class="sub">概述</a>
+<a href="#一-链接脚本中的定义" class="sub">一、链接脚本中的定义</a>
+<a href="#rodata-text--段-只读-各-page-size---4kb" class="sub2">`.rodata.text` 段（只读，各 PAGE_SIZE = 4KB）</a>
+<a href="#init-data--段-可写-多页" class="sub2">`.init.data` 段（可写，多页）</a>
+<a href="#bss-段-零初始化-多页" class="sub2">BSS 段（零初始化，多页）</a>
+<a href="#二-6-个-pgd-详解" class="sub">二、6 个 PGD 详解</a>
+<a href="#1---init-idmap-pg-dir----启动恒等映射--ttbr0" class="sub2">1. `init_idmap_pg_dir` — 启动恒等映射 (TTBR0)</a>
+<a href="#2---reserved-pg-dir----空占位页表--ttbr1-临时---ttbr0-安全中间态" class="sub2">2. `reserved_pg_dir` — 空占位页表 (TTBR1 临时 / TTBR0 安全中间态)</a>
+<a href="#3---init-pg-dir----临时内核映射--ttbr1-过渡" class="sub2">3. `init_pg_dir` — 临时内核映射 (TTBR1 过渡)</a>
+<a href="#4---swapper-pg-dir----最终内核页表--ttbr1-永久-----init-mm-pgd" class="sub2">4. `swapper_pg_dir` — 最终内核页表 (TTBR1 永久) ← `init_mm.pgd`</a>
+<a href="#5---idmap-pg-dir----运行时恒等映射--ttbr0" class="sub2">5. `idmap_pg_dir` — 运行时恒等映射 (TTBR0)</a>
+<a href="#6---tramp-pg-dir----kpti-蹦床页表--ttbr1" class="sub2">6. `tramp_pg_dir` — KPTI 蹦床页表 (TTBR1)</a>
+<a href="#三-启动时序中-pgd-的使用顺序" class="sub">三、启动时序中 PGD 的使用顺序</a>
+<a href="#四-关键流转图" class="sub">四、关键流转图</a>
+<a href="#五--swapper-pg-dir--与--init-mm--的关系" class="sub">五、`swapper_pg_dir` 与 `init_mm` 的关系</a>
+<a href="#六-页表大小计算" class="sub">六、页表大小计算</a>
+<a href="#init-idmap-dir-size--init-idmap-pg-dir" class="sub2">`INIT_IDMAP_DIR_SIZE`（init_idmap_pg_dir）</a>
+<a href="#init-dir-size--init-pg-dir" class="sub2">`INIT_DIR_SIZE`（init_pg_dir）</a>
+<a href="#固定大小页表-各-page-size---4kb" class="sub2">固定大小页表（各 PAGE_SIZE = 4KB）</a>
+<a href="#七-ttbr-寄存器与地址选择" class="sub">七、TTBR 寄存器与地址选择</a>
+<a href="#八-运行时-ttbr-切换机制-idmap-pg-dir-的使用" class="sub">八、运行时 TTBR 切换机制（idmap_pg_dir 的使用）</a>
+<a href="#场景分类" class="sub2">场景分类</a>
+<a href="#三种场景总结" class="sub2">三种场景总结</a>
+<a href="#九--init-idmap-pg-dir--退役----idmap-pg-dir--接替的代码链" class="sub">九、`init_idmap_pg_dir` 退役 → `idmap_pg_dir` 接替的代码链</a>
+<a href="#第一步-卸载--init-idmap-pg-dir" class="sub2">第一步：卸载 `init_idmap_pg_dir`</a>
+<a href="#第二步-构建--idmap-pg-dir" class="sub2">第二步：构建 `idmap_pg_dir`</a>
+<a href="#时间线" class="sub2">时间线</a>
+<a href="#十-fixmap-页表骨架" class="sub">十、fixmap 页表骨架</a>
+<a href="#十一-内核映像-pud-pmd-pte-的分配--两阶段机制" class="sub">十一、内核映像 PUD/PMD/PTE 的分配——两阶段机制</a>
+<a href="#阶段一-早期启动-init-pg-dir----链接时预分配---指针递增" class="sub2">阶段一：早期启动（init_pg_dir）—— 链接时预分配 + 指针递增</a>
+<a href="#阶段二-paging-init------memblock-动态分配" class="sub2">阶段二：paging_init() —— memblock 动态分配</a>
+<a href="#阶段二完成后" class="sub2">阶段二完成后</a>
+<a href="#三种分配方式对比" class="sub2">三种分配方式对比</a>
+<a href="#时间线" class="sub2">时间线</a>
+<a href="#十二-代码索引" class="sub">十二、代码索引</a>
+</div>
+</nav>
+<div class="main-content">
+<header><h1>ARM64 Linux 6.18.1 — 从 head.S 到 start_kernel 的 PGD 页表全览</h1></header>
+<main>
+<section>
+<h3>概述</h3>
+</section>
+<p>ARM64 内核从启动到进入 <code>start_kernel()</code> 共使用 <strong>6 个 PGD 页表</strong>，全部在链接脚本</p>
+<p><code>arch/arm64/kernel/vmlinux.lds.S</code> 中静态分配。这些页表在启动过程中依次创建、加载、</p>
+<p>切换，最终由 <code>swapper_pg_dir</code>（即 <code>init_mm.pgd</code>）作为内核地址空间的永久页表。</p>
+<p>---</p>
+<section>
+<h3>一、链接脚本中的定义</h3>
+</section>
+<section>
+<h4>`.rodata.text` 段（只读，各 PAGE_SIZE = 4KB）</h4>
+</section>
+<pre><code>// arch/arm64/kernel/vmlinux.lds.S:223-235
+
+idmap_pg_dir       = .;  . += PAGE_SIZE;        // 运行时恒等映射
+tramp_pg_dir       = .;  . += PAGE_SIZE;        // KPTI 蹦床 (条件编译)
+reserved_pg_dir    = .;  . += PAGE_SIZE;        // 空占位
+swapper_pg_dir     = .;  . += PAGE_SIZE;        // 最终内核页表</code></pre>
+<section>
+<h4>`.init.data` 段（可写，多页）</h4>
+</section>
+<pre><code>// arch/arm64/kernel/vmlinux.lds.S:262-264
+
+__pi_init_idmap_pg_dir = .;  . += INIT_IDMAP_DIR_SIZE;
+__pi_init_idmap_pg_end = .;</code></pre>
+<section>
+<h4>BSS 段（零初始化，多页）</h4>
+</section>
+<pre><code>// arch/arm64/kernel/vmlinux.lds.S:337-340
+
+__pi_init_pg_dir = .;  . += INIT_DIR_SIZE;
+__pi_init_pg_end = .;</code></pre>
+<p>---</p>
+<section>
+<h3>二、6 个 PGD 详解</h3>
+</section>
+<section>
+<h4>1. `init_idmap_pg_dir` — 启动恒等映射 (TTBR0)</h4>
+</section>
+<table>
+<tr><th>属性</th><th>值</th></tr>
+<tr><td><strong>大小</strong></td><td><code>INIT_IDMAP_DIR_SIZE</code>（多页，含多级页表）</td></tr>
+<tr><td><strong>所在段</strong></td><td><code>.init.data</code></td></tr>
+<tr><td><strong>创建时机</strong></td><td><code>primary_entry</code> → <code>__pi_create_init_idmap()</code></td></tr>
+<tr><td><strong>加载位置</strong></td><td>TTBR0_EL1</td></tr>
+<tr><td><strong>代码位置</strong></td><td><code>arch/arm64/kernel/head.S:92</code> / <code>arch/arm64/kernel/pi/map_range.c</code></td></tr>
+</table>
+<p><strong>作用</strong>：VA=PA 恒等映射，让 MMU 开启瞬间代码地址不变。映射范围：</p>
+<ul>
+<li>内核代码段（ROX，只读可执行）</li>
+<li>内核数据段（RW，读写）</li>
+<li>FDT 设备树（RW）</li>
+</ul>
+<p><strong>退役时机</strong>：<code>setup_arch()</code> → <code>cpu_uninstall_idmap()</code> 后被 <code>idmap_pg_dir</code> 替代。</p>
+<p>---</p>
+<section>
+<h4>2. `reserved_pg_dir` — 空占位页表 (TTBR1 临时 / TTBR0 安全中间态)</h4>
+</section>
+<table>
+<tr><th>属性</th><th>值</th></tr>
+<tr><td><strong>大小</strong></td><td>PAGE_SIZE（4KB），内容全零</td></tr>
+<tr><td><strong>所在段</strong></td><td><code>.rodata.text</code></td></tr>
+<tr><td><strong>加载时机</strong></td><td><code>__primary_switch</code> → <code>__enable_mmu</code></td></tr>
+<tr><td><strong>加载位置</strong></td><td>TTBR1_EL1（启动时）/ TTBR0_EL1（运行时切换中间态）</td></tr>
+<tr><td><strong>代码位置</strong></td><td><code>arch/arm64/kernel/head.S:508</code></td></tr>
+</table>
+<p><strong>作用</strong>：</p>
+<ul>
+<li><strong>启动时</strong>：MMU 首次开启时 TTBR1 必须指向有效页表，但此时内核虚拟地址映射尚未建立，用空页表做占位</li>
+<li><strong>运行时 TTBR0 中间态</strong>：<code>cpu_uninstall_idmap()</code> / <code>cpu_install_idmap()</code> 切换 TTBR0 时，先切到 <code>reserved_pg_dir</code> 作为安全过渡</li>
+<li><strong>运行时 TTBR1 中间态</strong>：<code>idmap_cpu_replace_ttbr1</code> 替换 TTBR1 时，先切到 <code>reserved_pg_dir</code> 防止 TLB 冲突</li>
+<li><strong>SW_TTBR0_PAN</strong>：<code>init_task.thread_info.ttbr0</code> 的默认值</li>
+</ul>
+<p>---</p>
+<section>
+<h4>3. `init_pg_dir` — 临时内核映射 (TTBR1 过渡)</h4>
+</section>
+<table>
+<tr><th>属性</th><th>值</th></tr>
+<tr><td><strong>大小</strong></td><td><code>INIT_DIR_SIZE</code>（多页，BSS 段零初始化）</td></tr>
+<tr><td><strong>所在段</strong></td><td>BSS</td></tr>
+<tr><td><strong>创建时机</strong></td><td><code>__pi_early_map_kernel()</code></td></tr>
+<tr><td><strong>加载位置</strong></td><td>TTBR1_EL1</td></tr>
+<tr><td><strong>代码位置</strong></td><td><code>arch/arm64/kernel/pi/map_kernel.c:87-101</code></td></tr>
+</table>
+<p><strong>作用</strong>：临时的内核虚拟地址映射。用 <code>map_segment()</code> 逐段映射：</p>
+<pre><code>map_segment(init_pg_dir, ..., _text,           _stext,          data_prot);   // 非执行
+map_segment(init_pg_dir, ..., _stext,          _etext,          text_prot);   // 代码段
+map_segment(init_pg_dir, ..., __start_rodata,  __inittext_begin, data_prot);  // 只读数据
+map_segment(init_pg_dir, ..., __inittext_begin, __inittext_end, text_prot);   // init 代码
+map_segment(init_pg_dir, ..., __initdata_begin, __initdata_end, data_prot);   // init 数据
+map_segment(init_pg_dir, ..., _data,           _end,            data_prot);   // 数据+BSS</code></pre>
+<p><strong>与 <code>swapper_pg_dir</code> 的关系</strong>：<code>swapper_pg_dir</code> 只有 4KB（仅根级 PGD），</p>
+<p><code>memcpy(swapper_pg_dir, init_pg_dir, PAGE_SIZE)</code> 只拷贝根级 PGD 条目。</p>
+<p>子级页表（PUD/PMD/PTE）仍然位于 <code>init_pg_dir</code> 的空间中，被 <code>swapper_pg_dir</code></p>
+<p>的 PGD 条目引用。后续 <code>paging_init()</code> → <code>map_mem()</code> 会重新分配子级页表</p>
+<p>（从 memblock 分配），让 <code>swapper_pg_dir</code> 的条目指向新的页表页。</p>
+<p><strong>退役时机</strong>：<code>map_kernel.c:136</code> 中 memcpy 后弃用，<code>.init</code> 段后续被 <code>free_initmem()</code> 释放。</p>
+<p>---</p>
+<section>
+<h4>4. `swapper_pg_dir` — 最终内核页表 (TTBR1 永久) ← `init_mm.pgd`</h4>
+</section>
+<table>
+<tr><th>属性</th><th>值</th></tr>
+<tr><td><strong>大小</strong></td><td>PAGE_SIZE（4KB，仅根级 PGD）</td></tr>
+<tr><td><strong>所在段</strong></td><td><code>.rodata.text</code></td></tr>
+<tr><td><strong>生效时机</strong></td><td><code>map_kernel.c:136-138</code> memcpy + <code>idmap_cpu_replace_ttbr1()</code></td></tr>
+<tr><td><strong>加载位置</strong></td><td>TTBR1_EL1（永久）</td></tr>
+<tr><td><strong>关联</strong></td><td><code>init_mm.pgd = swapper_pg_dir</code></td></tr>
+</table>
+<p><strong>作用</strong>：<strong>内核地址空间的永久页表</strong>，这就是 <code>init_mm.pgd</code> 指向的页表。</p>
+<p><strong>生命周期</strong>：</p>
+<ul>
+<li><code>early_map_kernel()</code> 中从 <code>init_pg_dir</code> 拷贝根级 PGD 页表</li>
+<li><code>paging_init()</code> 进一步完善（添加全部物理内存映射、vmalloc 区域等）</li>
+<li>运行时所有内核线程共享，vmalloc/ioremap/kmap 等操作都修改此页表</li>
+<li>用户进程切换到内核态时，TTBR1 始终指向 <code>swapper_pg_dir</code></li>
+</ul>
+<p>---</p>
+<section>
+<h4>5. `idmap_pg_dir` — 运行时恒等映射 (TTBR0)</h4>
+</section>
+<table>
+<tr><th>属性</th><th>值</th></tr>
+<tr><td><strong>大小</strong></td><td>PAGE_SIZE（4KB 根 PGD + 静态 <code>idmap_ptes</code> 子级页表）</td></tr>
+<tr><td><strong>所在段</strong></td><td><code>.rodata.text</code></td></tr>
+<tr><td><strong>创建时机</strong></td><td><code>paging_init()</code> → <code>create_idmap()</code></td></tr>
+<tr><td><strong>加载位置</strong></td><td>TTBR0_EL1</td></tr>
+<tr><td><strong>代码位置</strong></td><td><code>arch/arm64/mm/mmu.c:1325-1349</code></td></tr>
+</table>
+<p><strong>映射范围</strong>：仅 <code>.idmap.text</code> 段（<code>__idmap_text_start</code> → <code>__idmap_text_end</code>，</p>
+<p>约 4KB 的关键函数），远小于 <code>init_idmap_pg_dir</code>（映射整个内核+FDT）。</p>
+<p><strong>作用</strong>：运行时场景下需要恒等映射的地方（详见下文第八章 TTBR 切换机制）。</p>
+<p><strong>与 <code>init_idmap_pg_dir</code> 的对比</strong>：</p>
+<table>
+<tr><th></th><th><code>init_idmap_pg_dir</code></th><th><code>idmap_pg_dir</code></th></tr>
+<tr><td><strong>大小</strong></td><td><code>INIT_IDMAP_DIR_SIZE</code>（多页）</td><td><code>PAGE_SIZE</code> 根 + 静态 <code>idmap_ptes</code></td></tr>
+<tr><td><strong>映射内容</strong></td><td>整个内核镜像 + FDT</td><td>仅 <code>.idmap.text</code> 段 (~4KB)</td></tr>
+<tr><td><strong>所在段</strong></td><td><code>.init.data</code>（启动后释放）</td><td><code>.rodata.text</code>（永久）</td></tr>
+<tr><td><strong>创建者</strong></td><td><code>__pi_create_init_idmap()</code></td><td><code>paging_init()</code> → <code>create_idmap()</code></td></tr>
+<tr><td><strong>生命周期</strong></td><td>启动临时</td><td>永久</td></tr>
+</table>
+<p><strong>为什么不复用 <code>init_idmap_pg_dir</code></strong>：</p>
+<ul>
+<li>太大 — 映射整个内核的恒等映射在运行时完全没必要</li>
+<li>在 <code>.init.data</code> 段 — 启动完成后 <code>free_initmem()</code> 会释放其内存</li>
+<li>安全性 — 运行时恒等映射越小越好，减少攻击面</li>
+</ul>
+<p>---</p>
+<section>
+<h4>6. `tramp_pg_dir` — KPTI 蹦床页表 (TTBR1)</h4>
+</section>
+<table>
+<tr><th>属性</th><th>值</th></tr>
+<tr><td><strong>大小</strong></td><td>PAGE_SIZE（4KB）</td></tr>
+<tr><td><strong>所在段</strong></td><td><code>.rodata.text</code></td></tr>
+<tr><td><strong>条件编译</strong></td><td><code>CONFIG_UNMAP_KERNEL_AT_EL0</code>（Meltdown/KPTI 防御）</td></tr>
+<tr><td><strong>加载位置</strong></td><td>TTBR1_EL1（用户态时）</td></tr>
+</table>
+<p><strong>作用</strong>：KPTI（Kernel Page Table Isolation）的核心组件。在用户态运行时，</p>
+<p>TTBR1 指向 <code>tramp_pg_dir</code> 而非 <code>swapper_pg_dir</code>，只映射极少量的蹦床代码</p>
+<p>（entry/exit trampoline），防止用户态通过 Meltdown 攻击读取内核内存。</p>
+<p>用户态 → 内核态切换流程：</p>
+<pre><code>用户态:       TTBR1 = tramp_pg_dir    (仅映射蹦床代码)
+  ↓ 异常/中断
+蹦床代码:     TTBR1 切换为 swapper_pg_dir  (完整内核映射)
+  ↓
+内核态:       TTBR1 = swapper_pg_dir  (正常工作)</code></pre>
+<p>---</p>
+<section>
+<h3>三、启动时序中 PGD 的使用顺序</h3>
+</section>
+<pre><code>阶段    操作                              TTBR0 (低地址/恒等映射)        TTBR1 (高地址/内核)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ①  primary_entry (MMU 关)               —                              —
+ ②  create_init_idmap()                  构建 init_idmap_pg_dir          —
+ ③  __enable_mmu (MMU 开)               加载 init_idmap_pg_dir          加载 reserved_pg_dir
+ ④  early_map_kernel()                   不变                           构建 init_pg_dir → TTBR1
+ ⑤  memcpy + 切换                        不变                           init_pg_dir → swapper_pg_dir → TTBR1
+ ⑥  __primary_switched (虚拟地址)         不变                           swapper_pg_dir
+ ⑦  start_kernel → setup_arch            不变                           swapper_pg_dir
+ ⑧  cpu_uninstall_idmap()               TTBR0 → reserved_pg_dir        swapper_pg_dir
+ ⑨  paging_init()                        构建 idmap_pg_dir              完善 swapper_pg_dir</code></pre>
+<p>---</p>
+<section>
+<h3>四、关键流转图</h3>
+</section>
+<pre><code>MMU OFF                        MMU ON (恒等映射)                    MMU ON (虚拟地址)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              ┌─────────────────┐
+primary_entry │create_init_     │    __enable_mmu
+  x0 = FDT   │idmap()          │─── TTBR0 = init_idmap_pg_dir ──┐
+              └─────────────────┘    TTBR1 = reserved_pg_dir      │
+                                          │                        │
+                                          ▼                        │
+                                     early_map_kernel()            │
+                                     构建 init_pg_dir              │
+                                     TTBR1 = init_pg_dir ─────────┤
+                                          │                        │
+                                          ▼                        │
+                                     memcpy → swapper_pg_dir       │
+                                     TTBR1 = swapper_pg_dir ──────┤
+                                          │                        │
+                                          ▼                        │
+                                     ldr x8, =__primary_switched   │
+                                     br x8  ──────────────────────►│
+                                                                   ▼
+                                                        __primary_switched
+                                                        (虚拟地址空间)
+                                                                   │
+                                                                   ▼
+                                                             start_kernel()
+                                                                   │
+                                                        ┌──────────┴──────────┐
+                                                        ▼                     ▼
+                                                  setup_arch()          其他初始化
+                                                        │
+                                          ┌─────────────┼─────────────┐
+                                          ▼             ▼             ▼
+                                   cpu_uninstall_  paging_init()  init_mm.pgd
+                                   idmap()         完善 swapper   = swapper_pg_dir
+                                   TTBR0→reserved  + 建 idmap</code></pre>
+<p>---</p>
+<section>
+<h3>五、`swapper_pg_dir` 与 `init_mm` 的关系</h3>
+</section>
+<pre><code>// mm/init-mm.c
+struct mm_struct init_mm = {
+    .pgd = swapper_pg_dir,    // 指向最终内核页表
+    ...
+};</code></pre>
+<p><code>init_mm</code> 是内核地址空间的唯一 <code>mm_struct</code>：</p>
+<ul>
+<li><strong>所有内核线程</strong> 共享 <code>init_mm</code>（内核线程的 <code>active_mm = &init_mm</code>）</li>
+<li><strong>vmalloc / ioremap</strong> 在 <code>init_mm.pgd</code>（即 <code>swapper_pg_dir</code>）上操作</li>
+<li><strong>用户进程</strong> 内核态时 TTBR1 也指向 <code>swapper_pg_dir</code>，只有 TTBR0 指向各进程自己的页表</li>
+<li><strong>fork</strong> 时新进程的内核部分页表从 <code>swapper_pg_dir</code> 复制</li>
+</ul>
+<p>---</p>
+<section>
+<h3>六、页表大小计算</h3>
+</section>
+<section>
+<h4>`INIT_IDMAP_DIR_SIZE`（init_idmap_pg_dir）</h4>
+</section>
+<pre><code>// arch/arm64/include/asm/kernel-pgtable.h
+IDMAP_VA_BITS = 48
+IDMAP_LEVELS  = 4  (L0 → L3)
+覆盖范围: 内核镜像 + FDT</code></pre>
+<section>
+<h4>`INIT_DIR_SIZE`（init_pg_dir）</h4>
+</section>
+<pre><code>// arch/arm64/include/asm/kernel-pgtable.h
+覆盖范围: KIMAGE_VADDR → _end
+级数: CONFIG_PGTABLE_LEVELS (通常 4 级)
+含: 根级 PGD + 各级中间页表 + 对齐补偿页</code></pre>
+<section>
+<h4>固定大小页表（各 PAGE_SIZE = 4KB）</h4>
+</section>
+<table>
+<tr><th>页表</th><th>说明</th></tr>
+<tr><td><code>swapper_pg_dir</code></td><td>仅根级 PGD，子级页表在 <code>paging_init()</code> 时动态分配</td></tr>
+<tr><td><code>reserved_pg_dir</code></td><td>空页表，全零</td></tr>
+<tr><td><code>idmap_pg_dir</code></td><td>仅根级，子级用静态 <code>idmap_ptes</code> 数组</td></tr>
+<tr><td><code>tramp_pg_dir</code></td><td>仅映射蹦床代码</td></tr>
+</table>
+<p>---</p>
+<section>
+<h3>七、TTBR 寄存器与地址选择</h3>
+</section>
+<p>ARM64 用虚拟地址 <strong>bit[55]</strong> 选择页表寄存器：</p>
+<pre><code>虚拟地址 bit[55] = 0  →  TTBR0_EL1  →  用户空间 / 恒等映射
+虚拟地址 bit[55] = 1  →  TTBR1_EL1  →  内核空间</code></pre>
+<p>正常运行时：</p>
+<pre><code>TTBR0_EL1 = 用户进程页表 (或 reserved_pg_dir)    ← 0x0000_xxxx_xxxx_xxxx
+TTBR1_EL1 = swapper_pg_dir                       ← 0xFFFF_xxxx_xxxx_xxxx</code></pre>
+<p>恒等映射（idmap）的物理地址属于低地址范围（如 <code>0x4020_xxxx</code>），bit[55]=0，</p>
+<p>所以走 <strong>TTBR0</strong>。内核要使用恒等映射，<strong>必须切换 TTBR0</strong>。</p>
+<p>---</p>
+<section>
+<h3>八、运行时 TTBR 切换机制（idmap_pg_dir 的使用）</h3>
+</section>
+<section>
+<h4>场景分类</h4>
+</section>
+<p>运行时需要恒等映射的场景分为两大类：</p>
+<h5>场景 A：MMU 关 → 开（CPU 断电后重新上电）</h5>
+<p>此时 TTBR0/TTBR1 寄存器值已丢失，不存在"切换"，而是<strong>直接写入</strong>两个 TTBR 后开 MMU。</p>
+<p><strong>Secondary CPU 启动</strong> — <code>arch/arm64/kernel/head.S:374-378</code>：</p>
+<pre><code>    bl      __cpu_setup              // 配置 MAIR/TCR/SCTLR
+    adrp    x1, swapper_pg_dir       // x1 → TTBR1
+    adrp    x2, idmap_pg_dir         // x2 → TTBR0
+    bl      __enable_mmu             // 写入两个 TTBR，开 MMU
+    ldr     x8, =__secondary_switched
+    br      x8                       // 跳到内核虚拟地址</code></pre>
+<p><strong>CPU suspend/resume</strong> — <code>arch/arm64/kernel/sleep.S:107-113</code>：</p>
+<pre><code>SYM_CODE_START(cpu_resume)
+    bl      init_kernel_el
+    bl      __cpu_setup              // CPU 断电后所有寄存器丢失，重新配置
+    adrp    x1, swapper_pg_dir       // x1 → TTBR1
+    adrp    x2, idmap_pg_dir         // x2 → TTBR0
+    bl      __enable_mmu             // 写入两个 TTBR，开 MMU
+    ldr     x8, =_cpu_resume
+    br      x8                       // 跳到内核虚拟地址</code></pre>
+<p>执行时序：</p>
+<pre><code>① CPU 醒来，MMU 关，TTBR0/TTBR1 无意义
+   PC = 物理地址
+
+② __cpu_setup: 配置 TCR、MAIR，准备 SCTLR 值（MMU 仍关）
+
+③ __enable_mmu:
+   msr ttbr0_el1, x2     → TTBR0 = idmap_pg_dir
+   msr ttbr1_el1, x1     → TTBR1 = swapper_pg_dir
+   msr sctlr_el1, x0     → 开 MMU
+
+   PC 仍是物理地址 → bit[55]=0 → TTBR0 → idmap_pg_dir (VA=PA) ✓
+
+④ ldr x8, =_cpu_resume   → x8 = 内核虚拟地址 (0xFFFF...)
+   br x8                  → bit[55]=1 → TTBR1 → swapper_pg_dir ✓</code></pre>
+<p><strong>关键</strong>：这与首次启动 <code>__primary_switch</code> 的流程完全一样 — 从 MMU 关</p>
+<p>→ 同时装入两个 TTBR → 开 MMU → 恒等映射中短暂执行 → 跳到内核虚拟地址。</p>
+<h5>场景 B：MMU 已开，需要替换 TTBR1（在线切换内核页表）</h5>
+<p>当 MMU 已经开着，需要替换 TTBR1 指向的内核页表时，必须切换 TTBR0 到恒等映射，</p>
+<p>在恒等映射中执行替换代码。因为：</p>
+<ul>
+<li>当前代码运行在 TTBR1 映射的内核虚拟地址上</li>
+<li>如果直接修改 TTBR1，下一条指令的页表映射可能消失 → fault</li>
+</ul>
+<p><strong>安装恒等映射</strong> — <code>arch/arm64/include/asm/mmu_context.h:112-120</code>：</p>
+<pre><code>static inline void cpu_install_idmap(void)
+{
+    cpu_set_reserved_ttbr0();          // TTBR0 → reserved_pg_dir (安全中间态)
+    local_flush_tlb_all();             // 清 TLB
+    cpu_set_idmap_tcr_t0sz();          // 调整 TCR.T0SZ 适配恒等映射
+
+    cpu_switch_mm(lm_alias(idmap_pg_dir), &amp;init_mm);  // TTBR0 → idmap_pg_dir
+}</code></pre>
+<p><strong>替换 TTBR1</strong> — <code>arch/arm64/mm/proc.S:179-187</code>（在 <code>.idmap.text</code> 段中）：</p>
+<pre><code>SYM_TYPED_FUNC_START(idmap_cpu_replace_ttbr1)
+    __idmap_cpu_set_reserved_ttbr1 x1, x3   // TTBR1 → reserved_pg_dir + 清 TLB
+    offset_ttbr1 x0, x3
+    msr     ttbr1_el1, x0                   // TTBR1 → 新页表
+    isb
+    ret
+SYM_FUNC_END(idmap_cpu_replace_ttbr1)</code></pre>
+<p><strong>卸载恒等映射</strong> — <code>arch/arm64/include/asm/mmu_context.h:100-110</code>：</p>
+<pre><code>static inline void cpu_uninstall_idmap(void)
+{
+    cpu_set_reserved_ttbr0();          // TTBR0 → reserved_pg_dir
+    local_flush_tlb_all();
+    cpu_set_default_tcr_t0sz();        // 恢复 TCR.T0SZ
+    if (mm != &amp;init_mm &amp;&amp; ...)
+        cpu_switch_mm(mm-&gt;pgd, mm);    // TTBR0 → 用户页表
+}</code></pre>
+<p><strong>完整时序</strong>：</p>
+<pre><code>                    TTBR0                          TTBR1
+                    ─────                          ─────
+初始:               用户页表/reserved               swapper_pg_dir (旧)
+                                                    ↑ 内核代码在此执行
+
+① cpu_install_idmap()
+   TTBR0 切换:      → reserved → idmap_pg_dir      swapper_pg_dir (旧)
+                      ↑ 恒等映射可用
+
+② 调用 idmap_cpu_replace_ttbr1 (.idmap.text 段, VA=PA)
+   CPU 通过 TTBR0:   idmap_pg_dir                  reserved → 新页表
+                      ↑ 代码在此执行，不受 TTBR1 影响
+
+③ 返回，跳回内核虚拟地址 (0xFFFF..., bit[55]=1)
+                      idmap_pg_dir                  swapper_pg_dir (新)
+                                                    ↑ 代码回到此执行
+
+④ cpu_uninstall_idmap()
+   TTBR0 切回:       → reserved → 用户页表          swapper_pg_dir (新)</code></pre>
+<section>
+<h4>三种场景总结</h4>
+</section>
+<table>
+<tr><th>场景</th><th>MMU 状态</th><th>操作</th><th>代码位置</th></tr>
+<tr><td><strong>首次启动</strong></td><td>关 → 开</td><td>直接写 TTBR0=init_idmap + TTBR1=reserved，开 MMU</td><td><code>head.S:508-510</code></td></tr>
+<tr><td><strong>Secondary CPU / resume</strong></td><td>关 → 开</td><td>直接写 TTBR0=idmap + TTBR1=swapper，开 MMU</td><td><code>head.S:374-377</code> / <code>sleep.S:107-110</code></td></tr>
+<tr><td><strong>运行时切换 TTBR1</strong></td><td>已开</td><td>先切 TTBR0→idmap，在恒等映射中改 TTBR1，再切回</td><td><code>proc.S:179-187</code></td></tr>
+</table>
+<p>前两种<strong>不需要"切换"TTBR</strong>（MMU 关着，寄存器值已丢失，直接写入即可）。</p>
+<p>只有第三种才是真正的"在 MMU 开着的情况下替换正在使用的 TTBR1"，需要 idmap 作为安全跳板。</p>
+<p>---</p>
+<section>
+<h3>九、`init_idmap_pg_dir` 退役 → `idmap_pg_dir` 接替的代码链</h3>
+</section>
+<section>
+<h4>第一步：卸载 `init_idmap_pg_dir`</h4>
+</section>
+<p><code>setup_arch()</code> 中（<code>arch/arm64/kernel/setup.c:317-321</code>）：</p>
+<pre><code>    /* TTBR0 is only used for the identity mapping at this stage.
+     * Make it point to zero page to avoid speculatively fetching new entries. */
+    cpu_uninstall_idmap();</code></pre>
+<p>此时 TTBR0 从 <code>init_idmap_pg_dir</code> → <code>reserved_pg_dir</code>（空页表），</p>
+<p><code>init_idmap_pg_dir</code> 不再被任何 TTBR 引用。</p>
+<section>
+<h4>第二步：构建 `idmap_pg_dir`</h4>
+</section>
+<p><code>paging_init()</code> 中（<code>arch/arm64/mm/mmu.c:1350-1362</code>）：</p>
+<pre><code>void __init paging_init(void)
+{
+    map_mem(swapper_pg_dir);     // 完善 swapper_pg_dir
+    memblock_allow_resize();
+    create_idmap();              // ← 构建运行时 idmap_pg_dir
+    declare_kernel_vmas();
+}</code></pre>
+<p><code>create_idmap()</code>（<code>arch/arm64/mm/mmu.c:1325-1349</code>）：</p>
+<pre><code>static u8 idmap_ptes[IDMAP_LEVELS - 1][PAGE_SIZE]
+    __aligned(PAGE_SIZE) __ro_after_init;   // 静态子级页表，初始化后只读
+
+static void __init create_idmap(void)
+{
+    phys_addr_t start = __pa_symbol(__idmap_text_start);
+    phys_addr_t end   = __pa_symbol(__idmap_text_end);
+    phys_addr_t ptep  = __pa_symbol(idmap_ptes);
+
+    __pi_map_range(&amp;ptep, start, end, start, PAGE_KERNEL_ROX,
+                   IDMAP_ROOT_LEVEL, (pte_t *)idmap_pg_dir, false,
+                   __phys_to_virt(ptep) - ptep);
+}</code></pre>
+<section>
+<h4>时间线</h4>
+</section>
+<pre><code>setup_arch()
+    │
+    ├── [setup.c:321]  cpu_uninstall_idmap()
+    │       TTBR0: init_idmap_pg_dir → reserved_pg_dir (空)
+    │       ← init_idmap_pg_dir 正式退役
+    │
+    ├── ... (efi_init, arm64_memblock_init 等)
+    │
+    └── [setup.c:333]  paging_init()
+            │
+            ├── map_mem(swapper_pg_dir)    // 完善内核页表
+            │
+            └── create_idmap()             // [mmu.c:1325]
+                    idmap_pg_dir ← 映射 .idmap.text (VA=PA, ROX)
+                    ← idmap_pg_dir 正式就绪</code></pre>
+<p>---</p>
+<section>
+<h3>十、fixmap 页表骨架</h3>
+</section>
+<p><code>setup_arch()</code> 最早期调用 <code>early_fixmap_init()</code>（<code>arch/arm64/mm/fixmap.c:104-113</code>），</p>
+<p>在 <code>swapper_pg_dir</code> 中为 fixmap 区域搭建页表骨架：</p>
+<pre><code>swapper_pg_dir (init_mm.pgd)
+    └── PGD[fixmap 条目]
+         └── P4D → bm_pud[]          (静态 BSS)
+                    └── PUD → bm_pmd[]      (静态 BSS)
+                               ├── PMD[0] → bm_pte[0][]  (全零，等待 __set_fixmap 填入)
+                               └── PMD[1] → bm_pte[1][]  (全零)</code></pre>
+<p>页表骨架用静态 BSS 数组（<code>bm_pud</code>、<code>bm_pmd</code>、<code>bm_pte</code>），无需内存分配器。</p>
+<p>PTE 条目全零，后续 <code>__set_fixmap(idx, phys, prot)</code> 按需填入。</p>
+<p>首个使用者：<code>setup_machine_fdt()</code> → <code>fixmap_remap_fdt()</code> — 通过 fixmap 映射 FDT 设备树。</p>
+<p>---</p>
+<section>
+<h3>十一、内核映像 PUD/PMD/PTE 的分配——两阶段机制</h3>
+</section>
+<p>PGD 是固定的 512 个条目（4KB 页），由链接脚本静态分配。但 PGD 指向的 **子级页表</p>
+<p>（PUD/PMD/PTE）<strong> 是怎么来的？答案是分 </strong>两个阶段**，机制完全不同。</p>
+<section>
+<h4>阶段一：早期启动（init_pg_dir）—— 链接时预分配 + 指针递增</h4>
+</section>
+<p><code>init_pg_dir</code> 在链接脚本中预留了一段<strong>连续空间</strong>，大小由宏 <code>INIT_DIR_SIZE</code> 在</p>
+<p>编译时精确计算（覆盖整个内核映像需要多少页表页）。</p>
+<p>在此 vmlinux 中实测 = <strong>13 页（52KB）</strong>：</p>
+<pre><code>vmlinux.lds.S:337-339:
+    __pi_init_pg_dir = .;       ← 0xffff_8000_8231_5000
+    . += INIT_DIR_SIZE;         ← 13 × 4KB = 52KB
+    __pi_init_pg_end = .;       ← 0xffff_8000_8232_2000</code></pre>
+<p>布局：</p>
+<pre><code>init_pg_dir 空间 (13 页连续, BSS 段)
+┌──────────────┐ +0x0000  (第 1 页)
+│  PGD root    │ ← 512 个条目，后来 memcpy 到 swapper_pg_dir
+├──────────────┤ +0x1000  (第 2 页)
+│  PUD         │ ← PGD 条目指向这里
+├──────────────┤ +0x2000  (第 3 页)
+│  PMD         │ ← PUD 条目指向这里
+├──────────────┤ +0x3000
+│  PMD         │ ← 不同 segment 可能需要多个 PMD 页
+├──────────────┤
+│    ...       │ ← 按 map_segment() 调用顺序线性排列
+├──────────────┤ +0xC000  (第 13 页)
+│  (最后一页)   │
+└──────────────┘ +0xD000</code></pre>
+<p><strong>分配方法</strong>：没有任何分配器，就是一个物理地址指针在连续空间里递增。</p>
+<pre><code>// arch/arm64/kernel/pi/map_kernel.c:43
+phys_addr_t pgdp = (phys_addr_t)init_pg_dir + PAGE_SIZE;  // 跳过 PGD，从第 2 页开始
+map_segment(init_pg_dir, &amp;pgdp, ...);  // 每次传入 &amp;pgdp
+map_segment(init_pg_dir, &amp;pgdp, ...);  // pgdp 不断递增</code></pre>
+<p>在 <code>map_range()</code> 递归中，每需要一个新子表就从当前位置取一页：</p>
+<pre><code>// arch/arm64/kernel/pi/map_range.c:62-65
+if (pte_none(*tbl)) {
+    *tbl = __pte(__phys_to_pte_val(*pte) | PMD_TYPE_TABLE);
+    *pte += PTRS_PER_PTE * sizeof(pte_t);   // 指针前进 4KB → "分配"下一页
+}</code></pre>
+<p><strong>INIT_DIR_SIZE</strong> 的计算（<code>arch/arm64/include/asm/kernel-pgtable.h:57-61</code>）：</p>
+<pre><code>#define EARLY_PAGES(lvls, vstart, vend, add) (1          /* PGD 根页 */
+    + EARLY_LEVEL(3, ...)   /* PUD 表需要的页数 */
+    + EARLY_LEVEL(2, ...)   /* PMD 表需要的页数 */
+    + EARLY_LEVEL(1, ...))  /* PTE 表需要的页数 (block mapping 时为 0) */
+
+#define INIT_DIR_SIZE  (PAGE_SIZE * (EARLY_PAGES(...) + EXTRA_PAGES))</code></pre>
+<p>编译器根据内核映像大小、页表级数、对齐要求，精确算出需要多少页。</p>
+<p><strong>memcpy 后的隐含关系</strong>：<code>memcpy(swapper_pg_dir, init_pg_dir, PAGE_SIZE)</code> 只拷贝</p>
+<p>PGD 根页。PGD 描述符里的物理地址仍然指向 <code>init_pg_dir</code> 空间内的 PUD/PMD 页。</p>
+<p>此时 <code>swapper_pg_dir</code> 的 PGD 是"自己的"，但子级页表是"借用" <code>init_pg_dir</code> 的。</p>
+<section>
+<h4>阶段二：paging_init() —— memblock 动态分配</h4>
+</section>
+<p><code>paging_init()</code> → <code>map_mem()</code> 重建 <code>swapper_pg_dir</code> 的完整映射（覆盖全部物理内存的</p>
+<p>linear map + 内核映像映射），此时用 <strong>memblock 分配器</strong> 为每一级页表动态分配新页：</p>
+<pre><code>// arch/arm64/mm/mmu.c:115-125
+static phys_addr_t __init early_pgtable_alloc(enum pgtable_type pgtable_type)
+{
+    phys = memblock_phys_alloc_range(PAGE_SIZE, PAGE_SIZE, 0,
+                                     MEMBLOCK_ALLOC_NOLEAKTRACE);
+    if (!phys)
+        panic("Failed to allocate page table page\n");
+    return phys;   // 返回物理地址
+}</code></pre>
+<p>调用链：</p>
+<pre><code>paging_init()                                     [mmu.c:1351]
+  └─ map_mem(swapper_pg_dir)                      [mmu.c:1071]
+     └─ __create_pgd_mapping(..., early_pgtable_alloc, ...)
+        └─ alloc_init_p4d()                       [mmu.c:395]
+           ├─ pgtable_alloc(TABLE_P4D) → memblock 分配 1 页
+           └─ alloc_init_pud()                    [mmu.c:332]
+              ├─ pgtable_alloc(TABLE_PUD) → memblock 分配 1 页
+              └─ alloc_init_cont_pmd()            [mmu.c:300]
+                 ├─ pgtable_alloc(TABLE_PMD) → memblock 分配 1 页
+                 └─ alloc_init_cont_pte()         [mmu.c:197]
+                    └─ pgtable_alloc(TABLE_PTE) → memblock 分配 1 页</code></pre>
+<p><strong>巧妙之处：用 fixmap 临时窗口访问新分配的页表页</strong>。</p>
+<p>新分配的页表页可能还没有虚拟映射（linear map 正在创建中），</p>
+<p>代码通过 <code>fixmap.h</code> 中的 <code>FIX_PTE</code>/<code>FIX_PMD</code>/<code>FIX_PUD</code>/<code>FIX_P4D</code>/<code>FIX_PGD</code></p>
+<p>五个专用槽位来临时映射它们：</p>
+<pre><code>// alloc_init_cont_pte() 中 (mmu.c:210-215):
+pte_phys = pgtable_alloc(TABLE_PTE);     // memblock 分配物理页
+ptep = pte_set_fixmap(pte_phys);         // 通过 fixmap 映射为可访问的虚拟地址
+init_clear_pgtable(ptep);                // 清零
+ptep += pte_index(addr);
+__pmd_populate(pmdp, pte_phys, pmdval);  // 把物理地址写入上级 PMD 描述符</code></pre>
+<p>这就是 <strong>fixmap 中 <code>FIX_PTE</code>/<code>FIX_PMD</code>/<code>FIX_PUD</code> 槽位存在的原因</strong> ——</p>
+<p>它们不是给用户用的，而是给 <code>paging_init()</code> 在创建页表时临时映射新页表页用的。</p>
+<section>
+<h4>阶段二完成后</h4>
+</section>
+<p><code>paging_init()</code> 完成后，<code>swapper_pg_dir</code> 的 <strong>所有子级页表都由 memblock 新分配</strong>，</p>
+<p>不再引用 <code>init_pg_dir</code> 空间内的任何页。<code>init_pg_dir</code> 空间（BSS 段末尾）以及</p>
+<p><code>init_idmap_pg_dir</code> 空间（<code>.init.data</code> 段）后来都被 <code>free_initmem()</code> 释放为可用内存。</p>
+<section>
+<h4>三种分配方式对比</h4>
+</section>
+<table>
+<tr><th></th><th>fixmap 页表</th><th>init_pg_dir (阶段一)</th><th>paging_init (阶段二)</th></tr>
+<tr><td><strong>PGD</strong></td><td>linker script (<code>.rodata</code>)</td><td>linker script (BSS)</td><td>复用 swapper_pg_dir</td></tr>
+<tr><td><strong>PUD/PMD/PTE</strong></td><td>静态 BSS 数组 (<code>bm_*</code>)</td><td>init_pg_dir 连续空间内指针递增</td><td>memblock 动态分配</td></tr>
+<tr><td><strong>分配器</strong></td><td>无（编译时）</td><td>无（链接时预计算大小）</td><td><code>memblock_phys_alloc_range()</code></td></tr>
+<tr><td><strong>位置</strong></td><td>固定（BSS 段内）</td><td>固定（BSS 段末尾连续 13 页）</td><td>散布在物理内存各处</td></tr>
+<tr><td><strong>访问方式</strong></td><td>直接用 kimg 虚拟地址</td><td>通过 va_offset 偏移计算</td><td>通过 fixmap 临时窗口</td></tr>
+<tr><td><strong>生命周期</strong></td><td>永久</td><td>临时（paging_init 后废弃，free_initmem 释放）</td><td>永久</td></tr>
+<tr><td><strong>为何如此</strong></td><td>太早，无任何分配器</td><td>太早，无 memblock</td><td>memblock 已可用</td></tr>
+</table>
+<section>
+<h4>时间线</h4>
+</section>
+<pre><code>阶段    swapper_pg_dir 子级页表来源        分配方式
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ①  memcpy 后                             PUD/PMD 在 init_pg_dir 空间
+                                           (指针递增，无分配器)
+
+ ②  early_fixmap_init()                   fixmap 的 bm_pud/pmd/pte
+                                           (BSS 静态数组)
+
+ ③  paging_init → map_mem()               全部 PUD/PMD/PTE 由 memblock 新分配
+                                           (通过 fixmap 临时窗口初始化)
+                                           → init_pg_dir 空间中的旧表被废弃
+
+ ④  free_initmem()                         init_pg_dir 空间归还为可用内存</code></pre>
+<p>---</p>
+<section>
+<h3>十二、代码索引</h3>
+</section>
+<table>
+<tr><th>文件</th><th>关键内容</th></tr>
+<tr><td><code>arch/arm64/kernel/vmlinux.lds.S:223-264,337-340</code></td><td>所有 PGD 的链接脚本分配</td></tr>
+<tr><td><code>arch/arm64/kernel/head.S:85-100</code></td><td><code>primary_entry</code> → 创建 <code>init_idmap_pg_dir</code></td></tr>
+<tr><td><code>arch/arm64/kernel/head.S:374-378</code></td><td><code>secondary_startup</code> → 加载 <code>idmap_pg_dir</code> + <code>swapper_pg_dir</code>，开 MMU</td></tr>
+<tr><td><code>arch/arm64/kernel/head.S:508-523</code></td><td><code>__primary_switch</code> → 加载 TTBR0/TTBR1，开启 MMU</td></tr>
+<tr><td><code>arch/arm64/kernel/sleep.S:107-113</code></td><td><code>cpu_resume</code> → 加载 <code>idmap_pg_dir</code> + <code>swapper_pg_dir</code>，开 MMU</td></tr>
+<tr><td><code>arch/arm64/kernel/pi/map_range.c</code></td><td><code>create_init_idmap()</code> + <code>map_range()</code> 递归建表</td></tr>
+<tr><td><code>arch/arm64/kernel/pi/map_kernel.c:60-138</code></td><td><code>early_map_kernel()</code> → 构建 <code>init_pg_dir</code> → 拷贝到 <code>swapper_pg_dir</code></td></tr>
+<tr><td><code>arch/arm64/mm/proc.S:160-188</code></td><td><code>__idmap_cpu_set_reserved_ttbr1</code> + <code>idmap_cpu_replace_ttbr1</code></td></tr>
+<tr><td><code>arch/arm64/mm/mmu.c:1325-1362</code></td><td><code>create_idmap()</code> + <code>paging_init()</code></td></tr>
+<tr><td><code>arch/arm64/mm/fixmap.c:104-113</code></td><td><code>early_fixmap_init()</code> — fixmap 页表骨架</td></tr>
+<tr><td><code>arch/arm64/include/asm/mmu_context.h:100-120</code></td><td><code>cpu_uninstall_idmap()</code> / <code>cpu_install_idmap()</code></td></tr>
+<tr><td><code>arch/arm64/include/asm/mmu_context.h:43-54</code></td><td><code>cpu_set_reserved_ttbr0()</code></td></tr>
+<tr><td><code>arch/arm64/kernel/setup.c:287-333</code></td><td><code>setup_arch()</code> → fixmap → uninstall idmap → paging_init</td></tr>
+<tr><td><code>mm/init-mm.c:36</code></td><td><code>init_mm.pgd = swapper_pg_dir</code></td></tr>
+<tr><td><code>arch/arm64/include/asm/kernel-pgtable.h</code></td><td>PGD 大小宏定义</td></tr>
+</table>
+</main>
+</div></div>
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>

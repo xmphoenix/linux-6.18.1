@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 内核内存映射与 memblock 初始化</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease; overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; height: 100%; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 2px 0; border-radius: 3px; white-space: nowrap; font-size: 0.9em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); }
+.sidebar a.sub { padding-left: 16px; font-size: 0.85em; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin: 20px 0 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目录</h4>
+<a href="#arm64-内核内存映射与-memblock-初始化" class="">ARM64 内核内存映射与 memblock 初始化</a>
+<a href="#目录" class="sub">目录</a>
+<a href="#1--arm64-memblock-init---函数分析" class="sub">1. arm64_memblock_init() 函数分析</a>
+<a href="#1-1-核心目的" class="sub2">1.1 核心目的</a>
+<a href="#1-2-执行步骤" class="sub2">1.2 执行步骤</a>
+<a href="#1-3-各步骤详解" class="sub2">1.3 各步骤详解</a>
+<a href="#2--linear-region-size-计算推导" class="sub">2. linear_region_size 计算推导</a>
+<a href="#2-1-宏定义展开" class="sub2">2.1 宏定义展开</a>
+<a href="#2-2-数值计算" class="sub2">2.2 数值计算</a>
+<a href="#2-3-为什么线性映射区远大于实际物理-ram" class="sub2">2.3 为什么线性映射区远大于实际物理 RAM</a>
+<a href="#3--线性映射-linear-mapping-详解" class="sub">3. 线性映射（Linear Mapping）详解</a>
+<a href="#3-1-定义" class="sub2">3.1 定义</a>
+<a href="#3-2-核心作用" class="sub2">3.2 核心作用</a>
+<a href="#4--arm64-内核地址空间的-7-种映射" class="sub">4. ARM64 内核地址空间的 7 种映射</a>
+<a href="#4-1-虚拟地址布局" class="sub2">4.1 虚拟地址布局</a>
+<a href="#4-2-各映射特点对比" class="sub2">4.2 各映射特点对比</a>
+<a href="#5--线性映射与其他映射的物理页重叠关系" class="sub">5. 线性映射与其他映射的物理页重叠关系</a>
+<a href="#5-1-总结表" class="sub2">5.1 总结表</a>
+<a href="#5-2-核心规则" class="sub2">5.2 核心规则</a>
+<a href="#6--同一物理页的多虚拟地址映射原理" class="sub">6. 同一物理页的多虚拟地址映射原理</a>
+<a href="#6-1-页表树的不同路径" class="sub2">6.1 页表树的不同路径</a>
+<a href="#6-2-原理" class="sub2">6.2 原理</a>
+<a href="#7--内核镜像映射-vs-线性映射" class="sub">7. 内核镜像映射 vs 线性映射</a>
+<a href="#7-1-本质上都是固定偏移映射" class="sub2">7.1 本质上都是固定偏移映射</a>
+<a href="#7-2-为什么要区分" class="sub2">7.2 为什么要区分</a>
+<a href="#8--线性映射的权限设计" class="sub">8. 线性映射的权限设计</a>
+<a href="#8-1--map-mem----中的权限分配" class="sub2">8.1 `map_mem()` 中的权限分配</a>
+<a href="#8-2-权限演变" class="sub2">8.2 权限演变</a>
+<a href="#9--线性映射的使用场景" class="sub">9. 线性映射的使用场景</a>
+<a href="#9-1-场景汇总" class="sub2">9.1 场景汇总</a>
+<a href="#10--线性映射的初始化流程" class="sub">10. 线性映射的初始化流程</a>
+<a href="#10-1-调用链" class="sub2">10.1 调用链</a>
+<a href="#10-2-页表切换时间线" class="sub2">10.2 页表切换时间线</a>
+<a href="#11--va-bits-min-设计原理" class="sub">11. VA_BITS_MIN 设计原理</a>
+<a href="#11-1-定义" class="sub2">11.1 定义</a>
+<a href="#11-2-为什么-va-bits---48-时-va-bits-min---48" class="sub2">11.2 为什么 VA_BITS > 48 时 VA_BITS_MIN = 48</a>
+<a href="#12--page-offset-kimage-vaddr-与链接地址的关系" class="sub">12. PAGE_OFFSET、KIMAGE_VADDR 与链接地址的关系</a>
+<a href="#12-1-宏定义链" class="sub2">12.1 宏定义链</a>
+<a href="#12-2-链接脚本" class="sub2">12.2 链接脚本</a>
+<a href="#12-3-kimage-voffset" class="sub2">12.3 kimage_voffset</a>
+<a href="#12-4-三者关系图" class="sub2">12.4 三者关系图</a>
+<a href="#附录-关键配置参数" class="sub">附录：关键配置参数</a>
+<a href="#附录-关键源文件" class="sub">附录：关键源文件</a>
+</div>
+</nav>
+<div class="main-content">
+<header><h1>ARM64 内核内存映射与 memblock 初始化</h1></header>
+<main>
+<p>> 基于 Linux 6.18.1，ARM64 架构  </p>
+<p>> 配置：VA_BITS=52, CONFIG_PGTABLE_LEVELS=5, 4KB pages, 无 KASAN</p>
+<p>---</p>
+<section>
+<h3>目录</h3>
+</section>
+<ul>
+<li>[arm64_memblock_init() 函数分析](#1-arm64_memblock_init-函数分析)</li>
+<li>[linear_region_size 计算推导](#2-linear_region_size-计算推导)</li>
+<li>[线性映射（Linear Mapping）详解](#3-线性映射linear-mapping详解)</li>
+<li>[ARM64 内核地址空间的 7 种映射](#4-arm64-内核地址空间的-7-种映射)</li>
+<li>[线性映射与其他映射的物理页重叠关系](#5-线性映射与其他映射的物理页重叠关系)</li>
+<li>[同一物理页的多虚拟地址映射原理](#6-同一物理页的多虚拟地址映射原理)</li>
+<li>[内核镜像映射 vs 线性映射](#7-内核镜像映射-vs-线性映射)</li>
+<li>[线性映射的权限设计](#8-线性映射的权限设计)</li>
+<li>[线性映射的使用场景](#9-线性映射的使用场景)</li>
+<li>[线性映射的初始化流程](#10-线性映射的初始化流程)</li>
+<li>[VA_BITS_MIN 设计原理](#11-va_bits_min-设计原理)</li>
+<li>[PAGE_OFFSET、KIMAGE_VADDR 与链接地址的关系](#12-page_offsetkimage_vaddr-与链接地址的关系)</li>
+</ul>
+<p>---</p>
+<section>
+<h3>1. arm64_memblock_init() 函数分析</h3>
+</section>
+<p><strong>文件</strong>：<code>arch/arm64/mm/init.c</code></p>
+<section>
+<h4>1.1 核心目的</h4>
+</section>
+<p>在 memblock 已经从 DTS 获得原始物理内存信息之后，对其进行<strong>裁剪、调整和保留</strong>，使之与内核的线性映射区（linear mapping）完美匹配，并为后续 <code>paging_init()</code> 建立最终页表做好准备。</p>
+<section>
+<h4>1.2 执行步骤</h4>
+</section>
+<pre><code>memblock（来自DTS的原始物理内存）
+    │
+    ├─ ① 计算 linear_region_size
+    ├─ ② KVM nVHE 特殊处理（截断到 51-bit）
+    ├─ ③ 移除 &gt; PHYS_MASK_SHIFT 的物理内存
+    ├─ ④ 计算 memstart_addr（1GB 对齐）
+    ├─ ⑤ 裁剪超出线性映射区的部分（上裁/下裁）
+    ├─ ⑥ 52→48 bit VA 补偿
+    ├─ ⑦ 应用 mem= 命令行限制
+    ├─ ⑧ 处理 initrd
+    ├─ ⑨ 保留内核镜像 (_text ~ _end)
+    └─ ⑩ 扫描 DTS reserved-memory
+    │
+    ▼
+memblock（精确匹配线性映射区，所有保留区已标记）
+    → 交给 paging_init() → map_mem() 建立最终线性映射页表</code></pre>
+<section>
+<h4>1.3 各步骤详解</h4>
+</section>
+<h5>① 计算线性映射区大小</h5>
+<pre><code>s64 linear_region_size = PAGE_END - _PAGE_OFFSET(vabits_actual);</code></pre>
+<ul>
+<li><code>PAGE_END = _PAGE_END(VA_BITS_MIN) = -(1UL << 47) = 0xFFFF_8000_0000_0000</code></li>
+<li><code>_PAGE_OFFSET(52) = -(1UL << 52) = 0xFFF0_0000_0000_0000</code></li>
+<li><strong>结果</strong>：<code>0xF_8000_0000_0000 = 3968 TB ≈ 3.875 PB</code></li>
+</ul>
+<h5>④ 计算 memstart_addr</h5>
+<pre><code>memstart_addr = round_down(memblock_start_of_DRAM(), ARM64_MEMSTART_ALIGN);</code></pre>
+<ul>
+<li><code>ARM64_MEMSTART_ALIGN = 1 << PUD_SHIFT = 1GB</code>（4KB pages 配置）</li>
+<li><code>memstart_addr</code> 是物理内存到虚拟地址映射的基准点：</li>
+<li><code>virt = phys - memstart_addr + PAGE_OFFSET</code></li>
+</ul>
+<h5>⑥ 52→48 bit VA 补偿</h5>
+<pre><code>if (IS_ENABLED(CONFIG_ARM64_VA_BITS_52) &amp;&amp; (vabits_actual != 52))
+    memstart_addr -= _PAGE_OFFSET(vabits_actual) - _PAGE_OFFSET(52);</code></pre>
+<p>编译时 PAGE_OFFSET 按 52-bit 计算，但运行时只有 48-bit 可用时，需要调整 memstart_addr 使物理内存映射到 48-bit 可达的虚拟地址空间中。</p>
+<p>---</p>
+<section>
+<h3>2. linear_region_size 计算推导</h3>
+</section>
+<section>
+<h4>2.1 宏定义展开</h4>
+</section>
+<pre><code>#define VA_BITS              52
+#define VA_BITS_MIN          48          // VA_BITS &gt; 48 且非 16K pages
+#define _PAGE_OFFSET(va)     (-(UL(1) &lt;&lt; (va)))
+#define _PAGE_END(va)        (-(UL(1) &lt;&lt; ((va) - 1)))
+#define PAGE_OFFSET          _PAGE_OFFSET(52)   // 编译时常量
+#define PAGE_END             _PAGE_END(48)       // 无 KASAN 时</code></pre>
+<section>
+<h4>2.2 数值计算</h4>
+</section>
+<table>
+<tr><th>值</th><th>十六进制</th><th>说明</th></tr>
+<tr><td><code>PAGE_END</code></td><td><code>0xFFFF_8000_0000_0000</code></td><td>$-2^{47}$，线性映射区上界</td></tr>
+<tr><td><code>_PAGE_OFFSET(52)</code></td><td><code>0xFFF0_0000_0000_0000</code></td><td>$-2^{52}$，线性映射区下界</td></tr>
+<tr><td><strong>差值</strong></td><td><strong><code>0x000F_8000_0000_0000</code></strong></td><td>$2^{52} - 2^{47} = 31 \times 2^{47}$</td></tr>
+</table>
+<p>$$\text{linear\_region\_size} = 31 \times 128\text{TB} = 3968\text{TB} \approx 3.875\text{PB}$$</p>
+<section>
+<h4>2.3 为什么线性映射区远大于实际物理 RAM</h4>
+</section>
+<ul>
+<li><strong>适应所有物理内存布局</strong>：不同硬件的 DRAM 起始地址不同，物理内存可能不连续（有空洞），线性映射必须覆盖整个物理地址跨度</li>
+<li><strong>虚拟地址空间是"免费"的</strong>：大的只是地址编号范围，不消耗物理资源。只有有 RAM 的区域才建页表</li>
+<li><strong>留好余量</strong>：避免物理内存超出、热插拔等场景无法映射</li>
+</ul>
+<p>---</p>
+<section>
+<h3>3. 线性映射（Linear Mapping）详解</h3>
+</section>
+<section>
+<h4>3.1 定义</h4>
+</section>
+<p>线性映射是一种<strong>物理地址到虚拟地址的固定偏移映射</strong>：</p>
+<p>$$\text{virt} = \text{phys} - \text{memstart\_addr} + \text{PAGE\_OFFSET}$$</p>
+<p>$$\text{phys} = \text{virt} - \text{PAGE\_OFFSET} + \text{memstart\_addr}$$</p>
+<p>"线性"的含义：物理地址连续 → 虚拟地址连续，偏移量固定不变。这就是 <code>__pa()</code> / <code>__va()</code> 宏的本质。</p>
+<section>
+<h4>3.2 核心作用</h4>
+</section>
+<ul>
+<li>让内核能高效访问<strong>所有物理内存</strong></li>
+<li><code>phys_to_virt</code> / <code>virt_to_phys</code> 转换只需加减一个常量，零开销</li>
+<li>为 buddy allocator、slab allocator 等内存管理子系统提供基础</li>
+</ul>
+<p>---</p>
+<section>
+<h3>4. ARM64 内核地址空间的 7 种映射</h3>
+</section>
+<section>
+<h4>4.1 虚拟地址布局</h4>
+</section>
+<pre><code>0xFFF0_0000_0000_0000  ┬─ PAGE_OFFSET          ─┐
+                       │                         │ ① 线性映射区 (Linear Map)
+                       │  ~3968 TB               │    phys ↔ virt 固定偏移
+0xFFFF_8000_0000_0000  ┴─ PAGE_END              ─┘
+                       ┬─ MODULES_VADDR          ─┐
+                       │  2 GB                    │ ② 模块映射区 (Modules)
+0xFFFF_8000_8000_0000  ┴─ MODULES_END            ─┘
+                       ┬─ KIMAGE_VADDR           ─┐
+                       │                          │ ③ 内核镜像映射 (Kernel Image)
+                       │  _text ~ _end            │
+                       ┴                         ─┘
+                          ...
+                       ┬─ VMALLOC_START          ─┐
+                       │                          │ ④ vmalloc 区
+                       ┴─ VMALLOC_END            ─┘
+                       ┬─ VMEMMAP_START          ─┐
+                       │                          │ ⑤ vmemmap 区 (struct page[])
+0xFFFF_FFFF_C000_0000  ┴─ VMEMMAP_END           ─┘
+                       ┬─ PCI_IO_START           ─┐
+                       │  16 MB                   │ ⑥ PCI I/O 区
+                       ┴─ PCI_IO_END             ─┘
+0xFFFF_FFFF_FF80_0000  ┬─ FIXADDR_START         ─┐
+                       │  ~6 MB                   │ ⑦ Fixmap 区
+                       ┴─ FIXADDR_TOP            ─┘
+0xFFFF_FFFF_FFFF_FFFF     地址空间顶端</code></pre>
+<section>
+<h4>4.2 各映射特点对比</h4>
+</section>
+<table>
+<tr><th>#</th><th>映射区域</th><th>映射方式</th><th>特点</th><th>用途</th></tr>
+<tr><td>①</td><td><strong>线性映射</strong></td><td>phys + 固定偏移</td><td>覆盖全部物理 RAM，一对一</td><td>通用内存访问、page allocator、slab</td></tr>
+<tr><td>②</td><td><strong>模块映射</strong></td><td>vmalloc 式按需映射</td><td>距内核 image ±128M/2G</td><td>内核模块 .ko 加载</td></tr>
+<tr><td>③</td><td><strong>内核镜像</strong></td><td>独立页表映射</td><td>text=RX, rodata=RO, data=RW</td><td>内核代码和数据（CPU 取指执行）</td></tr>
+<tr><td>④</td><td><strong>vmalloc</strong></td><td>按需分配物理页，逐页映射</td><td>物理不连续，虚拟连续</td><td><code>vmalloc()</code>, <code>ioremap()</code>, <code>vmap()</code></td></tr>
+<tr><td>⑤</td><td><strong>vmemmap</strong></td><td>稀疏映射 struct page 数组</td><td>只映射有物理 RAM 的部分</td><td>struct page 元数据</td></tr>
+<tr><td>⑥</td><td><strong>PCI I/O</strong></td><td>映射 PCI I/O 端口空间</td><td>16MB</td><td>PCI 设备 I/O 访问</td></tr>
+<tr><td>⑦</td><td><strong>fixmap</strong></td><td>编译时确定虚拟地址，运行时改物理映射</td><td>临时/永久槽位</td><td>early ioremap、FDT、早期页表操作</td></tr>
+</table>
+<p>---</p>
+<section>
+<h3>5. 线性映射与其他映射的物理页重叠关系</h3>
+</section>
+<section>
+<h4>5.1 总结表</h4>
+</section>
+<table>
+<tr><th>映射区域</th><th>映射的物理页是 RAM？</th><th>线性映射也覆盖该物理页？</th></tr>
+<tr><td>③ 内核镜像</td><td>是 RAM</td><td><strong>是</strong> — <code>map_mem()</code> 明确建立线性别名</td></tr>
+<tr><td>② 模块映射</td><td>是 RAM（buddy 分配）</td><td><strong>是</strong> — 物理页来自 buddy allocator</td></tr>
+<tr><td>④ vmalloc（分配内存）</td><td>是 RAM（buddy 分配）</td><td><strong>是</strong> — <code>vmalloc()</code> 从 buddy 拿物理页</td></tr>
+<tr><td>④ ioremap（映射设备）</td><td><strong>不是 RAM，是设备寄存器</strong></td><td><strong>否</strong> — 线性映射不覆盖</td></tr>
+<tr><td>⑤ vmemmap</td><td>是 RAM（memblock 分配）</td><td><strong>是</strong> — struct page 数组本身是 RAM</td></tr>
+<tr><td>⑥ PCI I/O</td><td><strong>不是 RAM，是设备 I/O 空间</strong></td><td><strong>否</strong></td></tr>
+<tr><td>⑦ fixmap（映射 FDT/页表）</td><td>是 RAM</td><td>早期<strong>否</strong>（线性映射未建），后期<strong>是</strong></td></tr>
+<tr><td>⑦ fixmap（early ioremap 设备）</td><td>不是 RAM</td><td><strong>否</strong></td></tr>
+</table>
+<section>
+<h4>5.2 核心规则</h4>
+</section>
+<p><strong>线性映射只覆盖 RAM（memblock.memory 中的物理地址），不覆盖设备 MMIO 空间。</strong></p>
+<ul>
+<li>凡是从 buddy/memblock <strong>分配物理页</strong>的映射 → 该物理页必然也在线性映射中 → 同一物理页有两个虚拟地址</li>
+<li>凡是映射<strong>设备寄存器/I/O 端口</strong>的 → 那些物理地址不在 RAM 中 → 线性映射不覆盖</li>
+</ul>
+<p>---</p>
+<section>
+<h3>6. 同一物理页的多虚拟地址映射原理</h3>
+</section>
+<section>
+<h4>6.1 页表树的不同路径</h4>
+</section>
+<p>TTBR1 只有一个，指向同一棵页表树（<code>swapper_pg_dir</code>），但树的不同分支可以指向同一个物理页：</p>
+<pre><code>TTBR1 → swapper_pg_dir
+              │
+     ┌────────┴────────┐
+     │                  │
+  路径 A               路径 B
+  (KIMAGE 地址)        (线性映射地址)
+  0xFFFF_8000_8xxx      0xFFF0_xxxx_xxxx
+     │                  │
+  PGD[15]             PGD[0]          ← 不同的 PGD 索引
+     │                  │
+  P4D → PUD → PMD → PTE   P4D → PUD → PMD → PTE
+     │                  │
+     ↓                  ↓
+  phys=0x4020_0000     phys=0x4020_0000  ← 同一物理页
+  权限: RX (可执行)     权限: RO+NX (不可执行)</code></pre>
+<section>
+<h4>6.2 原理</h4>
+</section>
+<p>MMU 地址翻译：<code>虚拟地址 → 提取各级索引 → PGD[i] → P4D[j] → PUD[k] → PMD[l] → PTE[m] → 物理页</code></p>
+<p>两个不同虚拟地址的索引序列 <code>(i,j,k,l,m)</code> 不同，走页表树的不同分支。但两个分支末端的 PTE 里填的<strong>物理页帧号可以相同</strong>，只是<strong>属性位不同</strong>。</p>
+<p>这是所有使用页表的架构（ARM64、x86、RISC-V）都天然支持的能力。</p>
+<p>---</p>
+<section>
+<h3>7. 内核镜像映射 vs 线性映射</h3>
+</section>
+<section>
+<h4>7.1 本质上都是固定偏移映射</h4>
+</section>
+<table>
+<tr><th></th><th>线性映射</th><th>内核镜像映射</th></tr>
+<tr><td>公式</td><td><code>virt = phys - memstart_addr + PAGE_OFFSET</code></td><td><code>virt = phys - kimage_phys + KIMAGE_VADDR</code></td></tr>
+<tr><td>偏移量</td><td><code>PAGE_OFFSET - memstart_addr</code>（固定常量）</td><td><code>KIMAGE_VADDR - kimage_phys</code>（固定常量）</td></tr>
+</table>
+<p>硬件层面没有任何区别。区分它们是<strong>软件设计选择</strong>。</p>
+<section>
+<h4>7.2 为什么要区分</h4>
+</section>
+<ul>
+<li><strong>权限粒度不同</strong>：</li>
+<li>线性映射：统一 RW+NX（1GB/2MB block mapping，追求效率）</li>
+<li>内核镜像：.text=RX, .rodata=RO, .data=RW（4KB page mapping，追求安全）</li>
+<li><strong>KASLR 安全</strong>：</li>
+<li>内核镜像地址被 KASLR 随机化，攻击者无法预测</li>
+<li>线性映射 PAGE_OFFSET 是编译时固定的</li>
+<li><strong>生命周期不同</strong>：</li>
+<li>内核镜像映射在 head.S 中最早建立（CPU 要取指执行）</li>
+<li>线性映射在 <code>paging_init()</code> 时才建立</li>
+</ul>
+<p>---</p>
+<section>
+<h3>8. 线性映射的权限设计</h3>
+</section>
+<section>
+<h4>8.1 `map_mem()` 中的权限分配</h4>
+</section>
+<pre><code>// 第一步：标记内核镜像为 NOMAP（先跳过）
+memblock_mark_nomap(kernel_start, kernel_end - kernel_start);
+
+// 第二步：映射所有普通物理 RAM
+for_each_mem_range(i, &amp;start, &amp;end) {
+    __map_memblock(pgdp, start, end,
+                   pgprot_tagged(PAGE_KERNEL),   // RW + NX
+                   flags);
+}
+
+// 第三步：单独映射内核镜像的线性别名
+__map_memblock(pgdp, kernel_start, kernel_end,
+               PAGE_KERNEL, NO_CONT_MAPPINGS);   // RW + NX（初始）
+memblock_clear_nomap(kernel_start, kernel_end - kernel_start);</code></pre>
+<section>
+<h4>8.2 权限演变</h4>
+</section>
+<table>
+<tr><th>线性映射中的区域</th><th>占比</th><th>初始权限</th><th>最终权限</th></tr>
+<tr><td>普通物理 RAM（绝大部分）</td><td>>99%</td><td>RW + NX</td><td><strong>RW + NX</strong>（不变）</td></tr>
+<tr><td>内核 .text/.rodata 的线性别名</td><td>极小</td><td>RW + NX</td><td><strong>RO + NX</strong>（<code>mark_linear_text_alias_ro()</code> 修改）</td></tr>
+</table>
+<p><strong>关键点</strong>：</p>
+<ul>
+<li>整个线性映射区统一 <strong>NX（不可执行）</strong>，防止通过线性映射执行代码</li>
+<li>绝大部分 RAM 是 <strong>RW（可读可写）</strong>，否则 <code>kmalloc</code>、page cache 等无法写入数据</li>
+<li>只有内核代码的线性别名被特殊改为 RO，防止意外修改</li>
+</ul>
+<p>---</p>
+<section>
+<h3>9. 线性映射的使用场景</h3>
+</section>
+<section>
+<h4>9.1 场景汇总</h4>
+</section>
+<table>
+<tr><th>类别</th><th>具体场景</th><th>说明</th></tr>
+<tr><td><strong>内存分配</strong></td><td><code>kmalloc()</code>, <code>alloc_pages()</code>, slab 缓存</td><td>返回值就是线性映射地址</td></tr>
+<tr><td><strong>地址转换</strong></td><td><code>__va()</code>, <code>__pa()</code>, <code>page_address()</code></td><td>只对线性映射地址有效</td></tr>
+<tr><td><strong>内核数据结构</strong></td><td>页表页、task_struct、inode、dentry</td><td>全部分配在线性映射区</td></tr>
+<tr><td><strong>文件 I/O</strong></td><td>page cache、块设备 buffer</td><td>文件数据缓存在线性映射区</td></tr>
+<tr><td><strong>网络</strong></td><td>skb 数据缓冲区</td><td><code>skb->data</code> 指向线性映射区</td></tr>
+<tr><td><strong>DMA</strong></td><td>CPU 侧数据访问</td><td>通过线性映射地址填数据，<code>__pa()</code> 转物理地址给设备</td></tr>
+<tr><td><strong>系统状态保存</strong></td><td>hibernate、kexec、crash dump</td><td>通过线性映射遍历所有物理页</td></tr>
+<tr><td><strong>页表管理</strong></td><td><code>__va(phys)</code> 访问页表页内容</td><td>分配页表页后用线性映射地址清零和填写</td></tr>
+</table>
+<p><strong>一句话</strong>：凡是内核代码中直接操作 RAM 内容的地方，用的都是线性映射地址。</p>
+<p>---</p>
+<section>
+<h3>10. 线性映射的初始化流程</h3>
+</section>
+<section>
+<h4>10.1 调用链</h4>
+</section>
+<pre><code>setup_arch()                              // arch/arm64/kernel/setup.c
+  └→ paging_init()                        // arch/arm64/mm/mmu.c
+       └→ map_mem(swapper_pg_dir)         // arch/arm64/mm/mmu.c:1071
+            │
+            │  // 标记内核镜像为 NOMAP（跳过它）
+            ├→ memblock_mark_nomap(kernel_start, ...)
+            │
+            │  // 遍历所有 memblock.memory 区域，建立线性映射
+            ├→ for_each_mem_range() {
+            │      __map_memblock(pgdp, start, end, PAGE_KERNEL, flags);
+            │  }
+            │
+            │  // 单独为内核镜像建立线性映射别名
+            ├→ __map_memblock(pgdp, kernel_start, kernel_end, ...)
+            │
+            └→ memblock_clear_nomap(...)</code></pre>
+<section>
+<h4>10.2 页表切换时间线</h4>
+</section>
+<pre><code>时间线:
+head.S          → 建立 init_pg_dir（临时页表，只映射内核镜像）
+                → 开启 MMU，CPU 使用 init_pg_dir 运行
+
+start_kernel()  → setup_arch()
+                   → arm64_memblock_init()  ← 整理 memblock
+                   → paging_init()
+                      → map_mem(swapper_pg_dir)  ← 在 swapper_pg_dir 中建立线性映射
+                      → 切换到 swapper_pg_dir    ← 从此线性映射可用
+
+此后            → buddy allocator、slab 等子系统初始化
+                → 全部基于线性映射工作</code></pre>
+<p>---</p>
+<section>
+<h3>11. VA_BITS_MIN 设计原理</h3>
+</section>
+<section>
+<h4>11.1 定义</h4>
+</section>
+<pre><code>#if VA_BITS &gt; 48
+#define VA_BITS_MIN    (48)    // 4K/64K pages
+#else
+#define VA_BITS_MIN    (VA_BITS)
+#endif</code></pre>
+<section>
+<h4>11.2 为什么 VA_BITS > 48 时 VA_BITS_MIN = 48</h4>
+</section>
+<p>内核编译时配置 <code>VA_BITS=52</code>，但运行时硬件可能不支持 52-bit VA：</p>
+<table>
+<tr><th>硬件</th><th>vabits_actual</th><th>虚拟地址空间</th></tr>
+<tr><td>支持 LVA</td><td>52</td><td>$2^{52}$</td></tr>
+<tr><td><strong>不支持</strong> LVA</td><td><strong>48</strong></td><td>$2^{48}$</td></tr>
+</table>
+<p><strong>解决方案</strong>：把所有非线性映射的地址布局（modules、vmalloc、vmemmap、fixmap、内核镜像）都放在 48-bit VA 能覆盖的范围内：</p>
+<pre><code>┌─ 0xFFFF_FFFF_FFFF_FFFF ─── 地址顶端
+│  fixmap, PCI_IO, vmemmap, vmalloc, KIMAGE, modules
+│  ← 全部在 48-bit 可达范围（VA_BITS_MIN=48 决定）
+├─ 0xFFFF_8000_0000_0000 ─── _PAGE_END(48) = PAGE_END
+│
+│  ← 52-bit 比 48-bit 多出来的空间，全部给线性映射向低地址扩展
+│
+├─ 0xFFF0_0000_0000_0000 ─── _PAGE_OFFSET(52)
+│  ← 只有 52-bit 硬件才能用到这里
+│
+└─ 0xFFFF_0000_0000_0000 ─── _PAGE_OFFSET(48)</code></pre>
+<p><strong>52-bit 的好处仅仅是线性映射区变大</strong>。其他映射区域地址完全不受影响，保证二进制兼容性。</p>
+<p>---</p>
+<section>
+<h3>12. PAGE_OFFSET、KIMAGE_VADDR 与链接地址的关系</h3>
+</section>
+<section>
+<h4>12.1 宏定义链</h4>
+</section>
+<pre><code>#define PAGE_OFFSET       _PAGE_OFFSET(52)           = 0xFFF0_0000_0000_0000
+#define PAGE_END          _PAGE_END(48)               = 0xFFFF_8000_0000_0000
+#define MODULES_VADDR     _PAGE_END(48)               = 0xFFFF_8000_0000_0000
+#define MODULES_VSIZE     SZ_2G                       = 0x0000_0000_8000_0000
+#define MODULES_END       MODULES_VADDR + SZ_2G       = 0xFFFF_8000_8000_0000
+#define KIMAGE_VADDR      MODULES_END                 = 0xFFFF_8000_8000_0000</code></pre>
+<section>
+<h4>12.2 链接脚本</h4>
+</section>
+<pre><code>// arch/arm64/kernel/vmlinux.lds.S
+. = KIMAGE_VADDR;    // 链接起始地址 = 0xFFFF_8000_8000_0000
+_text = .;            // 内核代码从这里开始</code></pre>
+<section>
+<h4>12.3 kimage_voffset</h4>
+</section>
+<p>在 <code>__primary_switched</code>（head.S）中计算：</p>
+<pre><code>adrp    x4, _text           // _text 的运行时虚拟地址
+sub     x4, x4, x0          // 减去 _text 的物理地址
+str_l   x4, kimage_voffset   // 保存偏移量</code></pre>
+<p><code>kimage_voffset = _text(virt) - _text(phys)</code> 是内核镜像映射的虚拟-物理偏移量。</p>
+<section>
+<h4>12.4 三者关系图</h4>
+</section>
+<pre><code>                              编译时确定（仅取决于 VA_BITS_MIN=48）
+                              ↓
+0xFFFF_8000_8000_0000 = KIMAGE_VADDR = 内核链接地址
+                      ↕
+                      _text 链接在这里（可被 KASLR 随机偏移）
+                      ↕
+                      kimage_voffset = _text(virt) - _text(phys)
+
+
+                              运行时根据 vabits_actual 确定
+                              ↓
+0xFFF0_0000_0000_0000 = PAGE_OFFSET（52-bit 硬件）
+0xFFFF_0000_0000_0000 = PAGE_OFFSET（48-bit 硬件）
+                      ↕
+                      线性映射区起始
+                      ↕
+                      __va(phys) = phys - memstart_addr + PAGE_OFFSET</code></pre>
+<p><strong>关键点</strong>：<code>KIMAGE_VADDR</code> 是编译时常量，不随 <code>vabits_actual</code> 变化。而 <code>PAGE_OFFSET</code> 的语义在不同硬件上不同，这就是 <code>arm64_memblock_init()</code> 需要补偿调整 <code>memstart_addr</code> 的原因。</p>
+<p>---</p>
+<section>
+<h3>附录：关键配置参数</h3>
+</section>
+<table>
+<tr><th>参数</th><th>值</th><th>说明</th></tr>
+<tr><td><code>CONFIG_ARM64_VA_BITS</code></td><td>52</td><td>虚拟地址位数</td></tr>
+<tr><td><code>CONFIG_PGTABLE_LEVELS</code></td><td>5</td><td>页表级数</td></tr>
+<tr><td><code>CONFIG_ARM64_4K_PAGES</code></td><td>y</td><td>4KB 页</td></tr>
+<tr><td><code>VA_BITS_MIN</code></td><td>48</td><td>最小兼容 VA 位数</td></tr>
+<tr><td><code>PGDIR_SHIFT</code></td><td>48</td><td>PGD 级偏移</td></tr>
+<tr><td><code>P4D_SHIFT</code></td><td>39</td><td>P4D 级偏移</td></tr>
+<tr><td><code>PUD_SHIFT</code></td><td>30</td><td>PUD 级偏移</td></tr>
+<tr><td><code>PMD_SHIFT</code></td><td>21</td><td>PMD 级偏移</td></tr>
+<tr><td><code>PAGE_SHIFT</code></td><td>12</td><td>页偏移</td></tr>
+<tr><td><code>ARM64_MEMSTART_ALIGN</code></td><td>1GB</td><td>memstart_addr 对齐粒度</td></tr>
+</table>
+<p>---</p>
+<section>
+<h3>附录：关键源文件</h3>
+</section>
+<table>
+<tr><th>文件</th><th>内容</th></tr>
+<tr><td><code>arch/arm64/mm/init.c</code></td><td><code>arm64_memblock_init()</code>, <code>bootmem_init()</code></td></tr>
+<tr><td><code>arch/arm64/mm/mmu.c</code></td><td><code>map_mem()</code>, <code>paging_init()</code>, <code>__create_pgd_mapping_locked()</code></td></tr>
+<tr><td><code>arch/arm64/include/asm/memory.h</code></td><td><code>PAGE_OFFSET</code>, <code>PAGE_END</code>, <code>KIMAGE_VADDR</code> 等宏</td></tr>
+<tr><td><code>arch/arm64/kernel/vmlinux.lds.S</code></td><td>内核链接脚本，<code>. = KIMAGE_VADDR</code></td></tr>
+<tr><td><code>arch/arm64/kernel/head.S</code></td><td>启动汇编，<code>kimage_voffset</code> 计算</td></tr>
+<tr><td><code>arch/arm64/kernel/setup.c</code></td><td><code>setup_arch()</code> 启动流程</td></tr>
+</table>
+</main>
+</div></div>
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>

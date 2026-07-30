@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 Linux `map_range()` 函数深度分析</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 220px;
+    transition: max-width 0.25s ease; overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; height: 100%; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 2px 0; border-radius: 3px; white-space: nowrap; font-size: 0.9em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); }
+.sidebar a.sub { padding-left: 16px; font-size: 0.85em; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin: 20px 0 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目录</h4>
+<a href="#arm64-linux--map-range----函数深度分析" class="">ARM64 Linux `map_range()` 函数深度分析</a>
+<a href="#一-函数定位" class="sub">一、函数定位</a>
+<a href="#二-函数签名与参数" class="sub">二、函数签名与参数</a>
+<a href="#三-关键常量推导-4kb-页面配置" class="sub">三、关键常量推导（4KB 页面配置）</a>
+<a href="#各级别参数" class="sub2">各级别参数</a>
+<a href="#va-48位地址划分" class="sub2">VA 48位地址划分</a>
+<a href="#四-初始化代码-各变量含义" class="sub">四、初始化代码：各变量含义</a>
+<a href="#五-递归判断条件" class="sub">五、递归判断条件</a>
+<a href="#六-分配下级页表-递归分支" class="sub">六、分配下级页表（递归分支）</a>
+<a href="#逐行解释" class="sub2">逐行解释</a>
+<a href="#描述符格式" class="sub2">描述符格式</a>
+<a href="#内存变化示意" class="sub2">内存变化示意</a>
+<a href="#七-直接映射-叶节点分支" class="sub">七、直接映射（叶节点分支）</a>
+<a href="#八-恒等映射调用场景" class="sub">八、恒等映射调用场景</a>
+<a href="#stext--为什么是物理地址" class="sub2">`_stext` 为什么是物理地址？</a>
+<a href="#两段映射" class="sub2">两段映射</a>
+<a href="#九-完整递归执行流程" class="sub">九、完整递归执行流程</a>
+<a href="#最终页表结构" class="sub2">最终页表结构</a>
+<a href="#十-恒等映射的目的与生命周期" class="sub">十、恒等映射的目的与生命周期</a>
+<a href="#为什么需要恒等映射" class="sub2">为什么需要恒等映射？</a>
+<a href="#arm64-双页表机制" class="sub2">ARM64 双页表机制</a>
+<a href="#mmu-开启后的跳转" class="sub2">MMU 开启后的跳转</a>
+<a href="#生命周期" class="sub2">生命周期</a>
+</div>
+</nav>
+<div class="main-content">
+<header><h1>ARM64 Linux `map_range()` 函数深度分析</h1></header>
+<main>
+<p>> 基于 Linux 6.18.1，<code>arch/arm64/kernel/pi/map_range.c</code></p>
+<p>---</p>
+<section>
+<h3>一、函数定位</h3>
+</section>
+<p><code>map_range()</code> 是 ARM64 内核启动阶段的<strong>核心页表填充函数</strong>，位于位置无关（PI）代码中，在 MMU 关闭状态下运行。通过递归方式，从指定页表级别开始逐级建立虚拟地址到物理地址的映射。</p>
+<p>它被 <code>create_init_idmap()</code> 调用，用于创建<strong>恒等映射（identity map）</strong>，也被 <code>early_map_kernel()</code> 调用创建内核虚拟地址映射。</p>
+<p>---</p>
+<section>
+<h3>二、函数签名与参数</h3>
+</section>
+<pre><code>void __init map_range(phys_addr_t *pte, u64 start, u64 end, phys_addr_t pa,
+                      pgprot_t prot, int level, pte_t *tbl, bool may_use_cont,
+                      u64 va_offset)</code></pre>
+<table>
+<tr><th>参数</th><th>类型</th><th>含义</th></tr>
+<tr><td><code>pte</code></td><td><code>phys_addr_t *</code></td><td>页表页分配器指针（bump allocator），指向下一个空闲页表页的物理地址</td></tr>
+<tr><td><code>start</code></td><td><code>u64</code></td><td>映射的虚拟地址起始</td></tr>
+<tr><td><code>end</code></td><td><code>u64</code></td><td>映射的虚拟地址结束（不包含）</td></tr>
+<tr><td><code>pa</code></td><td><code>phys_addr_t</code></td><td><code>start</code> 对应的物理地址</td></tr>
+<tr><td><code>prot</code></td><td><code>pgprot_t</code></td><td>页表属性（RO/RW/ROX 等）</td></tr>
+<tr><td><code>level</code></td><td><code>int</code></td><td>当前页表级别（0=PGD, 1=PUD, 2=PMD, 3=PTE）</td></tr>
+<tr><td><code>tbl</code></td><td><code>pte_t *</code></td><td>当前级别的页表基地址</td></tr>
+<tr><td><code>may_use_cont</code></td><td><code>bool</code></td><td>是否允许使用连续页属性（TLB 优化）</td></tr>
+<tr><td><code>va_offset</code></td><td><code>u64</code></td><td>VA 与 PA 之间的偏移（identity map 时为 0）</td></tr>
+</table>
+<p>---</p>
+<section>
+<h3>三、关键常量推导（4KB 页面配置）</h3>
+</section>
+<pre><code>PTDESC_ORDER       = 3          // 每个页表条目 2^3 = 8 字节（64位描述符）
+PAGE_SHIFT         = 12         // 页面 2^12 = 4KB
+PTDESC_TABLE_SHIFT = 12 - 3 = 9 // 每级解析 9 位 VA
+PTRS_PER_PTE       = 2^9 = 512  // 每级 512 个条目，512×8 = 4KB = 一页
+IDMAP_VA_BITS      = 48
+IDMAP_LEVELS       = (48-3-1)/9 = 4
+IDMAP_ROOT_LEVEL   = 4 - 4 = 0  // 从 level 0（PGD）开始</code></pre>
+<section>
+<h4>各级别参数</h4>
+</section>
+<table>
+<tr><th>level</th><th>名称</th><th>lshift</th><th>每条目覆盖</th><th>lmask</th></tr>
+<tr><td>0</td><td>PGD</td><td>27</td><td>512GB</td><td><code>0x7F_FFFF_FFFF</code></td></tr>
+<tr><td>1</td><td>PUD</td><td>18</td><td>1GB</td><td><code>0x3FFF_FFFF</code></td></tr>
+<tr><td>2</td><td>PMD</td><td>9</td><td>2MB</td><td><code>0x1F_FFFF</code></td></tr>
+<tr><td>3</td><td>PTE</td><td>0</td><td>4KB</td><td><code>0xFFF</code></td></tr>
+</table>
+<section>
+<h4>VA 48位地址划分</h4>
+</section>
+<pre><code>[47    39][38    30][29    21][20    12][11     0]
+  9 bits    9 bits    9 bits    9 bits   12 bits
+  L0索引    L1索引    L2索引    L3索引   页内偏移
+  (PGD)     (PUD)     (PMD)     (PTE)</code></pre>
+<p>---</p>
+<section>
+<h3>四、初始化代码：各变量含义</h3>
+</section>
+<pre><code>u64 cmask = (level == 3) ? CONT_PTE_SIZE - 1 : U64_MAX;</code></pre>
+<p>连续页掩码。只有 level 3（PTE 级）支持连续页属性，其他级别设为 <code>U64_MAX</code> 使检查永远不通过。</p>
+<pre><code>ptdesc_t protval = pgprot_val(prot) &amp; ~PTE_TYPE_MASK;</code></pre>
+<p>提取保护位，清除类型位（bit[1:0]），后面根据级别重新设置。</p>
+<pre><code>int lshift = (3 - level) * PTDESC_TABLE_SHIFT;</code></pre>
+<p>本级条目覆盖范围的位移量。</p>
+<pre><code>u64 lmask = (PAGE_SIZE &lt;&lt; lshift) - 1;</code></pre>
+<p>本级地址对齐掩码，用于检测地址是否对齐到本级边界。</p>
+<pre><code>tbl += (start &gt;&gt; (lshift + PAGE_SHIFT)) % PTRS_PER_PTE;</code></pre>
+<p>计算 <code>start</code> 在本级页表中的索引，将 <code>tbl</code> 指向对应条目。</p>
+<p>---</p>
+<section>
+<h3>五、递归判断条件</h3>
+</section>
+<pre><code>if (level &lt; 2 || (level == 2 &amp;&amp; (start | next | pa) &amp; lmask))</code></pre>
+<table>
+<tr><th>条件</th><th>含义</th></tr>
+<tr><td><code>level < 2</code></td><td>L0、L1 <strong>无条件递归</strong>（必须创建下级表）</td></tr>
+<tr><td><code>level == 2 && 地址不对齐</code></td><td>L2 但 start/next/pa 任一不是 2MB 对齐 → 递归到 L3</td></tr>
+<tr><td><code>level == 2 && 全部对齐</code></td><td>直接写 2MB <strong>block 描述符</strong>（段映射）</td></tr>
+<tr><td><code>level == 3</code></td><td><strong>永远不递归</strong>，写 4KB page 描述符（递归终止）</td></tr>
+</table>
+<p>循环退出条件：<code>while (start < end)</code> — 当 <code>start == end</code> 时范围耗尽，函数返回，递归逐层回退。</p>
+<p>---</p>
+<section>
+<h3>六、分配下级页表（递归分支）</h3>
+</section>
+<pre><code>if (pte_none(*tbl)) {
+    *tbl = __pte(__phys_to_pte_val(*pte) |
+                 PMD_TYPE_TABLE | PMD_TABLE_UXN);
+    *pte += PTRS_PER_PTE * sizeof(pte_t);
+}</code></pre>
+<section>
+<h4>逐行解释</h4>
+</section>
+<ul>
+<li><strong><code>pte_none(*tbl)</code></strong> — 检查当前条目是否为空（全 0）。两次 <code>map_range</code> 调用（代码段 + 数据段）可能复用同一个上级条目，已有的不重复分配。</li>
+<li><strong><code>__phys_to_pte_val(*pte)</code></strong> — 将分配器当前物理地址格式化为描述符地址字段（bit[47:12]）。</li>
+<li><strong><code>PMD_TYPE_TABLE</code></strong> — <code>0b11</code>，标记为表描述符，告诉 MMU 需要继续查下一级页表。</li>
+<li><strong><code>PMD_TABLE_UXN</code></strong> — bit[60]=1，用户态不可执行，防止用户空间执行内核代码。</li>
+<li><strong><code>*pte += 512 × 8 = 4096</code></strong> — 分配器前进 4KB（一个页表页大小）。</li>
+</ul>
+<section>
+<h4>描述符格式</h4>
+</section>
+<pre><code>64位表描述符:
+[63] [62:61] [60]  [59:48] [47:12]           [11:2] [1:0]
+ 0    00      1     0...0   下级页表物理页帧号   0      11
+              UXN                                     TABLE</code></pre>
+<section>
+<h4>内存变化示意</h4>
+</section>
+<pre><code>操作前:                              操作后:
+PGD[0] = 0（空）                    PGD[0] = 物理地址|UXN|0b11（表描述符）
+*pte → pg_dir+0x1000               *pte → pg_dir+0x2000
+pg_dir+0x1000: [空 4KB]            pg_dir+0x1000: [新 L1 表，全 0]</code></pre>
+<p>---</p>
+<section>
+<h3>七、直接映射（叶节点分支）</h3>
+</section>
+<pre><code>*tbl = __pte(__phys_to_pte_val(pa) | protval);</code></pre>
+<p>level 2 且 2MB 对齐时，写入 <strong>block 描述符</strong>（<code>PMD_TYPE_SECT = 0b01</code>）：</p>
+<pre><code>64位 block 描述符:
+[47:21]           [20:12]  [11:2]     [1:0]
+物理块基地址(2MB)   0        保护属性    01
+                                      SECT</code></pre>
+<p>直接将 2MB 物理块映射到虚拟地址，不再需要 L3 页表。</p>
+<p>---</p>
+<section>
+<h3>八、恒等映射调用场景</h3>
+</section>
+<pre><code>create_init_idmap(pg_dir, 0):
+  map_range(&amp;ptep, _stext, __initdata_begin, _stext, ROX, level=0, pg_dir)
+  map_range(&amp;ptep, __initdata_begin, _end, __initdata_begin, RW, level=0, pg_dir)</code></pre>
+<section>
+<h4>`_stext` 为什么是物理地址？</h4>
+</section>
+<ul>
+<li>声明为 <code>extern char _stext[]</code>（数组，非指针）</li>
+<li>PI 代码用 <code>-fpie</code> 编译</li>
+<li><code>(u64)_stext</code> 编译为 <code>adrp + add</code>（PC 相对寻址）</li>
+<li>MMU 关闭时 PC 是物理地址 → 结果是物理地址</li>
+</ul>
+<pre><code>/* MMU is off; pointer casts to phys_addr_t are safe */</code></pre>
+<section>
+<h4>两段映射</h4>
+</section>
+<table>
+<tr><th>范围</th><th>属性</th><th>含义</th></tr>
+<tr><td><code>_stext</code> → <code>__initdata_begin</code></td><td><code>PAGE_KERNEL_ROX</code></td><td>代码段：只读 + 可执行</td></tr>
+<tr><td><code>__initdata_begin</code> → <code>_end</code></td><td><code>PAGE_KERNEL</code></td><td>数据段：可读写，不可执行</td></tr>
+</table>
+<p>VA = PA（恒等映射），<code>va_offset = 0</code>。</p>
+<p>---</p>
+<section>
+<h3>九、完整递归执行流程</h3>
+</section>
+<p>假设 <code>_stext = 0x4020_0000</code>，<code>__initdata_begin = 0x4090_0000</code>（112MB 代码段）：</p>
+<pre><code>map_range(level=0, start=0x4020_0000, end=0x4090_0000)
+│
+│ lshift=27, lmask=512GB-1
+│ tbl = PGD[0]（index=0，因为地址 &lt; 512GB）
+│ level&lt;2 → 无条件递归
+│ PGD[0] 为空 → 分配 L1 表，ptep += 4KB
+│ PGD[0] 写入表描述符 → 指向新 L1 表
+│
+└→ map_range(level=1, start=0x4020_0000, end=0x4090_0000)
+   │
+   │ lshift=18, lmask=1GB-1
+   │ tbl = PUD[1]（index=1，因为 0x4020_0000&gt;&gt;30 = 1）
+   │ level&lt;2 → 无条件递归
+   │ PUD[1] 为空 → 分配 L2 表，ptep += 4KB
+   │ PUD[1] 写入表描述符 → 指向新 L2 表
+   │
+   └→ map_range(level=2, start=0x4020_0000, end=0x4090_0000)
+      │
+      │ lshift=9, lmask=2MB-1
+      │ tbl = PMD[1]（index = 0x4020_0000&gt;&gt;21 % 512 = 1）
+      │ 地址全部 2MB 对齐 → 直接写 block 描述符
+      │
+      │ 循环 56 次（112MB / 2MB = 56）:
+      │   PMD[1]  = 0x4020_0000 | protval | SECT
+      │   PMD[2]  = 0x4040_0000 | protval | SECT
+      │   PMD[3]  = 0x4060_0000 | protval | SECT
+      │   ...
+      │   PMD[56] = 0x40E0_0000 | protval | SECT
+      │   start == end → while 退出
+      │
+      └ 返回 level=1
+   │
+   │ start=end → while 退出
+   └ 返回 level=0
+│
+│ start=end → while 退出
+└ 返回 create_init_idmap</code></pre>
+<section>
+<h4>最终页表结构</h4>
+</section>
+<pre><code>pg_dir+0x0000 [PGD]:  [0] → pg_dir+0x1000
+pg_dir+0x1000 [PUD]:  [1] → pg_dir+0x2000
+pg_dir+0x2000 [PMD]:  [1]  = 0x4020_0000 (2MB block, ROX)
+                       [2]  = 0x4040_0000 (2MB block, ROX)
+                       ...
+                       [56] = 0x40E0_0000 (2MB block, ROX)
+
+ptep 最终 = pg_dir + 0x3000（共消耗 3 个页表页：PGD + PUD + PMD）</code></pre>
+<p>---</p>
+<section>
+<h3>十、恒等映射的目的与生命周期</h3>
+</section>
+<section>
+<h4>为什么需要恒等映射？</h4>
+</section>
+<p>MMU 开启是一条指令（<code>msr sctlr_el1, x0</code>），执行时 PC 是物理地址（如 <code>0x4020_xxxx</code>），开启后 CPU 立刻用 PC 值查页表。如果页表中只有虚拟地址映射（<code>0xffff...</code>），PC 的物理地址值查不到 → Translation Fault → 崩溃。</p>
+<p>恒等映射保证：VA <code>0x4020_xxxx</code> → PA <code>0x4020_xxxx</code>，MMU 开启后 PC 值仍然有效。</p>
+<section>
+<h4>ARM64 双页表机制</h4>
+</section>
+<table>
+<tr><th>地址范围</th><th>bit[55]</th><th>页表寄存器</th><th>用途</th></tr>
+<tr><td><code>0x0000_xxxx...</code></td><td>0</td><td>TTBR0_EL1</td><td>恒等映射 / 用户空间</td></tr>
+<tr><td><code>0xffff_xxxx...</code></td><td>1</td><td>TTBR1_EL1</td><td>内核映射</td></tr>
+</table>
+<p>硬件自动根据虚拟地址高位选择页表，两套映射<strong>同时存在</strong>。</p>
+<section>
+<h4>MMU 开启后的跳转</h4>
+</section>
+<pre><code>ldr  x8, =__primary_switched    // x8 = 0xffff_8000_8146_a7f4（链接虚拟地址）
+br   x8                          // 跳转 → bit[55]=1 → 自动切到 TTBR1 内核映射</code></pre>
+<ul>
+<li><code>ldr =</code> 从字面量池读取链接时写死的虚拟地址常量</li>
+<li><code>adrp</code> 用 PC 相对计算得到物理地址</li>
+</ul>
+<p>两种寻址方式<strong>配合使用</strong>：<code>adrp</code> 操作物理内存，<code>ldr =</code> 获取虚拟地址跳转。</p>
+<section>
+<h4>生命周期</h4>
+</section>
+<pre><code>① create_init_idmap()   — 建恒等映射
+② __enable_mmu()        — TTBR0=恒等映射, TTBR1=内核映射, 开 MMU
+③ br x8                 — 跳到 0xffff... 虚拟地址
+④ 后续                  — TTBR0 替换为用户进程页表，恒等映射内存回收</code></pre>
+<p><strong>恒等映射是一座桥：让 CPU 从物理地址世界安全走到虚拟地址世界。跨过桥后，桥就被拆掉了。</strong></p>
+</main>
+</div></div>
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>
