@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>init_kernel_el：ARM64 内核启动 EL 切换函数深度分析</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 320px; min-width: 0;
+    transition: max-width 0.25s ease;
+    overflow: hidden;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; overflow-x: hidden; height: 100%; }
+.resizer {
+    flex-shrink: 0; width: 5px; cursor: col-resize; z-index: 30;
+    background: transparent; position: relative;
+    margin-left: -3px;
+}
+.resizer:hover, .resizer.active { background: var(--accent-light); }
+.resizer::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 1px; width: 2px;
+    background: var(--border);
+}
+.resizer:hover::after, .resizer.active::after { background: var(--accent); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 1px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a.sub { padding-left: 16px; font-size: 0.92em; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s3"] .num, .sidebar a[href^="#s4"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s6"] .num { color: #7c3aed; font-weight: 600; }
+.sidebar a[href^="#s7"] .num { color: #059669; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+.step-list { counter-reset: step; list-style: none; margin-left: 0; }
+.step-list li { counter-increment: step; margin-bottom: 8px; padding-left: 28px; position: relative; color: var(--text-secondary); font-size: 0.85em; }
+.step-list li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 1px;
+    width: 18px; height: 18px;
+    background: var(--accent); color: #fff;
+    border-radius: 50%; text-align: center;
+    font-size: 10px; font-weight: 700; line-height: 18px;
+}
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<div class="sidebar-inner">
+			<h4>目 录</h4>
+			<a href="#s1"><span class="num">1.</span> 概述：init_kernel_el 的使命</a>
+			<a href="#s2"><span class="num">2.</span> 完整源码</a>
+			<a href="#s3"><span class="num">3.</span> primary_entry 中的调用点</a>
+			<a href="#s4"><span class="num">4.</span> EL1 路径详解</a>
+			<a href="#s5"><span class="num">5.</span> EL2 路径详解 ★</a>
+			<a href="#s6"><span class="num">6.</span> 返回值 x20 的去向</a>
+			<a href="#s7"><span class="num">7.</span> GDB 调试验证</a>
+			<a href="#s7" class="sub"><span class="num">7.1</span> 断点设置</a>
+			<a href="#s7" class="sub"><span class="num">7.2</span> 典型调试输出 — QEMU 默认启动 (EL2 → EL1)</a>
+			<a href="#s7" class="sub"><span class="num">7.3</span> EL1 路径调试 (U-Boot 场景)</a>
+			<a href="#s7" class="sub"><span class="num">7.4</span> 自定义 GDB 命令</a>
+			<a href="#s7" class="sub"><span class="num">7.5</span> 验证清单</a>
+			<a href="#s8"><span class="num">8.</span> 总结与关键要点</a>
+</nav>
+
+<div class="resizer" id="resizer" title="拖动调整目录宽度"></div>
+
+<div class="main-content">
+<header>
+<h1>init_kernel_el<br>ARM64 内核启动 EL 切换函数深度分析</h1>
+<div class="subtitle">
+<p>📁 <code>arch/arm64/kernel/head.S:270-331</code></p>
+<p>🎯 目标: 深入理解 <code>init_kernel_el</code> — 从 EL2/EL1 降级到 EL1 的完整流程</p>
+<p>🛠 涉及: ERET / SPSR / ELR / SCTLR / HCR / VBAR / VHE 检测</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">head.S</span><span class="tag tag-green">ARM64</span><span class="tag tag-amber">ERET</span><span class="tag tag-gray">EL切换</span><span class="tag tag-gray">VHE</span><span class="tag tag-gray">SCTLR</span>
+</div>
+</header>
+
+<main>
+
+<section id="s1">
+<h2>1. 概述：init_kernel_el 的使命</h2>
+
+<div class="two-col">
+<div>
+<h3>调用位置</h3>
+<pre><code>// primary_entry (line 119-121)
+1:  mov     x0, x19               // x0 = boot MMU state
+    bl      init_kernel_el        // ★ 进入
+    mov     x20, x0               // 保存 cpu_boot_mode</code></pre>
+</div>
+<div>
+<h3>核心使命</h3>
+<ul>
+<li>检测当前在 <strong>EL1 还是 EL2</strong></li>
+<li>配置 SCTLR_ELx 为 <strong>MMU OFF</strong> 的安全状态</li>
+<li>通过 <strong>ERET</strong> 指令降级到 EL1</li>
+<li>返回 <code>cpu_boot_mode</code>（记录原始启动级别）</li>
+<li>如果从 EL2 进入：设置 HCR、VBAR、hypervisor stub</li>
+</ul>
+</div>
+</div>
+
+<div class="diagram">// ============ 两条路径统一目标 ============
+
+  进入时 (CurrentEL)           离开时 (ERET 后)
+  ─────────────────           ────────────────
+  EL1  ──────────────────▶  EL1 (MMU off, 干净状态)
+  EL2  ──────────────────▶  EL2 配置完成 → ERET → EL1 (MMU off)
+
+  无论从哪一级进入，init_kernel_el 返回后 CPU 一定在 <strong>EL1</strong>
+  这就是 "init_kernel_el" (Initialize Kernel Exception Level) 的含义</div>
+
+<div class="note">💡 <strong>为什么必须降级？</strong> Linux 内核主体运行在 EL1。如果 bootloader 把 CPU 留在了 EL2（如 QEMU 默认行为），内核必须先接管 EL2 的控制权（设置 hypervisor stub），然后降级到 EL1 继续执行。如果已经在 EL1，只需配置好寄存器即可。</div>
+</section>
+
+<section id="s2">
+<h2>2. 完整源码</h2>
+
+<pre><code>/*
+ * Initialize the CPU exception level.
+ * x0: MMU state at boot (0=cold, 1=warm)
+ */
+SYM_FUNC_START(init_kernel_el)
+    mrs     x1, CurrentEL              // ① 读取当前异常级别
+    cmp     x1, #CurrentEL_EL2         // ② 是否在 EL2?
+    b.eq    init_el2                    // ③ 是 → 跳 EL2 路径
+
+SYM_INNER_LABEL(init_el1, SYM_L_LOCAL)
+    mov_q   x0, INIT_SCTLR_EL1_MMU_OFF // EL1 路径: 准备 SCTLR_EL1
+    pre_disable_mmu_workaround
+    msr     sctlr_el1, x0              // 写入 SCTLR_EL1 (MMU off!)
+    isb
+    mov_q   x0, INIT_PSTATE_EL1        // 准备目标处理器状态
+    msr     spsr_el1, x0               // 写入 SPSR_EL1
+    msr     elr_el1, lr                // ELR = 返回地址
+    mov     w0, #BOOT_CPU_MODE_EL1     // w0 = 0xe11
+    eret                               // ★ "异常返回"到 EL1
+
+SYM_INNER_LABEL(init_el2, SYM_L_LOCAL)
+    msr     elr_el2, lr                // EL2 路径: 保存返回地址
+
+    // 如果 MMU 是开的 (warm boot), clean HYP 代码到 PoC
+    cbz     x0, 0f
+    adrp    x0, __hyp_idmap_text_start
+    adr_l   x1, __hyp_text_end
+    adr_l   x2, dcache_clean_poc
+    blr     x2
+
+    mov_q   x0, INIT_SCTLR_EL2_MMU_OFF
+    pre_disable_mmu_workaround
+    msr     sctlr_el2, x0              // 写入 SCTLR_EL2 (MMU off!)
+    isb
+0:
+    init_el2_hcr    HCR_HOST_NVHE_FLAGS // 配置 HCR_EL2 (启用 EL1)
+    init_el2_state                       // 配置 EL2 系统寄存器
+
+    /* 安装 hypervisor stub 向量 */
+    adr_l   x0, __hyp_stub_vectors
+    msr     vbar_el2, x0
+    isb
+
+    mov_q   x1, INIT_SCTLR_EL1_MMU_OFF  // 准备 SCTLR_EL1
+
+    // ★ VHE 检测: HCR_EL2.E2H 位是否设置
+    mrs     x0, hcr_el2
+    and     x0, x0, #HCR_E2H
+    cbz     x0, 2f                      // E2H=0 → 非 VHE
+
+    /* VHE 路径: 写 SCTLR_EL12 */
+    msr_s   SYS_SCTLR_EL12, x1
+    mov     x2, #BOOT_CPU_FLAG_E2H
+    b       3f
+
+2:  /* 非 VHE 路径: 写 SCTLR_EL1 */
+    msr     sctlr_el1, x1
+    mov     x2, xzr
+3:
+    mov     x0, #INIT_PSTATE_EL1        // 目标处理器状态
+    msr     spsr_el2, x0
+
+    mov     w0, #BOOT_CPU_MODE_EL2      // w0 = 0xe12
+    orr     x0, x0, x2                  // 附加 E2H flag (如果有)
+    eret                               // ★ "异常返回"到 EL1
+SYM_FUNC_END(init_kernel_el)</code></pre>
+</section>
+
+<section id="s3">
+<h2>3. primary_entry 中的调用点</h2>
+
+<pre><code>// primary_entry (line 101-121)
+    cbnz    x19, 0f                    // x19=MMU state
+    ...  // Cold Boot: D-cache invalidate
+    b       1f
+0:  ...  // Warm Boot: D-cache clean
+1:  mov     x0, x19                    // ★ x0 = x19 = boot MMU flag
+    bl      init_kernel_el             // w0 = cpu_boot_mode
+    mov     x20, x0                    // ★ 保存到 x20 (callee-saved)
+
+    bl      __cpu_setup                // 配置 TCR/MAIR/等
+    b       __primary_switch           // 开启 MMU!</code></pre>
+
+<table>
+<tr><th>寄存器</th><th>方向</th><th>值</th><th>含义</th></tr>
+<tr><td><code>x0</code></td><td>入参</td><td><code>x19</code> 的值</td><td>0=冷启动(D-cache OFF), 1=热启动(D-cache ON)</td></tr>
+<tr><td><code>w0</code></td><td>返回值</td><td><code>0xe11</code> 或 <code>0xe12</code></td><td>BOOT_CPU_MODE_EL1 或 BOOT_CPU_MODE_EL2 (可能带 E2H flag)</td></tr>
+<tr><td><code>x20</code></td><td>保存</td><td><code>cpu_boot_mode</code></td><td>callee-saved, 后续 __cpu_setup / __primary_switch 使用</td></tr>
+</table>
+
+<h4>调用时序：它在整个启动流程中的位置</h4>
+<div class="diagram">// ============ primary_entry 调用链 ============
+
+  primary_entry:
+    bl  record_mmu_state              // x19 = boot MMU flag
+    bl  preserve_boot_args            // 保存 FDT
+    ... 创建 idmap 页表 ...
+    bl  __pi_create_init_idmap        // 构建 identity mapping
+    ... cache 维护 (inval or clean) ...
+
+    <span style="color:#2563eb;">mov x0, x19                         // 传入 boot MMU flag</span>
+    <span style="color:#2563eb;">bl  init_kernel_el                  // ★ 切换 EL + 关 MMU + 返回 boot mode</span>
+    <span style="color:#2563eb;">mov x20, x0                         // 保存 cpu_boot_mode</span>
+
+    bl  __cpu_setup                   // 配置 TCR/MAIR/SCTLR
+    b   __primary_switch              // 开启 MMU → 进入虚拟地址世界</div>
+
+<div class="note">💡 <strong>为什么把 x19 传进去？</strong> 如果进入时在 EL2 且 MMU 是开的（warm boot），EL2 路径需要 clean HYP 代码段（`__hyp_idmap_text_start` 到 `__hyp_text_end`）到 PoC，确保后续 MMU 关闭后 HYP stub 代码在内存中可用。这个逻辑和 primary_entry 中 clean idmap 代码的思路完全对称。</div>
+</section>
+
+<section id="s4">
+<h2>4. EL1 路径详解</h2>
+
+<div class="diagram">// ============ init_el1: 已经在 EL1, 只需配置后 ERET ============
+
+  CurrentEL = EL1
+       │
+       ▼
+  ① 写 SCTLR_EL1 = INIT_SCTLR_EL1_MMU_OFF
+     ┌─────────────────────────────────────────────────────────┐
+     │ ENDIAN_SET_EL1 | LSMAOE | nTLSMD | EIS | TSCXT | EOS   │
+     │ (EE + E0E)                                              │
+     │ ★ 注意: M=0, C=0, I=0 — MMU 和 cache 全部关闭          │
+     └─────────────────────────────────────────────────────────┘
+       │
+       ▼
+  ② 写 SPSR_EL1 = INIT_PSTATE_EL1
+     ┌─────────────────────────────────────────────────────────┐
+     │ D | A | I | F | MODE=EL1h                              │
+     │ 屏蔽所有异常 (DAIF=1111) + SP 用 EL1h                  │
+     └─────────────────────────────────────────────────────────┘
+       │
+       ▼
+  ③ 写 ELR_EL1 = LR (返回地址)
+       │
+       ▼
+  ④ w0 = BOOT_CPU_MODE_EL1 = 0xe11
+       │
+       ▼
+  ⑤ ERET → 返回到 EL1, 使用 SPSR_EL1 → PSTATE, PC = ELR_EL1
+     ★ 不是真正的"异常返回", 而是利用 ERET 机制切换处理器状态</div>
+
+<h4>init_el1 的三重作用</h4>
+<table>
+<tr><th>作用</th><th>通过什么</th><th>效果</th></tr>
+<tr><td class="accent">关闭 MMU</td><td>写入 SCTLR_EL1 (M=0)</td><td>确保后续 idmap 代码在物理地址下执行</td></tr>
+<tr><td class="green">屏蔽中断</td><td>SPSR_EL1 的 DAIF=1111</td><td>在 MMU 开启的关键窗口期不允许中断打搅</td></tr>
+<tr><td class="amber">返回调用者</td><td>ELR_EL1 = LR + ERET</td><td>利用 ERET 做 controlled return, 顺便设置 PSTATE</td></tr>
+</table>
+
+<div class="note">💡 <strong>为什么用 ERET 而不是普通 RET？</strong> 普通 <code>ret</code> 只恢复 PC，不改 PSTATE。ERET 同时恢复 PC（从 ELR）<strong>和</strong> PSTATE（从 SPSR），可以一次性关闭所有异常屏蔽位。这是 ARM64 保证在进入 C 代码之前处于已知安全处理器状态的惯用手段。</div>
+</section>
+
+<section id="s5">
+<h2>5. EL2 路径详解 ★</h2>
+
+<div class="diagram">// ============ init_el2: 从 EL2 降级到 EL1 ============
+
+  CurrentEL = EL2
+       │
+       ├─ 保存 ELR_EL2 = LR
+       │
+       ├─ if (x0 != 0)  // warm boot: MMU was on
+       │      clean HYP code [__hyp_idmap_text_start .. __hyp_text_end)
+       │
+       ├─ 写 SCTLR_EL2 = INIT_SCTLR_EL2_MMU_OFF
+       │   ┌──────────────────────────┐
+       │   │ SCTLR_EL2_RES1 | EE      │  (M=0 — MMU 关闭)
+       │   └──────────────────────────┘
+       │
+       ├─ init_el2_hcr(HCR_HOST_NVHE_FLAGS)
+       │   配置 HCR_EL2: E2H=0, TGE=0, RW=1 (EL1 用 AArch64)
+       │
+       ├─ init_el2_state  → 配置 CPTR, CNTHCTL 等
+       │
+       ├─ 安装 VBAR_EL2 = __hyp_stub_vectors
+       │   ★ 后续若陷入 EL2, 由 hypervisor stub 处理
+       │
+       ├─ 准备 SCTLR_EL1 = INIT_SCTLR_EL1_MMU_OFF
+       │
+       ├─ ★ VHE 分支 ★
+       │   │
+       │   ├── E2H=1 (VHE 模式)
+       │   │     写 SCTLR_EL12 ← 直接操作 EL1 的 SCTLR
+       │   │     x2 = BOOT_CPU_FLAG_E2H (bit 32)
+       │   │
+       │   └── E2H=0 (非 VHE)
+       │         写 SCTLR_EL1
+       │         x2 = 0
+       │
+       ├─ 写 SPSR_EL2 = INIT_PSTATE_EL1
+       │
+       ├─ w0 = BOOT_CPU_MODE_EL2 = 0xe12
+       ├─ w0 |= x2 (附加 E2H flag)
+       │
+       └─ ERET → 降级到 EL1</div>
+
+<h4>VHE (Virtualization Host Extensions) 检测</h4>
+<div class="two-col">
+<div>
+<p><strong>什么是 VHE？</strong> ARMv8.1 引入的特性。当 HCR_EL2.E2H=1 时，EL2 硬件直接支持运行宿主 OS，不需要软件在 EL2/EL1 间切换。大多数操作自动重定向到 EL2 对应寄存器。</p>
+<p><strong>VHE 时的 SCTLR 写入：</strong></p>
+<pre><code>msr_s SYS_SCTLR_EL12, x1
+// SCTLR_EL12 = "EL1 视角的 SCTLR"
+// 硬件自动映射到 EL2 的对应控制</code></pre>
+</div>
+<div>
+<p><strong>非 VHE 时的 SCTLR 写入：</strong></p>
+<pre><code>msr sctlr_el1, x1
+// 在 EL2 直接写 EL1 的 SCTLR
+// 降级后 EL1 读到配置好的值</code></pre>
+<p><strong>E2H flag 的意义：</strong></p>
+<pre><code>w0 = BOOT_CPU_MODE_EL2 // 0x00000000_00000e12
+w0 |= BOOT_CPU_FLAG_E2H // 0x00000001_00000e12
+// bit 32 = 1 标记此内核在 VHE 模式下启动</code></pre>
+</div>
+</div>
+
+<h4>init_el2 中的 Cache Clean（warm boot）</h4>
+<p>EL2 路径有一个和 primary_entry 对称的 warm boot 逻辑：</p>
+<div class="two-col">
+<div>
+<pre><code>// init_el2 中 (line 290-294)
+cbz     x0, 0f
+adrp    x0, __hyp_idmap_text_start
+adr_l   x1, __hyp_text_end
+adr_l   x2, dcache_clean_poc
+blr     x2</code></pre>
+</div>
+<div>
+<pre><code>// primary_entry 中 (line 114-117)
+0:  adrp    x0, __idmap_text_start
+    adr_l   x1, __idmap_text_end
+    adr_l   x2, dcache_clean_poc
+    blr     x2</code></pre>
+</div>
+</div>
+<p>两者完全对称：primary_entry clean 的是 idmap 代码，init_el2 clean 的是 HYP 代码。都是因为后续要关闭 MMU，必须先把 cacheable 代码写回内存。</p>
+</section>
+
+<section id="s6">
+<h2>6. 返回值 x20 的去向</h2>
+
+<p><code>init_kernel_el</code> 返回后，<code>w0 = cpu_boot_mode</code> 被保存到 <strong>x20</strong>（callee-saved 寄存器）。后续它在三处被使用：</p>
+
+<table>
+<tr><th>使用点</th><th>代码</th><th>说明</th></tr>
+<tr>
+<td><code>__cpu_setup</code></td>
+<td><code>mov x0, x20</code> (隐式)</td>
+<td>根据 boot mode 决定是否启用某些 CPU feature</td>
+</tr>
+<tr>
+<td><code>__primary_switch</code></td>
+<td>设置 TTBR1_EL1 等</td>
+<td>启动 MMU，切换到虚拟地址空间</td>
+</tr>
+<tr>
+<td><code>__primary_switched</code> → C 代码</td>
+<td><code>finalise_el2</code></td>
+<td>如果 `is_hyp_mode_available()` 返回 true，安装 KVM</td>
+</tr>
+</table>
+
+<div class="diagram">// ============ cpu_boot_mode 的最终用途 ============
+
+  init_kernel_el 返回 w0 = cpu_boot_mode
+       │
+       ▼
+  x20 = cpu_boot_mode  (0xe11 or 0xe12)
+       │
+       ├── __cpu_setup 使用 x20 → 配置 TCR/MAIR
+       │
+       └── __primary_switch 之后:
+              __boot_cpu_mode[0] = BOOT_CPU_MODE_EL1
+              __boot_cpu_mode[1] = cpu_boot_mode  ← 全局可见!
+
+  后续 C 代码 (setup_arch → finalise_el2):
+    if (is_hyp_mode_available())
+        // __boot_cpu_mode[0] == BOOT_CPU_MODE_EL2 &&
+        // __boot_cpu_mode[1] == BOOT_CPU_MODE_EL2
+        // → 原始启动级别是 EL2 → 可以跑 KVM
+        enable_kvm()</div>
+
+<div class="note">💡 <strong>为什么用 x20 而不是 x19？</strong> x19 已经被用于存储 MMU boot state（0 或 1），而且在 cache 维护之后就已经消费完了。但 <code>cpu_boot_mode</code> 需要一直保留到 MMU 开启并进入 C 代码之后。x20 同样是 callee-saved 寄存器，和 x19、x21（FDT 指针）一样，可以安全穿越所有函数调用。</div>
+</section>
+
+<section id="s7">
+<h2>7. GDB 调试验证</h2>
+
+<h3>7.1 断点设置</h3>
+<table>
+<tr><th>#</th><th>位置</th><th>命令</th><th>验证目标</th></tr>
+<tr><td>BP1</td><td><code>init_kernel_el</code> 入口</td><td><code>b init_kernel_el</code> (GLOBAL 符号可用名称)</td><td>检查 x0 (boot MMU flag) 和 CurrentEL</td></tr>
+<tr><td>BP2</td><td><code>init_el1</code> 标签处</td><td><code>b *&lt;phys_addr&gt;</code></td><td>确认走了 EL1 路径</td></tr>
+<tr><td>BP3</td><td><code>init_el2</code> 标签处</td><td><code>b *&lt;phys_addr&gt;</code></td><td>确认走了 EL2 路径</td></tr>
+<tr><td>BP4</td><td><code>eret</code> 之前 (EL1 路径)</td><td><code>b *&lt;phys_addr&gt;</code></td><td>检查 SCTLR_EL1 是否被写入, SPSR_EL1 值</td></tr>
+<tr><td>BP5</td><td><code>eret</code> 之前 (EL2 路径)</td><td><code>b *&lt;phys_addr&gt;</code></td><td>检查 HCR_EL2, VBAR_EL2, SCTLR_EL2 是否配置</td></tr>
+<tr><td>BP6</td><td><code>init_kernel_el</code> 返回后</td><td><code>finish</code> 或断在 <code>mov x20, x0</code></td><td>检查 w0 = cpu_boot_mode, x20 保存</td></tr>
+</table>
+
+<h3>7.2 典型调试输出 — QEMU 默认启动 (EL2 → EL1)</h3>
+
+<p>QEMU 的 <code>-M virt</code> 默认让 CPU 从 EL2 启动，所以这条路径最常见：</p>
+
+<pre><code>(gdb) b init_kernel_el
+(gdb) c
+Breakpoint 1, init_kernel_el (x0=0x0) at head.S:270
+
+(gdb) info registers x0 x1
+x0   0x0    0        // Cold boot (D-cache was OFF)
+x1   0x0    (will be overwritten)
+
+(gdb) si                  // mrs x1, CurrentEL
+(gdb) si                  // cmp x1, #CurrentEL_EL2
+(gdb) p/x $x1
+$1 = 0x8                 // CurrentEL = 0b10_00 = EL2 ✓
+
+(gdb) si                  // b.eq init_el2 → taken!
+
+// === 现在在 init_el2 路径 ===
+(gdb) advance init_el2    // 跳到 init_el2 第一条
+
+// 单步到 SCTLR_EL2 写入后
+(gdb) until *0x41XXXXXX   // 跳过 warm boot check (x0=0, 跳过 clean)
+(gdb) si                  // mov_q + msr sctlr_el2
+(gdb) p/x $x0
+$2 = 0x30c50838          // INIT_SCTLR_EL2_MMU_OFF
+
+// 单步到 SCTLR_EL1 写入后 (非 VHE 路径)
+(gdb) until *&lt;eret_addr&gt;
+(gdb) p/x $x0
+$3 = 0xe12               // BOOT_CPU_MODE_EL2
+
+// ERET 执行后
+(gdb) si                  // eret → 瞬间到 EL1
+(gdb) info registers spsr_el1 currentel
+SPSR_EL1    0x3c5        // D=1,A=1,I=1,F=1,M=EL1h
+CurrentEL   0x4          // EL1 ✓
+
+// 返回 primary_entry
+(gdb) finish
+(gdb) info registers x20
+x20  0xe12                // cpu_boot_mode = BOOT_CPU_MODE_EL2 ✓</code></pre>
+
+<h3>7.3 EL1 路径调试 (U-Boot 场景)</h3>
+
+<p>如果 bootloader 已经把 CPU 留在 EL1（某些 U-Boot 配置），会走 init_el1：</p>
+
+<pre><code>(gdb) b init_el1
+(gdb) c
+Breakpoint 2, init_el1 at head.S:275
+
+(gdb) info registers currentel
+CurrentEL   0x4          // EL1 ✓
+
+(gdb) si                  // mov_q x0, INIT_SCTLR_EL1_MMU_OFF
+(gdb) p/x $x0
+$1 = 0x34d5d91d          // SCTLR_EL1 配置值 (M=0, C=0, I=0)
+
+(gdb) si                  // msr sctlr_el1, x0
+
+// 验证 SCTLR 确实被写入了
+(gdb) p/x $SCTLR_EL1
+$2 = 0x34d5d91d          // ★ 注意 GDB 只能在 MMU on 时读系统寄存器
+                          // MMU off 时某些仿真器可能不支持
+
+// 到 ERET 之前
+(gdb) until *&lt;eret_addr&gt;
+(gdb) p/x $SPSR_EL1
+$3 = 0x3c5               // DAIF masked + EL1h mode
+(gdb) p/x $ELR_EL1
+$4 = 0x4163c114          // 返回地址 (primary_entry 中 bl 的下一行)
+
+// w0 的值
+(gdb) p/x $w0
+$5 = 0xe11               // BOOT_CPU_MODE_EL1 ✓</code></pre>
+
+<h3>7.4 自定义 GDB 命令</h3>
+
+<pre><code>define el_info
+    printf "CurrentEL = %d (", $currentel >> 2
+    if $currentel == 4
+        printf "EL1)\n"
+    else
+        if $currentel == 8
+            printf "EL2)\n"
+        else
+            printf "EL%d)\n", $currentel >> 2
+        end
+    end
+    printf "SCTLR_EL1 = 0x%lx\n", $SCTLR_EL1
+    printf "SCTLR_EL2 = 0x%lx\n", $SCTLR_EL2
+    printf "HCR_EL2   = 0x%lx\n", $HCR_EL2
+    printf "VBAR_EL2  = 0x%lx\n", $VBAR_EL2
+end
+document el_info
+    Display current exception level and key system registers.
+end
+
+define cpu_mode
+    if $x20 == 0xe11
+        printf "Boot mode: EL1\n"
+    else
+        if $x20 == 0xe12
+            printf "Boot mode: EL2 (non-VHE)\n"
+        else
+            if ($x20 >> 32) & 1
+                printf "Boot mode: EL2 (VHE)\n"
+            else
+                printf "Boot mode: 0x%lx\n", $x20
+            end
+        end
+    end
+end
+document cpu_mode
+    Decode x20 value as cpu_boot_mode. Usage after init_kernel_el returns.
+end</code></pre>
+
+<h3>7.5 验证清单</h3>
+<table>
+<tr><th>检查项</th><th>方法</th><th>预期</th></tr>
+<tr><td>CurrentEL 检测</td><td>在 <code>b.eq init_el2</code> 断下, 读 x1</td><td>QEMU: 0x8 (EL2), U-Boot: 可能 0x4 (EL1)</td></tr>
+<tr><td>SCTLR_ELx 写入 M=0</td><td>在 <code>msr sctlr_elx</code> 后读寄存器</td><td>bit 0 = 0 (MMU off)</td></tr>
+<tr><td>Warm boot HYP clean</td><td>设 x0=1 重跑, 确认 <code>cbz</code> 不跳 → 执行 clean</td><td>只有 x0=1 时走 clean 分支</td></tr>
+<tr><td>ERET 后 EL 切换</td><td><code>si</code> 过 eret, 读 CurrentEL</td><td>0x4 (EL1), 不管原来在哪</td></tr>
+<tr><td>SPSR 的 DAIF 全屏蔽</td><td>读 SPSR_EL1 或 SPSR_EL2 的 bits[9:6]</td><td>0b1111 (D=1, A=1, I=1, F=1)</td></tr>
+<tr><td>w0 = 0xe11 或 0xe12</td><td>在返回前读 w0</td><td>0xe11 (EL1) 或 0xe12 (EL2)</td></tr>
+<tr><td>VHE 标志位</td><td>读 w0 的 bit 32</td><td>VHE 硬件: bit32=1; 非 VHE: bit32=0</td></tr>
+</table>
+
+<div class="warn">⚠ <strong>注意：</strong>MMU 关闭期间，GDB 通过 <code>-s -S</code> 访问物理内存中的数据是可行的，但<strong>系统寄存器（如 SCTLR_EL1）的读取取决于仿真器实现</strong>。QEMU 的 GDB stub 在 MMU 关闭时仍然可以读取系统寄存器，但某些硬件调试器可能不行。此时可以改在写 <code>msr</code> 指令之前读 x0 的值来间接验证。</div>
+</section>
+
+<section id="s8">
+<h2>8. 总结与关键要点</h2>
+
+<table>
+<tr><th>#</th><th>要点</th><th>说明</th></tr>
+<tr><td>1</td><td class="accent">统一出口：必定在 EL1</td><td>无论从 EL1 还是 EL2 进入，ERET 后 CPU 一定在 EL1 执行。这是"init kernel EL"的核心语义</td></tr>
+<tr><td>2</td><td class="accent">三重任务</td><td>关闭 MMU(写 SCTLR) + 屏蔽中断(通过 SPSR) + 降级 EL(通过 ERET)，一条 ERET 指令完成状态切换</td></tr>
+<tr><td>3</td><td class="green">ERET 不是"异常返回"</td><td>虽然叫"异常返回"，但这里并非从异常中恢复。init_kernel_el 主动构造 SPSR/ELR，利用 ERET 的 CPU 状态切换能力做受控降级。这是 ARM64 核心启动的惯用技巧</td></tr>
+<tr><td>4</td><td class="green">EL2 对称的 Cache Clean</td><td>如果 warm boot (MMU on)，EL2 路径会 clean HYP 代码段到 PoC，和 primary_entry 中 clean idmap 代码的逻辑完全对称</td></tr>
+<tr><td>5</td><td class="amber">VHE 感知</td><td>通过 HCR_EL2.E2H 检测 VHE 模式，选择写 SCTLR_EL12 还是 SCTLR_EL1，并将 E2H flag 编码进返回值</td></tr>
+<tr><td>6</td><td class="amber">cpu_boot_mode 全局化</td><td>返回值通过 x20 传递，最终存入全局数组 __boot_cpu_mode[]，后续 C 代码据此判断是否可在 EL2 运行 KVM</td></tr>
+<tr><td>7</td><td class="amber">SCTLR 写两次的用意</td><td>EL2 路径中，先写 SCTLR_EL2（关 EL2 的 MMU），后写 SCTLR_EL1（关 EL1 的 MMU）。两次都清零 M 位，确保 EL1 和 EL2 的 stage 1 MMU 都关闭</td></tr>
+</table>
+
+<h3>涉及文件</h3>
+<table>
+<tr><th>文件</th><th>作用</th></tr>
+<tr><td><code>arch/arm64/kernel/head.S</code></td><td>init_kernel_el 定义 + primary_entry 调用</td></tr>
+<tr><td><code>arch/arm64/include/asm/virt.h</code></td><td>BOOT_CPU_MODE_EL1 / BOOT_CPU_MODE_EL2 / E2H flag 定义</td></tr>
+<tr><td><code>arch/arm64/include/asm/sysreg.h</code></td><td>INIT_SCTLR_EL1_MMU_OFF / INIT_SCTLR_EL2_MMU_OFF</td></tr>
+<tr><td><code>arch/arm64/include/asm/ptrace.h</code></td><td>INIT_PSTATE_EL1 / CurrentEL_EL2</td></tr>
+<tr><td><code>arch/arm64/include/asm/el2_setup.h</code></td><td>init_el2_hcr / init_el2_state 宏</td></tr>
+</table>
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+(function () {
+    var resizer = document.getElementById('resizer');
+    if (!resizer) return;
+    var sidebar = document.getElementById('sidebar');
+    var wrapper = document.querySelector('.page-wrapper');
+    var dragging = false;
+
+    resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        dragging = true;
+        resizer.classList.add('active');
+        sidebar.style.transition = 'none';
+        sidebar.style.minWidth = '0px';
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        var x = e.clientX - wrapper.getBoundingClientRect().left;
+        if (x < 0) x = 0;
+        sidebar.style.width = x + 'px';
+        sidebar.style.maxWidth = x + 'px';
+        sidebar.style.minWidth = '0px';
+    });
+
+    document.addEventListener('mouseup', function () {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove('active');
+        sidebar.style.transition = '';
+        sidebar.style.minWidth = '';
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+})();
+</script>
+</body>
+</html>
