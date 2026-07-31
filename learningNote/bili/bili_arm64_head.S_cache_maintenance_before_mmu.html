@@ -21,20 +21,22 @@ body {
     position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
     background: #fff; border-right: 1px solid var(--border);
     font-size: 0.85em; z-index: 10;
-    width: auto; max-width: 220px;
+    width: auto; max-width: 320px; min-width: 0;
     transition: max-width 0.25s ease;
-    overflow: visible;
+    overflow: hidden;
 }
-.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; }
-.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
-.sidebar.collapsed .sidebar-inner { display: none; }
-.toggle-btn {
-    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
-    background: #fff; border: 1px solid var(--accent); border-left: none;
-    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
-    color: var(--accent); line-height: 1.2;
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; overflow-x: hidden; height: 100%; }
+.resizer {
+    flex-shrink: 0; width: 5px; cursor: col-resize; z-index: 30;
+    background: transparent; position: relative;
+    margin-left: -3px;
 }
-.toggle-btn:hover { background: var(--accent-light); }
+.resizer:hover, .resizer.active { background: var(--accent-light); }
+.resizer::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 1px; width: 2px;
+    background: var(--border);
+}
+.resizer:hover::after, .resizer.active::after { background: var(--accent); }
 .sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
 .sidebar a { display: block; color: #64748b; text-decoration: none; padding: 1px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
 .sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
@@ -98,7 +100,6 @@ tr:nth-child(even) td { background: #f8fafc; }
     .sidebar { max-width: 180px; font-size: 0.78em; }
     .sidebar-inner { padding: 14px 4px 24px 4px; }
     .sidebar a { font-size: 0.92em; padding: 1px 0; }
-    .toggle-btn { top: 14px; }
     .main-content { padding: 16px 14px 30px; }
     .two-col { grid-template-columns: 1fr; }
     section { padding: 16px 0; }
@@ -110,7 +111,6 @@ tr:nth-child(even) td { background: #f8fafc; }
 <div class="page-wrapper">
 
 <nav class="sidebar" id="sidebar">
-<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
 <div class="sidebar-inner">
 <h4>目 录</h4>
 <a href="#s1"><span class="num">1.</span> 概述：这段代码做什么</a>
@@ -125,6 +125,8 @@ tr:nth-child(even) td { background: #f8fafc; }
 <a href="#s10"><span class="num">10.</span> 总结 &amp; 关键要点</a>
 </div>
 </nav>
+
+<div class="resizer" id="resizer" title="拖动调整目录宽度"></div>
 
 <div class="main-content">
 
@@ -706,12 +708,46 @@ $6 = 0x0                          # x0 = x19 = 0
 </div><!-- .page-wrapper -->
 
 <script>
-function toggleSidebar() {
-    var s = document.getElementById('sidebar');
-    var b = document.getElementById('toggleBtn');
-    s.classList.toggle('collapsed');
-    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
-}
+// ===== 拖拽调整目录宽度 =====
+(function () {
+    var resizer = document.getElementById('resizer');
+    if (!resizer) return;
+    var sidebar = document.getElementById('sidebar');
+    var dragging = false;
+
+    var wrapper = document.querySelector('.page-wrapper');
+
+    resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        dragging = true;
+        resizer.classList.add('active');
+        // 拖拽期间关闭过渡, 避免每帧都做动画; 强制允许收缩到 0
+        sidebar.style.transition = 'none';
+        sidebar.style.minWidth = '0px';
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        // 相对 wrapper 的偏移, 防止 wrapper 不在 x=0 时出错
+        var x = e.clientX - wrapper.getBoundingClientRect().left;
+        if (x < 0) x = 0;
+        sidebar.style.width = x + 'px';
+        sidebar.style.maxWidth = x + 'px';
+        sidebar.style.minWidth = '0px';
+    });
+
+    document.addEventListener('mouseup', function () {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove('active');
+        sidebar.style.transition = '';
+        sidebar.style.minWidth = '';
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+})();
 </script>
 </body>
 </html>
