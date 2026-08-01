@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__primary_switch → start_kernel: ARM64 MMU 开启与内核 C 入口</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 320px; min-width: 0;
+    transition: max-width 0.25s ease; overflow: hidden;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; overflow-x: hidden; height: 100%; }
+.resizer {
+    flex-shrink: 0; width: 5px; cursor: col-resize; z-index: 30;
+    background: transparent; position: relative; margin-left: -3px;
+}
+.resizer:hover, .resizer.active { background: var(--accent-light); }
+.resizer::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 1px; width: 2px;
+    background: var(--border);
+}
+.resizer:hover::after, .resizer.active::after { background: var(--accent); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 2px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a.sub { padding-left: 16px; font-size: 0.92em; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s3"] .num, .sidebar a[href^="#s4"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s6"] .num { color: #7c3aed; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<div class="sidebar-inner">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 概述：最后一段汇编</a>
+<a href="#s2"><span class="num">2.</span> __primary_switch 逐行分析</a>
+<a href="#s3"><span class="num">3.</span> __enable_mmu: MMU 开启的瞬间</a>
+<a href="#s4"><span class="num">4.</span> MMU ON 之后: 内核重定位</a>
+<a href="#s5"><span class="num">5.</span> __primary_switched → start_kernel</a>
+<a href="#s6"><span class="num">6.</span> GDB 调试验证 ★</a>
+</div>
+</nav>
+
+<div class="resizer" id="resizer" title="拖动调整目录宽度"></div>
+
+<div class="main-content">
+<header>
+<h1>__primary_switch → start_kernel<br>ARM64 MMU 开启与进入 C 代码</h1>
+<div class="subtitle">
+<p>📁 <code>arch/arm64/kernel/head.S:508-523</code> + <code>:220-248</code></p>
+<p>🎯 目标: 完整追踪 MMU 开启瞬间到此后的内核重定位和 start_kernel 入口</p>
+<p>🛠 涉及: __enable_mmu / set_sctlr_el1 / __pi_early_map_kernel / __primary_switched</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">head.S</span><span class="tag tag-green">ARM64</span><span class="tag tag-amber">MMU ON</span><span class="tag tag-gray">idmap</span><span class="tag tag-gray">start_kernel</span>
+</div>
+</header>
+
+<main>
+
+<section id="s1">
+<h2>1. 概述：primary_entry 的最后一条指令</h2>
+
+<div class="diagram">// ============ primary_entry 完整调用链 ============
+
+  primary_entry:
+    bl  record_mmu_state               // x19 = boot MMU flag
+    bl  preserve_boot_args             // 保存 FDT + boot_args
+    ... 创建 idmap ...
+    bl  __pi_create_init_idmap         // 构建 identity mapping 页表
+    ... cache 维护 ...
+    mov x0, x19
+    bl  init_kernel_el                // EL 切换, 关 MMU → w0=cpu_boot_mode
+    mov x20, x0                        // x20 = cpu_boot_mode
+    bl  __cpu_setup                    // 配置 TCR/MAIR → x0=SCTLR_MMU_ON
+    <span style="color:#2563eb;">b   __primary_switch              // ★ 最后一条指令: 无条件跳转</span>
+                                      //    此后 primary_entry 不再返回
+
+  __primary_switch:
+    bl  __enable_mmu                   // ★① 开启 MMU (idmap 生效)
+    mov sp, early_init_stack           // ② 切到新栈 (现在是 VA 了)
+    bl  __pi_early_map_kernel          // ③ 重定位内核到高 VA
+    ldr x8, =__primary_switched        // ④ 加载绝对 VA (高地址)
+    br  x8                             // ⑤ 跳转到虚拟地址世界!</div>
+
+<p><strong>从 b __primary_switch 到 bl start_kernel，总共约 20 条指令，完成了 ARM64 内核启动中最重要的三件事：开启 MMU、重定位内核、进入 C 代码。</strong></p>
+</section>
+
+<section id="s2">
+<h2>2. __primary_switch 逐行分析 (head.S:508-523)</h2>
+
+<pre><code>SYM_FUNC_START_LOCAL(__primary_switch)
+    adrp    x1, reserved_pg_dir            // ① x1 = 空页表 (全零 PG)
+    adrp    x2, __pi_init_idmap_pg_dir     // ② x2 = idmap PGD
+    bl      __enable_mmu                   // ③ ★ 开启 MMU!
+
+    // ===== 以下是 MMU ON 之后 =====
+    adrp    x1, early_init_stack           // ④ 获取新栈地址 (现在是 VA!)
+    mov     sp, x1                         // ⑤ 切到新栈
+    mov     x29, xzr                       // ⑥ FP=0 (新栈帧起点)
+    mov     x0, x20                        // ⑦ x0 = cpu_boot_mode
+    mov     x1, x21                        // ⑧ x1 = FDT 物理地址
+    bl      __pi_early_map_kernel          // ⑨ 重定位 + 映射内核
+
+    ldr     x8, =__primary_switched        // ⑩ x8 = __primary_switched 的绝对 VA
+    adrp    x0, KERNEL_START               // ⑪ x0 = _text 的物理地址
+    br      x8                             // ⑫ 跳转到虚拟地址!</code></pre>
+
+<table>
+<tr><th>行</th><th>指令</th><th>含义</th></tr>
+<tr><td>①②</td><td><code>adrp x1, reserved_pg_dir</code><br><code>adrp x2, __pi_init_idmap_pg_dir</code></td><td><code>x1</code> = reserved 空页表 (全 0, 用于 TTBR1 切换)<br><code>x2</code> = 我们刚刚构建的 idmap PGD</td></tr>
+<tr><td class="accent">③</td><td class="accent"><code>bl __enable_mmu</code></td><td class="accent">★ 开启 MMU! 见下一章详解</td></tr>
+<tr><td>④⑤</td><td><code>adrp x1, early_init_stack; mov sp, x1</code></td><td>重新设置栈指针。<strong>MMU ON 之前</strong>这行用的是物理地址，<strong>MMU ON 之后</strong>同一地址经过 idmap 翻译 → 结果相同</td></tr>
+<tr><td>⑥</td><td><code>mov x29, xzr</code></td><td>FP=0, 新栈帧起点。GDB backtrace 的终止条件</td></tr>
+<tr><td>⑦⑧</td><td><code>mov x0, x20; mov x1, x21</code></td><td>传递 cpu_boot_mode 和 FDT 给 __pi_early_map_kernel</td></tr>
+<tr><td class="green">⑨</td><td class="green"><code>bl __pi_early_map_kernel</code></td><td class="green">映射内核到高 VA, 重定位页表, 设置 TTBR1<br>此后内核主体可以跑在高 VA 上了</td></tr>
+<tr><td class="amber">⑩⑪⑫</td><td class="amber"><code>ldr x8, =__primary_switched</code><br><code>br x8</code></td><td class="amber">★ 这是从 idmap (物理地址) 到高 VA (虚拟地址) 的跳跃!<br><code>ldr x8, =</code> 加载的是链接器分配的绝对 VA</td></tr>
+</table>
+
+<h3>关键：br x8 为什么能成功？</h3>
+<div class="diagram">// ============ br x8 的时刻 ============
+
+  执行 br x8 之前:
+    PC = 某个物理地址 (通过 idmap VA=PA 翻译)
+    页表: TTBR0 = idmap PGD, TTBR1 = 内核正式 PGD
+
+  执行 br x8:
+    x8 = 0xffff8000_xxxx_xxxx  (__primary_switched 的链接 VA)
+
+    CPU 发出地址 0xffff8000_xxxx_xxxx:
+    → 这是高 VA 地址 → TCR_EL1.T1SZ 判定 → 走 TTBR1 翻译
+    → TTBR1 指向 __pi_early_map_kernel 刚建好的内核页表
+    → 翻译成功! CPU 跳到 __primary_switched
+
+  这一瞬间, CPU 从 "idmap 物理地址世界" 跳到了 "内核虚拟地址世界"
+  这是 ARM64 启动中最精彩的单条指令</div>
+</section>
+
+<section id="s3">
+<h2>3. __enable_mmu: MMU 开启的瞬间 (head.S:459-473)</h2>
+
+<pre><code>SYM_FUNC_START(__enable_mmu)
+    mrs     x3, ID_AA64MMFR0_EL1           // ① 读硬件特性寄存器
+    ubfx    x3, x3, #ID_AA64MMFR0_EL1_TGRAN_SHIFT, 4
+    cmp     x3, #ID_AA64MMFR0_EL1_TGRAN_SUPPORTED_MIN
+    b.lt    __no_granule_support            // ② 4KB 粒度不支持? → 死循环
+    cmp     x3, #ID_AA64MMFR0_EL1_TGRAN_SUPPORTED_MAX
+    b.gt    __no_granule_support            // ③ 粒度编号超出范围? → 死循环
+    phys_to_ttbr x2, x2                     // ④ 物理地址 → TTBR 格式
+    msr     ttbr0_el1, x2                   // ⑤ 安装 idmap PGD 到 TTBR0
+    load_ttbr1 x1, x1, x3                   // ⑥ 安装 reserved 空页表到 TTBR1
+
+    set_sctlr_el1   x0                      // ⑦ ★ 写入 SCTLR_EL1 = MMU_ON!
+                                            //    msr sctlr_el1, x0
+                                            //    isb
+                                            //    ic iallu     ← 刷 I-cache
+                                            //    dsb nsh
+                                            //    isb
+    ret                                     // ⑧ ★ 返回, 但此时 MMU 已在翻译!
+SYM_FUNC_END(__enable_mmu)</code></pre>
+
+<h3>逐行解释</h3>
+
+<table>
+<tr><th>行</th><th>含义</th></tr>
+<tr><td>①②③</td><td><strong>安全检查：</strong>读 ID_AA64MMFR0_EL1.TGran4 确认硬件支持 4KB 页表粒度。不支持则跳入 <code>__no_granule_support</code> — 无限循环 (wfi/ b)</td></tr>
+<tr><td class="accent">④</td><td class="accent"><strong><code>phys_to_ttbr x2, x2</code>：</strong>把 idmap PGD 的物理地址转换为 TTBR 格式。<br>对于 48-bit PA: 直接返回 PA (bits[47:1] ← PA[47:1], bit[0] 可能为 CnP)<br>对于 52-bit PA: 做位折叠 (类似 __phys_to_pte_val)</td></tr>
+<tr><td class="accent">⑤</td><td class="accent"><strong><code>msr ttbr0_el1, x2</code>：</strong>安装 idmap PGD 到 TTBR0。<br>★ 此后硬件遍历页表时就会读我们的 idmap 页表了</td></tr>
+<tr><td>⑥</td><td><strong><code>load_ttbr1 x1, x1, x3</code>：</strong>安装 reserved 空页表到 TTBR1。<br>reserved_pg_dir 是一页全 0 的物理页 — 任何 TTBR1 翻译都产生 translation fault</td></tr>
+<tr><td class="green">⑦</td><td class="green"><strong><code>set_sctlr_el1 x0</code>：</strong>这条宏做了三件事：<br>1. <code>msr sctlr_el1, x0</code> — 写入 SCTLR (M=1!) ★ MMU 在此刻生效<br>2. <code>isb</code> — 同步<br>3. <code>ic iallu + dsb nsh + isb</code> — 全刷 I-cache (清除 speculative fetch 的旧指令)</td></tr>
+<tr><td class="amber">⑧</td><td class="amber"><strong><code>ret</code>：</strong>返回 __primary_switch。<br>★ 这条 ret 本身也是经 MMU 翻译的!<br>取指: PC → idmap 查表 → PA=PC → 正确!<br>这就是 idmap 存在的全部意义</td></tr>
+</table>
+
+<h3>set_sctlr_el1 的展开</h3>
+<pre><code>// arch/arm64/include/asm/assembler.h:720-731
+.macro set_sctlr, sreg, reg
+    msr     \sreg, \reg          // 写 SCTLR_EL1 = INIT_SCTLR_EL1_MMU_ON
+    isb                          // ★ 指令同步屏障
+    ic      iallu                // 全刷 I-cache 到 PoU
+    dsb     nsh
+    isb
+.endm</code></pre>
+<p><code>ic iallu</code> 刷新整个 I-cache 到 PoU (Point of Unification)。因为 MMU 开启改变了翻译环境，之前 speculative fetch 进来的旧指令可能基于<strong>错误的翻译</strong>。不刷 I-cache 可能导致 CPU 执行到旧翻译下的错误指令。</p>
+
+<h3>MMU 开启的精确时刻</h3>
+<div class="diagram">// ============ msr sctlr_el1, x0 前后的变化 ============
+
+  msr sctlr_el1, x0 之前:
+    CPU 取指: PA = PC (MMU off, 无翻译)
+    地址空间: 物理地址
+
+  msr sctlr_el1, x0 之后 (M 位从 0 → 1):
+    CPU 取指: PA = idmap_walk(PC) = PC (VA==PA, identity 翻译)
+    地址空间: 仍然是物理地址 (因为 idmap 保证 VA==PA)
+
+  TTBR0_EL1 指向的 idmap PGD 开始被硬件使用
+  TCR_EL1 的 T0SZ/TG0/SH0 等配置开始生效</div>
+</section>
+
+<section id="s4">
+<h2>4. MMU ON 之后：__pi_early_map_kernel (head.S:516-518)</h2>
+
+<pre><code>    mov     x0, x20                        // cpu_boot_mode
+    mov     x1, x21                        // FDT 物理地址
+    bl      __pi_early_map_kernel          // 映射 + 重定位内核!</code></pre>
+
+<p>这个 PI 函数 (在 <code>map_kernel.c</code> 中) 做三件事：</p>
+<ol>
+<li><strong>构建正式页表</strong> — 在 init_pg_dir 中创建内核的高 VA (0xffff...) 映射</li>
+<li><strong>重新创建 idmap</strong> — 用正确的 PA 重建 identity mapping (此时已知 kimage_voffset)</li>
+<li><strong>安装 TTBR1</strong> — 把 init_pg_dir 设为 TTBR1_EL1</li>
+</ol>
+
+<div class="note">💡 <strong>为什么需要重新创建 idmap？</strong> 第一次 <code>create_init_idmap</code> 用的 VA==PA 是通过 -fpie PC-relative 拿到的物理地址。现在 <code>__pi_early_map_kernel</code> 里可以精确计算 kimage_voffset, 创建正确的 "VA(高) → PA(实际)" 映射。旧的 idmap PGD 仍然在 TTBR0 中, 但在 __primary_switched 之后会被替换。</div>
+
+<h3>完成后的页表布局</h3>
+<div class="diagram">// ============ __pi_early_map_kernel 后的页表 ============
+
+  TTBR0_EL1 → __pi_init_idmap_pg_dir (旧的 idmap)
+               VA=PA, 仍然有效
+
+  TTBR1_EL1 → init_pg_dir (新的正式页表)
+               0xffff8000_80000000 → PA 0x40200000  (内核代码)
+               0xffff8000_81000000 → PA 0x41000000  (内核数据)
+               ...
+
+  现在内核主体可以在高 VA 下运行了!</div>
+</section>
+
+<section id="s5">
+<h2>5. __primary_switched → start_kernel (head.S:220-248)</h2>
+
+<pre><code>SYM_FUNC_START_LOCAL(__primary_switched)
+    adr_l   x4, init_task                  // ① 获取 init_task 地址
+    init_cpu_task x4, x5, x6               // ② 初始化 CPU 任务上下文
+
+    adr_l   x8, vectors                    // ③ 安装异常向量表
+    msr     vbar_el1, x8                   //    (现在 VA 可用了)
+    isb
+
+    stp     x29, x30, [sp, #-16]!          // ④ 标准 C 函数序言
+    mov     x29, sp
+
+    str_l   x21, __fdt_pointer, x5         // ⑤ 全局保存 FDT 指针
+
+    adrp    x4, _text                      // ⑥ ★ 计算 kimage_voffset
+    sub     x4, x4, x0                     //     = VA(_text) - PA(_text)
+    str_l   x4, kimage_voffset, x5         //     保存到全局变量
+
+    mov     x0, x20
+    bl      set_cpu_boot_mode_flag         // ⑦ 记录 boot CPU mode
+
+#if defined(CONFIG_KASAN_GENERIC) || defined(CONFIG_KASAN_SW_TAGS)
+    bl      kasan_early_init               // ⑧ KASAN 早期初始化 (可选)
+#endif
+    mov     x0, x20
+    bl      finalise_el2                   // ⑨ 尝试启用 VHE (EL2 模式)
+
+    ldp     x29, x30, [sp], #16            // ⑩ 恢复栈帧
+    bl      start_kernel                   // ⑪ ★ 进入 C 代码主函数!
+    ASM_BUG()                              // ⑫ 永远不会执行 (start_kernel 不返回)
+SYM_FUNC_END(__primary_switched)</code></pre>
+
+<h3>逐行关键分析</h3>
+
+<table>
+<tr><th>行</th><th>做什么</th><th>为什么此时做</th></tr>
+<tr><td>①②</td><td>设置 init_task → sp_el0, 初始化任务栈</td><td>C 代码需要 current 宏工作, current 依赖 sp_el0</td></tr>
+<tr><td class="accent">③</td><td class="accent"><code>msr vbar_el1, vectors</code></td><td class="accent">★ 安装异常向量表。此前没有向量表!<br>如果在 MMU on 后、VBAR 设置前发生异常 → 不可预知的行为</td></tr>
+<tr><td class="green">⑤</td><td class="green"><code>str_l x21, __fdt_pointer</code></td><td class="green">FDT 地址写入全局变量, setup_arch() 将通过它解析设备树</td></tr>
+<tr><td class="amber">⑥</td><td class="amber"><code>sub x4, x4, x0</code></td><td class="amber">★ 计算 kimage_voffset = VA - PA<br>这是内核最重要的运行时常量之一:<br><code>__kimg_to_phys(addr) = addr - kimage_voffset</code></td></tr>
+<tr><td>⑦</td><td><code>set_cpu_boot_mode_flag</code></td><td>把 x20 (cpu_boot_mode) 写入 __boot_cpu_mode[] 数组</td></tr>
+<tr><td>⑨</td><td><code>finalise_el2</code></td><td>如果硬件支持 VHE, 启用之, 让内核跑在 EL2</td></tr>
+<tr><td class="accent">⑪</td><td class="accent"><code>bl start_kernel</code></td><td class="accent">★ C 代码的入口。参数: x0=0 (传给 init/main.c:start_kernel)</td></tr>
+</table>
+
+<h3>⑥ kimage_voffset 的计算</h3>
+<div class="diagram">// ============ 关键公式 ============
+
+  adrp x4, _text           // x4 = VA of _text = 0xffff800080000000
+                            //      (adrp 在 VA 空间下解析, 得到链接器分配的 VA)
+  sub  x4, x4, x0           // x0 = PA of _text (从 __primary_switch 传入)
+                            // x4 = VA - PA = kimage_voffset
+                            //    = 0xffff800080000000 - 0x40200000
+                            //    = 0xffff80003FE00000
+
+  后续: 任意内核符号 S 的物理地址 = S - kimage_voffset</div>
+
+<div class="note">💡 <strong>为什么此时 VA 可用？</strong> 因为 <code>__pi_early_map_kernel</code> 已经在 TTBR1 中建立了内核高 VA 的映射。CPU 发出的高地址能正常翻译为正确的 PA。计算 kimage_voffset 时, <code>adrp x4, _text</code> 通过 TTBR1 翻译拿到了正确的链接时高 VA 值 — 因为我们现在在 VA 空间里运行。</div>
+</section>
+
+<section id="s6">
+<h2>6. GDB 调试验证 ★</h2>
+
+<h3>6.1 验证 MMU 开启瞬间</h3>
+<table>
+<tr><th>#</th><th>断点位置</th><th>PA 地址</th><th>验证目标</th></tr>
+<tr><td>BP1</td><td><code>__enable_mmu</code> 第一条</td><td><code>*0x4163c808</code></td><td>检查入参 x0(SCTLR_ON), x1(reserved), x2(idmap)</td></tr>
+<tr><td>BP2</td><td><code>msr sctlr_el1, x0</code> 之前</td><td><code>*0x4163c82c</code></td><td>检查 TTBR0_EL1/TTBR1_EL1 已安装, SCTLR 仍为 OFF</td></tr>
+<tr><td>BP3</td><td><code>set_sctlr_el1</code> 之后的 <code>ret</code></td><td><code>*0x4163c82c+8</code></td><td>检查 SCTLR_EL1.M=1 ★ MMU ON!</td></tr>
+<tr><td>BP4</td><td><code>__primary_switch</code> 中 <code>mov sp, x1</code></td><td><code>*0x4163c770</code></td><td>MMU 已开, PC 仍为物理地址 (经 idmap 翻译)</td></tr>
+<tr><td>BP5</td><td><code>br x8</code> 跳转点</td><td><code>*0x4163c77c</code></td><td>跳转前 x8 = __primary_switched 的 VA</td></tr>
+<tr><td>BP6</td><td><code>__primary_switched</code> 入口</td><td>符号 (VA)</td><td>★ PC 现在变为 VA! 确认已到虚拟地址世界</td></tr>
+<tr><td>BP7</td><td><code>start_kernel</code> 入口</td><td>符号 (VA)</td><td>C 代码入口, 确认启动流程完整</td></tr>
+</table>
+
+<h3>6.2 典型 GDB 验证脚本</h3>
+<pre><code># AI GDB 脚本: 验证 MMU 开启到 start_kernel
+set pagination off
+set architecture aarch64
+target remote :1234
+add-symbol-file vmlinux -s .head.text 0x40200000 -s .text 0x40210000 -s .rodata 0x410f0000 -s .init.text 0x41650000 -s .rodata.text 0x41637800 -s .init.data 0x41738000
+
+echo \n=== Step 1: 到 __cpu_setup 返回后, 检查 x0 ===\n
+b *0x4163c158
+c
+printf "SCTLR_MMU_ON(x0)=0x%lx   M(bit0)=%d C(bit2)=%d\n", $x0, $x0&1, ($x0>>2)&1
+
+echo \n=== Step 2: 进入 __enable_mmu ===\n
+b *0x4163c808
+c
+printf "x0(SCTLR)=0x%lx x1(reserved)=0x%lx x2(idmap)=0x%lx\n", $x0, $x1, $x2
+
+echo \n=== Step 3: MMU 开启前瞬间 (msr sctlr 之前) ===\n
+b *0x4163c82c
+c
+echo 检查 SCTLR_EL1 当前值:\n
+printf "SCTLR_EL1.M=%d (应为 0)\n", $SCTLR_EL1&1
+echo 检查 TTBR 已安装:\n
+printf "TTBR0_EL1=0x%lx\n", $TTBR0_EL1
+printf "TTBR1_EL1=0x%lx\n", $TTBR1_EL1
+
+echo \n=== Step 4: MMU 开启后 (set_sctlr ret 之后) ===\n
+b *0x4163c834
+c
+printf "SCTLR_EL1.M=%d (应为 1!)\n", $SCTLR_EL1&1
+echo MMU ON! idmap 正在翻译 PC ===\n
+
+echo \n=== Step 5: __primary_switched — VA 世界! ===\n
+b __primary_switched
+c
+printf "PC=0x%lx (现在应该是 VA!)\n", $pc
+printf "__fdt_pointer=0x%lx\n", *(unsigned long long*)&__fdt_pointer
+
+echo \n=== Step 6: start_kernel! ===\n
+b start_kernel
+c
+echo 到达 C 代码入口!\n
+printf "PC=0x%lx\n", $pc
+
+detach
+quit</code></pre>
+
+<h3>6.3 验证清单</h3>
+<table>
+<tr><th>检查项</th><th>预期值</th><th>失败含义</th></tr>
+<tr><td><code>__cpu_setup</code> 返回的 x0</td><td>M=1, C=1</td><td>SCTLR 配置错误, MMU 不会开启或配置不对</td></tr>
+<tr><td><code>__enable_mmu</code> 入口 x2</td><td><code>__pi_init_idmap_pg_dir</code> 的物理地址</td><td>idmap PGD 传错了</td></tr>
+<tr><td><code>msr sctlr</code> 前的 SCTLR_EL1.M</td><td>0</td><td>MMU 应该还在关闭状态</td></tr>
+<tr><td><code>msr sctlr</code> 后的 SCTLR_EL1.M</td><td>1</td><td>MMU 应该已经开启!</td></tr>
+<tr><td><code>__primary_switched</code> 的 PC</td><td>0xffff8000_xxxx_xxxx</td><td>应该有 high VA — 证明在虚拟地址空间</td></tr>
+<tr><td><code>start_kernel</code> 被调用</td><td>断点命中</td><td>内核启动流程完成!</td></tr>
+</table>
+
+<h3>6.4 核心验证：idmap 让 MMU 开启瞬间不崩溃</h3>
+<div class="diagram">// ============ ret 指令的翻译过程 ============
+
+  __enable_mmu 中的 ret:
+    PC = 0x4163c834 (物理地址, 在 idmap 段)
+
+    set_sctlr_el1 刚执行完 → SCTLR_EL1.M = 1
+    TTBR0_EL1 = idmap PGD (VA=PA 映射)
+    TCR_EL1.T0SZ = 48
+
+    CPU 取指: 发出 VA = 0x4163c834
+    → 查 TTBR0 (VA < 2^48, 走 TTBR0)
+    → PGD[0] → PUD[..] → PMD[..]
+    → Block entry: OA = 0x4163c834 >> 21 = ... → PA = 0x4163c834
+    → VA == PA! idmap 生效!
+    → 取指成功! ret 的下一条指令被正确执行
+
+  如果没有 idmap (或 idmap 覆盖范围不够):
+    → 翻译失败 → Prefetch Abort → 内核崩溃</div>
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+(function () {
+    var resizer = document.getElementById('resizer');
+    if (!resizer) return;
+    var sidebar = document.getElementById('sidebar');
+    var wrapper = document.querySelector('.page-wrapper');
+    var dragging = false;
+    resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault(); dragging = true;
+        resizer.classList.add('active');
+        sidebar.style.transition = 'none';
+        sidebar.style.minWidth = '0px';
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        var x = e.clientX - wrapper.getBoundingClientRect().left;
+        if (x < 0) x = 0;
+        sidebar.style.width = x + 'px';
+        sidebar.style.maxWidth = x + 'px';
+        sidebar.style.minWidth = '0px';
+    });
+    document.addEventListener('mouseup', function () {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove('active');
+        sidebar.style.transition = '';
+        sidebar.style.minWidth = '';
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+})();
+</script>
+</body>
+</html>

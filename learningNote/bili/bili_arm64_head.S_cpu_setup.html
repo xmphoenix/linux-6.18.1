@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__cpu_setup：ARM64 MMU 开启前的 CPU 初始化逐行分析</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 320px; min-width: 0;
+    transition: max-width 0.25s ease; overflow: hidden;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; overflow-x: hidden; height: 100%; }
+.resizer {
+    flex-shrink: 0; width: 5px; cursor: col-resize; z-index: 30;
+    background: transparent; position: relative; margin-left: -3px;
+}
+.resizer:hover, .resizer.active { background: var(--accent-light); }
+.resizer::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 1px; width: 2px;
+    background: var(--border);
+}
+.resizer:hover::after, .resizer.active::after { background: var(--accent); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 2px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a.sub { padding-left: 16px; font-size: 0.92em; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s3"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s4"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: #7c3aed; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<div class="sidebar-inner">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 概述与调用上下文</a>
+<a href="#s2"><span class="num">2.</span> 第一阶段: TLB + 调试寄存器</a>
+<a href="#s3"><span class="num">3.</span> 第二阶段: TCR/MAIR 默认值</a>
+<a href="#s4"><span class="num">4.</span> 第三阶段: 逐特性调整</a>
+<a href="#s5"><span class="num">5.</span> 返回值与总结</a>
+</div>
+</nav>
+
+<div class="resizer" id="resizer" title="拖动调整目录宽度"></div>
+
+<div class="main-content">
+<header>
+<h1>__cpu_setup<br>ARM64 MMU 开启前的 CPU 初始化逐行分析</h1>
+<div class="subtitle">
+<p>📁 <code>arch/arm64/mm/proc.S:465-552</code></p>
+<p>🎯 目标: 逐行拆解 __cpu_setup — MMU 开启前最后一步初始化</p>
+<p>🛠 涉及: TLBI / MAIR_EL1 / TCR_EL1 / HAFDBS / PIE / SCTLR_EL1</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">proc.S</span><span class="tag tag-green">ARM64</span><span class="tag tag-amber">TCR_EL1</span><span class="tag tag-gray">MAIR_EL1</span><span class="tag tag-gray">TLB</span><span class="tag tag-gray">MMU ON</span>
+</div>
+</header>
+
+<main>
+
+<section id="s1">
+<h2>1. 概述与调用上下文</h2>
+
+<h3>1.1 调用点</h3>
+<pre><code>// primary_entry (head.S:119-130)
+    mov     x0, x19                     // x0 = boot MMU flag
+    bl      init_kernel_el              // → EL1, 关 MMU, w0=cpu_boot_mode
+    mov     x20, x0                     // x20 = cpu_boot_mode
+
+    <span style="color:#2563eb;">bl      __cpu_setup              // ★ 配置 TCR/MAIR, 返回 SCTLR</span>
+    b       __primary_switch            // → 用 x0 的值开启 MMU</code></pre>
+
+<div class="diagram">// ============ __cpu_setup 的输入/输出 ============
+
+  进入时:
+    异常级别: EL1
+    MMU:      OFF
+    栈:       early_init_stack (4KB)
+    运行段:   .idmap.text (identity mapping 保护下)
+
+  返回:
+    x0 = INIT_SCTLR_EL1_MMU_ON    ← 这是开启 MMU 的钥匙
+                                    包含 M=1, C=1, I=1 等所有需要的 bit
+
+  调用者不需要传任何参数; 配置完全由编译选项和硬件特性决定</div>
+
+<h3>1.2 代码段属性</h3>
+<pre><code>.pushsection ".idmap.text", "a"    // ★ 关键: 放在 idmap 段</code></pre>
+<p><code>.pushsection</code> 把 <code>__cpu_setup</code> 放到 <code>.idmap.text</code> 段。这意味着这段代码在 identity mapping 保护下执行——即使 MMU 页面表切换还在进行中，CPU 也能安全取指。它是 idmap 生命周期中的最后一环。</p>
+</section>
+
+<section id="s2">
+<h2>2. 第一阶段：TLB 清空 + 调试寄存器清空 (lines 466-473)</h2>
+
+<pre><code>SYM_FUNC_START(__cpu_setup)
+    tlbi    vmalle1                    // ① 全刷 EL1 TLB
+    dsb     nsh
+
+    msr     cpacr_el1, xzr             // ② 复位 CPACR_EL1
+    mov     x1, MDSCR_EL1_TDCC         // ③ 准备 MDSCR_EL1 值
+    msr     mdscr_el1, x1              //    写入 MDSCR_EL1
+    reset_pmuserenr_el0 x1             // ④ 宏: 清 PMUSERENR_EL0
+    reset_amuserenr_el0 x1             // ⑤ 宏: 清 AMUSERENR_EL0</code></pre>
+
+<h4>① <code>tlbi vmalle1</code> — 全刷 TLB</h4>
+<table>
+<tr><th>指令</th><th>含义</th></tr>
+<tr><td class="accent"><code>TLBI VMALLE1</code></td><td>使 EL1 控制的所有阶段 1 TLB entry 失效。参数: 所有 ASID, 所有 VA</td></tr>
+</table>
+<p>旧页表（bootloader 留下的或 kexec 留下的）可能在 TLB 中还有缓存条目。新构建的 idmap 页表必须从内存中重新遍历，不能命中旧的 TLB 缓存。TLB 清空后必须跟 <code>DSB NSH</code> 确保操作全局可见。</p>
+
+<h4>② <code>msr cpacr_el1, xzr</code> — 复位 CPACR_EL1</h4>
+<p><code>CPACR_EL1</code> (Architectural Feature Access Control Register) 控制 EL0/EL1 对 SIMD/FP/SVE 等功能的访问。写 <code>xzr</code> (全 0) 意味着<strong>禁止 EL0 和 EL1 访问 SIMD/FP 寄存器</strong>。启动阶段不需要浮点或向量操作，后续 C 代码会重新启用。</p>
+
+<h4>③ <code>msr mdscr_el1, MDSCR_EL1_TDCC</code> — 配置调试通道</h4>
+<p><code>MDSCR_EL1</code> (Monitor Debug System Control Register)。<code>MDSCR_EL1_TDCC</code> 设置 trap 位，<strong>禁止 EL0 访问 Debug Communication Channel (DCC)</strong>。内核不需要用户态访问调试通道。</p>
+
+<h4>④⑤ <code>reset_pmuserenr_el0</code> / <code>reset_amuserenr_el0</code> — 禁止 EL0 性能监控</h4>
+<p>两个宏分别清零 <code>PMUSERENR_EL0</code> (Performance Monitors User Enable) 和 <code>AMUSERENR_EL0</code> (Activity Monitors User Enable)，<strong>禁止 EL0 访问 PMU 和 AMU 计数器</strong>。安全加固。</p>
+
+<div class="note">💡 <strong>六条指令三个目的：</strong> TLB 清空保证页表一致性、CPACR 禁止 SIMD 避免启动阶段误用、MDSCR+PMU+AMU 禁止 EL0 调试/性能访问是安全加固。它们和 MMU 配置无关，但必须在 MMU 开启前的"干净状态"中完成。</div>
+</section>
+
+<section id="s3">
+<h2>3. 第二阶段：MAIR_EL1 和 TCR_EL1 默认值 (lines 479-492)</h2>
+
+<pre><code>    mair    .req    x17                // ⑥ 别名: mair → x17
+    tcr     .req    x16                // ⑦ 别名: tcr  → x16
+    tcr2    .req    x15                // ⑧ 别名: tcr2 → x15
+    mov_q   mair, MAIR_EL1_SET         // ⑨ 加载 MAIR 默认值
+    mov_q   tcr, TCR_T0SZ(IDMAP_VA_BITS) | TCR_T1SZ(VA_BITS_MIN) |
+                 TCR_CACHE_FLAGS | TCR_SHARED | TCR_TG_FLAGS |
+                 TCR_KASLR_FLAGS | TCR_ASID16 | TCR_TBI0 | TCR_A1 |
+                 TCR_KASAN_SW_FLAGS | TCR_MTE_FLAGS
+                                       // ⑩ 加载 TCR 默认值
+    mov     tcr2, xzr                  // ⑪ TCR2_EL1 = 0
+    tcr_clear_errata_bits tcr, x9, x5  // ⑫ 清除 CPU 勘误位</code></pre>
+
+<h4>⑥⑦⑧ 寄存器别名</h4>
+<p><code>.req</code> 是汇编器伪指令，给寄存器起别名。后面的代码用 <code>mair</code> 代替 <code>x17</code>、<code>tcr</code> 代替 <code>x16</code>，语义清晰。</p>
+
+<h4>⑨ <code>mov_q mair, MAIR_EL1_SET</code> — 内存属性表</h4>
+<p><code>MAIR_EL1</code> (Memory Attribute Indirection Register) 定义了页表中 AttrIndx 字段 (bits[4:2]) 对应的实际内存类型。它有 8 个槽 (Attr0~Attr7)，每个 8 bits：</p>
+<table>
+<tr><th>槽</th><th>值</th><th>内存类型</th><th>对应页表 AttrIndx</th></tr>
+<tr><td>Attr0</td><td><code>0x00</code></td><td>Device-nGnRnE (严格设备内存)</td><td>0</td></tr>
+<tr><td>Attr1</td><td><code>0x04</code></td><td>Device-nGnRE (设备内存)</td><td>1</td></tr>
+<tr><td>Attr2</td><td><code>0x44</code></td><td>Normal Non-Cacheable</td><td>2</td></tr>
+<tr><td class="accent">Attr3</td><td class="accent"><code>0xff</code></td><td class="accent">Normal WBWA (回写+写分配)</td><td class="accent">3 ← 内核代码/数据用</td></tr>
+</table>
+<p>页表中的 <code>AttrIndx=3</code> (0b011) 查 MAIR_EL1 的 Attr3 = <code>0xff</code> = Inner WBWA + Outer WBWA。</p>
+
+<h4>⑩ <code>mov_q tcr, TCR_...</code> — 翻译控制寄存器</h4>
+<p><code>TCR_EL1</code> (Translation Control Register) 控制 MMU 的翻译行为。<code>mov_q</code> 是批量加载立即数的宏（2~4 条 movz/movk 指令）。逐位分解：</p>
+
+<table>
+<tr><th>字段</th><th>表达式</th><th>计算</th><th>含义</th></tr>
+<tr><td class="accent">T0SZ</td><td><code>TCR_T0SZ(IDMAP_VA_BITS)</code></td><td><code>64-48 = 16</code></td><td>TTBR0 翻译区域 = 48 bits<br>★ idmap 的 VA 空间在此!</td></tr>
+<tr><td class="accent">T1SZ</td><td><code>TCR_T1SZ(VA_BITS_MIN)</code></td><td><code>64-48 = 16</code></td><td>TTBR1 翻译区域 = 48 bits<br>★ 内核主体 VA 空间 (0xffff...)</td></tr>
+<tr><td class="green">TG0/TG1</td><td><code>TCR_TG_FLAGS</code></td><td><code>TCR_TG0_4K | TCR_TG1_4K</code></td><td>双 TTBR 都用 4KB 粒度</td></tr>
+<tr><td class="green">SH0/SH1</td><td><code>TCR_SHARED</code></td><td>Inner Shareable</td><td>页表遍历的缓存共享域</td></tr>
+<tr><td class="amber">IRGN0/IRGN1</td><td><code>TCR_CACHE_FLAGS</code></td><td>WBWA</td><td>页表遍历的缓存策略</td></tr>
+<tr><td>AS</td><td><code>TCR_ASID16</code></td><td>16-bit ASID</td><td>支持 65536 个地址空间 ID</td></tr>
+<tr><td>TBI0</td><td><code>TCR_TBI0</code></td><td>Top Byte Ignored</td><td>TTBR0 翻译时忽略 VA 高 8 bits</td></tr>
+<tr><td>A1</td><td><code>TCR_A1</code></td><td>ASID 定义来自 TTBR1</td><td>内核用 TTBR1 管理 ASID</td></tr>
+</table>
+
+<h4>T0SZ 为什么至关重要</h4>
+<div class="diagram">// ============ T0SZ=16 决定了 idmap 的 VA 范围 ============
+
+  TCR_EL1.T0SZ = 16
+  → TTBR0 的地址区域大小 = 64 - 16 = 48 bits
+  → 只有 VA[47:0] 被用作翻译输入
+
+  idmap 创建的页表: VA[47:0] → PA[47:0], VA==PA
+  TCR_EL1.T0SZ=48 → 硬件只取 VA[47:0] 做翻译
+
+  ★ 两者必须匹配! 如果 T0SZ=52 但 idmap 用 48-bit, 硬件会用错误
+    的 VA 位去查页表, 结果不可预测</div>
+
+<h4>⑪ <code>mov tcr2, xzr</code> — TCR2_EL1 初始清零</h4>
+<p><code>TCR2_EL1</code> 是 ARMv8.4+ 的扩展寄存器，保存 TCR_EL1 放不下的额外翻译控制位。默认全 0。</p>
+
+<h4>⑫ <code>tcr_clear_errata_bits tcr, x9, x5</code> — CPU 勘误清除</h4>
+<p>某些 CPU 的 TCR_EL1 特定 bit 有硬件 bug，需要软件规避。这个宏展开为针对已知勘误位的位清除操作。对于没有勘误的 CPU（如 cortex-a57），宏展开为空。</p>
+</section>
+
+<section id="s4">
+<h2>4. 第三阶段：逐特性调整 (lines 490-541)</h2>
+
+<h3>4.1 52-bit VA 扩展 (lines 490-498)</h3>
+<pre><code>#ifdef CONFIG_ARM64_VA_BITS_52
+    mov     x9, #64 - VA_BITS          // ⑬ 计算 52-bit 的 T1SZ
+alternative_if ARM64_HAS_VA52
+    tcr_set_t1sz    tcr, x9            // ⑭ 调整 T1SZ = 12 (64-52)
+#ifdef CONFIG_ARM64_LPA2
+    orr     tcr, tcr, #TCR_DS         // ⑮ LPA2 额外设置
+#endif
+alternative_else_nop_endif
+#endif</code></pre>
+
+<table>
+<tr><th>行</th><th>指令</th><th>含义</th></tr>
+<tr><td>⑬</td><td><code>mov x9, #64-52 = 12</code></td><td>52-bit VA 要缩小 T1SZ → TTBR1 区域扩展到 52 bits</td></tr>
+<tr><td>⑭</td><td><code>tcr_set_t1sz tcr, x9</code></td><td>宏: bfi — 把 x9 的值嵌入 TCR 的 T1SZ 位域。只有当硬件真的支持 52-bit VA 时才执行 (alternative_if)</td></tr>
+<tr><td>⑮</td><td><code>orr tcr, tcr, #TCR_DS</code></td><td>LPA2 (Large Physical Address) 需要设置 TCR_DS 位, 启用 52-bit 输出地址</td></tr>
+</table>
+
+<div class="note">💡 <strong>注意 T0SZ 没有变。</strong> 即使内核主体用 52-bit VA, idmap 依然只用 48-bit —— T0SZ 保持 16, TTBR0 区域还是 48 bits。和<code>IDMAP_VA_BITS=48</code> 保持一致。</div>
+
+<h3>4.2 物理地址大小检测 (lines 500-503)</h3>
+<pre><code>    tcr_compute_pa_size tcr, #TCR_IPS_SHIFT, x5, x6
+                                       // ⑯ 设置 TCR_EL1.IPS</code></pre>
+<p>⑯ 宏展开为读取 <code>ID_AA64MMFR0_EL1.PARange</code>，把硬件支持的最大物理地址位数 (32/36/40/44/48/52) 写入 TCR_EL1 的 IPS 位域。你当前配置的 52-bit PA 对应 IPS=0b110。</p>
+
+<h3>4.3 硬件 Access Flag 更新 (lines 504-520)</h3>
+<pre><code>#ifdef CONFIG_ARM64_HW_AFDBM
+    mrs     x9, ID_AA64MMFR1_EL1      // ⑰ 读硬件特性寄存器
+    ubfx    x9, x9, ID_AA64MMFR1_EL1_HAFDBS_SHIFT, #4
+                                       // ⑱ 提取 HAFDBS 位域
+    cbz     x9, 1f                     // ⑲ 硬件不支持 → 跳过
+    orr     tcr, tcr, #TCR_HA          // ⑳ 启用硬件 AF 自动更新
+#ifdef CONFIG_ARM64_HAFT
+    cmp     x9, ID_AA64MMFR1_EL1_HAFDBS_HAFT
+    b.lt    1f
+    orr     tcr2, tcr2, TCR2_EL1_HAFT  // ㉑ HAFT 扩展支持
+#endif
+1:
+#endif</code></pre>
+
+<table>
+<tr><th>行</th><th>指令</th><th>含义</th></tr>
+<tr><td>⑰</td><td><code>mrs x9, ID_AA64MMFR1_EL1</code></td><td>读取 AArch64 内存模型特性寄存器 1</td></tr>
+<tr><td>⑱</td><td><code>ubfx ...HAFDBS_SHIFT, #4</code></td><td>提取 bits[HAFDBS_SHIFT:+4] — 硬件 AF/DBM 支持级别<br>0 = 不支持, 1 = AF only, 2 = AF+DBM, 3 = AF+DBM+HAFT</td></tr>
+<tr><td>⑲</td><td><code>cbz x9, 1f</code></td><td>不支持 → 跳过整个 AF 设置块</td></tr>
+<tr><td class="accent">⑳</td><td class="accent"><code>orr tcr, tcr, #TCR_HA</code></td><td class="accent">设置 TCR_EL1.HA bit = 1<br>★ 此后 CPU 首次访问一个页时, 自动将 PTE 的 AF(bit10) 置 1<br>★ 不再需要软件手动判断 + 写回</td></tr>
+<tr><td>㉑</td><td><code>orr tcr2, tcr2, TCR2_EL1_HAFT</code></td><td>HAFT = Hardware Access Flag for Table descriptors — 连页表本身的 AF 也由硬件管理</td></tr>
+</table>
+
+<h4>AF 自动更新的实际影响</h4>
+<div class="two-col">
+<div>
+<p><strong>没有 HA 时 (软件管理 AF)：</strong></p>
+<ol>
+<li>CPU 访问一个 PTE 的 AF=0 的页面</li>
+<li>触发 Access Flag fault (数据异常)</li>
+<li>内核 fault handler 捕获 → 手动将 AF 置 1 → 写回 PTE → 返回</li>
+<li>每条 PTE 首次访问都有这个开销</li>
+</ol>
+</div>
+<div>
+<p><strong>有 HA 时 (硬件管理 AF)：</strong></p>
+<ol>
+<li>CPU 访问一个 PTE 的 AF=0 的页面</li>
+<li>硬件自动将 AF 置 1 → 翻译继续 → 完成</li>
+<li>零软件开销</li>
+</ol>
+</div>
+</div>
+
+<h3>4.4 写入 MAIR_EL1 和 TCR_EL1 (lines 521-522)</h3>
+<pre><code>    msr     mair_el1, mair             // ㉒ 写入 MAIR_EL1
+    msr     tcr_el1, tcr               // ㉓ 写入 TCR_EL1</code></pre>
+<p>经过上面所有逐特性调整后的 mair 和 tcr 值最终写入硬件寄存器。此后 MMU 一旦开启，新的 MAIR/TCR 立刻生效。</p>
+
+<h3>4.5 PIE: 权限间接扩展 (lines 524-535)</h3>
+<pre><code>    mrs_s   x1, SYS_ID_AA64MMFR3_EL1  // ㉔ 读 ID_AA64MMFR3_EL1
+    ubfx    x1, x1, #ID_AA64MMFR3_EL1_S1PIE_SHIFT, #4
+                                       // ㉕ 提取 S1PIE 位域
+    cbz     x1, .Lskip_indirection     // ㉖ 不支持 → 跳过
+
+    mov_q   x0, PIE_E0_ASM
+    msr     REG_PIRE0_EL1, x0          // ㉗ 写 PIRE0_EL1
+    mov_q   x0, PIE_E1_ASM
+    msr     REG_PIR_EL1, x0            // ㉘ 写 PIR_EL1
+    orr     tcr2, tcr2, TCR2_EL1_PIE   // ㉙ TCR2_EL1.PIE=1
+
+.Lskip_indirection:</code></pre>
+
+<p>ARMv8.4+ 引入的 PIE 允许用 4 位 PTE 权限索引 (bits[58:55]) 查 16-entry 权限表（PIRE0_EL1/PIR_EL1），每个 entry 定义更丰富的权限组合。如果硬件不支持，整段跳过。</p>
+
+<h3>4.6 TCR2_EL1 写入 (lines 537-541)</h3>
+<pre><code>    mrs_s   x1, SYS_ID_AA64MMFR3_EL1
+    ubfx    x1, x1, #ID_AA64MMFR3_EL1_TCRX_SHIFT, #4
+                                       // ㉚ 检测是否支持 TCR2
+    cbz     x1, 1f                     // ㉛ 不支持 → 跳过
+    msr     REG_TCR2_EL1, tcr2         // ㉜ 写入 TCR2_EL1
+1:</code></pre>
+
+<p>TCR2_EL1 寄存器本身是 ARMv8.4+ 新增的。如果硬件没有 TCR2，写入它会 <code>UNDEFINED</code>。所以先通过 ID_AA64MMFR3_EL1.TCRX 检查是否存在。</p>
+</section>
+
+<section id="s5">
+<h2>5. 返回值：INIT_SCTLR_EL1_MMU_ON (lines 543-552)</h2>
+
+<pre><code>    mov_q   x0, INIT_SCTLR_EL1_MMU_ON // ㉝ 加载 SCTLR MMU-ON 配置
+    ret                                // ㉞ 返回 primary_entry
+
+    .unreq  mair                       // 清除别名 (汇编规范)
+    .unreq  tcr
+    .unreq  tcr2
+SYM_FUNC_END(__cpu_setup)</code></pre>
+
+<h4>㉝ <code>mov_q x0, INIT_SCTLR_EL1_MMU_ON</code></h4>
+<p>和 <code>init_kernel_el</code> 中的 <code>INIT_SCTLR_EL1_MMU_OFF</code> 是对称的一对。两者的关键差异：</p>
+
+<div class="two-col">
+<div>
+<h4><code>INIT_SCTLR_EL1_MMU_OFF</code> (关)</h4>
+<table>
+<tr><td class="amber">M=0</td><td>MMU OFF</td></tr>
+<tr><td class="amber">C=0</td><td>D-cache OFF</td></tr>
+<tr><td class="amber">I=0</td><td>I-cache OFF</td></tr>
+<tr><td class="green">+5 个扩展位</td><td>LSMAOE, nTLSMD 等</td></tr>
+</table>
+<p>值: <code>0x30500800</code> (LE)</p>
+</div>
+<div>
+<h4><code>INIT_SCTLR_EL1_MMU_ON</code> (开)</h4>
+<table>
+<tr><td class="accent">M=1</td><td>MMU ON ★</td></tr>
+<tr><td class="accent">C=1</td><td>D-cache ON ★</td></tr>
+<tr><td class="accent">I=1</td><td>I-cache ON ★</td></tr>
+<tr><td class="green">SA=1</td><td>SP 对齐检查</td></tr>
+<tr><td class="green">+ 更多扩展位</td><td>WXN, IESB, EIS, 等</td></tr>
+</table>
+<p>值: 多位置 1，与 OFF 互补</p>
+</div>
+</div>
+
+<h4>㉞ <code>ret</code> — 返回值交付 __primary_switch</h4>
+<p><strong>关键：</strong><code>__cpu_setup</code> 自己不写 SCTLR_EL1——它把配置好的 MMU_ON 值放在 x0 返回，由调用链的下一环 <code>__primary_switch</code> 在页表切换完成后写入。这样 SCTLR 的 M 位置 1 可以和新页表的 TTBR 切换<strong>精确同步</strong>，不会出现"MMU 开了但页表还没准备好"的瞬态。</p>
+
+<h3>完整调用链示意</h3>
+<div class="diagram">// ============ MMU 开启的关键三步 ============
+
+  __cpu_setup()          → x0 = INIT_SCTLR_EL1_MMU_ON   (第1步: 准备钥匙)
+         │
+  __primary_switch()     → 切换 TTBR0_EL1/ TTBR1_EL1     (第2步: 切换页表)
+         │                  写 SCTLR_EL1 = x0             (第3步: 用钥匙开启 MMU!)
+         │                  ISB                           (    同步)
+         ▼
+  MMU ON! → 第一条经 MMU 翻译的指令在此执行</div>
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+(function () {
+    var resizer = document.getElementById('resizer');
+    if (!resizer) return;
+    var sidebar = document.getElementById('sidebar');
+    var wrapper = document.querySelector('.page-wrapper');
+    var dragging = false;
+    resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault(); dragging = true;
+        resizer.classList.add('active');
+        sidebar.style.transition = 'none';
+        sidebar.style.minWidth = '0px';
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        var x = e.clientX - wrapper.getBoundingClientRect().left;
+        if (x < 0) x = 0;
+        sidebar.style.width = x + 'px';
+        sidebar.style.maxWidth = x + 'px';
+        sidebar.style.minWidth = '0px';
+    });
+    document.addEventListener('mouseup', function () {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove('active');
+        sidebar.style.transition = '';
+        sidebar.style.minWidth = '';
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+})();
+</script>
+</body>
+</html>

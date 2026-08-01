@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI GDB 自动化调试 ARM64 head.S 完整方案</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 320px; min-width: 0;
+    transition: max-width 0.25s ease; overflow: hidden;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; overflow-x: hidden; height: 100%; }
+.resizer {
+    flex-shrink: 0; width: 5px; cursor: col-resize; z-index: 30;
+    background: transparent; position: relative; margin-left: -3px;
+}
+.resizer:hover, .resizer.active { background: var(--accent-light); }
+.resizer::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 1px; width: 2px;
+    background: var(--border);
+}
+.resizer:hover::after, .resizer.active::after { background: var(--accent); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 1px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a.sub { padding-left: 16px; font-size: 0.92em; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num, .sidebar a[href^="#s3"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s4"] .num, .sidebar a[href^="#s5"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s6"] .num { color: var(--amber); font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<div class="sidebar-inner">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 方案概述</a>
+<a href="#s2"><span class="num">2.</span> 环境准备</a>
+<a href="#s3"><span class="num">3.</span> 工作流程</a>
+<a href="#s4"><span class="num">4.</span> GDB 脚本模板</a>
+<a href="#s5"><span class="num">5.</span> 真实演示输出</a>
+<a href="#s6"><span class="num">6.</span> 踩坑记录与技巧</a>
+</div>
+</nav>
+
+<div class="resizer" id="resizer" title="拖动调整目录宽度"></div>
+
+<div class="main-content">
+<header>
+<h1>AI GDB 自动化调试 ARM64 head.S<br>完整方案</h1>
+<div class="subtitle">
+<p>📁 所有脚本: <code>/tmp/ai_*.gdb</code></p>
+<p>🎯 目标: AI 编写 GDB 脚本，用户运行，实时观察，AI 分析输出迭代</p>
+<p>🛠 工具: QEMU + gdb-multiarch batch mode + 精确物理地址断点</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">GDB batch</span><span class="tag tag-green">QEMU</span><span class="tag tag-amber">AI 自动化</span><span class="tag tag-gray">head.S</span><span class="tag tag-gray">add-symbol-file</span>
+</div>
+</header>
+
+<main>
+
+<section id="s1">
+<h2>1. 方案概述</h2>
+
+<div class="diagram">// ============ AI GDB 调试工作流 ============
+
+  ┌──────────┐     GDB脚本      ┌──────────┐     实时输出     ┌──────────┐
+  │   AI     │ ──────────────▶  │   用户    │ ──────────────▶ │   用户    │
+  │  编写脚本 │                  │   运行    │                  │   观察    │
+  └──────────┘                  └──────────┘                  └──────────┘
+       ▲                                                           │
+       │                        复制输出                           │
+       └───────────────────────────────────────────────────────────┘
+
+  一轮流程: AI写脚本 → 用户运行 → 用户看输出 → 贴给AI → AI分析 → 下一轮</div>
+
+<h3>核心思路</h3>
+<ul>
+<li><strong>AI 负责写 GDB 命令</strong> — 不需要交互式输入，不需要 `expect`，只需把命令写入文件</li>
+<li><strong>用户负责运行</strong> — 一条命令 `gdb-multiarch -nx -batch -x script.gdb`，所有步骤在一个会话内串行完成</li>
+<li><strong>`shell sleep N` 创建暂停</strong> — 用户有时间看清每一步的输出</li>
+<li><strong>每次都重启 QEMU</strong> — batch 模式退出后 QEMU 继续跑，下次需要从头开始</li>
+</ul>
+</section>
+
+<section id="s2">
+<h2>2. 环境准备</h2>
+
+<h3>2.1 启动 QEMU（冻结 CPU，不连 GDB）</h3>
+<pre><code>cd ~/kernel/linux-6.18.1
+
+qemu-system-aarch64 -s -S \
+    -machine virt -cpu cortex-a57 -m 1024 -smp 4 \
+    -kernel arch/arm64/boot/Image \
+    --append "nokaslr rdinit=/linuxrc console=ttyAMA0" \
+    -nographic &amp;
+
+# -s : 监听 GDB stub 端口 :1234
+# -S : 冻结 CPU 在第一条指令，等待 GDB 连接
+# nokaslr : 禁用 KASLR，保证断点地址每次一致</code></pre>
+
+<h3>2.2 关键地址（固定不变，nokaslr 保证）</h3>
+<table>
+<tr><th>地址</th><th>符号</th><th>说明</th></tr>
+<tr><td><code>0x40000000</code></td><td>QEMU bootloader</td><td>6 条指令加载内核入口 → br x4</td></tr>
+<tr><td><code>0x40200000</code></td><td><code>_text</code></td><td>efi_signature_nop + b primary_entry</td></tr>
+<tr><td><code>0x4163c0f0</code></td><td><code>primary_entry</code></td><td>启动主入口（init.text 段）</td></tr>
+<tr><td><code>0x4163c0f4</code></td><td><code>primary_entry+4</code></td><td>★ bl record_mmu_state 返回后</td></tr>
+<tr><td><code>0x4163c110</code></td><td><code>primary_entry+32</code></td><td>★ bl create_init_idmap 返回后</td></tr>
+<tr><td><code>0x4163c150</code></td><td><code>primary_entry+96</code></td><td>★ bl init_kernel_el 返回后 (mov x20,x0)</td></tr>
+</table>
+
+<h3>2.3 获得精确地址的方法</h3>
+<pre><code># 方法1: 先跑一次 disasm 探测
+gdb-multiarch -nx -batch \
+  -ex "target remote :1234" \
+  -ex "add-symbol-file ..." \
+  -ex "b *0x40200000" -ex "c" \
+  -ex "advance primary_entry" \
+  -ex "x/30i 0x4163c0f0" \
+  -ex "detach" -ex "quit"
+
+# 方法2: nm + 偏移计算
+nm vmlinux | grep primary_entry
+# → ffff80008143c0f0 T primary_entry
+# PA = VA - 0xffff800080000000 + 0x40200000
+# PA(primary_entry) = 0xffff80008143c0f0 - 0xffff800080000000 + 0x40200000
+#                   = 0x4163c0f0</code></pre>
+</section>
+
+<section id="s3">
+<h2>3. 工作流程</h2>
+
+<h3>3.1 完整流程（6 步）</h3>
+<div class="diagram">// ============ 一次完整 AI 调试会话 ============
+
+  Step 1: AI 写入 /tmp/ai_final.gdb
+     │
+  Step 2: 用户重启 QEMU (fuser -k 1234/tcp; qemu ... &amp;)
+     │
+  Step 3: 用户运行: gdb-multiarch -nx -batch -x /tmp/ai_final.gdb
+     │
+  Step 4: 终端输出:
+     │   ╔══════════════════════════════════════╗
+     │   ║  AI 自动调试 ARM64 head.S            ║
+     │   ╚══════════════════════════════════════╝
+     │   ━━━ 1/6 Bootloader ━━━       (暂停 2s)
+     │   ━━━ 2/6 _text ━━━                (暂停 2s)
+     │   ━━━ 3/6 primary_entry ━━━        (暂停 2s)
+     │   ━━━ 4/6 record_mmu_state ━━━    (暂停 2s)
+     │   ━━━ 5/6 create_init_idmap ━━━   (暂停 2s)
+     │   ━━━ 6/6 init_kernel_el ━━━      (暂停 2s)
+     │   ✅ AI 自动调试完成
+     │
+  Step 5: 用户复制输出 → 贴给 AI
+     │
+  Step 6: AI 分析结果 → 生成下一轮脚本</div>
+
+<h3>3.2 交互式迭代模式</h3>
+<div class="two-col">
+<div>
+<h4>场景: AI 需要查看页表内容</h4>
+<pre><code># AI 写:
+echo 'b *0x4163c110
+c
+echo === dump PGD ===\n
+x/4xg 0x41730000
+echo === dump PUD ===\n
+x/4xg 0x41731000
+echo === dump PMD ===\n
+x/16xg 0x41732000
+detach
+quit' > /tmp/ai_verify.gdb</code></pre>
+<p>用户运行 → 贴回 PGD/PUD/PMD 值 → AI 验证 VA==PA</p>
+</div>
+<div>
+<h4>场景: AI 需要验证 Block 映射</h4>
+<pre><code># AI 写:
+echo 'b *0x4163c110
+c
+python
+pmd = gdb.parse_and_eval("*(unsigned long long*)0x41732008")
+block_type = int(pmd) & 3
+pa = (int(pmd) & 0xffffffe00000)
+print(f"PMD[1]=0x{int(pmd):x}")
+print(f"type={block_type}(Block)" if block_type==1 else f"type={block_type}")
+end
+detach
+quit' > /tmp/ai_block.gdb</code></pre>
+<p>用户运行 → 贴回 PMD entry 值 → AI 验证 Block descriptor</p>
+</div>
+</div>
+</section>
+
+<section id="s4">
+<h2>4. GDB 脚本模板</h2>
+
+<h3>4.1 终极调试脚本（6 步全流程）</h3>
+<pre><code># 文件: /tmp/ai_final.gdb
+# 运行: gdb-multiarch -nx -batch -x /tmp/ai_final.gdb
+
+set pagination off
+set confirm off
+set architecture aarch64
+target remote :1234
+add-symbol-file /home/ybzhang/kernel/linux-6.18.1/vmlinux \
+  -s .head.text 0x40200000 -s .text 0x40210000 -s .rodata 0x410f0000 \
+  -s .init.text 0x41650000 -s .rodata.text 0x41637800 -s .init.data 0x41738000
+
+echo ╔══════════════════════════════════════════════╗\n
+echo ║  AI 自动调试 ARM64 head.S                    ║\n
+echo ╚══════════════════════════════════════════════╝\n
+
+echo \n━━━ 1/6 QEMU Bootloader @ 0x40000000 ━━━\n
+x/6i 0x40000000
+shell sleep 2
+
+echo \n━━━ 2/6 _text 内核入口 @ 0x40200000 ━━━\n
+b *0x40200000
+c
+x/2i $pc
+shell sleep 2
+
+echo \n━━━ 3/6 primary_entry ━━━\n
+advance primary_entry
+printf "FDT(x0)=0x%lx\n", $x0
+shell sleep 2
+
+echo \n━━━ 4/6 → bl record_mmu_state 后 ━━━\n
+b *0x4163c0f4
+c
+printf "x19=%ld → %s\n", $x19, $x19?"Warm":"Cold"
+shell sleep 2
+
+echo \n━━━ 5/6 → bl create_init_idmap 后 ━━━\n
+b *0x4163c110
+c
+printf "ptep=0x%lx  pages=%ld\n", $x0, ($x0-0x41730000)/4096
+shell sleep 2
+
+echo \n━━━ 6/6 → bl init_kernel_el 后 ━━━\n
+b *0x4163c150
+c
+printf "cpu_boot_mode=0x%x (%s)\n", $w0, $w0==0xe12?"EL2":"EL1"
+shell sleep 2
+
+detach
+quit</code></pre>
+
+<h3>4.2 关键技术要点</h3>
+<table>
+<tr><th>技术</th><th>命令</th><th>作用</th></tr>
+<tr><td class="accent">跳过 .gdbinit</td><td><code>-nx</code></td><td>避免 TUI 在 batch 模式报错，避免 auto-load 安全警告</td></tr>
+<tr><td class="accent">手动加载符号</td><td><code>add-symbol-file vmlinux -s .text 0x40210000 ...</code></td><td>绕过 fix_vmlinux 脚本，直接用绝对路径和已知 PA 映射</td></tr>
+<tr><td class="green">精确地址断点</td><td><code>b *0x4163c0f4</code></td><td>物理地址断点，不依赖 GDB 符号解析</td></tr>
+<tr><td class="green">步骤间暂停</td><td><code>shell sleep 2</code></td><td>让用户看清每步输出，模拟交互式断点效果</td></tr>
+<tr><td class="amber">advance 跳函数</td><td><code>advance primary_entry</code></td><td>跳过 bootloader，直接到 primary_entry</td></tr>
+<tr><td class="amber">nokaslr</td><td><code>--append "nokaslr ..."</code></td><td>禁用内核地址随机化，保证每次断点地址相同</td></tr>
+</table>
+</section>
+
+<section id="s5">
+<h2>5. 真实演示输出</h2>
+
+<p>以下是 AI 脚本在当前环境下的实际输出（截取关键部分）：</p>
+
+<pre><code>╔══════════════════════════════════════════════╗
+║  AI 自动调试 ARM64 head.S                    ║
+╚══════════════════════════════════════════════╝
+
+━━━ 1/6 QEMU Bootloader @ 0x40000000 ━━━
+   0x40000000:  ldr     x0, 0x40000018       ← 加载 DTB 地址
+   0x40000004:  mov     x1, xzr              ← 清零 x1~x3
+   0x40000008:  mov     x2, xzr
+   0x4000000c:  mov     x3, xzr
+   0x40000010:  ldr     x4, 0x40000020       ← 加载内核入口
+   0x40000014:  br      x4                   ← 跳转到内核!
+
+━━━ 2/6 _text 内核入口 @ 0x40200000 ━━━
+=> 0x40200000:  ccmp    x18, #0x0, #0xd, pl  ← efi_signature_nop
+   0x40200004:  b       0x4163c0f0            ← → primary_entry
+
+━━━ 3/6 primary_entry ━━━
+FDT(x0)=0x48000000                           ← DTB 在 0x48000000
+
+━━━ 4/6 → bl record_mmu_state 后 ━━━
+x19=0 → Cold Boot (DCache OFF)               ← 冷启动
+
+━━━ 5/6 → bl create_init_idmap 后 ━━━
+ptep=0x41736000  pages=6                     ← 页表用 6 个物理页
+
+━━━ 6/6 → bl init_kernel_el 后 ━━━
+cpu_boot_mode=0xe11 (EL1)                    ← 当前系统从 EL1 启动
+
+✅ AI 自动调试完成</code></pre>
+
+<div class="note">💡 <strong>与其他文档的交叉验证：</strong><code>x19=0</code> 印证了 <code>bili_arm64_head.S_cache_maintenance.html</code> 中的 Cold Boot 路径；<code>ptep=0x41736000</code> 说明页表占用 6 页 (PGD+PUD+PMD + 可能的 PTE)，与 <code>bili_arm64_head.S_idmap_analysis.html</code> 中的分析一致。</div>
+</section>
+
+<section id="s6">
+<h2>6. 踩坑记录与技巧</h2>
+
+<table>
+<tr><th>#</th><th>问题</th><th>现象</th><th>根因</th><th>修复</th></tr>
+<tr>
+<td>1</td>
+<td><code>-batch</code> 模式下 TUI 报错</td>
+<td><code>Cannot enable the TUI when output is not a terminal</code></td>
+<td><code>~/.gdbinit</code> 里配置了 <code>layout src</code> 和 <code>tui enable</code>，batch 模式不支持</td>
+<td class="green">加 <code>-nx</code> 跳过 .gdbinit</td>
+</tr>
+<tr>
+<td>2</td>
+<td>QEMU 在 batch 之间继续跑</td>
+<td>第二次 batch 连接时 PC 已经在很远的地址，断点失效</td>
+<td><code>detach</code> 后 QEMU 不暂停，CPU 继续执行</td>
+<td class="green">每次 batch 前重启 QEMU（<code>fuser -k 1234; qemu ... &amp;</code>）</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>finish</code> 报错</td>
+<td><code>"finish" not meaningful in the outermost frame</code></td>
+<td>断点命中在函数第一条指令，还没建立栈帧</td>
+<td class="green">用 <code>b *addr</code> 设在函数<strong>返回后</strong>的地址，不用 <code>finish</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>符号查找失败</td>
+<td><code>vmlinux: No such file or directory</code></td>
+<td>当前工作目录不在内核根目录，相对路径找不到 vmlinux</td>
+<td class="green">使用绝对路径 <code>/home/ybzhang/kernel/linux-6.18.1/vmlinux</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>$currentel>>2</code> 算术报错</td>
+<td><code>Argument to arithmetic operation not a number</code></td>
+<td>batch 模式下 <code>$currentel</code> 返回的不是数值类型</td>
+<td class="green">用 <code>$x19>>2</code> 代替（record_mmu_state 已把 CurrentEL 读到 x19）</td>
+</tr>
+<tr>
+<td>6</td>
+<td>端口占用</td>
+<td><code>Failed to find an available port: Address already in use</code></td>
+<td>上次 QEMU 未正常退出，端口残留</td>
+<td class="green"><code>fuser -k 1234/tcp</code> 强制释放端口</td>
+</tr>
+</table>
+
+<h3>6.1 快速重启脚本</h3>
+<pre><code>#!/bin/bash
+# 一键重启 QEMU + 运行 AI 脚本
+fuser -k 1234/tcp 2>/dev/null
+sleep 1
+cd ~/kernel/linux-6.18.1
+qemu-system-aarch64 -s -S -machine virt -cpu cortex-a57 -m 1024 -smp 4 \
+    -kernel arch/arm64/boot/Image \
+    --append "nokaslr rdinit=/linuxrc console=ttyAMA0" -nographic &amp;
+sleep 1
+gdb-multiarch -nx -batch -x /tmp/ai_final.gdb</code></pre>
+
+<h3>6.2 需要交互式排查时</h3>
+<p>如果 batch 输出不足以定位问题，AI 可以生成最小化脚本让用户跑：</p>
+<pre><code># 极简诊断: 只检查一个寄存器
+echo 'b *0x40200000
+c
+advance primary_entry
+printf "x19=%ld\n", $x19
+detach
+quit' > /tmp/ai_diag.gdb</code></pre>
+<p>或者让用户开一个交互式 GDB 会话，AI 写 <code>/tmp/ai_cmd.gdb</code>，用户在 GDB 中逐条 <code>source /tmp/ai_cmd.gdb</code>。</p>
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+(function () {
+    var resizer = document.getElementById('resizer');
+    if (!resizer) return;
+    var sidebar = document.getElementById('sidebar');
+    var wrapper = document.querySelector('.page-wrapper');
+    var dragging = false;
+    resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault(); dragging = true;
+        resizer.classList.add('active');
+        sidebar.style.transition = 'none';
+        sidebar.style.minWidth = '0px';
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        var x = e.clientX - wrapper.getBoundingClientRect().left;
+        if (x < 0) x = 0;
+        sidebar.style.width = x + 'px';
+        sidebar.style.maxWidth = x + 'px';
+        sidebar.style.minWidth = '0px';
+    });
+    document.addEventListener('mouseup', function () {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove('active');
+        sidebar.style.transition = '';
+        sidebar.style.minWidth = '';
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+})();
+</script>
+</body>
+</html>

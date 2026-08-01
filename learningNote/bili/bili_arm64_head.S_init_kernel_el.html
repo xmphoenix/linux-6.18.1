@@ -113,11 +113,11 @@ tr:nth-child(even) td { background: #f8fafc; }
 			<a href="#s5"><span class="num">5.</span> EL2 路径详解 ★</a>
 			<a href="#s6"><span class="num">6.</span> 返回值 x20 的去向</a>
 			<a href="#s7"><span class="num">7.</span> GDB 调试验证</a>
-			<a href="#s7" class="sub"><span class="num">7.1</span> 断点设置</a>
-			<a href="#s7" class="sub"><span class="num">7.2</span> 典型调试输出 — QEMU 默认启动 (EL2 → EL1)</a>
-			<a href="#s7" class="sub"><span class="num">7.3</span> EL1 路径调试 (U-Boot 场景)</a>
-			<a href="#s7" class="sub"><span class="num">7.4</span> 自定义 GDB 命令</a>
-			<a href="#s7" class="sub"><span class="num">7.5</span> 验证清单</a>
+			<a href="#s7_1" class="sub"><span class="num">7.1</span> 断点设置</a>
+			<a href="#s7_2" class="sub"><span class="num">7.2</span> 典型调试输出 — QEMU 默认启动 (EL2 → EL1)</a>
+			<a href="#s7_3" class="sub"><span class="num">7.3</span> EL1 路径调试 (U-Boot 场景)</a>
+			<a href="#s7_4" class="sub"><span class="num">7.4</span> 自定义 GDB 命令</a>
+			<a href="#s7_5" class="sub"><span class="num">7.5</span> 验证清单</a>
 			<a href="#s8"><span class="num">8.</span> 总结与关键要点</a>
 </nav>
 
@@ -139,18 +139,18 @@ tr:nth-child(even) td { background: #f8fafc; }
 <main>
 
 <section id="s1">
-<h2>1. 概述：init_kernel_el 的使命</h2>
+		<h2 id="s1">1. 概述：init_kernel_el 的使命</h2>
 
 <div class="two-col">
 <div>
-<h3>调用位置</h3>
+		<h3 id="s1_1">调用位置</h3>
 <pre><code>// primary_entry (line 119-121)
 1:  mov     x0, x19               // x0 = boot MMU state
     bl      init_kernel_el        // ★ 进入
     mov     x20, x0               // 保存 cpu_boot_mode</code></pre>
 </div>
 <div>
-<h3>核心使命</h3>
+		<h3 id="s1_2">核心使命</h3>
 <ul>
 <li>检测当前在 <strong>EL1 还是 EL2</strong></li>
 <li>配置 SCTLR_ELx 为 <strong>MMU OFF</strong> 的安全状态</li>
@@ -175,7 +175,7 @@ tr:nth-child(even) td { background: #f8fafc; }
 </section>
 
 <section id="s2">
-<h2>2. 完整源码</h2>
+		<h2 id="s2">2. 完整源码</h2>
 
 <pre><code>/*
  * Initialize the CPU exception level.
@@ -246,7 +246,7 @@ SYM_FUNC_END(init_kernel_el)</code></pre>
 </section>
 
 <section id="s3">
-<h2>3. primary_entry 中的调用点</h2>
+		<h2 id="s3">3. primary_entry 中的调用点</h2>
 
 <pre><code>// primary_entry (line 101-121)
     cbnz    x19, 0f                    // x19=MMU state
@@ -288,26 +288,144 @@ SYM_FUNC_END(init_kernel_el)</code></pre>
 </section>
 
 <section id="s4">
-<h2>4. EL1 路径详解</h2>
+		<h2 id="s4">4. EL1 路径详解</h2>
 
 <div class="diagram">// ============ init_el1: 已经在 EL1, 只需配置后 ERET ============
 
   CurrentEL = EL1
        │
        ▼
-  ① 写 SCTLR_EL1 = INIT_SCTLR_EL1_MMU_OFF
-     ┌─────────────────────────────────────────────────────────┐
-     │ ENDIAN_SET_EL1 | LSMAOE | nTLSMD | EIS | TSCXT | EOS   │
-     │ (EE + E0E)                                              │
-     │ ★ 注意: M=0, C=0, I=0 — MMU 和 cache 全部关闭          │
-     └─────────────────────────────────────────────────────────┘
+  ① 写 SCTLR_EL1 = INIT_SCTLR_EL1_MMU_OFF = 0x30500800
+
+    <div style="overflow-x:auto;font-family:'Fira Code',monospace;font-size:0.78em;margin:10px 0;">
+  <table style="border-collapse:collapse;text-align:center;">
+  <tr style="background:#f0f4ff;">
+    <td style="padding:3px 8px;font-weight:600;border:1px solid var(--border);" colspan="8">Byte 3 · bits 31..24</td>
+    <td style="padding:3px 8px;font-weight:600;border:1px solid var(--border);" colspan="8">Byte 2 · bits 23..16</td>
+    <td style="padding:3px 8px;font-weight:600;border:1px solid var(--border);" colspan="8">Byte 1 · bits 15..8</td>
+    <td style="padding:3px 8px;font-weight:600;border:1px solid var(--border);" colspan="8">Byte 0 · bits 7..0</td>
+  </tr>
+  <tr><td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="background:var(--green);color:var(--green);font-weight:700;border:1px solid var(--border);width:30px;">1</td>
+<td style="background:var(--green);color:var(--green);font-weight:700;border:1px solid var(--border);width:30px;">1</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="background:var(--green);color:var(--green);font-weight:700;border:1px solid var(--border);width:30px;">1</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="background:var(--green);color:var(--green);font-weight:700;border:1px solid var(--border);width:30px;">1</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="background:var(--amber);color:var(--amber);font-weight:700;border:1px solid var(--border);width:30px;">0</td>
+<td style="background:var(--green);color:var(--green);font-weight:700;border:1px solid var(--border);width:30px;">1</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="background:var(--amber);color:var(--amber);font-weight:700;border:1px solid var(--border);width:30px;">0</td>
+<td style="border:1px solid var(--border);width:30px;">0</td>
+<td style="background:var(--amber);color:var(--amber);font-weight:700;border:1px solid var(--border);width:30px;">0</td>
+  </tr>
+  <tr style="color:#94a3b8;font-size:0.85em;"><td style="border:1px solid var(--border);color:#94a3b8;">31</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">30</td>
+<td style="background:var(--green);color:var(--green);font-weight:700;border:1px solid var(--border);">29</td>
+<td style="background:var(--green);color:var(--green);font-weight:700;border:1px solid var(--border);">28</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">27</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">26</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">25</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">24</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">23</td>
+<td style="background:var(--green);color:var(--green);font-weight:700;border:1px solid var(--border);">22</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">21</td>
+<td style="background:var(--green);color:var(--green);font-weight:700;border:1px solid var(--border);">20</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">19</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">18</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">17</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">16</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">15</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">14</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">13</td>
+<td style="background:var(--amber);color:var(--amber);font-weight:700;border:1px solid var(--border);">12</td>
+<td style="background:var(--green);color:var(--green);font-weight:700;border:1px solid var(--border);">11</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">10</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">9</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">8</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">7</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">6</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">5</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">4</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">3</td>
+<td style="background:var(--amber);color:var(--amber);font-weight:700;border:1px solid var(--border);">2</td>
+<td style="border:1px solid var(--border);color:#94a3b8;">1</td>
+<td style="background:var(--amber);color:var(--amber);font-weight:700;border:1px solid var(--border);">0</td>
+  </tr>
+  </table>
+  </div>
+
+  <table>
+  <tr><th style="width:80px;">标记</th><th style="width:80px;">Bit</th><th>宏</th><th style="width:180px;">含义</th></tr>
+  <tr><td class="green">■ 置 1</td><td>29</td><td><code>SCTLR_EL1_LSMAOE</code></td><td>Load/Store Multiple 原子性与顺序</td></tr>
+  <tr><td class="green">■ 置 1</td><td>28</td><td><code>SCTLR_EL1_nTLSMD</code></td><td>No Trap LDM/STM</td></tr>
+  <tr><td class="green">■ 置 1</td><td>22</td><td><code>SCTLR_EL1_EIS</code></td><td>异常入口是 Context Synchronizing</td></tr>
+  <tr><td class="green">■ 置 1</td><td>20</td><td><code>SCTLR_EL1_TSCXT</code></td><td>Trap EL0 访问 SCXTNUM_EL0</td></tr>
+  <tr><td class="green">■ 置 1</td><td>11</td><td><code>SCTLR_EL1_EOS</code></td><td>异常出口是 Context Synchronizing</td></tr>
+  <tr><td class="amber">■ 清零</td><td>12</td><td><code>SCTLR_ELx_I</code></td><td>I-cache OFF — 指令缓存关闭</td></tr>
+  <tr><td class="amber">■ 清零</td><td>2</td><td><code>SCTLR_ELx_C</code></td><td>D-cache OFF — 数据缓存关闭</td></tr>
+  <tr><td class="amber">■ 清零</td><td>0</td><td><code>SCTLR_ELx_M</code></td><td><strong>MMU OFF</strong> — 地址不经翻译</td></tr>
+  </table>
+
+  > 以上为 Little Endian 内核; BE 内核额外包含 `EE(25)` + `E0E(24)` → `0x33500800`
+
        │
        ▼
-  ② 写 SPSR_EL1 = INIT_PSTATE_EL1
-     ┌─────────────────────────────────────────────────────────┐
-     │ D | A | I | F | MODE=EL1h                              │
-     │ 屏蔽所有异常 (DAIF=1111) + SP 用 EL1h                  │
-     └─────────────────────────────────────────────────────────┘
+  ② 写 SPSR_EL1 = INIT_PSTATE_EL1 = 0x3C5
+
+  <div style="overflow-x:auto; font-family: 'Fira Code',monospace; font-size:0.82em; line-height:2.2; margin:10px 0;">
+  <table style="border-collapse:collapse; text-align:center; width:390px;">
+  <tr style="background:#f0f4ff;">
+    <td style="padding:4px 10px; font-weight:600; border:1px solid var(--border);" colspan="10">PSTATE (bits 9..0)</td>
+  </tr>
+  <tr>
+    <td style="background:#2563eb20; color:#2563eb; font-weight:700; border:1px solid var(--border);">1</td>
+    <td style="background:#2563eb20; color:#2563eb; font-weight:700; border:1px solid var(--border);">1</td>
+    <td style="background:#2563eb20; color:#2563eb; font-weight:700; border:1px solid var(--border);">1</td>
+    <td style="background:#2563eb20; color:#2563eb; font-weight:700; border:1px solid var(--border);">1</td>
+    <td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">0</td><td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">1</td>
+    <td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">0</td><td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">0</td>
+    <td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">0</td><td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">1</td>
+  </tr>
+  <tr style="color:#94a3b8; font-size:0.85em;">
+    <td style="background:#2563eb20; color:#2563eb; font-weight:700; border:1px solid var(--border);">9</td>
+    <td style="background:#2563eb20; color:#2563eb; font-weight:700; border:1px solid var(--border);">8</td>
+    <td style="background:#2563eb20; color:#2563eb; font-weight:700; border:1px solid var(--border);">7</td>
+    <td style="background:#2563eb20; color:#2563eb; font-weight:700; border:1px solid var(--border);">6</td>
+    <td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">5</td><td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">4</td>
+    <td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">3</td><td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">2</td>
+    <td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">1</td><td style="background:#05966920; color:#059669; font-weight:700; border:1px solid var(--border);">0</td>
+  </tr>
+  </table>
+  </div>
+
+  <table>
+  <tr><th style="width:80px;">标记</th><th style="width:80px;">Bit</th><th>宏</th><th style="width:180px;">含义</th></tr>
+  <tr><td class="accent">■ DAIF</td><td>9</td><td><code>PSR_D_BIT</code></td><td>Debug 异常屏蔽</td></tr>
+  <tr><td class="accent">■ DAIF</td><td>8</td><td><code>PSR_A_BIT</code></td><td>SError 异常屏蔽</td></tr>
+  <tr><td class="accent">■ DAIF</td><td>7</td><td><code>PSR_I_BIT</code></td><td>IRQ 中断屏蔽</td></tr>
+  <tr><td class="accent">■ DAIF</td><td>6</td><td><code>PSR_F_BIT</code></td><td>FIQ 中断屏蔽</td></tr>
+  <tr><td class="green">■ MODE</td><td>5,4,3,2,0</td><td><code>PSR_MODE_EL1h</code> (<code>0b00101</code>)</td><td>EL1 + 使用 SP_EL1 栈指针</td></tr>
+  </table>
        │
        ▼
   ③ 写 ELR_EL1 = LR (返回地址)
@@ -318,6 +436,16 @@ SYM_FUNC_END(init_kernel_el)</code></pre>
        ▼
   ⑤ ERET → 返回到 EL1, 使用 SPSR_EL1 → PSTATE, PC = ELR_EL1
      ★ 不是真正的"异常返回", 而是利用 ERET 机制切换处理器状态</div>
+
+<h4>穿插指令: pre_disable_mmu_workaround</h4>
+<p>在 <code>msr sctlr_el1</code> 之前总有一条 <code>pre_disable_mmu_workaround</code>，它在 EL1 和 EL2 路径中对称出现。这个宏的定义在：</p>
+<pre><code>// arch/arm64/include/asm/assembler.h:647
+.macro pre_disable_mmu_workaround
+#ifdef CONFIG_QCOM_FALKOR_ERRATUM_E1041
+    isb
+#endif
+.endm</code></pre>
+<p>绝大多数平台（包括 <code>-cpu cortex-a57</code>）没有开启 <code>CONFIG_QCOM_FALKOR_ERRATUM_E1041</code>，宏展开为<strong>空</strong>。它只在搭载 Qualcomm Falkor 服务器 CPU 的内核中插入一条 <code>isb</code> 来修复 CPU 勘误——禁用 MMU 时如果紧接着访问内存，Falkor 可能用错误的翻译。普通调试不必关心这个宏。</p>
 
 <h4>init_el1 的三重作用</h4>
 <table>
@@ -331,7 +459,7 @@ SYM_FUNC_END(init_kernel_el)</code></pre>
 </section>
 
 <section id="s5">
-<h2>5. EL2 路径详解 ★</h2>
+		<h2 id="s5">5. EL2 路径详解 ★</h2>
 
 <div class="diagram">// ============ init_el2: 从 EL2 降级到 EL1 ============
 
@@ -418,7 +546,7 @@ blr     x2</code></pre>
 </section>
 
 <section id="s6">
-<h2>6. 返回值 x20 的去向</h2>
+		<h2 id="s6">6. 返回值 x20 的去向</h2>
 
 <p><code>init_kernel_el</code> 返回后，<code>w0 = cpu_boot_mode</code> 被保存到 <strong>x20</strong>（callee-saved 寄存器）。后续它在三处被使用：</p>
 
@@ -465,9 +593,9 @@ blr     x2</code></pre>
 </section>
 
 <section id="s7">
-<h2>7. GDB 调试验证</h2>
+		<h2 id="s7">7. GDB 调试验证</h2>
 
-<h3>7.1 断点设置</h3>
+		<h3 id="s7_1">7.1 断点设置</h3>
 <table>
 <tr><th>#</th><th>位置</th><th>命令</th><th>验证目标</th></tr>
 <tr><td>BP1</td><td><code>init_kernel_el</code> 入口</td><td><code>b init_kernel_el</code> (GLOBAL 符号可用名称)</td><td>检查 x0 (boot MMU flag) 和 CurrentEL</td></tr>
@@ -478,7 +606,7 @@ blr     x2</code></pre>
 <tr><td>BP6</td><td><code>init_kernel_el</code> 返回后</td><td><code>finish</code> 或断在 <code>mov x20, x0</code></td><td>检查 w0 = cpu_boot_mode, x20 保存</td></tr>
 </table>
 
-<h3>7.2 典型调试输出 — QEMU 默认启动 (EL2 → EL1)</h3>
+		<h3 id="s7_2">7.2 典型调试输出 — QEMU 默认启动 (EL2 → EL1)</h3>
 
 <p>QEMU 的 <code>-M virt</code> 默认让 CPU 从 EL2 启动，所以这条路径最常见：</p>
 
@@ -522,7 +650,7 @@ CurrentEL   0x4          // EL1 ✓
 (gdb) info registers x20
 x20  0xe12                // cpu_boot_mode = BOOT_CPU_MODE_EL2 ✓</code></pre>
 
-<h3>7.3 EL1 路径调试 (U-Boot 场景)</h3>
+		<h3 id="s7_3">7.3 EL1 路径调试 (U-Boot 场景)</h3>
 
 <p>如果 bootloader 已经把 CPU 留在 EL1（某些 U-Boot 配置），会走 init_el1：</p>
 
@@ -555,7 +683,7 @@ $4 = 0x4163c114          // 返回地址 (primary_entry 中 bl 的下一行)
 (gdb) p/x $w0
 $5 = 0xe11               // BOOT_CPU_MODE_EL1 ✓</code></pre>
 
-<h3>7.4 自定义 GDB 命令</h3>
+		<h3 id="s7_4">7.4 自定义 GDB 命令</h3>
 
 <pre><code>define el_info
     printf "CurrentEL = %d (", $currentel >> 2
@@ -596,7 +724,7 @@ document cpu_mode
     Decode x20 value as cpu_boot_mode. Usage after init_kernel_el returns.
 end</code></pre>
 
-<h3>7.5 验证清单</h3>
+		<h3 id="s7_5">7.5 验证清单</h3>
 <table>
 <tr><th>检查项</th><th>方法</th><th>预期</th></tr>
 <tr><td>CurrentEL 检测</td><td>在 <code>b.eq init_el2</code> 断下, 读 x1</td><td>QEMU: 0x8 (EL2), U-Boot: 可能 0x4 (EL1)</td></tr>
@@ -612,7 +740,7 @@ end</code></pre>
 </section>
 
 <section id="s8">
-<h2>8. 总结与关键要点</h2>
+		<h2 id="s8">8. 总结与关键要点</h2>
 
 <table>
 <tr><th>#</th><th>要点</th><th>说明</th></tr>
@@ -625,7 +753,7 @@ end</code></pre>
 <tr><td>7</td><td class="amber">SCTLR 写两次的用意</td><td>EL2 路径中，先写 SCTLR_EL2（关 EL2 的 MMU），后写 SCTLR_EL1（关 EL1 的 MMU）。两次都清零 M 位，确保 EL1 和 EL2 的 stage 1 MMU 都关闭</td></tr>
 </table>
 
-<h3>涉及文件</h3>
+		<h3 id="s8_1">涉及文件</h3>
 <table>
 <tr><th>文件</th><th>作用</th></tr>
 <tr><td><code>arch/arm64/kernel/head.S</code></td><td>init_kernel_el 定义 + primary_entry 调用</td></tr>
