@@ -158,6 +158,8 @@ tr:nth-child(even) td { background: #f8fafc; }
 <div>
 <p><strong>2. UEFI 固件（支持 PE/COFF）</strong><br>
 把 Image 当作 <strong>PE/COFF 可执行文件</strong>。文件必须以 "MZ"（0x4D 0x5A）开头。内核必须以"有效 NOP"的方式嵌入这个签名。</p>
+
+<div class="note">💡 <strong>"MZ" 是什么？</strong> Mark Zbikowski — 微软 DOS 时代的工程师。1981 年 DOS 1.0 规定所有 <code>.exe</code> 文件必须用他的姓名缩写 <code>MZ</code> 开头。后来 Windows PE 格式继承了这个传统：PE = DOS 头（含 MZ）→ PE Signature → COFF 头 → ...。UEFI 固件沿用 PE 规范，要求启动文件是合法的 PE 格式。所以 ARM64 内核在第一条指令里塞入 0x5A4D，伪装成 PE 文件让 UEFI 满意，同时又是一条无害的 ccmp NOP 让 CPU 直接滑过去。<strong>一条指令，两个身份，一个 40 年前的约定。</strong></div>
 </div>
 <div>
 <p><strong>3. Linux boot protocol</strong><br>
@@ -189,6 +191,33 @@ tr:nth-child(even) td { background: #f8fafc; }
 <span style="color:#94a3b8;">0x30    8      reserved 3             .quad 0                     保留</span>
 <span style="color:#d97706;">0x38    4      魔数                   .ascii "ARM\x64"             标识为 ARM64 Linux Image</span>
 <span style="color:#d97706;">0x3C    4      PE header offset       .long .Lpe_header_offset     指向 PE/COFF 头的偏移</span></div>
+
+<h3>权威规范</h3>
+<p>这个 64 字节头的格式不是在某个外部标准文档里定义的，而是由 <strong>Linux 内核自身</strong> 规范的，文档就在内核源码树里：</p>
+<table>
+<tr><th>文档</th><th>内容</th></tr>
+<tr><td class="accent"><code>Documentation/arch/arm64/booting.rst</code></td><td class="accent"><strong>ARM64 Linux Boot Protocol</strong> — Image 头部的 C 结构体定义、每个字段的语义、flags 位域编码、对齐要求、bootloader 的职责</td></tr>
+<tr><td><code>include/linux/pe.h</code></td><td>PE/COFF 标准结构的 C 定义（IMAGE_DOS_HEADER, IMAGE_NT_HEADERS 等）</td></tr>
+<tr><td><code>arch/arm64/kernel/efi-header.S</code></td><td>ARM64 的 PE/COFF 头汇编实现（__EFI_PE_HEADER 宏）</td></tr>
+</table>
+
+<p>该文档中定义的头部 C 结构体：</p>
+<pre><code>// Documentation/arch/arm64/booting.rst (line 80-89)
+
+u32 code0;              // 0x00  可执行代码 (efi_signature_nop)
+u32 code1;              // 0x04  可执行代码 (b primary_entry)
+u64 text_offset;        // 0x08  Image 加载偏移 (LE)
+u64 image_size;         // 0x10  Image 有效大小 (LE)
+u64 flags;              // 0x18  内核标志位 (LE)
+u64 res2 = 0;           // 0x20  保留 (必须为 0)
+u64 res3 = 0;           // 0x28  保留 (必须为 0)
+u64 res4 = 0;           // 0x30  保留 (必须为 0)
+u32 magic = 0x644d5241; // 0x38  魔数 "ARM\x64" (LE)
+u32 res5;               // 0x3C  PE COFF 偏移 (用于 EFI)</code></pre>
+
+<p>flags 字段 (bit 0-3) 的定义也在同一文档中——bit0=字节序, bit1-2=页面大小, bit3=物理放置策略。这就是文章前面分析的 <code>_kernel_flags_le</code> 的规范源头。</p>
+
+<div class="note">💡 <strong>关键认知：</strong>ARM64 Image 头部是 Linux 内核自己定义的协议，不是 ARM 公司制定的硬件规范。任何一个 bootloader (U-Boot, GRUB, QEMU) 只要遵循 <code>booting.rst</code> 中的约定，就能正确加载和启动 ARM64 Linux 内核。PE/COFF 头是叠加在 Linux 头上面的第二个自描述层，服务于 UEFI 启动路径。</div>
 
 <h3>2.1 真实 hexdump 验证</h3>
 <p>下面是本机编译的 <code>arch/arm64/boot/Image</code> 前 64 字节的真实 hexdump，逐字段标注解码结果：</p>
@@ -364,15 +393,96 @@ nop
 <li><strong>不产生异常：</strong>不能触发 Undefined Instruction 或其他 trap</li>
 </ol>
 
-<p><code>ccmp x18, #0, #0xd, pl</code> 完美满足所有条件：</p>
-<ul>
-<li>x18 是平台寄存器（Platform Register），修改它标志位不影响普通代码</li>
-<li><code>pl</code>（N=0）在冷启动时成立（大多数 CPU 上电后 PSTATE.N=0）</li>
-<li>CCMP 只更新 NZCV 且<strong>条件为 PL 时执行</strong>，这确实会影响标志位 — 但后续代码中 <code>cmp</code> 和 <code>tst</code> 会重新设置标志位</li>
-<li>所有 ARMv8+ CPU 都支持 CCMP</li>
-</ul>
+<h4>CCMP 指令编码拆解</h4>
 
-<div class="warn">⚠ <strong>PL 条件码的隐患：</strong>如果 CPU 上电时 N=1（极少见但理论上可能），<code>ccmp</code> 将不被执行，标志位保持原样。不过紧跟着的 <code>b primary_entry</code> 无条件跳转，不影响执行流。在 primary_entry 中，<code>record_mmu_state</code> 的 <code>cmp</code> 指令会重新设置标志位，所以即便 CCMP 被跳过也无害。</div>
+<p>ARM64 CCMP (register) 指令的 32-bit 编码格式：</p>
+<div class="diagram">// ============ CCMP (register) 编码格式 ============
+
+  bit  31    30    29    28    27    26    25    24    23    22    21
+       sf    opcode (fixed: 111010010 for CCMP register)
+       ───────────────────────────────────────────────────────────────
+
+  bit  20:16    15:12    11 10    9:5      4:0
+       imm5     cond     1  0     Rn       nzcv
+       #0       PL                         0xD
+
+// ============ ccmp x18, #0, #0xd, pl 的编码 ============
+
+  实际值 = 0xFA405A4D
+
+  ┌────────────────────────────────────────────────────────────┐
+  │ sf=1 │ 111010010 │ 00000 │ 0101 │ 1 0 │ 10010 │ 1101      │
+  │ 64b  │   CCMP    │  #0   │  PL  │fixed│  x18  │ NZCV=1101 │
+  └────────────────────────────────────────────────────────────┘
+   bit 31          21     16    12         9  5         0
+
+  内存中 (LE): 4D 5A 40 FA
+               ^^ ^^
+               M  Z   ← UEFI 识别的签名!</div>
+
+<h4>逐字段解释</h4>
+<table>
+<tr><th>字段</th><th>值</th><th>含义</th></tr>
+<tr><td><code>sf</code></td><td>1</td><td>64-bit 操作 (比较 64 位 x18)</td></tr>
+<tr><td><code>opcode</code></td><td><code>111010010</code></td><td>CCMP (register) — 条件比较指令</td></tr>
+<tr><td class="accent"><code>imm5</code></td><td class="accent"><code>00000</code></td><td class="accent">立即数 = <strong>0</strong> — 和 x18 比较的值。x18 - 0 = x18，所以 ALU 输出就是 x18 本身，<strong>不改变任何寄存器</strong>，仅根据 x18 的值更新 NZCV</td></tr>
+<tr><td class="green"><code>cond</code></td><td class="green"><code>0101</code></td><td class="green">条件码 = <strong>PL</strong> (Plus: N flag == 0)<br>★ 冷启动时 CPU 的 PSTATE.N 通常为 0 → PL 条件成立 → 指令执行<br>如果 N=1 → 条件不成立 → 跳过比较, 直接将 NZCV 设为 nzcv 字段的值</td></tr>
+<tr><td><code>Rn</code></td><td><code>10010</code></td><td>源寄存器 = <strong>x18</strong> — 这是 <strong>平台寄存器</strong> (Platform Register)<br>在 AAPCS64 中保留给平台 ABI，普通代码不依赖它，即使其值不确定也无所谓</td></tr>
+<tr><td class="amber"><code>nzcv</code></td><td class="amber"><code>1101</code></td><td class="amber">当条件<strong>不成立</strong>时 (N=1)，标志位被<strong>直接设为</strong> N=1, Z=1, C=0, V=1<br>ARM 工程师选 0xD 是因为这个值让指令编码的前两个字节恰好是 0x5A4D (MZ)!</td></tr>
+</table>
+
+<h4>运行逻辑</h4>
+<div class="diagram">// ============ CCMP 的执行流 ============
+
+  if (N == 0):    // PL condition met (cold boot normal path)
+      result = x18 - 0
+      NZCV = flags_from(result)   // ← set NZCV based on x18 value
+  else:            // PL condition NOT met (rare)
+      NZCV = 1101                 // ← directly set: N=1,Z=1,C=0,V=1
+                                   //    (consistent with x18<0 which is impossible)
+
+  无论哪种路径:
+    → 不修改 x18
+    → 不读/写内存
+    → 不产生异常
+    → 执行后自动滑到下一条指令 (b primary_entry)</div>
+
+<h4>两种启动路径，两种命运</h4>
+<div class="diagram">// ============ CCMP 在两条启动路径上的不同角色 ============
+
+  传统 bootloader (U-Boot / QEMU):           UEFI 固件启动:
+
+    CPU 从 offset 0 开始执行                  UEFI 固件扫描文件头
+         │                                         │
+         ▼                                         ▼
+    <span style="color:#2563eb;">★ CCMP 被 CPU 执行</span>                       看到 "MZ" (0x4D 0x5A)
+         │                                    → "这是一个合法的 PE 文件"
+    功能: 一条无害 NOP                            │
+    目的: 让 CPU 滑过去                         读取 PE header
+         │                                    → Optional Header
+         ▼                                    → AddressOfEntryPoint
+    b primary_entry                           = __efistub_efi_pe_entry
+         │                                         │
+         ▼                                         ▼
+    继续 head.S 启动                         <span style="color:#d97706;">★ CCMP 从未被 CPU 执行!</span>
+                                              固件在碰到第一条指令之前
+                                              就已经解析 PE 头跳走了
+                                                    │
+                                                    ▼
+                                              EFI stub 初始化
+                                              (ExitBootServices,
+                                               内存映射, 加载 DTB...)
+                                                    │
+                                                    ▼
+                                              最后跳回 primary_entry
+                                              (通过 efi_stub_entry → code0/code1)</div>
+
+<p><strong>在传统 bootloader 路径上：</strong><code>ccmp</code> 被 CPU 忠实执行——一条什么事都不做的 NOP，滑过去就是 <code>b primary_entry</code>。</p>
+<p><strong>在 UEFI 路径上：</strong><code>ccmp</code> <strong>从来不被 CPU 执行</strong>。UEFI 固件在跳转之前就扫描文件头，看到 "MZ" 认定这是合法 PE 文件，然后读取 PE Optional Header 中的 <code>AddressOfEntryPoint = __efistub_efi_pe_entry</code>，直接跳到 EFI stub 入口。CPU 永远不会执行 offset 0 的这条指令。它放在那里只有一个目的：<strong>让前两字节凑成 0x4D 0x5A = "MZ"</strong>。</p>
+
+<div class="note">💡 <strong>一条指令，两条路径，零副作用。</strong>ARM 工程师不是在找"一条有用的指令"，而是在 ARM64 指令集中找一个编码洞——哪组操作数能让 CCMP 既是一条合法指令，编码的前两个字节又恰好是 MZ？答案是 x18 + #0 + #0xd + PL。传统 bootloader 路径上它是一条无害 NOP，UEFI 路径上它甚至不被执行。完美。</div>
+
+<div class="warn">⚠ <strong>PL 条件码的隐患：</strong>如果 CPU 上电时 N=1（极少见但理论上可能），<code>ccmp</code> 的比较被跳过，标志位被直接设为 <code>1101</code> (N=1,Z=1)。不过紧跟着的 <code>b primary_entry</code> 无条件跳转，不影响执行流。在 primary_entry 中，<code>record_mmu_state</code> 的 <code>cmp</code> 指令会重新设置标志位，所以即便 CCMP 被跳过也无害。</div>
 </section>
 
 <!-- ====== 4 ====== -->
