@@ -52,13 +52,15 @@ elif [ $1 == "arm64" ] && [ $2 == "debug" ]; then
 
     qemu-system-aarch64 -s -S -machine virt -cpu cortex-a57 -machine type=virt \
                         -m 1024 -smp 4 -kernel arch/arm64/boot/Image \
-                        --append "nokaslr rdinit=/linuxrc console=ttyAMA0" -nographic \
+                        --append "nokaslr rdinit=/linuxrc console=ttyAMA0" \
+                        -display none -serial file:/tmp/qemu_serial.log \
                         --fsdev local,id=kmod_dev,path=$PWD/kmodules,security_model=none \
                         -device virtio-9p-device,fsdev=kmod_dev,mount_tag=kmod_mount &
     QEMU_PID=$!
     # 等待 QEMU GDB stub 端口就绪
     sleep 0.5
-    gdb-multiarch
+    echo "QEMU GDB stub listening on :1234, serial output -> /tmp/qemu_serial.log"
+    gdb-multiarch -ex "my_tui"
     # GDB 退出后清理 QEMU
     kill $QEMU_PID 2>/dev/null
     wait $QEMU_PID 2>/dev/null
