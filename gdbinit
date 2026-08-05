@@ -224,18 +224,20 @@ document headsym
 end
 
 # --- TUI: regs(上全宽) | src(左)+asm(右) | cmd(底) ---
-# 顶层默认 vertical: regs(上) → 水平组(中) → cmd(下)
-# {-horizontal src 1 asm 1}: 中间行 src 和 asm 左右并排
+# 垂直三层: 寄存器 → 源码+反汇编并排 → 命令行
 define my_tui
-    tui new-layout mylayout regs 6 {-horizontal src 1 asm 1} 10 cmd 1
+    tui enable
+    tui new-layout mylayout regs 10 {-horizontal src 1 asm 1} 14 cmd 5
     layout mylayout
     tui reg general
-    winheight cmd 3
+    winheight cmd 5
+    focus cmd
     refresh
-    printf "TUI ready -- type 'c' to hit _text\n"
+    printf "TUI: regs(top) | src+asm(middle) | cmd(bottom)\n"
 end
 document my_tui
     Layout: regs(top-full) | src(left)+asm(right) | cmd(bottom).
+    Reload with: my_tui
 end
 
 # =========================================================================
@@ -247,6 +249,9 @@ printf " head.S single-step debug -- READY\n"
 printf " Type 'c'  -> run to _text (first instruction)\n"
 printf " Type 'si' -> step one instruction\n"
 printf "============================================================\n"
+
+# 自动启用 TUI 三窗格布局
+my_tui
 
 end
 # <<< end of if $KERNEL_TREE
