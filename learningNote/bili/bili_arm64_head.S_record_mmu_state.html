@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0084)http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s6b -->
+<html lang="zh-CN"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>record_mmu_state：ARM64 内核启动 MMU 状态记录函数深度分析</title>
 <style>
@@ -102,7 +102,7 @@ tr:nth-child(even) td { background: #f8fafc; }
 }
 </style>
 </head>
-<body>
+<body data-new-gr-c-s-check-loaded="14.1318.0" data-gr-ext-installed="">
 
 <div class="page-wrapper">
 
@@ -110,14 +110,27 @@ tr:nth-child(even) td { background: #f8fafc; }
 <button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
 <div class="sidebar-inner">
 <h4>目 录</h4>
-<a href="#s1"><span class="num">1.</span> 概述：record_mmu_state 的使命</a>
-<a href="#s2"><span class="num">2.</span> 完整源码与上下文</a>
-<a href="#s3"><span class="num">3.</span> 指令逐条分析 ★</a>
-<a href="#s4"><span class="num">4.</span> 两条执行路径详解</a>
-<a href="#s5"><span class="num">5.</span> x19 返回值在各处的消费</a>
-<a href="#s6"><span class="num">6.</span> 寄存器与标志位参考表</a>
-<a href="#s7"><span class="num">7.</span> GDB 调试验证</a>
-<a href="#s8"><span class="num">8.</span> 总结 &amp; 关键要点</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s1"><span class="num">1.</span> 概述：record_mmu_state 的使命</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s2"><span class="num">2.</span> 完整源码与上下文</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3"><span class="num">3.</span> 指令逐条分析 ★</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3b"><span class="num">3.3</span> cmp 与 b.ne 之间为何插入 mrs</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3c"><span class="num">3.4</span> tbnz / tbz 与真实反汇编</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3c0"><span class="num">3.4.0</span> tbnz 与 tbz 的区别</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst-comment"><span class="num">3.2.0</span> 注释 Z := (C==0)</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst"><span class="num">3.2.1</span> tst 指令详解 ★</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst-nzcv"><span class="num">3.2.2</span> tst 后 NZCV 判定逻辑 ★</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3and"><span class="num">3.2.3</span> and 提取 M 位详解</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3csel"><span class="num">3.2.4</span> csel 条件选择详解</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3d"><span class="num">3.5</span> QEMU 启动逐行走读 ★</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s4"><span class="num">4.</span> 两条执行路径详解</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s5"><span class="num">5.</span> x19 返回值在各处的消费</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s5c"><span class="num">5.3</span> 探测器与消费者的协作 ★</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s6"><span class="num">6.</span> 寄存器与标志位参考表</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s6a"><span class="num">6.1</span> CurrentEL 寄存器</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s6b"><span class="num">6.2</span> SCTLR_EL1 / EL2</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s6c"><span class="num">6.3</span> M/C/EE 关键位详解</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s7"><span class="num">7.</span> GDB 调试验证</a>
+<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s8"><span class="num">8.</span> 总结 &amp; 关键要点</a>
 </div>
 </nav>
 
@@ -162,11 +175,11 @@ tr:nth-child(even) td { background: #f8fafc; }
 
 <h3>返回值：x19 编码含义</h3>
 <table>
-<tr><th>x19 值</th><th>含义</th><th>对应场景</th></tr>
+<tbody><tr><th>x19 值</th><th>含义</th><th>对应场景</th></tr>
 <tr><td><code>0</code></td><td>MMU 关闭（Cold Boot）</td><td>内核从 bootloader 直接启动</td></tr>
 <tr><td><code>1</code></td><td>MMU 开启（Warm Boot）</td><td>kexec / 从休眠唤醒</td></tr>
 <tr><td><code>0</code>（endian 路径）</td><td>字节序不匹配，已纠正并关闭 MMU</td><td>大端 bootloader 启动小端内核等</td></tr>
-</table>
+</tbody></table>
 
 <div class="note">💡 <strong>x19 是 callee-saved 寄存器：</strong><code>record_mmu_state</code> 选择 x19 存储 MMU 状态，是因为 x19 遵循 ARM64 AAPCS64 调用约定——被调用者保存。这意味着 <code>primary_entry</code> 中 x19 的值可以安全地跨越后续所有函数调用（直到 <code>init_kernel_el</code> 以 x0 接收它）。</div>
 </section>
@@ -229,7 +242,7 @@ primary_entry:
 <h2>3. 指令逐条分析 ★</h2>
 <h3>3.1 指令布局</h3>
 <table>
-<tr><th>偏移</th><th>物理地址 (示例)</th><th>指令</th><th>行号</th></tr>
+<tbody><tr><th>偏移</th><th>物理地址 (示例)</th><th>指令</th><th>行号</th></tr>
 <tr><td>+0x00</td><td><code>0x4165a648</code></td><td><code>mrs x19, CurrentEL</code></td><td>135</td></tr>
 <tr><td>+0x04</td><td><code>0x4165a64c</code></td><td><code>cmp x19, #CurrentEL_EL2</code></td><td>136</td></tr>
 <tr><td>+0x08</td><td><code>0x4165a650</code></td><td><code>mrs x19, sctlr_el1</code></td><td>137</td></tr>
@@ -240,7 +253,7 @@ primary_entry:
 <tr><td>+0x1c</td><td><code>0x4165a664</code></td><td><code>and x19, x19, SCTLR_ELx_M</code></td><td>144</td></tr>
 <tr><td>+0x20</td><td><code>0x4165a668</code></td><td><code>csel x19, xzr, x19, eq</code></td><td>145</td></tr>
 <tr><td>+0x24</td><td><code>0x4165a66c</code></td><td><code>ret</code></td><td>146</td></tr>
-</table>
+</tbody></table>
 
 <h3>3.2 逐条详解</h3>
 
@@ -254,22 +267,57 @@ primary_entry:
 
 <h4>② <code>cmp x19, #CurrentEL_EL2</code> — 是否在 EL2？</h4>
 <ul>
-<li>设置条件标志：<code>EQ</code>（相等）表示在 EL2，<code>NE</code> 表示在 EL1</li>
-<li><strong>注意：</strong> 此时 x19 存储的是 CurrentEL 的值，不是 SCTLR</li>
+<li><strong>注意：</strong> 此时 x19 存储的是 <code>CurrentEL</code> 的值（如 <code>0x4</code> 或 <code>0x8</code>），还不是 SCTLR</li>
+<li><code>cmp Rn, #imm</code> 等价于 <code>subs xzr, Rn, #imm</code>——做一次减法，结果丢弃，<strong>只更新 NZCV 四个条件标志位</strong></li>
 </ul>
 
-<h4>③ <code>mrs x19, sctlr_el1</code> — （投机）读取 EL1 的 SCTLR</h4>
+<p><strong>cmp 影响的标志位：NZCV</strong></p>
+<table>
+<tbody><tr><th>标志</th><th>名称</th><th>cmp 后何时置 1</th><th>在本指令中的含义</th></tr>
+<tr><td><strong>N</strong></td><td>Negative</td><td>减法结果为负（最高位 = 1）</td><td>一般不直接用于后续分支</td></tr>
+<tr><td><strong>Z</strong></td><td>Zero</td><td>减法结果 = 0（即 <code>x19 == #imm</code>）</td><td><span class="accent">Z=1 → EQ（相等）→ 在 EL2</span></td></tr>
+<tr><td><strong>C</strong></td><td>Carry</td><td>无借位（无符号 <code>x19 &gt;= #imm</code>）</td><td>一般不直接用于后续分支</td></tr>
+<tr><td><strong>V</strong></td><td>oVerflow</td><td>有符号减法溢出</td><td>本场景不涉及（值很小）</td></tr>
+</tbody></table>
+
+<p>后续 <code>b.ne 0f</code> 只看 <strong>Z 位</strong>：<code>NE</code> = Not Equal = <strong>Z=0</strong>。</p>
+
+<table>
+<tbody><tr><th>场景</th><th>x19 (CurrentEL)</th><th>比较</th><th>N</th><th>Z</th><th>C</th><th>V</th><th>条件</th><th>含义</th></tr>
+<tr><td>QEMU 在 <strong>EL1</strong></td><td><code>0x4</code></td><td><code>4 - 8</code> ≠ 0</td><td>1</td><td><strong>0</strong></td><td>0</td><td>0</td><td><span class="green">NE</span></td><td>不在 EL2 → 138 行 <code>b.ne</code> <strong>跳转</strong></td></tr>
+<tr><td>在 <strong>EL2</strong></td><td><code>0x8</code></td><td><code>8 - 8</code> = 0</td><td>0</td><td><strong>1</strong></td><td>1</td><td>0</td><td><span class="amber">EQ</span></td><td>在 EL2 → 138 行 <code>b.ne</code> <strong>不跳</strong>，执行 139 行</td></tr>
+</tbody></table>
+
+<div class="diagram">cmp x19, #CurrentEL_EL2   (即 cmp x19, #0x8)
+
+  伪操作:  subs xzr, x19, #0x8    // xzr 丢弃结果，只写 NZCV
+
+  x19 = 0x4 (EL1):                x19 = 0x8 (EL2):
+    4 - 8 ≠ 0                       8 - 8 = 0
+    Z = 0  →  NE                    Z = 1  →  EQ
+    b.ne 会跳转 ✓                   b.ne 不跳转 ✓
+
+  ★ 137 行 mrs sctlr_el1 会覆盖 x19，但 NZCV 不变
+  ★ 138 行 b.ne 仍然根据 cmp 时的 Z 位决定跳转</div>
+
+<div class="note">💡 <strong>条件码与标志位对应关系（本函数用到的）：</strong>
+<code>EQ</code> = Z=1 &nbsp;|&nbsp; <code>NE</code> = Z=0 &nbsp;|&nbsp;
+<code>b.ne</code> = branch if Not Equal = branch if Z=0 &nbsp;|&nbsp;
+<code>csel ..., eq</code> = 若 Z=1 则选择第一操作数（143–145 行的 tst+csel 路径）</div>
+
+<h4>③ <code>mrs x19, sctlr_el1</code> — 先读 EL1 的 SCTLR（再决定要不要覆盖）</h4>
 <ul>
-<li>ARM64 是推测执行架构——这里<strong>不管最终在哪个异常级别</strong>，先读 sctlr_el1</li>
-<li>如果在 EL2，下一行会用 sctlr_el2 覆盖这个值，所以读出 sctlr_el1 只是浪费一次 MRS</li>
-<li>这种写法避免了在两条路径中都放 MRS 指令，但代价是路径合并处多了一次 MRS</li>
-<li class="accent">为什么这么写？<strong>代码简洁</strong>——仅一条 MRS（投机执行）+ 一个条件 MRS</li>
+<li>把 <code>SCTLR_EL1</code>（EL1 系统控制寄存器）读入 x19，其中包含 M/C/EE 等关键位</li>
+<li>插在 <code>cmp</code> 和 <code>b.ne</code> <strong>之间</strong>——会覆盖 x19，但<strong>不会破坏 cmp 设置的条件标志位</strong>（见 §3.3）</li>
+<li>若在 EL2，下一行会用 <code>sctlr_el2</code> 覆盖；若在 EL1，则保留本次读到的值</li>
+<li>这是一种<strong>代码布局技巧</strong>：用一次"可能白读"的 MRS，换掉额外的无条件跳转和标签（见 §3.3 对比表）</li>
 </ul>
 
-<h4>④ <code>b.ne 0f</code> — 不在 EL2？跳过下一行</h4>
+<h4>④ <code>b.ne 0f</code> — 依据 cmp 的标志位，而非 x19</h4>
 <ul>
-<li>如果③的 CMP 结果是 NE（即 CurrentEL != EL2），跳转到标签 0</li>
-<li>如果 EQ（在 EL2），不跳转，执行下一行</li>
+<li>分支依据是 <strong>cmp 留下的 NZCV 标志位</strong>，不是 x19 的当前值</li>
+<li>NE（CurrentEL ≠ EL2，即在 EL1）→ 跳到 <code>0:</code>，跳过下一行 <code>mrs sctlr_el2</code></li>
+<li>EQ（在 EL2）→ 不跳，执行下一行，用 <code>sctlr_el2</code> 覆盖 x19</li>
 </ul>
 
 <h4>⑤ <code>mrs x19, sctlr_el2</code> — 在 EL2，用 sctlr_el2 覆盖</h4>
@@ -296,44 +344,735 @@ primary_entry:
 
 <h4>⑥ <code>CPU_LE(tbnz x19, #SCTLR_ELx_EE_SHIFT, 1f)</code></h4>
 <ul>
-<li>编译为 LE 内核时：<code>tbnz x19, #25, 1f</code> — 测试 bit 25 (EE 位)</li>
+<li>编译为 LE 内核时：<code>tbnz w19, #25, 1f</code> — 测试 bit 25 (EE 位)</li>
 <li>EE 位（bit 25）= <strong>Endianness 配置位</strong>：0=小端，1=大端</li>
-<li>如果 EE 位 = 1（与 LE 内核期望相反）→ 跳转到 1f（字节序纠正路径）</li>
+<li>如果 EE 位 = 1（与 LE 内核期望相反）→ 跳转到 <code>1f</code>（字节序纠正路径）</li>
 <li>编译为 BE 内核时指令相反：<code>tbz ... 1f</code> — 如果 EE=0 跳转</li>
-<li>这是整个函数<strong>最精妙</strong>的设计：一条指令同时检测了字节序兼容性和 MMU 状态</li>
+<li>详见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3c0">§3.4.0 tbnz 与 tbz 的区别</a> 及 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3c">§3.4 真实反汇编</a></li>
 </ul>
 
 <h4>⑦ <code>tst x19, #SCTLR_ELx_C</code> — 测试 C 位（Cache 启用）</h4>
 <ul>
 <li><code>SCTLR_ELx_C</code> = bit 2，数据 cache 启用标志</li>
-<li><code>tst</code> 做按位与，设置 Z 标志：C=0 → Z=1；C=1 → Z=0</li>
+<li><code>tst</code> 做按位与，设置 Z 标志：SCTLR 的 C 位 = 0 → Z=1；C 位 = 1 → Z=0（这里的「C」指 SCTLR bit 2，<strong>不是</strong> NZCV 里的 C 标志）</li>
+<li><strong>不写回 x19</strong>：<code>tst</code> 等价于 <code>ands xzr, x19, #imm</code>，结果丢弃，只更新 NZCV</li>
 <li>为什么检测 C 位而不是直接检测 M 位？见下面关键设计点</li>
+<li>内核注释 <code>// Z := (C == 0)</code> 解读见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst-comment">§3.2.0</a>；<code>and</code> / <code>csel</code> 详见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3and">§3.2.3</a>、<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3csel">§3.2.4</a></li>
+<li>实战演算（GDB 中 <code>x19 = 0xc50838</code>）见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst">§3.2.1 tst 指令详解</a>；NZCV 判定逻辑见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst-nzcv">§3.2.2</a></li>
 </ul>
+
+<h4 id="s3tst-comment">3.2.0 head.S 注释 <code>// Z := (C == 0)</code> 是什么意思？</h4>
+
+<p>源码 143 行：</p>
+<pre><code>tst  x19, #SCTLR_ELx_C    // Z := (C == 0)</code></pre>
+
+<p>这条注释<strong>是正确的</strong>，容易误解的是注释里的 <code>C</code> 和 NZCV 里的 <code>C</code> 不是同一个东西。</p>
+
+<table>
+<tbody><tr><th>符号</th><th>指什么</th><th>本例 <code>x19=0xc50838</code></th></tr>
+<tr><td>注释中的 <strong>C</strong></td><td><strong>SCTLR_ELx_C</strong>（bit 2，D-Cache 使能）</td><td><strong>0</strong>（D-Cache 关）</td></tr>
+<tr><td>注释中的 <strong>Z</strong></td><td>PSTATE 的 Zero 标志</td><td><strong>1</strong>（因为下面 <code>(C==0)</code> 为真）</td></tr>
+<tr><td>NZCV 中的 <strong>C</strong></td><td>Carry 进位标志（与 SCTLR 无关）</td><td><strong>1</strong>（逻辑 <code>ands</code> 架构固定）</td></tr>
+</tbody></table>
+
+<p><code>Z := (C == 0)</code> 是伪代码，含义是：<strong>把 Z 设成「SCTLR 的 C 位是否等于 0」这个布尔值</strong>：</p>
+
+<table>
+<tbody><tr><th>SCTLR 的 C 位（bit 2）</th><th><code>(C == 0)</code> 真假</th><th><code>tst</code> 的按位与结果</th><th>设置的 <strong>Z</strong> 标志</th></tr>
+<tr><td><strong>0</strong>（D-Cache 关）</td><td>真</td><td><code>x19 &amp; 0x4 = 0</code></td><td><strong>Z = 1</strong></td></tr>
+<tr><td><strong>1</strong>（D-Cache 开）</td><td>假</td><td><code>x19 &amp; 0x4 ≠ 0</code></td><td><strong>Z = 0</strong></td></tr>
+</tbody></table>
+
+<div class="diagram">注释说的：  Z := (SCTLR_C == 0)
+              当 SCTLR_C=0 → Z=1
+              当 SCTLR_C=1 → Z=0
+
+tst 实际做的：result = x19 &amp; 0x4
+              当 result=0 → Z=1    ← 与上面完全一致
+              当 result≠0 → Z=0
+
+★ 注释与指令行为一致，没有矛盾</div>
+
+<div class="warn">⚠ <strong>为何会觉得「不对」？</strong> 因为执行 <code>tst</code> 后 NZCV 里<strong>同时</strong>出现：
+<ul style="margin:6px 0 0 18px;">
+<li><strong>Z = 1</strong> ← 注释关心的：SCTLR 的 C 位 = 0</li>
+<li><strong>C = 1</strong> ← NZCV 的 Carry，逻辑运算固定值，<strong>与 SCTLR 的 C 位无关</strong></li>
+</ul>
+看到「C=1」就以为和注释「C==0」矛盾 — 其实一个是 <strong>SCTLR bit 2</strong>，一个是 <strong>NZCV Carry</strong>，名字相同、含义完全不同。后续 <code>csel eq</code> 只看 <strong>Z</strong>，不看 NZCV 的 C。</div>
+
+<h4 id="s3tst">3.2.1 <code>tst</code> 指令详解 — 以 <code>x19 = 0xc50838</code> 为例 ★</h4>
+
+<p>在 QEMU 中执行到 143 行时，<code>mrs x19, sctlr_el1</code> 后常见 <code>x19 = 0x00c50838</code>。下面逐步拆解这条 <code>tst</code> 的行为。</p>
+
+<h4>等价形式</h4>
+<pre><code>tst  x19, #SCTLR_ELx_C          // head.S:143
+# 汇编器等价于：
+ands xzr, x19, #0x4             // 按位与，结果写入 xzr（丢弃），只更新 NZCV</code></pre>
+
+<div class="warn">⚠ <strong>两个「C」不要混淆：</strong>（详见上方 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst-comment">§3.2.0 注释解读</a>）
+<ul style="margin:6px 0 0 18px;">
+<li><strong>SCTLR_ELx_C</strong>（bit 2）：数据 Cache 使能位 — 注释 <code>Z := (C == 0)</code> 里的 C 就是它</li>
+<li><strong>NZCV 中的 C</strong>（Carry 进位标志）：<code>tst</code> 也会更新它，但与 SCTLR 的 C 位<strong>毫无关系</strong></li>
+</ul></div>
+
+<h4>按位与计算</h4>
+<div class="diagram">x19        = 0x00C50838
+掩码       = 0x00000004   (SCTLR_ELx_C = BIT(2))
+
+按位与结果 = 0x00C50838 &amp; 0x4 = 0x00000000
+
+验证 bit 2（低字节 0x38 = 0b00111000）：
+                    bit2
+                      ↓
+              ... 0 0 1 1 1 0 0 0
+                      0  →  D-Cache 关闭</div>
+
+<h4 id="s3tst-nzcv">NZCV 判定逻辑 — 按位与结果为 0 时，四个标志为何是 N=0 Z=1 C=1 V=0？</h4>
+
+<p><code>tst</code> 更新 NZCV 的依据是：<strong>本次按位与运算的结果</strong> + <strong>ARM 架构对逻辑运算的固定规则</strong>。不是根据 SCTLR 的 C 位直接赋值。</p>
+
+<p>令 <code>result = x19 &amp; #0x4</code>，本例 <code>result = 0</code>：</p>
+
+<table>
+<tbody><tr><th>标志</th><th>判定公式（<code>ands</code> / <code>tst</code>）</th><th>本例 <code>result=0</code></th><th>说明</th></tr>
+<tr><td><strong>N</strong></td><td><code>N = result[63]</code></td><td><strong>0</strong></td><td>把结果当有符号数，看最高位。结果为 0 → 最高位为 0</td></tr>
+<tr><td><strong>Z</strong></td><td><code>Z = (result == 0) ? 1 : 0</code></td><td><strong>1</strong></td><td>结果为 0 则 Z=1。这是 <code>csel eq</code> 依赖的标志</td></tr>
+<tr><td><strong>C</strong></td><td><code>C = 1</code>（逻辑运算<strong>固定</strong>）</td><td><strong>1</strong></td><td>与 result 是否为 0 <strong>无关</strong>；不是 SCTLR 的 C 位，也不是进位</td></tr>
+<tr><td><strong>V</strong></td><td><code>V = 0</code>（逻辑运算<strong>固定</strong>）</td><td><strong>0</strong></td><td>逻辑运算不存在有符号溢出</td></tr>
+</tbody></table>
+
+<div class="diagram">result = x19 &amp; 0x4 = 0
+
+N = result[63]           = 0        ← 结果为 0，最高位为 0
+Z = (result == 0)        = 1        ← 结果为 0，所以 Z=1
+C = 1  (架构规定)        = 1        ← 逻辑 ands 固定置 1，与 result 无关
+V = 0  (架构规定)        = 0        ← 逻辑运算固定为 0
+
+NZCV = N:0  Z:1  C:1  V:0  →  二进制 0b0110</div>
+
+<h4>反例：若 SCTLR 的 C 位 = 1（<code>x19 = 0xc5083c</code>）</h4>
+<div class="diagram">result = 0xc5083c &amp; 0x4 = 0x4
+
+N = 0x4[63]              = 0        ← 非零正数，最高位仍为 0
+Z = (0x4 == 0)           = 0        ← 结果非零 → Z=0 → csel eq 不成立
+C = 1  (架构规定)        = 1        ← 仍是 1，与 result 是否为 0 无关
+V = 0  (架构规定)        = 0
+
+NZCV = N:0  Z:0  C:1  V:0  →  二进制 0b0100</div>
+
+<h4><code>tst</code> 与 <code>cmp</code> 的 NZCV 规则对比</h4>
+<table>
+<tbody><tr><th>指令</th><th>等价形式</th><th>N / Z 来源</th><th>C / V 来源</th></tr>
+<tr><td><code>cmp x19, #8</code></td><td><code>subs xzr, x19, #8</code></td><td>减法差值</td><td>减法借位 / 有符号溢出规则</td></tr>
+<tr><td><code>tst x19, #4</code></td><td><code>ands xzr, x19, #4</code></td><td>按位与结果</td><td><strong>C=1, V=0 固定</strong>（逻辑运算架构规定）</td></tr>
+</tbody></table>
+
+<div class="note">💡 <strong>关键记忆：</strong>
+<ul style="margin:6px 0 0 18px;">
+<li><strong>N、Z</strong> 由 <code>x19 &amp; 掩码</code> 的结果决定 — 结果为 0 → Z=1</li>
+<li><strong>C、V</strong> 在逻辑 <code>tst</code>/<code>ands</code> 中按 ARM 规范<strong>固定为 C=1、V=0</strong>，与按位与结果是否为 0 无关</li>
+<li><code>record_mmu_state</code> 里 <code>csel eq</code> 只看 <strong>Z</strong>，不看 NZCV 的 C</li>
+<li>文档「SCTLR C=0 → Z=1」里的 C 指 <strong>SCTLR bit 2</strong>，不是 NZCV 的 Carry</li>
+</ul></div>
+
+<h4>执行后寄存器与标志位（汇总）</h4>
+<table>
+<tbody><tr><th>项目</th><th>执行前</th><th>执行后</th><th>说明</th></tr>
+<tr><td><code>x19</code></td><td><code>0x00c50838</code></td><td><code>0x00c50838</code></td><td><strong>不变</strong> — <code>tst</code> 不写回目的寄存器</td></tr>
+<tr><td><strong>N</strong></td><td>—</td><td><strong>0</strong></td><td>结果为 0，最高位为 0</td></tr>
+<tr><td><strong>Z</strong></td><td>—</td><td><strong>1</strong></td><td>结果为 0 → SCTLR 的 C 位 = 0（D-Cache 关）</td></tr>
+<tr><td><strong>C</strong>（NZCV）</td><td>—</td><td><strong>1</strong></td><td>逻辑运算类指令（<code>ands</code>）按 ARM 规范置 C=1</td></tr>
+<tr><td><strong>V</strong></td><td>—</td><td><strong>0</strong></td><td>逻辑运算无溢出</td></tr>
+</tbody></table>
+
+<div class="note">💡 <strong>「C=0 → Z=1」的含义：</strong>文档里说的 C 指 <strong>SCTLR bit 2</strong>（D-Cache 使能），不是 NZCV 的 C。当 SCTLR 的 C 位为 0 时，<code>x19 &amp; 0x4</code> 结果为 0，于是 <strong>Z=1</strong>，后续 <code>csel ..., eq</code> 条件成立。</div>
+
+<h4>143–146 行三步连贯执行（<code>x19 = 0xc50838</code>）</h4>
+<div class="diagram">143  tst  x19, #0x4     →  x19 不变 (0xC50838)，NZCV 更新 Z=1
+144  and  x19, x19, #1   →  x19 = 0，NZCV 不变（Z 仍为 1）
+145  csel x19, xzr, x19, eq  →  读 Z=1 → x19 = 0，NZCV 不变
+146  ret                 →  返回 x19 = 0（冷启动路径）
+
+完整逐步表见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3-tst-and-csel">§3.2.4 M/C 组合真值表</a></div>
+
+<p>此时 SCTLR 相关位速查：</p>
+<table>
+<tbody><tr><th>位</th><th>名称</th><th>值</th><th>GDB 验证</th></tr>
+<tr><td>bit 0</td><td>M（MMU）</td><td><strong>0</strong></td><td><code>p/t 0xc50838 &amp; 1</code></td></tr>
+<tr><td>bit 2</td><td>C（D-Cache）</td><td><strong>0</strong></td><td><code>p/t (0xc50838 &gt;&gt; 2) &amp; 1</code></td></tr>
+<tr><td>bit 12</td><td>I（I-Cache）</td><td>0</td><td><code>p/t (0xc50838 &gt;&gt; 12) &amp; 1</code></td></tr>
+<tr><td>bit 25</td><td>EE（Endian）</td><td>0</td><td><code>p/t (0xc50838 &gt;&gt; 25) &amp; 1</code></td></tr>
+</tbody></table>
 
 <div class="note">💡 <strong>为什么检测 C（Cache）而不是 M（MMU）？</strong><br>
 正常情况下，M=0（MMU off）时 C 也一定是 0。但有些 bootloader 可能关闭了 MMU 却忘记关闭 cache（M=0, C=1），这会导致 non-cacheable 写入操作发生后，cache 中有陈旧数据。检测 C 位而非 M 位可以在这种情况下也触发 cache 维护操作。<br><br>
 <strong>另外 csel 的逻辑：</strong><code>csel x19, xzr, x19, eq</code> 表示"如果 Z=1（C==0），把 xzr(=0) 写入 x19，否则保持 x19 的 M 位值"。所以最终 x19 = (C==0) ? 0 : M_bit。</div>
 
-<h4>⑧ <code>and x19, x19, #SCTLR_ELx_M</code> — 提取 M 位</h4>
-<ul>
-<li><code>SCTLR_ELx_M</code> = bit 0，MMU 启用标志</li>
-<li><code>and</code> 屏蔽掉其他所有位，x19 只剩下 bit 0</li>
-<li>此时 x19 = 0（MMU off）或 1（MMU on）</li>
-</ul>
+<h4 id="s3and">⑧ <code>and x19, x19, #SCTLR_ELx_M</code> — 提取 M 位（head.S:144）</h4>
 
-<h4>⑨ <code>csel x19, xzr, x19, eq</code> — 条件选择</h4>
-<ul>
-<li>这是 <strong>条件执行</strong>（conditional select）指令</li>
-<li>如果 <code>EQ</code>（即上一步 tst 的结果 Z=1，C 位 = 0）：x19 = xzr = 0</li>
-<li>如果 <code>NE</code>（Z=0，C 位 = 1）：x19 = x19（保留 M 位的值）</li>
-<li>最终效果：<code>x19 = (C == 0) ? 0 : M_bit</code></li>
-</ul>
+<pre><code>and  x19, x19, #SCTLR_ELx_M    // isolate M bit
+# 掩码 SCTLR_ELx_M = BIT(0) = 0x1</code></pre>
+
+<h4>指令在做什么</h4>
+<p>对 x19 做按位与，<strong>只保留 bit 0</strong>（MMU 使能位 M），其余位全部清零。与 <code>tst</code> 不同，<code>and</code> 会把结果<strong>写回 x19</strong>。</p>
+
+<div class="diagram">x19_in  = 0x00C50838    (完整 SCTLR 值)
+掩码    = 0x00000001    (SCTLR_ELx_M)
+
+x19_out = x19_in &amp; 1 = 0x00C50838 &amp; 1 = 0
+
+验证 bit 0：0x38 = 0b00111000 → bit0 = 0 → MMU 关闭</div>
+
+<table>
+<tbody><tr><th>项目</th><th>执行前（143 行 tst 之后）</th><th>执行后（144 行 and 之后）</th></tr>
+<tr><td><code>x19</code></td><td><code>0x00c50838</code>（SCTLR 原值，tst 未改）</td><td><code>0x0</code> 或 <code>0x1</code>（仅 M 位）</td></tr>
+<tr><td><strong>NZCV</strong></td><td colspan="2"><strong>完全不变</strong> — <code>and</code>（无 <code>s</code> 后缀）<strong>不更新</strong>标志位</td></tr>
+</tbody></table>
+
+<div class="note">💡 <strong>与 <code>tst</code> / <code>ands</code> 的区别：</strong>
+<ul style="margin:6px 0 0 18px;">
+<li><code>tst</code> = <code>ands xzr, ...</code> → 更新 NZCV，<strong>不写</strong>目的寄存器</li>
+<li><code>and</code> = 普通逻辑与 → <strong>写回</strong> x19，<strong>不改</strong> NZCV</li>
+<li>若写成 <code>ands x19, x19, #1</code> 则会同时更新 NZCV（本函数<strong>没有</strong>这么做，是故意的）</li>
+</ul></div>
+
+<p>本例执行后 NZCV <strong>仍保持 tst 设置的值</strong>：<code>N=0, Z=1, C=1, V=0</code>。这条 Z=1 将留给 145 行的 <code>csel eq</code> 使用。</p>
+
+<h4 id="s3csel">⑨ <code>csel x19, xzr, x19, eq</code> — 条件选择（head.S:145）</h4>
+
+<pre><code>csel x19, xzr, x19, eq    // clear x19 if Z</code></pre>
+
+<h4>指令语义</h4>
+<p><code>csel</code>（Conditional SELect）根据<strong>条件码</strong>从两个源寄存器中选一个写入目的寄存器，<strong>不产生分支</strong>：</p>
+
+<pre><code>csel  Rd, Rn, Rm, cond
+
+若 cond 条件成立：  Rd = Rn
+若 cond 条件不成立：Rd = Rm</code></pre>
+
+<p>本行展开：</p>
+<table>
+<tbody><tr><th>操作数</th><th>寄存器</th><th>值（本例）</th><th>含义</th></tr>
+<tr><td>Rd</td><td><code>x19</code></td><td>—</td><td>写入目标</td></tr>
+<tr><td>Rn</td><td><code>xzr</code></td><td><code>0</code></td><td>EQ 成立时选中 → 强制清零</td></tr>
+<tr><td>Rm</td><td><code>x19</code></td><td><code>0</code>（144 行 and 后）</td><td>NE 成立时选中 → 保留 M 位</td></tr>
+<tr><td>cond</td><td><code>eq</code></td><td>—</td><td>等价于 <strong>Z=1</strong></td></tr>
+</tbody></table>
+
+<h4>条件码 <code>eq</code> 读的是哪条指令留下的 Z？★ 逐条追溯</h4>
+
+<div class="warn">⚠ <strong>核心问题：</strong>145 行 <code>csel x19, xzr, x19, eq</code> 中的条件码 <code>eq</code> 读的 Z 标志，到底是哪条指令设置的？为什么中间隔了一条 <code>and</code> 还能读到正确的 Z？</div>
+
+<h4>答案：143 行 <code>tst</code> 设置的 Z，不是 144 行 <code>and</code></h4>
+
+<p>关键原因：<strong>144 行的 <code>and</code>（不带 <code>s</code> 后缀）不更新 NZCV</strong>。ARM64 中只有带 <code>s</code> 后缀的 ALU 指令（如 <code>ands</code>、<code>subs</code>）才会写 NZCV；普通 <code>and</code> 只写目的寄存器。因此 143 行 <code>tst</code> 写入的 Z 标志<strong>原封不动地</strong>穿越了 144 行，在 145 行被 <code>csel</code> 读取。</p>
+
+<h4>Z 标志的完整生命周期（143 → 144 → 145）</h4>
+
+<div class="diagram">// ============ Z 标志在这三条指令间的传递 ============
+//
+//  ★ = 谁在写 Z     ☆ = 谁在读 Z     — = 不碰 Z
+//
+//  143  tst  x19, #SCTLR_ELx_C          <span style="color:#d97706;">★ 写 Z</span>
+//       │
+//       │  SCTLR C=0 → result=0 → <span style="color:#2563eb;">Z=1</span>
+//       │  SCTLR C=1 → result≠0 → <span style="color:#2563eb;">Z=0</span>
+//       │
+//       ▼  Z 已确定，存在 PSTATE.NZCV 中
+//
+//  144  and  x19, x19, #SCTLR_ELx_M     <span style="color:#94a3b8;">— 不改 Z</span>
+//       │
+//       │  x19 被改写为 M_bit（0 或 1）
+//       │  <span style="color:#059669;">NZCV 完全不变</span>，Z 仍为 143 行 tst 所设的值
+//       │
+//       ▼  Z 穿越 and，原封不动
+//
+//  145  csel x19, xzr, x19, eq          <span style="color:#d97706;">☆ 读 Z</span>
+//       │
+//       │  读 PSTATE.NZCV 中的 Z 位（就是 143 行 tst 写的那个）
+//       │  若 Z=1 (eq) → x19 = xzr = 0
+//       │  若 Z=0 (ne) → x19 = M_bit（144 行 and 提取的）
+//       │
+//       ▼  csel 本身<span style="color:#94a3b8;">不写 NZCV</span>，Z 仍然不变（但已无人再读）</div>
+
+<h4>逐步状态追踪表（含 NZCV 每一位的来源）</h4>
+<table>
+<tbody><tr><th>步骤</th><th>指令</th><th>x19 值</th><th>N</th><th>Z</th><th>C</th><th>V</th><th>Z 的<strong>设置者</strong></th><th>说明</th></tr>
+<tr>
+<td>进入 143</td>
+<td>—</td>
+<td><code>0xc50838</code></td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>SCTLR 原值（M=0, C=0, EE=0）</td>
+</tr>
+<tr style="background:#fef3c7;">
+<td>143 后</td>
+<td><code>tst #C</code></td>
+<td><code>0xc50838</code></td>
+<td>0</td>
+<td><strong>1</strong></td>
+<td>1</td>
+<td>0</td>
+<td><span class="amber">tst（143 行）</span></td>
+<td><code>tst</code> = <code>ands xzr, x19, #0x4</code> → result=0 → <strong>Z=1</strong>，C=1 是架构固定</td>
+</tr>
+<tr>
+<td>144 后</td>
+<td><code>and #M</code></td>
+<td><strong>0</strong></td>
+<td><strong>0</strong></td>
+<td><strong>1</strong></td>
+<td><strong>1</strong></td>
+<td><strong>0</strong></td>
+<td><span class="amber">tst（143 行）</span></td>
+<td>NZCV <strong>完全不变</strong>！<code>and</code>（无 <code>s</code>）不写标志位，Z 仍是 tst 设的</td>
+</tr>
+<tr style="background:#dbeafe;">
+<td>145 后</td>
+<td><code>csel eq</code></td>
+<td><strong>0</strong></td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td><span class="amber">tst（143 行）</span></td>
+<td>读 Z=1 → EQ 成立 → 选 xzr(0)；<strong>csel 也不写标志位</strong></td>
+</tr>
+</tbody></table>
+
+<div class="note">💡 <strong>三个关键事实：</strong>
+<ol style="margin:6px 0 0 18px;">
+<li><strong>tst</strong>（143 行）等价于 <code>ands xzr, x19, #0x4</code>，<strong>写 NZCV</strong>，Z = (x19 &amp; 0x4 == 0)</li>
+<li><strong>and</strong>（144 行）不带 s 后缀，<strong>不写 NZCV</strong>，Z 保持 tst 所设的值不变</li>
+<li><strong>csel</strong>（145 行）<strong>只读 NZCV</strong>，不写 NZCV。eq 条件 = Z=1 → 选第一操作数 xzr</li>
+</ol>
+<p style="margin-top:6px;">这三条指令的分工是故意的：<strong>tst 设标志 → and 算数据 → csel 读标志选数据</strong>。如果 144 行误写为 <code>ands</code>（带 s），Z 就会被错误地改成 M_bit 是否为 0 的结果，csel eq 就读不到 C 位的检测结果了。</p></div>
+
+<h4>如果 144 行误写成 <code>ands</code> 会怎样？（反面教材）</h4>
+
+<table>
+<tbody><tr><th>场景</th><th>143 tst 后 Z</th><th>144 <code>and</code>（正确）后 Z</th><th>144 <code>ands</code>（错误）后 Z</th></tr>
+<tr><td>M=0, C=1</td><td>0 (C≠0)</td><td><strong>0</strong> → 145 csel 选 M_bit=0 ✓</td><td><strong>1</strong> (M==0) → 145 csel 误选 xzr ✗</td></tr>
+<tr><td>M=1, C=0</td><td>1 (C==0)</td><td><strong>1</strong> → 145 csel 选 xzr=0 ✓（强制清零）</td><td><strong>0</strong> (M≠0) → 145 csel 误选 M_bit=1 ✗</td></tr>
+</tbody></table>
+
+<p>若用 <code>ands</code>，Z 表示的不再是「C 位是否为 0」，而是「M 位是否为 0」——csel 的 eq 条件完全变了含义，<strong>M=1, C=0 的异常场景就无法被强制清零</strong>。</p>
+
+<div class="warn">⚠ <strong>一句话总结 Z 的来源：</strong>
+<ul style="margin:6px 0 0 18px;">
+<li><strong>问：</strong>条件码 <code>eq</code> 读的是哪条指令留下的 Z？<br>
+<strong>答：</strong>143 行 <code>tst x19, #SCTLR_ELx_C</code> 设置的 Z。144 行 <code>and</code>（不带 s）不更新标志位，145 行 <code>csel</code>（只读不写）也不更新标志位。</li>
+<li style="margin-top:6px;"><strong>问：</strong>Z=1 的语义是什么？<br>
+<strong>答：</strong><code>tst</code> 的 result = x19 &amp; SCTLR_ELx_C = 0，即 SCTLR 的 C（数据 Cache）位 = 0，Cache 未使能。csel eq 在 Z=1 时选择 xzr（零寄存器），即 <strong>x19 被清零</strong>。这与注释 <code>// clear x19 if Z</code> 完全一致。</li>
+</ul></div>
+
+<h4>执行后寄存器与 NZCV（本例 <code>x19=0xc50838</code>）</h4>
+<table>
+<tbody><tr><th>项目</th><th>执行前（144 行 and 之后）</th><th>执行后（145 行 csel 之后）</th></tr>
+<tr><td><code>x19</code></td><td><code>0</code>（M 位 = 0）</td><td><code>0</code>（选中 xzr）</td></tr>
+<tr><td><strong>NZCV</strong></td><td colspan="2"><strong>完全不变</strong> — <code>csel</code> 只<strong>读取</strong>标志位，不写入</td></tr>
+</tbody></table>
+
+<div class="note">💡 本例中 144 行 and 后 x19 已是 0，145 行 csel 结果也是 0，看起来「多余」；但当 <strong>M=1 且 C=0</strong> 时，and 会得到 1，csel 仍会强制清零 — 这是保险设计（见下方真值表）。</div>
+
+<h4 id="s3-tst-and-csel">143–145 行逐步状态追踪（含 NZCV）</h4>
+<p>以 QEMU 典型值 <code>x19 = 0xc50838</code>（M=0, C=0）为主例，并给出 M/C 组合真值表。</p>
+
+<table>
+<tbody><tr><th>步骤</th><th>指令</th><th>x19</th><th>N</th><th>Z</th><th>C</th><th>V</th><th>说明</th></tr>
+<tr><td>进入 143</td><td>—</td><td><code>0xc50838</code></td><td>—</td><td>—</td><td>—</td><td>—</td><td>SCTLR 原值</td></tr>
+<tr><td>143</td><td><code>tst #C</code></td><td><code>0xc50838</code></td><td>0</td><td><strong>1</strong></td><td>1</td><td>0</td><td>测 C 位；<strong>更新</strong> NZCV；x19 不变</td></tr>
+<tr><td>144</td><td><code>and #M</code></td><td><strong>0</strong></td><td>0</td><td><strong>1</strong></td><td>1</td><td>0</td><td>提取 M 位；<strong>不改</strong> NZCV（Z 仍为 tst 所设）</td></tr>
+<tr><td>145</td><td><code>csel eq</code></td><td><strong>0</strong></td><td>0</td><td><strong>1</strong></td><td>1</td><td>0</td><td>Z=1 → EQ → x19=xzr；<strong>不改</strong> NZCV</td></tr>
+<tr><td>146</td><td><code>ret</code></td><td><strong>0</strong></td><td colspan="4">—</td><td>返回冷启动标志</td></tr>
+</tbody></table>
+
+<h4>M / C 组合真值表（最终 x19 返回值）</h4>
+<table>
+<tbody><tr><th>M (bit 0)</th><th>C (bit 2)</th><th>143 tst → Z</th><th>144 and → x19</th><th>145 csel → 最终 x19</th><th>含义</th></tr>
+<tr><td>0</td><td>0</td><td>1</td><td>0</td><td><strong>0</strong></td><td>QEMU 冷启动：MMU/Cache 均关</td></tr>
+<tr><td>1</td><td>0</td><td>1</td><td>1</td><td><strong>0</strong></td><td>M=1 但 C=0 → <strong>强制清零</strong>（bootloader 异常：MMU on 但 cache 未关）</td></tr>
+<tr><td>0</td><td>1</td><td>0</td><td>0</td><td><strong>0</strong></td><td>MMU off，走 invalidate 路径</td></tr>
+<tr><td>1</td><td>1</td><td>0</td><td>1</td><td><strong>1</strong></td><td>热启动：MMU + D-Cache 均开，跳过 cache 维护</td></tr>
+</tbody></table>
+
+<p>最终公式：<code>x19 = (SCTLR_C == 0) ? 0 : M_bit</code>，即注释 <code>// clear x19 if Z</code> 的含义。</p>
+
+<div class="warn">⚠ <strong>三条指令对 NZCV 的分工：</strong>
+<table style="margin-top:8px;">
+<tbody><tr><th>指令</th><th>写 x19？</th><th>写 NZCV？</th><th>读 NZCV？</th></tr>
+<tr><td><code>tst</code>（143）</td><td>否</td><td><strong>是</strong>（设 Z）</td><td>否</td></tr>
+<tr><td><code>and</code>（144）</td><td><strong>是</strong>（提取 M）</td><td>否</td><td>否</td></tr>
+<tr><td><code>csel</code>（145）</td><td><strong>是</strong>（条件写入）</td><td>否</td><td><strong>是</strong>（读 Z 判断 eq）</td></tr>
+</tbody></table></div>
 
 <h4>⑩ <code>ret</code> — 返回</h4>
 <ul>
 <li>正常路径的返回点</li>
 <li>x19 携带 MMU 状态返回调用者</li>
 </ul>
+
+<h3 id="s3b">3.3 cmp 与 b.ne 之间为何插入 mrs？能否 cmp 完就 b.ne？</h3>
+
+<p>很多人看到 <code>cmp</code> 之后没有立刻 <code>b.ne</code>，中间夹了一条 <code>mrs x19, sctlr_el1</code>，会疑惑：<strong>cmp 已经比完了，为什么不直接分支？</strong></p>
+
+<div class="note">💡 <strong>核心：</strong><code>cmp</code> 的结果存在 <strong>NZCV 标志位</strong>里，不在 x19 里。后续的 <code>mrs</code> 会覆盖 x19，但<strong>不会改写标志位</strong>，所以 <code>b.ne</code> 仍然能正确根据 cmp 的结果分支。</div>
+
+<div class="diagram">① mrs x19, CurrentEL     → x19 = 当前 EL
+② cmp x19, #CurrentEL_EL2 → 比较结果 → 写入 <span style="color:#2563eb;">NZCV 标志位</span>
+③ mrs x19, sctlr_el1     → x19 被覆盖为 SCTLR 值
+                           ★ 标志位<span style="color:#059669;">不受影响</span>，cmp 结果仍在
+④ b.ne 0f                → 根据<span style="color:#2563eb;">标志位</span>分支，不是看 x19</div>
+
+<p>逻辑上完全可以 <code>cmp</code> 后立刻分支，只是会多几条指令：</p>
+
+<table>
+<tbody><tr><th>写法</th><th>EL1 路径</th><th>EL2 路径</th><th>代码量</th></tr>
+<tr><td><span class="green">内核采用（mrs 在前）</span></td><td>1× mrs el1 + 1× 分支</td><td>2× mrs（el1 白读）+ 0× 额外跳转</td><td>更短</td></tr>
+<tr><td>cmp 后立刻分支</td><td>1× mrs el1</td><td>1× mrs el2 + 需要 <code>b 1f</code> 汇合</td><td>多 1 条无条件跳转 + 1 个标签</td></tr>
+</tbody></table>
+
+<pre><code># 内核写法（head.S:136-139）
+cmp     x19, #CurrentEL_EL2
+mrs     x19, sctlr_el1      # 先读（EL2 时会被覆盖）
+b.ne    0f
+mrs     x19, sctlr_el2      # 仅 EL2
+
+# 等价但更长的写法
+cmp     x19, #CurrentEL_EL2
+b.ne    0f
+mrs     x19, sctlr_el2
+b       1f
+0:  mrs     x19, sctlr_el1
+1:  ...</code></pre>
+
+<h3 id="s3c">3.4 tbnz / tbz 指令详解 &amp; 真实反汇编对照</h3>
+
+<h4 id="s3c0">3.4.0 <code>tbnz</code> 与 <code>tbz</code> 的区别</h4>
+
+<p><code>tbnz</code> 和 <code>tbz</code> 是 ARM64 的<strong>按位测试分支</strong>指令，语法相同、编码相同，唯一差别是<strong>跳转条件相反</strong>。它们<strong>不经过 NZCV 标志位</strong>，直接测试通用寄存器中的某一位是否为 0/1。</p>
+
+<table>
+<tbody><tr><th>项目</th><th><code>tbnz</code></th><th><code>tbz</code></th></tr>
+<tr><td>全称</td><td><strong>T</strong>est <strong>b</strong>it, branch if <strong>N</strong>ot <strong>Z</strong>ero</td><td><strong>T</strong>est <strong>b</strong>it, branch if <strong>Z</strong>ero</td></tr>
+<tr><td>语法</td><td><code>tbnz Rt, #bitnum, label</code></td><td><code>tbz Rt, #bitnum, label</code></td></tr>
+<tr><td>操作数 Rt</td><td colspan="2">必须是 <strong>W 寄存器</strong>（32 位）；写 <code>x19</code> 时汇编器生成 <code>w19</code></td></tr>
+<tr><td>测试范围</td><td colspan="2"><code>#bitnum</code> = 0 ~ 31（W 寄存器的 bit 0 ~ bit 31）</td></tr>
+<tr><td>跳转条件</td><td>被测位 <strong>== 1</strong> 时跳转</td><td>被测位 <strong>== 0</strong> 时跳转</td></tr>
+<tr><td>不跳转时</td><td>被测位 == 0 → 顺序执行下一条</td><td>被测位 == 1 → 顺序执行下一条</td></tr>
+<tr><td>是否改 NZCV</td><td colspan="2"><strong>否</strong>（与 cmp/tst 不同）</td></tr>
+</tbody></table>
+
+<p>等价 C 伪代码（以 bit 25 为例）：</p>
+<div class="two-col">
+<div>
+<pre><code>// tbnz w19, #25, label
+if ((w19 &gt;&gt; 25) &amp; 1)    // bit25 == 1
+    goto label;
+else
+    fall_through;</code></pre>
+</div>
+<div>
+<pre><code>// tbz w19, #25, label
+if (((w19 &gt;&gt; 25) &amp; 1) == 0)   // bit25 == 0
+    goto label;
+else
+    fall_through;</code></pre>
+</div>
+</div>
+
+<h4>被测位为 0 或 1 时的行为对照</h4>
+<table>
+<tbody><tr><th>被测 bit 值</th><th><code>tbnz Rt, #n, label</code></th><th><code>tbz Rt, #n, label</code></th></tr>
+<tr><td><strong>0</strong></td><td>不跳转，继续下一条</td><td><strong>跳转</strong>到 label</td></tr>
+<tr><td><strong>1</strong></td><td><strong>跳转</strong>到 label</td><td>不跳转，继续下一条</td></tr>
+</tbody></table>
+
+<div class="diagram">同一 bit 上，tbnz 与 tbz 互为"反条件"分支：
+
+         测试 Rt 的 bit #n
+                │
+       ┌────────┴────────┐
+    bit=0              bit=1
+       │                  │
+   tbnz: 不跳          tbnz: 跳转 ★
+   tbz:  跳转 ★        tbz:  不跳
+
+ ★ = 该指令在此情况下会跳转</div>
+
+<h4>在 record_mmu_state 中为何 LE 用 tbnz、BE 用 tbz？</h4>
+<p>源码通过 <code>CPU_LE()</code> / <code>CPU_BE()</code> 在<strong>编译期</strong>二选一，目标都是：<strong>当前字节序与内核期望不一致时，跳到 <code>1:</code> 纠正</strong>。</p>
+
+<table>
+<tbody><tr><th>内核编译选项</th><th>选用的指令</th><th>跳转条件</th><th>何时跳到 <code>1:</code></th><th>含义</th></tr>
+<tr><td><code>CONFIG_CPU_LITTLE_ENDIAN</code>（LE）</td><td><code>tbnz x19, #25, 1f</code></td><td>EE <strong>== 1</strong></td><td>硬件是<strong>大端</strong></td><td>与 LE 内核不匹配 → 纠正</td></tr>
+<tr><td><code>CONFIG_CPU_BIG_ENDIAN</code>（BE）</td><td><code>tbz x19, #25, 1f</code></td><td>EE <strong>== 0</strong></td><td>硬件是<strong>小端</strong></td><td>与 BE 内核不匹配 → 纠正</td></tr>
+</tbody></table>
+
+<pre><code>// head.S:141-142（同一逻辑，编译期只保留一条）
+
+CPU_LE( tbnz x19, #SCTLR_ELx_EE_SHIFT, 1f )   // LE 内核期望 EE=0
+CPU_BE( tbz  x19, #SCTLR_ELx_EE_SHIFT, 1f )   // BE 内核期望 EE=1
+
+// 统一语义：
+if (SCTLR.EE != expected_endian_for_kernel)
+    goto fix_endian;    // 1:</code></pre>
+
+<div class="note">💡 <strong>与 cmp / tst 的对比：</strong>
+<ul>
+<li><code>cmp</code> / <code>tst</code>：算术/逻辑运算 → 更新 <strong>NZCV</strong> → <code>b.eq</code> / <code>b.ne</code> / <code>csel</code> 读标志位</li>
+<li><code>tbnz</code> / <code>tbz</code>：直接读寄存器某一位 → <strong>不碰 NZCV</strong> → 一条指令完成"测位 + 分支"</li>
+</ul>
+对单个标志位（如 EE bit 25），<code>tbnz</code>/<code>tbz</code> 比 <code>tst + b.ne</code> 更直接：无需先 <code>tst #mask</code> 再分支。</div>
+
+<div class="warn">⚠ <strong>QEMU 小端冷启动：</strong>EE=0 → <code>tbnz #25</code> <strong>不跳转</strong>（bit=0，tbnz 要求 bit=1 才跳）。若误用 <code>tbz</code>，EE=0 反而会跳进字节序纠正路径——这就是为什么必须用 <code>CPU_LE</code>/<code>CPU_BE</code> 在编译期选对指令。</div>
+
+<h4>3.4.1 指令拆解：<code>tbnz w19, #25, 0x4166a9a4</code></h4>
+
+<p>GDB 中看到的真实反汇编（小端内核，QEMU 调试）：</p>
+<pre><code>0x4166a990 &lt;record_mmu_state+20&gt;  tbnz  w19, #25, 0x4166a9a4 &lt;record_mmu_state+40&gt;</code></pre>
+
+<table>
+<tbody><tr><th>字段</th><th>含义</th></tr>
+<tr><td><code>tbnz</code></td><td><strong>T</strong>est <strong>b</strong>it, branch if <strong>N</strong>ot <strong>Z</strong>ero — 测试某位，若为 <strong>1</strong> 则跳转</td></tr>
+<tr><td><code>w19</code></td><td>测试 <code>x19</code> 的<strong>低 32 位</strong>（<code>SCTLR</code> 是 32 位寄存器）</td></tr>
+<tr><td><code>#25</code></td><td>测试 <strong>bit 25</strong> = <code>SCTLR_ELx_EE</code>（Endianness 字节序位）</td></tr>
+<tr><td><code>0x4166a9a4</code></td><td>跳转目标 = <code>record_mmu_state+40</code> = 标签 <code>1:</code>（字节序纠正路径）</td></tr>
+</tbody></table>
+
+<p>等价 C 代码：</p>
+<pre><code>if ((w19 &gt;&gt; 25) &amp; 1)       // EE 位 == 1（大端）
+    pc = 0x4166a9a4;       // 跳到字节序纠正
+else
+    pc += 4;               // 不跳，继续判断 MMU/Cache 状态</code></pre>
+
+<h4>3.4.2 为什么是 <code>w19</code> 而不是 <code>x19</code>？</h4>
+<p>AArch64 中 <code>tbnz</code>/<code>tbz</code> 指令<strong>只能编码 W 寄存器</strong>（32 位）。汇编里写 <code>tbnz x19, #25</code> 时，汇编器实际生成 <code>tbnz w19, #25</code>。由于 <code>SCTLR</code> 是 32 位、EE 在 bit 25，测 <code>w19</code> 的 bit 25 与测 <code>x19</code> 的 bit 25 <strong>完全等价</strong>。</p>
+
+<h4>3.4.3 完整偏移映射（基址 = 0x4166a97c）</h4>
+<table>
+<tbody><tr><th>偏移</th><th>地址</th><th>反汇编</th><th>源码</th></tr>
+<tr><td>+0</td><td><code>0x4166a97c</code></td><td><code>mrs x19, CurrentEL</code></td><td>读当前 EL</td></tr>
+<tr><td>+4</td><td><code>0x4166a980</code></td><td><code>cmp x19, #0x8</code></td><td>cmp #CurrentEL_EL2</td></tr>
+<tr><td>+8</td><td><code>0x4166a984</code></td><td><code>mrs x19, sctlr_el1</code></td><td>先读 EL1 SCTLR</td></tr>
+<tr><td>+12</td><td><code>0x4166a988</code></td><td><code>b.ne 0x4166a994</code></td><td>EL1 → 跳过 el2 读取</td></tr>
+<tr><td>+16</td><td><code>0x4166a98c</code></td><td><code>mrs x19, sctlr_el2</code></td><td>仅 EL2 执行</td></tr>
+<tr><td style="background:#fef3c7;">+20</td><td style="background:#fef3c7;"><code>0x4166a990</code></td><td style="background:#fef3c7;"><code>tbnz w19, #25, 0x4166a9a4</code></td><td style="background:#fef3c7;">★ EE 位检测</td></tr>
+<tr><td>+24</td><td><code>0x4166a994</code></td><td><code>tst x19, #(1&lt;&lt;2)</code></td><td>tst C 位</td></tr>
+<tr><td>+28</td><td><code>0x4166a998</code></td><td><code>and x19, x19, #1</code></td><td>and M 位</td></tr>
+<tr><td>+32</td><td><code>0x4166a99c</code></td><td><code>csel x19, xzr, x19, eq</code></td><td>C=0 则清零</td></tr>
+<tr><td>+36</td><td><code>0x4166a9a0</code></td><td><code>ret</code></td><td>正常返回</td></tr>
+<tr><td style="background:#fee2e2;">+40</td><td style="background:#fee2e2;"><code>0x4166a9a4</code></td><td style="background:#fee2e2;"><code>eor x19, x19, #(1&lt;&lt;25)</code></td><td style="background:#fee2e2;">1: 翻转 EE 位</td></tr>
+</tbody></table>
+
+<div class="diagram">tbnz 分支逻辑（小端内核）：
+
+  w19 = SCTLR 值
+        │
+   测试 bit 25 (EE)
+        │
+   ┌────┴────┐
+ EE=0      EE=1
+(小端,OK) (大端,不匹配)
+   │          │
+ 不跳转      跳到 +40 (0x4166a9a4)
+ 继续        eor EE → bic M → msr SCTLR
+ tst/and     isb → x19=0 → ret
+ csel/ret</div>
+
+<h4>3.4.4 GDB 验证 EE 位</h4>
+<pre><code># 断在 tbnz 处 (record_mmu_state+20)
+(gdb) p/t $w19
+(gdb) p/t ($w19 &gt;&gt; 25) &amp; 1     # EE 位：0=小端(不跳), 1=大端(跳转)
+(gdb) p/t ($w19 &gt;&gt; 0) &amp; 1      # M 位：MMU
+(gdb) p/t ($w19 &gt;&gt; 2) &amp; 1      # C 位：D-Cache
+
+# EE=0 → si 继续执行 tst
+# EE=1 → si 一次应跳到 record_mmu_state+40</code></pre>
+
+<div class="warn">⚠ <strong>LE vs BE 内核：</strong>详见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3c0">§3.4.0</a>——小端用 <code>tbnz</code>（EE=1 跳），大端用 <code>tbz</code>（EE=0 跳）；两者对称，检测字节序不匹配后跳到 <code>1:</code> 纠正。</div>
+
+<h3 id="s3d">3.5 QEMU 启动场景逐行走读（head.S:134–146）★</h3>
+
+<p>以下分析对应你的 <code>launch.sh arm64 debug</code> 环境：</p>
+<pre><code>qemu-system-aarch64 -machine virt -cpu cortex-a57 -kernel arch/arm64/boot/Image \
+    --append "nokaslr rdinit=/linuxrc console=ttyAMA0" ...</code></pre>
+
+<div class="note">💡 <strong>QEMU 遵守 ARM64 启动协议</strong>（<code>Documentation/arch/arm64/booting.rst</code>）：进入内核时 <strong>MMU 必须关闭</strong>，D-cache 关闭或一致，I-cache 关闭或一致。因此正常 QEMU 冷启动下，134–146 行<strong>不会</strong>走到字节序纠正路径（<code>1:</code>），且最终 <code>x19 = 0</code>。</div>
+
+<h4>3.5.0 进入函数前的 QEMU 状态（协议约定）</h4>
+<table>
+<tbody><tr><th>项目</th><th>QEMU virt 典型值</th><th>说明</th></tr>
+<tr><td>异常级别</td><td><strong>EL1</strong>（多数版本）或 EL2</td><td><code>-kernel</code> 直启 Image 时，QEMU 在 non-secure EL1 移交控制权较常见；部分版本/配置为 EL2</td></tr>
+<tr><td><code>SCTLR_ELx.M</code></td><td><strong>0</strong></td><td>MMU 关</td></tr>
+<tr><td><code>SCTLR_ELx.C</code></td><td><strong>0</strong></td><td>D-cache 关（或 coherent，对 early boot 等效于走冷启动路径）</td></tr>
+<tr><td><code>SCTLR_ELx.I</code></td><td><strong>0</strong></td><td>I-cache 关</td></tr>
+<tr><td><code>SCTLR_ELx.EE</code></td><td><strong>0</strong></td><td>小端，与 LE 内核匹配</td></tr>
+<tr><td><code>x0</code></td><td>FDT 物理地址</td><td>设备树指针（由 QEMU 传入，本函数不用）</td></tr>
+</tbody></table>
+
+<p>下面以<strong>最常见路径：EL1 + 小端 + MMU/Cache 全关</strong> 为例，逐行说明 134–146 行实际会执行什么。物理地址以你 GDB 中看到的 <code>record_mmu_state</code> 基址 <code>0x4166a97c</code> 为例（<code>nokaslr</code> 下每次相同）。</p>
+
+<h4>3.5.1 逐行执行表（QEMU 冷启动 · EL1 路径）</h4>
+
+<table>
+<tbody><tr><th>行</th><th>源码</th><th>物理地址</th><th>执行后 x19</th><th>标志位 / 分支</th><th>QEMU 实际发生了什么</th></tr>
+<tr>
+<td><strong>135</strong></td>
+<td><code>mrs x19, CurrentEL</code></td>
+<td><code>+0 / 0x4166a97c</code></td>
+<td><code>0x4</code></td>
+<td>—</td>
+<td>读系统寄存器 <code>CurrentEL</code>。bits[3:2]=<code>01</code> → <strong>EL1</strong>。宏 <code>CurrentEL_EL1 = (1&lt;&lt;2) = 4</code></td>
+</tr>
+<tr>
+<td><strong>136</strong></td>
+<td><code>cmp x19, #CurrentEL_EL2</code></td>
+<td><code>+4 / 0x4166a980</code></td>
+<td><code>0x4</code>（不变）</td>
+<td><code>0x4</code> vs <code>0x8</code> → <strong>NE</strong>，Z=0</td>
+<td>比较是否在 EL2。<code>CurrentEL_EL2 = (2&lt;&lt;2) = 8</code>。QEMU 在 EL1 → <strong>不相等</strong>，标志位记入 NZCV</td>
+</tr>
+<tr>
+<td><strong>137</strong></td>
+<td><code>mrs x19, sctlr_el1</code></td>
+<td><code>+8 / 0x4166a984</code></td>
+<td><code>SCTLR_EL1</code> 值</td>
+<td><strong>NZCV 不变</strong>（仍为 NE）</td>
+<td>读 EL1 控制寄存器。QEMU 典型值如 <code>0x00000000</code> 或仅含 RES1 位（M/C/I/EE 均为 0）。x19 被覆盖，但 <strong>cmp 的标志位不受影响</strong></td>
+</tr>
+<tr>
+<td><strong>138</strong></td>
+<td><code>b.ne 0f</code></td>
+<td><code>+12 / 0x4166a988</code></td>
+<td>不变</td>
+<td>NE → <strong>跳转</strong></td>
+<td>因 136 行 cmp 结果为 NE（在 EL1），<strong>跳到标签 0:</strong>（+20），<span class="green">跳过 139 行</span> <code>mrs sctlr_el2</code></td>
+</tr>
+<tr style="background:#f1f5f9;color:#94a3b8;">
+<td>139</td>
+<td><code>mrs x19, sctlr_el2</code></td>
+<td><code>+16 / 0x4166a98c</code></td>
+<td>—</td>
+<td>—</td>
+<td><strong>QEMU EL1 路径不执行</strong>（被 138 行跳过）。仅在 EL2 启动时才会执行并用 <code>sctlr_el2</code> 覆盖 x19</td>
+</tr>
+<tr>
+<td><strong>141</strong></td>
+<td><code>tbnz w19, #25, 1f</code></td>
+<td><code>+20 / 0x4166a990</code></td>
+<td>不变</td>
+<td>EE=0 → <strong>不跳</strong></td>
+<td>测 bit 25（EE）。QEMU 小端启动 EE=0 → 与 LE 内核匹配 → <strong>不跳转</strong>，继续 143 行。反汇编显示为 <code>tbnz w19, #25, 0x4166a9a4</code></td>
+</tr>
+<tr style="background:#f1f5f9;color:#94a3b8;">
+<td>142</td>
+<td><code>tbz ...</code>（BE 内核）</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>你的内核是小端（LE），这行<strong>不存在于二进制中</strong>，由 <code>CPU_BE()</code> 在编译期剔除</td>
+</tr>
+<tr>
+<td><strong>143</strong></td>
+<td><code>tst x19, #SCTLR_ELx_C</code></td>
+<td><code>+24 / 0x4166a994</code></td>
+<td>不变（仍为 <code>0xc50838</code> 等 SCTLR 原值）</td>
+<td>C=0 → <strong>Z=1</strong>（EQ）</td>
+<td>测试 D-cache 使能位（bit 2）。<code>tst</code> 不写 x19，只设标志。QEMU 典型 <code>x19=0xc50838</code> 时 C=0 → <code>Z := (C==0) = 1</code>。详见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst">§3.2.1</a></td>
+</tr>
+<tr>
+<td><strong>144</strong></td>
+<td><code>and x19, x19, #SCTLR_ELx_M</code></td>
+<td><code>+28 / 0x4166a998</code></td>
+<td><code>0</code></td>
+<td>NZCV <strong>不变</strong>，Z 仍为 1</td>
+<td><code>x19 = 0xc50838 &amp; 1 = 0</code>（M=0）。<code>and</code> 写 x19、<strong>不改</strong> NZCV。详见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3and">§3.2.3</a></td>
+</tr>
+<tr>
+<td><strong>145</strong></td>
+<td><code>csel x19, xzr, x19, eq</code></td>
+<td><code>+32 / 0x4166a99c</code></td>
+<td><code>0</code></td>
+<td>NZCV <strong>不变</strong>；读 Z=1</td>
+<td>Z=1（tst 所设）→ EQ → <code>x19 = xzr = 0</code>。<code>csel</code> 只读标志、不写标志。详见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3csel">§3.2.4</a>、<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3-tst-and-csel">真值表</a></td>
+</tr>
+<tr>
+<td><strong>146</strong></td>
+<td><code>ret</code></td>
+<td><code>+36 / 0x4166a9a0</code></td>
+<td><code>0</code></td>
+<td>—</td>
+<td>返回 <code>primary_entry</code>。<strong>x19 = 0</strong> 表示冷启动（MMU/Cache 均视为关闭）→ 后续走 invalidate 路径</td>
+</tr>
+</tbody></table>
+
+<h4>3.5.2 执行路径示意图（QEMU 冷启动）</h4>
+<div class="diagram">QEMU virt -kernel 冷启动（EL1, LE, M=0, C=0）
+
+  135 mrs CurrentEL        x19 = 0x4  (EL1)
+  136 cmp #EL2             flags: NE
+  137 mrs sctlr_el1        x19 = SCTLR (M/C/EE 全 0)
+  138 b.ne 0f    ───────────────┐ 跳转！跳过 139
+  139 mrs sctlr_el2   (不执行)   │
+  141 0: tbnz EE     EE=0,不跳 ─┘
+  143 tst C          Z=1 (C==0)
+  144 and M          x19 = 0
+  145 csel eq        x19 = 0  (强制)
+  146 ret            → primary_entry, x19=0 ★
+
+  <span style="color:#94a3b8;">142 行 tbz (BE) 和 154–164 行 endian 路径在 QEMU 冷启动中均不执行</span></div>
+
+<h4>3.5.3 备选路径：QEMU 从 EL2 进入</h4>
+<p>若你的 QEMU 版本从 <strong>EL2</strong> 移交内核（<code>CurrentEL = 0x8</code>），135–146 行的差异仅在 136–139：</p>
+<table>
+<tbody><tr><th>行</th><th>与 EL1 路径的差异</th></tr>
+<tr><td>136</td><td><code>0x8 == 0x8</code> → <strong>EQ</strong>，Z=1</td></tr>
+<tr><td>137</td><td>仍执行，x19 先被设为 <code>sctlr_el1</code>（此次读取会被丢弃）</td></tr>
+<tr><td>138</td><td>EQ → <strong>不跳转</strong>，顺序执行 139</td></tr>
+<tr><td>139</td><td><strong>执行</strong> <code>mrs x19, sctlr_el2</code>，用 EL2 的 SCTLR 覆盖 x19</td></tr>
+<tr><td>141–146</td><td>与 EL1 路径相同逻辑，只是检测的是 <code>SCTLR_EL2</code> 的 M/C/EE 位；QEMU 仍保证 M=0,C=0 → 最终 x19=0</td></tr>
+</tbody></table>
+<p>可用 GDB 确认：<code>p/x $x19</code> 在 135 行后应为 <code>0x4</code>（EL1）或 <code>0x8</code>（EL2）。</p>
+
+<h4>3.5.4 x19=0 返回后对 primary_entry 的影响</h4>
+<p><code>record_mmu_state</code> 返回后，<code>x19=0</code> 在后续代码中的连锁反应（与你的调试直接相关）：</p>
+<table>
+<tbody><tr><th>后续位置</th><th>指令</th><th>x19=0 时的行为</th></tr>
+<tr><td><code>preserve_boot_args</code></td><td><code>cbnz x19, 0f</code></td><td>不跳 → 对 <code>boot_args</code> 做 <code>dcache_inval_poc</code></td></tr>
+<tr><td><code>primary_entry</code> ~101</td><td><code>cbnz x19, 0f</code></td><td>不跳 → 对页表区域 <code>dcache_inval_poc</code>（冷启动 invalidate 路径）</td></tr>
+<tr><td><code>primary_entry</code> ~119</td><td><code>mov x0, x19</code></td><td><code>x0=0</code> 传给 <code>init_kernel_el</code>（非热启动，不 clean HYP 代码）</td></tr>
+</tbody></table>
+
+<h4>3.5.5 GDB 单步验证清单（对照上表）</h4>
+<pre><code># 在 record_mmu_state 入口
+(gdb) b record_mmu_state
+(gdb) c
+
+# --- 135 行后 ---
+(gdb) p/x $x19                    # 期望 0x4 (EL1) 或 0x8 (EL2)
+
+# --- 137 行后 ---
+(gdb) p/t $w19                    # SCTLR 完整值
+(gdb) p/t ($w19&gt;&gt;25)&amp;1            # EE: 期望 0
+(gdb) p/t ($w19&gt;&gt;2)&amp;1             # C:  期望 0
+(gdb) p/t $w19&amp;1                  # M:  期望 0
+
+# --- 138 行：si 一次 ---
+# EL1: 应直接到 +20 (tbnz)，跳过 +16
+# EL2: 应到 +16 (mrs sctlr_el2)
+
+# --- 141 行：si 一次 ---
+# EE=0: 不跳，继续 +24 (tst)
+
+# --- 146 行 ret 后 ---
+(gdb) p/x $x19                    # 期望 0x0 → 冷启动</code></pre>
+
+<div class="warn">⚠ <strong>不要与 kexec/hibernate 混淆：</strong>上述逐行分析仅适用于 <code>./launch.sh arm64 debug</code> 的 QEMU 直启 Image。若用 kexec 热启动进内核，M=1 且 C=1，143–145 行会得到 <code>x19=1</code>，整条路径完全不同（走 clean 而非 invalidate）。</div>
 </section>
 
 <!-- ====== 4 ====== -->
@@ -368,14 +1107,14 @@ primary_entry:
 <h3>4.2 正常路径（字节序匹配）</h3>
 <p>这是最常见的路径：内核的字节序编译设置与硬件当前配置一致。</p>
 <table>
-<tr><th>步骤</th><th>操作</th><th>x19</th><th>解释</th></tr>
+<tbody><tr><th>步骤</th><th>操作</th><th>x19</th><th>解释</th></tr>
 <tr><td>1</td><td>检测异常级别</td><td>—</td><td>确定读 EL1 还是 EL2 的 SCTLR</td></tr>
 <tr><td>2</td><td>读 SCTLR</td><td>SCTLR 值</td><td>SCTLR 寄存器包含 M、C、EE 等位</td></tr>
 <tr><td>3</td><td>CPU_LE(tbnz EE)</td><td>不变</td><td>EE=0? → 不跳转（小端匹配）</td></tr>
 <tr><td>4</td><td>tst + and</td><td>0 或 1</td><td>x19 = M_bit (MMU enabled?)</td></tr>
 <tr><td>5</td><td>csel (C 位修正)</td><td>0 或 1</td><td>C=0 时强制清零</td></tr>
 <tr><td>6</td><td>ret</td><td>0 (MMU off) 或 1 (MMU on)</td><td>返回调用者</td></tr>
-</table>
+</tbody></table>
 
 <h3>4.3 字节序纠正路径（endian 不匹配）</h3>
 
@@ -423,10 +1162,10 @@ primary_entry:
     bl      init_kernel_el    // w0 = cpu_boot_mode</code></pre>
 
 <table>
-<tr><th>x19 值</th><th>路径</th><th>缓存操作</th><th>传给 init_kernel_el</th></tr>
+<tbody><tr><th>x19 值</th><th>路径</th><th>缓存操作</th><th>传给 init_kernel_el</th></tr>
 <tr><td><code>0</code> (Cold Boot)</td><td>跳转 cache inval</td><td>Invalidate D-cache [pg_dir, ptep)</td><td>0</td></tr>
 <tr><td><code>1</code> (Warm Boot)</td><td>不跳转</td><td>Clean D-cache [__idmap_text_start, end)</td><td>1</td></tr>
-</table>
+</tbody></table>
 
 <h3>5.2 在 preserve_boot_args 中使用（line 177）</h3>
 <pre><code>SYM_CODE_START_LOCAL(preserve_boot_args)
@@ -449,36 +1188,340 @@ primary_entry:
 <li>MMU on → 页表写入是 cacheable 的，但在关闭 MMU 前需要把 dirty cache lines 写回内存 → 需要 clean</li>
 <li>这套对称的 cache 维护逻辑贯穿了整个 early boot 阶段</li>
 </ul></div>
+
+<h3>5.3 设计意图：探测器与消费者的协作 ★</h3>
+
+<p><code>record_mmu_state</code> 本身<strong>不做任何缓存维护</strong>——它只是一个<strong>探测器</strong>，返回一个标记值。真正的缓存操作在<strong>调用方</strong> <code>primary_entry</code> 和 <code>preserve_boot_args</code> 中执行。二者通过 <code>x19</code> 传递决策信息。</p>
+
+<h4>5.3.1 143–145 行的判断逻辑：数据缓存是否开着？</h4>
+
+<p>这三条指令回答一个简单的问题，并以返回值的形式传递给调用者：</p>
+
+<pre><code>// 伪代码等价
+bool cache_was_on = (sctlr &amp; SCTLR_C) != 0;   // line 143: tst
+bool mmu_was_on   = sctlr &amp; SCTLR_M;           // line 144: and
+
+if (!cache_was_on)
+    return 0;               // line 145: csel → "缓存没开，直接走"
+else
+    return mmu_was_on;      // "缓存开着，把 MMU 状态带回去"</code></pre>
+
+<div class="diagram">// ============ 探测器（record_mmu_state）的返回值语义 ============
+//
+//   x19 = 0  →  D-Cache 没开 → 冷启动 / 裸机直接进内核
+//   x19 = 1  →  D-Cache 开着 + MMU 也开着 → 热重启（kexec/hibernate）
+//
+//   ★ 为什么检测 C（Cache）而不是 M（MMU）？
+//
+//   正常情况 M=0 时 C 一定为 0。但如果 bootloader 关了 MMU
+//   却忘了关 Cache（M=0, C=1），此时直接 invalidate 可能丢数据。
+//   检测 C 位更安全——只有确认 Cache 开着才走 clean 路径。</div>
+
+<h4>5.3.2 消费者 ①：primary_entry 的缓存维护分流（line 101）</h4>
+
+<p>这是返回值最重要的消费点：</p>
+
+<div class="diagram">// ============ primary_entry 中的缓存策略 ============
+//
+//   cbnz  x19, 0f        ★ 根据 record_mmu_state 的返回值分流
+//
+//   ┌── x19 == 0 (缓存没开) ──────────────────────────┐
+//   │                                                   │
+//   │   dmb sy                                         │
+//   │   dcache_inval_poc(pg_dir_start, pg_dir_end)     │
+//   │   ↓                                              │
+//   │   只做 invalidate（丢弃缓存行，不写回）            │
+//   │   原因：缓存里没有脏数据，丢弃即可                 │
+//   │                                                   │
+//   └───────────────────────────────────────────────────┘
+//
+//   ┌── x19 != 0 (缓存开着) ───────────────────────────┐
+//   │                                                   │
+//   │   dcache_clean_poc(__idmap_text_start,            │
+//   │                    __idmap_text_end)              │
+//   │   ↓                                              │
+//   │   做 clean to PoC（把脏缓存行写回内存）            │
+//   │   原因：后续要关 MMU，必须先刷脏数据              │
+//   │                                                   │
+//   └───────────────────────────────────────────────────┘</div>
+
+<h4>5.3.3 消费者 ②：preserve_boot_args 的缓存决策（line 177）</h4>
+
+<p>同样的模式：</p>
+
+<div class="diagram">// preserve_boot_args 内部：
+//
+//   cbnz  x19, 0f        ★ 再次使用 x19
+//
+//   x19 == 0 → dmb + dcache_inval_poc(boot_args)  // 丢弃可能的陈旧缓存行
+//   x19 != 0 → str_l mmu_enabled_at_boot + ret     // 缓存开着，直接写即可</div>
+
+<h4>5.3.4 消费者 ③：传给 init_kernel_el（line 119）</h4>
+
+<pre><code>mov     x0, x19           // x19 → x0，作为 cpu_boot_mode 参数
+bl      init_kernel_el</code></pre>
+
+<p><code>init_kernel_el</code> 根据这个参数决定是否需要清理 HYP 模式的代码缓存等。</p>
+
+<h4>5.3.5 完整协作图</h4>
+
+<div class="diagram">// ============ 探测器 → 消费者 协作全景 ============
+//
+//   record_mmu_state()           primary_entry / preserve_boot_args
+//   ══════════════════           ═══════════════════════════════════
+//
+//   读 SCTLR
+//     │
+//   检测 EE ──不匹配──→ 翻转端序, 关 MMU, 返回 0
+//     │
+//   匹配
+//     │
+//   143 tst  #C  ──→ Z
+//   144 and  #M  ──→ x19 = M_bit
+//   145 csel eq  ──→ if Z: x19=0
+//     │
+//     ├── x19 = 0 ──→ dcache_inval_poc  (丢弃)
+//     │               "缓存没开/不可信，直接丢掉"
+//     │
+//     └── x19 = 1 ──→ dcache_clean_poc  (写回)
+//                     "缓存开着且可信，先刷干净再关 MMU"
+//
+//   ★ record_mmu_state 只负责"判断"和"返回"
+//   ★ primary_entry 负责"执行"——选择 inval 还是 clean</div>
+
+<div class="note">💡 <strong>一句话总结：</strong><code>record_mmu_state</code> 是一个<strong>纯判断函数</strong>——它检测「数据缓存是否开着」并返回标记值。真正的缓存操作由 <code>primary_entry</code> 根据这个标记值执行：<strong>缓存没开 → invalidate（丢弃），缓存开着 → clean（写回）</strong>。这种「探测器 + 消费者」的分离设计让判断逻辑可以复用于多个消费点（primary_entry、preserve_boot_args、init_kernel_el）。</div>
 </section>
 
 <!-- ====== 6 ====== -->
 <section id="s6">
 <h2>6. 寄存器与标志位参考表</h2>
+<p>本节给出 <code>record_mmu_state</code> 涉及的所有系统寄存器、内核宏定义及<strong>精确到 bit 位</strong>的语义。定义来源：<code>arch/arm64/include/asm/ptrace.h</code>、<code>arch/arm64/include/asm/sysreg.h</code>。</p>
 
-<h3>6.1 SCTLR_ELx 关键位</h3>
-<table>
-<tr><th>位</th><th>名称</th><th>含义</th><th>在本函数中的作用</th></tr>
-<tr><td>bit 0</td><td><strong>M</strong></td><td>MMU 启用标志</td><td>提取到 x19 作为返回值</td></tr>
-<tr><td>bit 2</td><td><strong>C</strong></td><td>数据 cache 启用</td><td>tst 检测：C=0 时强制 x19=0</td></tr>
-<tr><td>bit 25</td><td><strong>EE</strong></td><td>Endianness（0=小端，1=大端）</td><td>tbnz 检测字节序匹配</td></tr>
-</table>
+<h3 id="s6a">6.1 CurrentEL 系统寄存器</h3>
 
-<h3>6.2 ARM64 条件标志速查</h3>
-<table>
-<tr><th>指令</th><th>设置的条件位</th><th>后续 csel/b.ne 的行为</th></tr>
-<tr><td><code>cmp x19, #CurrentEL_EL2</code></td><td>Z = (x19 == EL2)</td><td>EQ=在EL2, NE=在EL1</td></tr>
-<tr><td><code>tst x19, #SCTLR_ELx_C</code></td><td>Z = ((x19 & C) == 0)</td><td>EQ=C=0, NE=C=1</td></tr>
-<tr><td><code>eor x19, x19, #SCTLR_ELx_EE</code> (endian 路径)</td><td>Z = (原 EE 位 == 0)</td><td>EQ=原 EE=0, NE=原 EE=1</td></tr>
-</table>
+<p><code>CurrentEL</code> 是 ARMv8-A 架构定义的<strong>只读</strong>系统寄存器，编码 CPU <strong>当前正在执行的异常级别</strong>（Exception Level）。在 <code>head.S:135</code> 通过 <code>mrs x19, CurrentEL</code> 读取。</p>
 
-<h3>6.3 关键寄存器使用</h3>
+<h4>6.1.1 寄存器位域布局（64 位）</h4>
 <table>
-<tr><th>寄存器</th><th>用途</th><th>调用约定</th></tr>
-<tr><td><code>x19</code></td><td>存储 MMU 状态返回值</td><td>callee-saved（被调用者保存）</td></tr>
-<tr><td><code>x0</code></td><td>末尾传递给 init_kernel_el</td><td>参数/返回值寄存器</td></tr>
-<tr><td><code>CurrentEL</code></td><td>读取异常级别</td><td>系统寄存器</td></tr>
-<tr><td><code>sctlr_el1/el2</code></td><td>系统控制寄存器</td><td>系统寄存器</td></tr>
-</table>
+<tbody><tr><th>位范围</th><th>名称</th><th>属性</th><th>含义</th></tr>
+<tr><td>[63:4]</td><td>—</td><td>RES0</td><td>保留，读为 0</td></tr>
+<tr><td><strong>[3:2]</strong></td><td><strong>EL</strong></td><td>RO</td><td><strong>当前异常级别</strong>（见下表）</td></tr>
+<tr><td>[1:0]</td><td>—</td><td>RES0</td><td>保留，读为 0</td></tr>
+</tbody></table>
+
+<h4>6.1.2 EL 字段编码（bits[3:2]）</h4>
+<table>
+<tbody><tr><th>bits[3:2]</th><th>异常级别</th><th>典型角色</th><th>读入 x19 的值</th></tr>
+<tr><td><code>00</code></td><td>EL0</td><td>用户态</td><td><code>0x0</code></td></tr>
+<tr><td><code>01</code></td><td><strong>EL1</strong></td><td>操作系统内核（Linux 主路径）</td><td><code>0x4</code></td></tr>
+<tr><td><code>10</code></td><td><strong>EL2</strong></td><td>Hypervisor（KVM / QEMU 可选入口）</td><td><code>0x8</code></td></tr>
+<tr><td><code>11</code></td><td>EL3</td><td>Secure Monitor（Linux 通常不用）</td><td><code>0xC</code></td></tr>
+</tbody></table>
+
+<div class="diagram">CurrentEL 寄存器示意（mrs 读入 64 位通用寄存器后）：
+
+  63                    4  3  2  1  0
+  ├──────────────────────┼────┼────┤
+  │        RES0 (全 0)    │ EL │ RES0│
+  └──────────────────────┴────┴────┘
+                            ↑
+                     01 → 0x4 (EL1)
+                     10 → 0x8 (EL2)</div>
+
+<h4>6.1.3 内核宏：<code>CurrentEL_EL1</code> / <code>CurrentEL_EL2</code></h4>
+<p>定义于 <code>arch/arm64/include/asm/ptrace.h</code>：</p>
+<pre><code>#define CurrentEL_EL1   (1 &lt;&lt; 2)   // = 0x4  = 0b0100
+#define CurrentEL_EL2   (2 &lt;&lt; 2)   // = 0x8  = 0b1000</code></pre>
+<table>
+<tbody><tr><th>宏</th><th>值（十六进制）</th><th>值（二进制 bits[3:0]）</th><th>用途（head.S:136）</th></tr>
+<tr><td><code>CurrentEL_EL1</code></td><td><code>0x4</code></td><td><code>0b0100</code></td><td>表示"当前在 EL1"</td></tr>
+<tr><td><code>CurrentEL_EL2</code></td><td><code>0x8</code></td><td><code>0b1000</code></td><td><code>cmp x19, #CurrentEL_EL2</code> 的比较常数</td></tr>
+</tbody></table>
+<div class="note">💡 <code>cmp x19, #CurrentEL_EL2</code> 实际上是比较整个 x19 与 0x8。因为 CurrentEL 的低 2 位恒为 0，所以等价于比较 bits[3:2] 是否为 <code>10</code>（EL2）。QEMU 冷启动在 EL1 时：cmp 后 flags = <strong>NE</strong>。</div>
+
+<h3 id="s6b">6.2 SCTLR_EL1 / SCTLR_EL2 系统控制寄存器</h3>
+
+<p><code>SCTLR_ELx</code>（System Control Register）是每个异常级别的<strong>主控制寄存器</strong>，控制 MMU、Cache、对齐、字节序等全局行为。在 <code>record_mmu_state</code> 中：</p>
+<ul>
+<li>EL1 入口 → <code>mrs x19, sctlr_el1</code>（head.S:137）</li>
+<li>EL2 入口 → <code>mrs x19, sctlr_el2</code>（head.S:139）</li>
+</ul>
+
+<h4>6.2.1 基本属性</h4>
+<table>
+<tbody><tr><th>属性</th><th>说明</th></tr>
+<tr><td>位宽</td><td><strong>32 位</strong>有效（bits[31:0]）；<code>mrs</code> 到 x64 时高 32 位为 0（RES0）</td></tr>
+<tr><td>访问</td><td>EL1 可读 <code>SCTLR_EL1</code>；EL2 可读 <code>SCTLR_EL2</code>（EL2 也可读 EL1 的，但本函数在 EL2 时读 EL2 的）</td></tr>
+<tr><td>复位值</td><td>实现定义；QEMU virt 冷启动通常 M=0, C=0, I=0, EE=0</td></tr>
+</tbody></table>
+
+<h4>6.2.2 SCTLR_EL1 与本函数相关的位域总览</h4>
+<table>
+<tbody><tr><th>bit</th><th>助记符</th><th>内核宏</th><th>含义</th><th>record_mmu_state 是否使用</th></tr>
+<tr><td><strong>0</strong></td><td>M</td><td><code>SCTLR_ELx_M</code> = <code>BIT(0)</code></td><td>MMU 使能（EL0/EL1 地址翻译）</td><td>✅ <code>and #M</code> 提取</td></tr>
+<tr><td>1</td><td>A</td><td><code>SCTLR_ELx_A</code> = <code>BIT(1)</code></td><td>对齐检查使能</td><td>—</td></tr>
+<tr><td><strong>2</strong></td><td>C</td><td><code>SCTLR_ELx_C</code> = <code>BIT(2)</code></td><td>数据 Cache 使能</td><td>✅ <code>tst #C</code> 检测</td></tr>
+<tr><td>3</td><td>SA</td><td><code>SCTLR_ELx_SA</code> = <code>BIT(3)</code></td><td>EL1 栈对齐检查</td><td>—</td></tr>
+<tr><td>11</td><td>EOS</td><td><code>SCTLR_ELx_EOS</code> = <code>BIT(11)</code></td><td>异常退出同步</td><td>—（<code>INIT_SCTLR_EL1_MMU_OFF</code> 置 1）</td></tr>
+<tr><td>12</td><td>I</td><td><code>SCTLR_ELx_I</code> = <code>BIT(12)</code></td><td>指令 Cache 使能</td><td>—（本函数不检测，但 <code>init_kernel_el</code> 会关）</td></tr>
+<tr><td>20</td><td>TSCXT</td><td><code>SCTLR_ELx_TSCXT</code> = <code>BIT(20)</code></td><td>上下文同步</td><td>—（MMU_OFF 初值置 1）</td></tr>
+<tr><td>22</td><td>EIS</td><td><code>SCTLR_ELx_EIS</code> = <code>BIT(22)</code></td><td>异常入口同步</td><td>—（MMU_OFF 初值置 1）</td></tr>
+<tr><td>24</td><td>E0E</td><td><code>SCTLR_EL1_E0E</code></td><td>EL0 字节序（仅 EL1）</td><td>—（endian 路径间接相关）</td></tr>
+<tr><td><strong>25</strong></td><td>EE</td><td><code>SCTLR_ELx_EE</code> = <code>BIT(25)</code></td><td>EL1 异常字节序</td><td>✅ <code>tbnz #25</code> 检测</td></tr>
+<tr><td>28</td><td>nTLSMD</td><td><code>SCTLR_ELx_nTLSMD</code> = <code>BIT(28)</code></td><td>TLB 维护</td><td>—（MMU_OFF 初值置 1）</td></tr>
+<tr><td>29</td><td>LSMAOE</td><td><code>SCTLR_ELx_LSMAOE</code> = <code>BIT(29)</code></td><td>Load/store 多原子</td><td>—（MMU_OFF 初值置 1）</td></tr>
+</tbody></table>
+
+<h4>6.2.3 内核 INIT 宏对比（帮助理解位的组合）</h4>
+<pre><code>// arch/arm64/include/asm/sysreg.h
+
+// MMU 关闭时的 EL1 初值（不含 M/C/I）：
+#define INIT_SCTLR_EL1_MMU_OFF \
+    (ENDIAN_SET_EL1 | SCTLR_EL1_LSMAOE | SCTLR_EL1_nTLSMD | \
+     SCTLR_EL1_EIS  | SCTLR_EL1_TSCXT  | SCTLR_EL1_EOS)
+// 小端内核 ENDIAN_SET_EL1 = 0 → bit 25(EE) = 0
+
+// MMU 开启时的 EL1 初值（含 M/C/I）：
+#define INIT_SCTLR_EL1_MMU_ON \
+    (SCTLR_ELx_M | SCTLR_ELx_C | ... | SCTLR_ELx_I | ...)</code></pre>
+
+<div class="diagram">SCTLR_EL1 低 32 位 — record_mmu_state 关注的位（★ 标记）：
+
+ bit:  31 ... 25  24  ...  12  11  ...  3   2   1   0
+       ├────────┼───┼───────┼───┼──────┼───┼───┼───┤
+       │  ...   │EE★│E0E│ ... │ I │ ... │SA │ C★│ A │ M★│
+       │        │25 │24 │     │12 │     │ 3 │ 2 │ 1 │ 0 │
+       └────────┴───┴───────┴───┴──────┴───┴───┴───┘
+
+ ★ bit 0  M  — MMU enable
+ ★ bit 2  C  — Data cache enable
+ ★ bit 25 EE — Exception endianness (0=LE, 1=BE)</div>
+
+<h3 id="s6c">6.3 关键位详解：M / C / EE（及 EE_SHIFT）</h3>
+
+<h4>6.3.1 <code>SCTLR_ELx_M</code> — bit 0，MMU 使能</h4>
+<table>
+<tbody><tr><th>项目</th><th>内容</th></tr>
+<tr><td>内核宏</td><td><code>#define SCTLR_ELx_M (BIT(0))</code> → 掩码 <code>0x1</code></td></tr>
+<tr><td>bit 位置</td><td><strong>bit 0</strong>（最低位）</td></tr>
+<tr><td>= 0</td><td>MMU <strong>关闭</strong>：EL0/EL1 的虚拟地址 = 物理地址（identity mapping 阶段）</td></tr>
+<tr><td>= 1</td><td>MMU <strong>开启</strong>：地址经页表翻译</td></tr>
+<tr><td>在 head.S 中</td><td><code>and x19, x19, #SCTLR_ELx_M</code>（144 行）→ 只保留 bit 0；<strong>不更新 NZCV</strong>（见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3and">§3.2.3</a>）</td></tr>
+<tr><td>GDB 读取</td><td><code>p/t $w19 &amp; 1</code> 或 <code>p/t ($w19 &gt;&gt; 0) &amp; 1</code></td></tr>
+<tr><td>QEMU 冷启动</td><td><strong>0</strong>（启动协议要求 MMU off）</td></tr>
+</tbody></table>
+
+<h4>6.3.2 <code>SCTLR_ELx_C</code> — bit 2，数据 Cache 使能</h4>
+<table>
+<tbody><tr><th>项目</th><th>内容</th></tr>
+<tr><td>内核宏</td><td><code>#define SCTLR_ELx_C (BIT(2))</code> → 掩码 <code>0x4</code></td></tr>
+<tr><td>bit 位置</td><td><strong>bit 2</strong></td></tr>
+<tr><td>= 0</td><td>数据 Cache <strong>关闭</strong>：load/store 绕过 D-cache（Non-cacheable）</td></tr>
+<tr><td>= 1</td><td>数据 Cache <strong>开启</strong>：Normal memory 的读写可缓存</td></tr>
+<tr><td>在 head.S 中</td><td><code>tst x19, #SCTLR_ELx_C</code>（143 行，注释 <code>Z := (C == 0)</code>）→ 设 Z = (SCTLR_C==0)；<strong>不修改 x19</strong>（见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst-comment">§3.2.0</a>、<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst">§3.2.1</a>）</td></tr>
+<tr><td>典型 GDB 值</td><td><code>x19 = 0xc50838</code> → C=0, M=0 → <code>tst</code> 后 Z=1，<code>x19</code> 仍为 <code>0xc50838</code></td></tr>
+<tr><td>GDB 读取</td><td><code>p/t ($w19 &gt;&gt; 2) &amp; 1</code></td></tr>
+<tr><td>QEMU 冷启动</td><td><strong>0</strong>（启动协议要求 D-cache off 或 coherent）</td></tr>
+</tbody></table>
+
+<h4>6.3.3 <code>SCTLR_ELx_I</code> — bit 12，指令 Cache 使能（本函数不检测，供对照）</h4>
+<table>
+<tbody><tr><th>项目</th><th>内容</th></tr>
+<tr><td>内核宏</td><td><code>#define SCTLR_ELx_I (BIT(12))</code> → 掩码 <code>0x1000</code></td></tr>
+<tr><td>bit 位置</td><td><strong>bit 12</strong></td></tr>
+<tr><td>= 0</td><td>取指 Non-cacheable，直接到 PoC/内存</td></tr>
+<tr><td>= 1</td><td>取指可缓存到 I-cache</td></tr>
+<tr><td>与 record_mmu_state 关系</td><td><strong>本函数不检测 I 位</strong>；后续 <code>init_kernel_el</code> 写 <code>INIT_SCTLR_EL1_MMU_OFF</code> 时确保 I=0</td></tr>
+<tr><td>GDB 读取</td><td><code>p/t ($w19 &gt;&gt; 12) &amp; 1</code></td></tr>
+</tbody></table>
+
+<h4>6.3.4 <code>SCTLR_ELx_EE_SHIFT</code> / <code>SCTLR_ELx_EE</code> — bit 25，字节序</h4>
+<table>
+<tbody><tr><th>项目</th><th>内容</th></tr>
+<tr><td>SHIFT 宏</td><td><code>#define SCTLR_ELx_EE_SHIFT 25</code></td></tr>
+<tr><td>位宏</td><td><code>#define SCTLR_ELx_EE (BIT(SCTLR_ELx_EE_SHIFT))</code> → 掩码 <code>0x02000000</code></td></tr>
+<tr><td>bit 位置</td><td><strong>bit 25</strong></td></tr>
+<tr><td>= 0</td><td><strong>小端</strong>（Little-Endian）— ARM64 Linux 默认</td></tr>
+<tr><td>= 1</td><td><strong>大端</strong>（Big-Endian）</td></tr>
+<tr><td>在 head.S 中</td><td><code>tbnz x19, #SCTLR_ELx_EE_SHIFT, 1f</code> → 反汇编为 <code>tbnz w19, #25, ...</code></td></tr>
+<tr><td>endian 纠正</td><td><code>eor x19, x19, #SCTLR_ELx_EE</code>（154 行）→ 翻转 bit 25</td></tr>
+<tr><td>GDB 读取</td><td><code>p/t ($w19 &gt;&gt; 25) &amp; 1</code></td></tr>
+<tr><td>QEMU 冷启动（LE 内核）</td><td><strong>0</strong> → tbnz 不跳转</td></tr>
+</tbody></table>
+
+<h4>6.3.5 三位的组合与 x19 返回值</h4>
+<table>
+<tbody><tr><th>M (bit 0)</th><th>C (bit 2)</th><th>EE (bit 25)</th><th>tbnz</th><th>tst+csel 后 x19</th><th>场景</th></tr>
+<tr><td>0</td><td>0</td><td>0</td><td>不跳</td><td><strong>0</strong></td><td>QEMU 冷启动 ★</td></tr>
+<tr><td>1</td><td>1</td><td>0</td><td>不跳</td><td><strong>1</strong></td><td>kexec / hibernate 热启动</td></tr>
+<tr><td>1</td><td>0</td><td>0</td><td>不跳</td><td><strong>0</strong></td><td>MMU 开但 Cache 关 → 强制冷启动</td></tr>
+<tr><td>0</td><td>1</td><td>0</td><td>不跳</td><td><strong>0</strong></td><td>bootloader 忘了关 Cache</td></tr>
+<tr><td>任意</td><td>任意</td><td>1</td><td><strong>跳转</strong></td><td><strong>0</strong></td><td>大端硬件 + 小端内核 → endian 纠正</td></tr>
+</tbody></table>
+
+<div class="note">💡 <strong>提取位的 GDB 一键命令：</strong>
+<pre><code>define dump_sctlr_bits
+  set $s = $arg0
+  printf "SCTLR = 0x%08x\n", $s
+  printf "  bit  0  M  (MMU)       = %d\n", ($s &gt;&gt; 0)  &amp; 1
+  printf "  bit  2  C  (D-Cache)   = %d\n", ($s &gt;&gt; 2)  &amp; 1
+  printf "  bit 12  I  (I-Cache)   = %d\n", ($s &gt;&gt; 12) &amp; 1
+  printf "  bit 25  EE (Endian)    = %d\n", ($s &gt;&gt; 25) &amp; 1
+end
+# 用法：在 137 行 mrs 之后 → dump_sctlr_bits $w19</code></pre></div>
+
+<h3>6.4 ARM64 条件标志位 NZCV 与条件码</h3>
+
+<p>ARM64 有 4 个条件标志位，存放在 PSTATE 的 NZCV 字段中。<code>cmp</code>、<code>tst</code>、<code>subs</code> 等算术/逻辑指令会更新它们；<code>mrs</code>、<code>mov</code> 等<strong>不会</strong>修改标志位。</p>
+
+<div class="warn">⚠ <strong>注意：</strong>NZCV 四个标志的置位规则<strong>因指令类型而异</strong>。<code>cmp</code>（减法）与 <code>tst</code>（逻辑与）对 C/V 的处理完全不同 — 详见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst-nzcv">§3.2.2 tst 后 NZCV 判定逻辑</a>。</div>
+
+<table>
+<tbody><tr><th>标志</th><th>名称</th><th>置 1 条件</th></tr>
+<tr><td><strong>N</strong></td><td>Negative</td><td>运算结果最高位 = 1（有符号视角下为负）</td></tr>
+<tr><td><strong>Z</strong></td><td>Zero</td><td>运算结果 = 0；<code>cmp</code> 时等价于两操作数<strong>相等</strong></td></tr>
+<tr><td><strong>C</strong></td><td>Carry</td><td><code>cmp</code>/<code>subs</code>：无借位（无符号 <code>Rn &gt;= imm</code>）；<code>tst</code>/<code>ands</code>：<strong>固定为 1</strong></td></tr>
+<tr><td><strong>V</strong></td><td>oVerflow</td><td><code>cmp</code>/<code>subs</code>：有符号溢出；<code>tst</code>/<code>ands</code>：<strong>固定为 0</strong></td></tr>
+</tbody></table>
+
+<h4 id="s6nzcv-tst">6.4.0 逻辑运算（<code>tst</code> / <code>ands</code>）的 NZCV 规则</h4>
+<p>适用于 <code>AND</code>、<code>ANDS</code>、<code>ORR</code>、<code>EOR</code> 等逻辑指令。令 <code>result = Rn &amp; imm</code>：</p>
+<table>
+<tbody><tr><th>标志</th><th>规则</th><th><code>result=0</code> 时</th><th><code>result≠0</code> 时</th></tr>
+<tr><td>N</td><td><code>result[63]</code></td><td>0</td><td>取决于结果最高位</td></tr>
+<tr><td>Z</td><td><code>result == 0</code></td><td><strong>1</strong></td><td>0</td></tr>
+<tr><td>C</td><td>架构固定</td><td colspan="2"><strong>恒为 1</strong>（与 result 无关）</td></tr>
+<tr><td>V</td><td>架构固定</td><td colspan="2"><strong>恒为 0</strong></td></tr>
+</tbody></table>
+<p>完整演算见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst-nzcv">§3.2.2</a>。</p>
+
+<h4>6.4.1 record_mmu_state 中用到的条件码</h4>
+<table>
+<tbody><tr><th>指令</th><th>更新的标志</th><th>关键标志</th><th>条件码</th><th>为真时含义</th></tr>
+<tr><td><code>cmp x19, #CurrentEL_EL2</code></td><td>NZCV 全更新</td><td><strong>Z</strong></td><td><code>EQ</code> (Z=1)</td><td>x19 == 0x8，在 EL2</td></tr>
+<tr><td></td><td></td><td><strong>Z</strong></td><td><code>NE</code> (Z=0)</td><td>x19 != 0x8，在 EL1 → <code>b.ne</code> 跳转</td></tr>
+<tr><td><code>tst x19, #SCTLR_ELx_C</code></td><td>NZCV 全更新</td><td><strong>Z</strong></td><td><code>EQ</code> (Z=1)</td><td>(x19 &amp; 0x4) == 0，SCTLR C 位 = 0；<strong>不写 x19</strong></td></tr>
+<tr><td></td><td></td><td><strong>Z</strong></td><td><code>NE</code> (Z=0)</td><td>SCTLR C 位 = 1</td></tr>
+<tr><td></td><td>N=0, C=1, V=0</td><td>—</td><td>—</td><td>逻辑 <code>ands</code> 的 C/V 固定规则，与 result 是否为 0 无关（见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3tst-nzcv">§3.2.2</a>、<a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s6nzcv-tst">§6.4.0</a>）</td></tr>
+<tr><td><code>and x19, x19, #SCTLR_ELx_M</code></td><td><strong>不更新</strong></td><td>—</td><td>—</td><td>写 x19 = M 位；NZCV 保持 tst 所设（见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3and">§3.2.3</a>）</td></tr>
+<tr><td><code>csel x19, xzr, x19, eq</code></td><td><strong>不更新</strong></td><td>读 Z</td><td><code>EQ</code></td><td>Z=1（tst：SCTLR C=0）→ x19=0；Z=0 → x19=M 位。见 <a href="http://localhost:52330/learningNote/bili/bili_arm64_head.S_record_mmu_state.html#s3csel">§3.2.4</a></td></tr>
+<tr><td><code>eor x19, x19, #EE</code>（endian 路径）</td><td>NZCV 全更新</td><td><strong>Z</strong></td><td><code>EQ</code> / <code>NE</code></td><td>判断翻转前 EE 是 0 还是 1，决定写 sctlr_el1 还是 el2</td></tr>
+</tbody></table>
+
+<div class="note">💡 <strong>记忆要点：</strong>本函数里几乎所有分支/选择（<code>b.ne</code>、<code>csel eq</code>）都只依赖 <strong>Z 标志位</strong>——"结果是否为 0"。<code>cmp</code> 的 Z=1 表示相等；<code>tst</code> 的 Z=1 表示按位与结果为 0（被测位 = 0）。</div>
+
+<h3>6.5 关键寄存器使用汇总</h3>
+<table>
+<tbody><tr><th>寄存器 / 宏</th><th>类型</th><th>位宽</th><th>在 record_mmu_state 中的作用</th></tr>
+<tr><td><code>CurrentEL</code></td><td>系统寄存器（RO）</td><td>64（有效 bits[3:2]）</td><td>135 行：判断 EL1/EL2</td></tr>
+<tr><td><code>CurrentEL_EL2</code></td><td>内核常量 = <code>0x8</code></td><td>—</td><td>136 行：cmp 比较常数</td></tr>
+<tr><td><code>sctlr_el1</code></td><td>系统寄存器（RW）</td><td>32</td><td>137 行：读 EL1 控制状态</td></tr>
+<tr><td><code>sctlr_el2</code></td><td>系统寄存器（RW）</td><td>32</td><td>139 行：EL2 时读 EL2 控制状态</td></tr>
+<tr><td><code>SCTLR_ELx_M</code></td><td>位掩码 <code>BIT(0)</code></td><td>bit 0</td><td>144 行：提取 MMU 状态</td></tr>
+<tr><td><code>SCTLR_ELx_C</code></td><td>位掩码 <code>BIT(2)</code></td><td>bit 2</td><td>143 行：检测 D-Cache</td></tr>
+<tr><td><code>SCTLR_ELx_EE_SHIFT</code></td><td>常量 <code>25</code></td><td>bit 25</td><td>141 行：tbnz 测试位号</td></tr>
+<tr><td><code>x19</code></td><td>通用寄存器</td><td>64</td><td>返回值：0 或 1（MMU 热/冷启动标志）</td></tr>
+</tbody></table>
 </section>
 
 <!-- ====== 7 ====== -->
@@ -487,13 +1530,13 @@ primary_entry:
 
 <h3>7.1 断点设置</h3>
 <table>
-<tr><th>#</th><th>位置</th><th>验证目标</th></tr>
+<tbody><tr><th>#</th><th>位置</th><th>验证目标</th></tr>
 <tr><td>BP1</td><td><code>record_mmu_state</code> 入口</td><td>检查 CurrentEL 值</td></tr>
 <tr><td>BP2</td><td><code>b.ne 0f</code> 之后</td><td>确认在 EL1/EL2</td></tr>
 <tr><td>BP3</td><td><code>0:</code> 标签处（EE 检测前）</td><td>x19 = SCTLR 值，检查 EE, C, M 位</td></tr>
 <tr><td>BP4</td><td><code>ret</code> 之前</td><td>检查 x19 最终值</td></tr>
 <tr><td>BP5</td><td><code>primary_entry</code> 中 <code>cbnz x19, 0f</code></td><td>验证 cache 维护路径选择</td></tr>
-</table>
+</tbody></table>
 
 <h3>7.2 GDB 命令</h3>
 <pre><code># 在 record_mmu_state 入口断下
@@ -504,17 +1547,17 @@ commands
   printf "CurrentEL (x19) = 0x%lx\n", $x19
   printf "SCTLR_EL1       = 0x%lx\n", $(&amp;sctlr_el1)
   # 检查 EE bit (25): 小端应为 0
-  printf "EE bit         = %d\n", ($x19 >> 25) &amp; 1
+  printf "EE bit         = %d\n", ($x19 &gt;&gt; 25) &amp; 1
   printf "M  bit (MMU)   = %d\n", $x19 &amp; 1
-  printf "C  bit (Cache) = %d\n", ($x19 >> 2) &amp; 1
+  printf "C  bit (Cache) = %d\n", ($x19 &gt;&gt; 2) &amp; 1
   continue
 end
 
 # 如果使用了自定义命令，可以快速查看 SCTLR 位域
 define show_mmu_state
     printf "MMU:  %s\n", $arg0 &amp; 1 ? "ON" : "OFF"
-    printf "Cache:%s\n", ($arg0 >> 2) &amp; 1 ? "ON" : "OFF"
-    printf "EE:   %s\n", ($arg0 >> 25) &amp; 1 ? "BIG ENDIAN" : "LITTLE ENDIAN"
+    printf "Cache:%s\n", ($arg0 &gt;&gt; 2) &amp; 1 ? "ON" : "OFF"
+    printf "EE:   %s\n", ($arg0 &gt;&gt; 25) &amp; 1 ? "BIG ENDIAN" : "LITTLE ENDIAN"
 end
 
 # 使用示例: 在 0: 标签处调用 show_mmu_state $x19</code></pre>
@@ -563,7 +1606,7 @@ $3 = 0x0    # cpu_boot_mode = 0 (cold boot)</code></pre>
 <section id="s8">
 <h2>8. 总结 &amp; 关键要点</h2>
 <table>
-<tr><th>#</th><th>要点</th><th>说明</th></tr>
+<tbody><tr><th>#</th><th>要点</th><th>说明</th></tr>
 <tr>
 <td>1</td>
 <td class="accent">内核启动第一个函数调用</td>
@@ -604,17 +1647,17 @@ $3 = 0x0    # cpu_boot_mode = 0 (cold boot)</code></pre>
 <td class="accent">x19 贯穿整个 early boot</td>
 <td>影响 cache 维护策略（invalidate vs clean）和 init_kernel_el 参数</td>
 </tr>
-</table>
+</tbody></table>
 
 <h3>涉及文件</h3>
 <table>
-<tr><th>文件</th><th>作用</th></tr>
+<tbody><tr><th>文件</th><th>作用</th></tr>
 <tr><td><code>arch/arm64/kernel/head.S</code></td><td>record_mmu_state 定义 + primary_entry 调用</td></tr>
 <tr><td><code>arch/arm64/include/asm/sysreg.h</code></td><td>SCTLR_ELx_M / SCTLR_ELx_C / SCTLR_ELx_EE 等位定义</td></tr>
 <tr><td><code>arch/arm64/include/asm/assembler.h</code></td><td>pre_disable_mmu_workaround 宏（QCOM FALKOR E1041）</td></tr>
 <tr><td><code>arch/arm64/kernel/head.S</code></td><td>preserve_boot_args + primary_entry 中消费 x19</td></tr>
 <tr><td><code>arch/arm64/kernel/pi/map_kernel.c</code></td><td>init_kernel_el 接收 x19 作为 cpu_boot_mode</td></tr>
-</table>
+</tbody></table>
 
 </section>
 
@@ -630,5 +1673,26 @@ function toggleSidebar() {
     b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
 }
 </script>
-</body>
-</html>
+
+
+</body><grammarly-desktop-integration data-grammarly-shadow-root="true" style="visibility: visible !important;"><template shadowrootmode="open"><style>
+      div.grammarly-desktop-integration {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select:none;
+        user-select:none;
+      }
+
+      div.grammarly-desktop-integration:before {
+        content: attr(data-content);
+      }
+    </style><div aria-label="grammarly-integration" role="group" tabindex="-1" class="grammarly-desktop-integration" data-content="{&quot;mode&quot;:&quot;full&quot;,&quot;isActive&quot;:true,&quot;isUserDisabled&quot;:false}"></div></template></grammarly-desktop-integration></html>
