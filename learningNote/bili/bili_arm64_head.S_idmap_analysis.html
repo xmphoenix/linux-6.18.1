@@ -292,6 +292,113 @@ tr:nth-child(even) td { background: #f8fafc; }
     blr     x2                      // D-cache invalidate [x0 .. x1)</div>
 <div class="warn">⚠ MMU 关闭时页表写入是 non-cacheable 的，但 speculative load 可能缓存了旧数据。必须在 MMU 开启前 invalidate 这些 cache lines。</div>
 
+<h4>深入：ptep 是什么？从哪来的？</h4>
+
+<p><code>create_init_idmap</code> 的返回值 <code>ptep</code> 是一个<strong>物理地址指针</strong>，指向页表内存区域的<strong>末尾</strong>——即 ID map 构建过程中，所有页表项（PTE）写入所触及的<strong>最后一个字节之后</strong>的位置。</p>
+
+<h5>ptep 的生命周期</h5>
+
+<p>源码 <code>map_range.c:91-108</code>：</p>
+<pre><code>asmlinkage phys_addr_t __init create_init_idmap(pgd_t *pg_dir, ptdesc_t clrmask)
+{
+    phys_addr_t ptep = (phys_addr_t)pg_dir + PAGE_SIZE;  // ① 初始值 = PGD 之后
+    // ...
+
+    map_range(&ptep, (u64)_stext, (u64)__initdata_begin,  // ② map text 段
+              (phys_addr_t)_stext, text_prot, IDMAP_ROOT_LEVEL,
+              (pte_t *)pg_dir, false, 0);
+
+    map_range(&ptep, (u64)__initdata_begin, (u64)_end,    // ③ map data 段
+              (phys_addr_t)__initdata_begin, data_prot, IDMAP_ROOT_LEVEL,
+              (pte_t *)pg_dir, false, 0);
+
+    return ptep;                                           // ④ 返回最终位置
+}</code></pre>
+
+<p>关键点：<strong><code>ptep</code> 是 <code>map_range</code> 通过指针传入并递增的</strong>。每当 <code>map_range</code> 需要新建下一级页表时，它从 <code>*ptep</code> 分配空间，然后递增 <code>ptep</code>（见 <code>map_range.c:62</code>：<code>*pte += PTRS_PER_PTE * sizeof(pte_t)</code>，此处 <code>pte</code> 即对应 <code>ptep</code>）。</p>
+
+<h5>ptep 递增示意图</h5>
+<div class="diagram">// ============ 页表内存布局 ============
+//
+//   __pi_init_idmap_pg_dir (PGD, 4KB)
+//   ├─────────────────────────┤
+//   0x41740000              0x41741000
+//   ↑                        ↑
+//   pg_dir                   ptep 初始值 = pg_dir + PAGE_SIZE
+//
+//
+//   map_range (text) 可能分配 PMD/PUD 表:
+//   ├─────────────────────────┼──────────┼──────────┤
+//   0x41740000 (PGD)         PMD        PUD        0x41743000
+//                             ↑                      ↑
+//                           第一级表                 ptep 最终值
+//
+//
+//   返回区间: [pg_dir, ptep) = [0x41740000, 0x41743000)
+//   → dcache_inval_poc 需要 invalidate 的就是这段区间
+
+//   ptep - pg_dir = 页表总大小
+//   典型值: 3~5 个 4KB 页面 = 12KB~20KB，取决于内核 .text/.data 的地址跨度</div>
+
+<h5>为什么要 invalidate 这个区间？</h5>
+<p>与 <code>preserve_boot_args</code> 中 D-cache invalidate 的原理完全相同（详见 <a href="bili_arm64_head.S_preserve_boot_args.html#s4-dcache">preserve_boot_args §4.4</a>）：</p>
+<ol>
+<li>MMU 关闭 → <code>map_range</code> 中的 <code>*tbl = __pte(...)</code> 是 <strong>non-cacheable 写</strong>，直接到内存</li>
+<li>但 D-cache 中可能残留<strong>旧数据</strong>（固件遗留 + 推测性 load 预取的旧 cache line）</li>
+<li>MMU 开启后，CPU 访问这些页表地址会 <strong>hit D-cache</strong>，拿到旧数据 → 错误的页表映射 → 系统崩溃</li>
+<li>所以必须在 <code>__enable_mmu</code> <strong>之前</strong>，用 <code>dcache_inval_poc</code> 清掉 `[pg_dir, ptep)` 范围内的旧 cache line</li>
+</ol>
+
+<div class="diagram">// ============ 时序对比 ============
+//   没有 invalidate:                      有 invalidate:
+//   map_range 写入 (non-cacheable)        map_range 写入 (non-cacheable)
+//          ↓                                     ↓
+//   __enable_mmu                             dcache_inval_poc ─── 清理旧 cache
+//          ↓                                     ↓
+//   CPU 读页表 → D-cache hit → 旧数据!       __enable_mmu
+//   → MMU 可能加载错误的页表映射                 ↓
+//                                           CPU 读页表 → D-cache miss → 从内存取新数据 ✓</div>
+
+<h5>完整数据流</h5>
+<div class="diagram">// ============ primary_entry 中的完整流程 ============
+//
+//   primary_entry:
+//       bl  preserve_boot_args
+//       ...
+//       adrp x0, __pi_init_idmap_pg_dir     // x0 = PGD 基地址
+//       mov  x1, xzr                        // x1 = clrmask = 0 (MMU off)
+//       bl   __pi_create_init_idmap         // ★ 构建 ID map 页表
+//            │
+//            │  返回 ptep (页表使用区域末尾)
+//            ▼
+//       cbnz x19, 0f                        // MMU on → 跳过 cache 维护
+//       dmb  sy                             // 确保页表写入对 PoC 可见
+//       mov  x1, x0                         // x1 = ptep
+//       adrp x0, __pi_init_idmap_pg_dir     // x0 = pg_dir
+//       adr_l x2, dcache_inval_poc
+//       blr  x2                             // dcache_inval_poc(pg_dir, ptep)
+//            │
+//            │  D-cache 已清理，页表数据安全
+//            ▼
+//       ...
+//       b    __primary_switch               // → 最终开启 MMU</div>
+
+<h5>GDB 验证方法</h5>
+<pre><code># BP: create_init_idmap 返回后
+# 查看 ptep 返回值 (x0)
+(gdb) p/x $x0
+$1 = 0x41743000              # ptep = 页表区域末尾
+
+# 查看 PGD 基址
+(gdb) p/x &__pi_init_idmap_pg_dir
+$2 = 0x41740000              # 页表起始
+
+# 页表总大小
+(gdb) p/x $x0 - &__pi_init_idmap_pg_dir
+$3 = 0x3000                  # 12KB = 3 个页面
+
+# 对应的 dcache_inval_poc 调用会 invalidate [0x41740000, 0x41743000)
+# 即 12KB，每 64B 一行 → 48 次 DC IVAC 循环</code></pre>
 <h3 id="s2_5">真实 GDB 验证：内核入口内存内容</h3>
 <p>通过 GDB 直接读取物理地址 <code>0x40200000</code>（即 <code>_text</code>），可以验证内核 Image 的 64 字节头部在内存中的实际内容：</p>
 <pre><code>(gdb) x/6xw 0x40200000
@@ -647,6 +754,88 @@ $1 = 0x40210000       // 拿到的确实是物理地址 ✓</code></pre>
 <li>在 PMD 停下来？→ 1 个 entry 恰好 2MB，内核也是 2MB 对齐加载 → <strong>完美</strong></li>
 </ul>
 
+<h4>深入：为什么"内核也是 2MB 对齐加载"？</h4>
+
+<p><strong>1. Boot Protocol 的要求</strong></p>
+<p>ARM64 boot protocol（<code>Documentation/arch/arm64/booting.rst:138</code>）明确规定：</p>
+<pre><code>The Image must be placed text_offset bytes from a 2MB aligned base
+address anywhere in usable system RAM and called there.</code></pre>
+<p>也就是说，bootloader（U-Boot/GRUB/QEMU）<strong>必须</strong>将内核 Image 放在一个 <strong>2MB 对齐</strong>的物理基地址上。<code>text_offset</code> 在现代内核中为 0（始于 v3.17，commit da57a369），所以内核起始地址就<strong>是</strong>那个 2MB 对齐的基地址。</p>
+
+<p><strong>2. 为什么 Boot Protocol 要规定 2MB 对齐？</strong></p>
+<ul>
+<li>ARM64 的 PMD 级别页表项恰好覆盖 <strong>2MB</strong>（4KB 页 + 3 级页表时：<code>512 × 4KB = 2MB</code>）</li>
+<li>如果内核不是 2MB 对齐，PMD block mapping 无法精确描述内核的起始位置——block descriptor 的物理地址字段最低到 bit 21（2MB 边界）</li>
+<li>强制 2MB 对齐加载 = 保证内核永远可以用最高效的 PMD block 映射，不需要为对齐问题降级到 PTE</li>
+</ul>
+
+<p><strong>3. 在 QEMU 中的实际验证</strong></p>
+<pre><code># QEMU 启动参数 -kernel 加载内核，QEMU 内部保证 2MB 对齐
+# 在 GDB 中验证:
+(gdb) p/x _stext
+$1 = 0x40200000              # 物理地址
+
+(gdb) p/x 0x40200000 % 0x200000
+$2 = 0x0                     # 正好是 2MB (0x200000) 的整数倍 ✓
+
+# 所有内核符号地址都满足: addr % 2MB == TEXT_OFFSET
+# text_offset=0 → _stext, _etext 等都在 2MB 边界上</code></pre>
+
+<p><strong>4. 这个 2MB 对齐如何影响 map_range 的行为？</strong></p>
+<p>回顾 <code>map_range</code> 中的关键判断（<code>map_range.c:54</code>）：</p>
+<pre><code>if (level < 2 || (level == 2 && (start | next | pa) & lmask)) {
+    // 需要更细粒度 → 递归到下一层 (PTE)
+    ...
+} else {
+    // 粒度合适 → 直接放 Block 映射
+    *tbl = __pte(__phys_to_pte_val(pa) | protval);
+}</code></pre>
+<p>在 PMD (level=2) 这一层，<code>lmask = 2MB - 1 = 0x1FFFFF</code>。判断条件 <code>(start | next | pa) & 0x1FFFFF</code> 检查三者是否<strong>全部 2MB 对齐</strong>。因为：</p>
+
+<div class="diagram">// ============ 为什么"三路或"全零 ============
+//
+//   start  = _stext 的物理地址          = 0x40200000
+//   next   = PMD 边界                    = 0x40200000, 0x40400000, 0x40600000...
+//   pa     = _stext 的物理地址 (identity mapping) = 0x40200000
+//
+//   start & 0x1FFFFF = 0x40200000 & 0x1FFFFF = 0  ✓
+//   next  & 0x1FFFFF = PMD 边界天然是 2MB 对齐     ✓
+//   pa    & 0x1FFFFF = 0                           ✓
+//
+//   → (start | next | pa) & 0x1FFFFF = 0
+//   → 条件为 false → 直接放 Block 映射!
+//   → 512 个条目 × 2MB = 1GB，但内核只有 ~30MB
+//     实际只填充 ~15 个 PMD entry</div>
+
+<p><strong>5. 如果没有 2MB 对齐会怎样？</strong></p>
+<div class="diagram">// ============ 假设内核从 0x40201000 加载（4KB 对齐但不是 2MB 对齐）============
+//
+//   start = 0x40201000
+//   next  = 0x40400000 (第一个 2MB 边界)
+//
+//   start & 0x1FFFFF = 0x40201000 & 0x1FFFFF = 0x1000 ≠ 0  ← 不对齐!
+//
+//   → 条件为 true → 必须递归到 level=3 (PTE)
+//   → 0x40201000 ~ 0x40400000 这 2044KB 范围要用 <strong>511 个 4KB PTE entry</strong>
+//   → 多消耗一整页 PTE 表 (4KB) + 所有后续映射全部降级为 4KB 粒度
+//   → TLB miss 率急剧上升（2MB block 只需 1 个 TLB entry，4KB 页面要 512 个）
+//
+//   Boot protocol 的 2MB 对齐要求正是为了避免这个灾难性退化</div>
+
+<p><strong>6. 总结</strong></p>
+<table>
+<tr><th>层面</th><th>对齐保证</th><th>效果</th></tr>
+<tr><td>Boot Protocol</td><td>内核必须在 2MB 对齐基地址上</td><td class="accent">保证 ID map 全程可用 PMD Block</td></tr>
+<tr><td>map_range 判断</td><td><code>(start|next|pa) & 2MB-1 == 0</code></td><td class="accent">三路或全零 → 不需要递归到 PTE</td></tr>
+<tr><td>最终页表</td><td>ID map 只有 2 层（PGD+PMD），没有 PTE 层</td><td>~30MB 内核 ≈ 15 个 PMD entry，而不是 7500+ 个 PTE</td></tr>
+</table>
+
+<div class="note">💡 <strong>澄清："内核也是 2MB 对齐"到底指什么？</strong><br><br>
+<strong>起始地址</strong>（<code>_stext</code>）是 2MB 对齐的 —— ARM64 Boot Protocol 要求整个 Image 放在 2MB 对齐的物理基地址上，即 bootloader 保证的。<br><br>
+<strong>中间部分</strong> 自然保持 2MB 对齐 —— <code>map_range</code> 循环中 <code>start += 2MB</code>，每次步进刚好跨越一个 PMD entry，所以 text 和 data 的主体全程使用 PMD Block。<br><br>
+<strong>尾部（<code>_end</code>）不一定是 2MB 对齐</strong> —— 内核大小由链接器决定，<code>_end</code> 落在哪里算哪里。此时 <code>next = PAGE_ALIGN(_end)</code>（4KB 对齐而非 2MB），条件 <code>(start | next | pa) & lmask</code> 中 <code>next</code> 不再满足 2MB 对齐，触发递归到 PTE 层，仅尾部几百 KB 用 4KB 页面映射。<br><br>
+一句话：<strong>内核整体起始 2MB 对齐</strong>（boot protocol），<strong>中间主体</strong>吃满 PMD Block 的红利，<strong>尾部</strong>自动降级 PTE 兜底。三者在 <code>map_range</code> 的同一个 if 判断中被统一处理。</div>
+
 <h3 id="s5_2">5.2 递归思想：自顶向下"按需展开"</h3>
 <div class="diagram">// ============ 一句话总结递归策略 ============
 
@@ -776,6 +965,176 @@ if (... || (level == 2 &&
 <tr><td class="green">RW block 区</td><td><code>[0x41600000, 0x42200000)</code></td><td class="green">6 × 2MB Block</td><td>全部 2MB 对齐</td></tr>
 <tr><td class="amber">尾部碎片</td><td><code>[0x42200000, 0x42320000)</code></td><td class="amber">288 × 4KB Page</td><td><code>_end</code> 不 2MB 对齐</td></tr>
 </table>
+
+<h4>段边界碎片详解：为什么一个 2MB PMD 里既有 ROX 又有 RW？</h4>
+
+<p>内核 Image 包含两类内容，在链接脚本中由 <code>__initdata_begin</code> 分隔：</p>
+
+<pre><code>// vmlinux.lds.S 中的段布局
+_stext → __initdata_begin:  代码 + 只读数据  → ROX (Read-Only Execute)
+__initdata_begin → _end:   可读写数据 + BSS  → RW  (Read-Write)</code></pre>
+
+<p>回顾 <code>create_init_idmap</code> 调用了两次 <code>map_range</code>，各带不同属性：</p>
+
+<pre><code>// 第一次: text 用 ROX
+map_range(&ptep, _stext, __initdata_begin, ..., PAGE_KERNEL_ROX, ...);
+
+// 第二次: data 用 RW
+map_range(&ptep, __initdata_begin, _end, ..., PAGE_KERNEL, ...);</code></pre>
+
+<p>问题出在 <code>__initdata_begin = 0x41530000</code> 这个边界地址<strong>不是 2MB 对齐的</strong>：</p>
+
+<div class="diagram">// ============ 段边界放大图 ============
+//
+//                     ← 2MB PMD 区域 →
+//              ├─────────────────────────────────────┤
+//   PMD 基址  0x41400000                       0x41600000
+//              │                                    │
+//   text 属性  ├────────── ROX ──────────┤          │
+//   data 属性  │          ├────────── RW ───────────┤
+//              │          │            │            │
+//              0x41400000 0x41530000    0x41600000
+//                         ↑
+//                    __initdata_begin
+//                    (不在 2MB 边界上!)
+//
+//   一个 PMD Block entry 只能设一种属性 (ROX 或 RW，不能同时)
+//   → 这个 2MB 区域无法用一个 PMD Block 表达
+//   → 必须降级为 512 个 4KB PTE，每个独立设属性:
+//
+//     [0x41400000, 0x41530000) = 1216KB → 304 个 PTE，每个 ROX
+//     [0x41530000, 0x41600000) =  832KB → 208 个 PTE，每个 RW
+//                                         ─────
+//                                         512 个，恰好填满一整页 PTE 表</div>
+
+<p><strong>为什么不能直接用 PMD Block "凑合"一下？</strong></p>
+<p>一个很自然的想法：既然只有 2MB 不对齐，能不能用 PMD Block 多映射一点，容忍边界溢出？答案是<strong>不能</strong>，因为 PMD Block 只能设一种属性，而边界两侧需要<strong>不同</strong>属性：</p>
+
+<div class="diagram">// ============ 两种"凑合"方案都失败 ============
+//
+//   方案A: 整个 PMD 设 ROX Block
+//     [0x41400000, 0x41530000) ROX  代码段 OK
+//     [0x41530000, 0x41600000) ROX  ← .init.data 变成只读!
+//     → 内核启动后写入数据段 → store 触发 MMU fault → 崩溃
+//
+//   方案B: 整个 PMD 设 RW Block
+//     [0x41400000, 0x41530000) RW   ← .text 变成可写!
+//     [0x41530000, 0x41600000) RW   数据段 OK
+//     → 违反 W^X (write XOR execute) 安全策略
+//     → 代码段可写 = 内核级安全漏洞
+//
+//   方案C: 同一 PMD 设两次映射 (ROX + RW 双份)?
+//     → ARM64 架构不允许同一 VA 同时有两个 translation
+//     → 即使允许，break-before-make 期间 TLB 也是不一致的
+//
+//   → 三种方案的共同死穴: PMD Block 覆盖的是完整 2MB
+//     不能"左半 ROX 右半 RW"——那是 PTE 的粒度才能做的事</div>
+
+<p><strong>具体例子：如果全设 ROX，内核写 <code>boot_args</code> 会怎样？</strong></p>
+
+<p>假设 <code>boot_args[0]</code> 的物理地址恰好落在 <code>0x41530000</code>（<code>__initdata_begin</code> 边界），在 <code>preserve_boot_args</code> 中执行：</p>
+
+<div class="diagram">// ============ 场景: PMD 全设 ROX，然后写数据 ============
+//
+//   preserve_boot_args:
+//       adr_l x0, boot_args         // x0 = 0x41530000
+//       stp   x21, x1, [x0]         // 尝试写入 boot_args[0]
+//
+//       CPU 执行 stp:
+//         → MMU 查表: VA 0x41530000 落在 PMD[0x41400000]
+//         → PMD entry 是 Block, AP[2:1] = 00 (只读)
+//         → Permission Fault! Stage 1, Level 3
+//         → CPU 跳转到异常向量表
+//         → 此时异常向量表可能还未初始化
+//         → 嵌套异常 → 内核崩溃 💥
+//
+//
+//   // ============ 场景: PMD 全设 RW，然后执行代码 ============
+//
+//   preserve_boot_args:
+//       mov  x21, x0                // 这条指令在 0x41480000
+//       CPU 取指:
+//         → MMU 查表: VA 0x41480000 落在 PMD[0x41400000]
+//         → PMD entry 是 Block, AP[2:1] = 01 (读写)
+//         → 取指成功，但代码页可写!
+//         → W^X 违反: 攻击者如果能写 0x41480000 就能注入代码
+//
+//
+//   // ============ 实际: PTE 混合 ============
+//
+//   PMD[0x41400000] → TYPE_TABLE → PTE 表 (512 entries)
+//
+//   preserve_boot_args 写数据:
+//       stp  x21, x1, [x0]         // VA 0x41530000
+//         → PMD → PTE[304] = 0x41530000 | RW | PTE_TYPE_PAGE
+//         → AP=读写 → 写入成功 ✓
+//
+//   preserve_boot_args 执行代码:
+//       mov  x21, x0               // VA 0x41480000
+//         → PMD → PTE[128] = 0x41480000 | ROX | PTE_TYPE_PAGE
+//         → AP=只读 → 取指成功, 但写保护 ✓</div>
+
+<p><strong>为什么 <code>__initdata_begin</code> 不是 2MB 对齐？</strong></p>
+<ul>
+<li><code>__initdata_begin</code> 由链接器根据代码段实际大小确定，链接脚本只保证 <code>ALIGN(SEGMENT_ALIGN)</code> = <strong>64KB 对齐</strong></li>
+<li>内核代码段大小取决于编译配置（驱动数量、功能开关等），几乎不可能恰好是 2MB 的整数倍</li>
+<li>如果强制要求 2MB 对齐，会让代码段末尾填充大量 NOP/零，浪费内存</li>
+</ul>
+
+<p><strong>为什么链接器不直接把 <code>__initdata_begin</code> padding 到 2MB 边界？</strong></p>
+<p>不是做不到，是<strong>不划算</strong>。这是一个典型的 space-vs-time trade-off：</p>
+
+<div class="diagram">// ============ padding vs 不 padding 的对比 ============
+//
+//   方案 A: padding __initdata_begin 到 0x41600000 (2MB 对齐)
+//     _stext            __initdata_begin          __initdata_begin
+//     (0x40200000)      (实际 0x41530000)         (padding 后 0x41600000)
+//     ├──────────────────┼────────────────────────┤
+//       代码 ~19.2MB         填充 NOP 832KB
+//     │←─────────────────────────────────────────→│
+//                   刚好 20MB = 10 × 2MB
+//
+//     代价: Image 文件多 832KB (全部填充零)
+//     收益: ID map 全程 PMD Block, 省一页 PTE 表
+//
+//
+//   方案 B: 不 padding (实际方案)
+//     _stext            __initdata_begin
+//     (0x40200000)      (0x41530000)
+//     ├──────────────────┤
+//       代码 ~19.2MB
+//
+//     代价: ID map 多一页 PTE 表 (4KB) + 512 个 TLB entries
+//     收益: Image 省 832KB
+//
+//
+//   对比: 4KB PTE 表 vs 832KB padding
+//   → 省 828KB Image 空间, 代价几乎为零
+//   → link 时不 padding 显然更划算</div>
+
+<p>而且 <code>__initdata_begin</code> 满足 64KB 对齐（<code>SEGMENT_ALIGN</code>），自然也是 4KB 对齐的。所以 PTE 方案技术上完全没有障碍——每个 4KB 页面属性独立设置，ROX 和 RW 精确切分。</p>
+<li><code>map_range</code> 的递归算法就是设计来处理这种不对齐的——没必要强制对齐</li>
+</ul>
+
+<p><strong>关键结论：降级是按 PMD 粒度逐区判断的，不是全局的。</strong>内核 ID map 总共覆盖 17 个 PMD region（~34MB），只有 2 个被降级为 PTE：</p>
+
+<div class="diagram">// ============ 逐 PMD 判断结果 ============
+//
+//   PMD 区域                       判断            结果
+//   ──────────────────────────     ──────────      ────────
+//   [0x40200000, 0x40400000)     全部对齐 &#10003;       Block   ← _stext 起点
+//   [0x40400000, 0x40600000)     全部对齐 &#10003;       Block
+//         ... 共 9 个 ...
+//   [0x41200000, 0x41400000)     全部对齐 &#10003;       Block
+//   [0x41400000, 0x41600000)     __initdata_begin  split!  PTE 512个 ← 只有这1个
+//   [0x41600000, 0x41800000)     全部对齐 &#10003;       Block
+//         ... 共 6 个 ...
+//   [0x42000000, 0x42200000)     全部对齐 &#10003;       Block
+//   [0x42200000, 0x42400000)     _end 截断!        PTE 288个 ← 只有这1个
+//
+//   总计: 17 个 PMD → 15 Block + 2 PTE
+//   如果"不足就全用 PTE" → 8500 个 PTE × 34MB = 不可接受
+//   实际: 只对不齐的那 2 个 PMD 用 PTE → 800 个 PTE × 3.1MB = 可以接受</div>
 
 <h4 id="s5_4x5">SEGMENT_ALIGN = 64KB — 链接脚本的边界保证</h4>
 <pre><code>// arch/arm64/include/asm/memory.h:162

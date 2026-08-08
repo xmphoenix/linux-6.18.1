@@ -114,9 +114,13 @@ tr:nth-child(even) td { background: #f8fafc; }
 <a href="#s1"><span class="num">1.</span> 概述：preserve_boot_args 的使命</a>
 <a href="#s2"><span class="num">2.</span> 完整源码与上下文</a>
 <a href="#s3"><span class="num">3.</span> 指令逐条分析 ★</a>
+<a href="#s3-dmb" style="padding-left:14px;font-size:0.92em;"><span class="num">3.6</span> dmb sy 深度解析 ★</a>
 <a href="#s4"><span class="num">4.</span> 两条路径与缓存维护</a>
+<a href="#s4-dcache" style="padding-left:14px;font-size:0.92em;"><span class="num">4.4</span> dcache_inval_poc 逐条分析 ★</a>
+<a href="#s4-ctr" style="padding-left:20px;font-size:0.85em;">CTR_EL0 寄存器定义</a>
 <a href="#s5"><span class="num">5.</span> x21 FDT 指针生命周期</a>
 <a href="#s6"><span class="num">6.</span> boot_args 在 C 代码中的消费</a>
+<a href="#s6-reserved" style="padding-left:14px;font-size:0.92em;"><span class="num">6.3.1</span> Reserved for future use</a>
 <a href="#s7"><span class="num">7.</span> GDB 调试验证</a>
 <a href="#s8"><span class="num">8.</span> 总结 &amp; 关键要点</a>
 </div>
@@ -171,7 +175,26 @@ tr:nth-child(even) td { background: #f8fafc; }
 <tr><td><code>x3</code></td><td>保留（必须为 0）</td><td>应为 0</td></tr>
 </table>
 
-<div class="note">💡 这些参数是 ARM64 Linux boot protocol 的定义。x1~x3 必须为 0，后续内核启动时会检查并在非零时发出警告。只有 x0（FDT 地址）是真正使用的参数。</div>
+<div class="note">
+<strong>💡 为什么 x1~x3 必须是 0？——"Reserved for future use" 设计模式</strong><br><br>
+<a href="Documentation/arch/arm64/booting.rst" style="color:var(--accent);">Documentation/arch/arm64/booting.rst:166-168</a> 的定义：
+<pre><code>x0 = physical address of device tree blob (dtb) in system RAM.
+x1 = 0 (reserved for future use)
+x2 = 0 (reserved for future use)
+x3 = 0 (reserved for future use)</code></pre>
+<strong>"Reserved for future use"</strong> 是接口设计的经典模式，x1~x3 必须为 0 的原因有三层：<br><br>
+<strong>① 向后兼容（Backward Compatibility）</strong><br>
+如果未来 ARM64 Linux 需要从 bootloader 接收更多参数（如第二个 blob 地址、安全监控配置、随机数种子等），就可以用 x1/x2/x3 来传递，而不用改协议版本号。旧 bootloader 写 0 进来 → 新内核检测到 0 → 知道"这个 bootloader 不支持新特性"→ 自动退回到默认行为。<br><br>
+<strong>② 向前兼容（Forward Compatibility）</strong><br>
+新 bootloader 传了非零值给旧内核 → 旧内核打印警告但继续运行（不 panic）→ 同一个 bootloader 可以启动新旧两种内核。<br><br>
+<strong>③ Broken Bootloader 检测</strong><br>
+内核在 <code>setup.c:372</code> 检查 <code>boot_args[1] || boot_args[2] || boot_args[3]</code>，如果非零则打印警告。这条检查目前最大的实际意义是帮助检测 <strong>broken bootloader</strong>（如某些粗制滥造的 U-Boot 分支忘了清零这些寄存器，把垃圾值传了进来）。<br><br>
+<strong>类比：</strong>就像函数签名的保留参数——现在不用，但把位置占住，将来扩展时不用改调用约定（ABI）。<br><br>
+<strong>目前 x1~x3 有谁在用？</strong> 没有人。<br>
+• ARM32 时代：ATAGS 启动方式中，<code>r1</code> 传 machine type number，<code>r2</code> 传 ATAGS 指针。切换到 FDT 后这些就废弃了。<br>
+• ARM64 时代：从第一天就只使用 FDT（x0 传地址），<strong>x1~x3 从未被正式使用过</strong>。一些早期的 UEFI stub 代码或 kexec 实现可能短暂地借用过这些寄存器，但都是非标准行为。<br>
+• 所以总结：x1~x3 是为将来的协议扩展<strong>预留的空白槽位</strong>，必须填 0 作为"我不支持扩展"的标记。
+</div>
 </section>
 
 <!-- ====== 2 ====== -->
@@ -286,14 +309,107 @@ add     dst, dst, :lo12:sym  // 加上页内偏移</code></pre>
 <li>MMU off (x19=0) → 不跳转 → 执行 D-cache invalidate 序列</li>
 </ul>
 
-<h4>⑥ <code>dmb sy</code> — 内存屏障</h4>
+<h4 id="s3-dmb">⑥ <code>dmb sy</code> — 内存屏障</h4>
+
+<p><code>dmb sy</code> 是 ARM64 的 <strong>Data Memory Barrier</strong> 指令，<code>SY</code> 表示 <strong>full system shareability</strong>（全系统可见性域）。</p>
+
+<p><strong>一句话：强制所有在 <code>dmb sy</code> 之前的存储操作，在被之后的任何内存访问可见之前，先对所有观察者（所有 CPU、所有缓存）全局可见。</strong></p>
+
+<h5>6.1 为什么在这个场景中必须</h5>
+
+<p>看 MMU off 路径的指令序列：</p>
+<div class="diagram">stp     x21, x1, [x0]          // ① non-cacheable 写入 boot_args[0..1]
+stp     x2, x3, [x0, #16]      // ② non-cacheable 写入 boot_args[2..3]
+cbnz    x19, 0f                // x19=0，不跳转
+dmb     sy                     // ③ ★ 内存屏障
+add     x1, x0, #0x20          // ④ 准备 dcache_inval_poc 的参数
+b       dcache_inval_poc       // ⑤ 尾调用：执行 DC IVAC</div>
+
+<p>MMU 关闭时，<code>STP</code> 的写入属性是 <strong>Device/nGnRnE</strong>（non-cacheable, non-gathering, non-reordering, no early write acknowledgement）。这意味着：</p>
 <ul>
-<li>全系统数据内存屏障（Data Memory Barrier, Shareable）</li>
-<li><strong>为什么需要？</strong> 当 MMU 关闭时，<code>STP</code> 写入是 non-cacheable 的，但随后的 <code>DC IVAC</code>（Data Cache Invalidate by Address to PoC）需要保证所有之前的内存访问已经全局可见</li>
-<li>DMB SY 确保所有之前的存储操作在 D-cache invalidation 之前完成</li>
+<li>数据<strong>不经过 cache</strong>，直接发到内存总线</li>
+<li>但 CPU 内部的 <strong>store buffer</strong> 可能还持有这些写操作，<strong>没有真正落地到 PoC（Point of Coherency）</strong></li>
 </ul>
 
-<div class="warn">⚠ <code>dmb sy</code> 只在 MMU off 路径执行。MMU on 时跳过了它——因为 cacheable 写入是硬件自洽的，不需要额外的 barrier。</div>
+<p><strong>危险的竞态场景（没有 dmb sy 时）：</strong></p>
+<div class="diagram">// ============ 场景：STP 延迟 + DC IVAC 提前执行 ============
+
+  时间线（没有 dmb sy）:
+
+  CPU store buffer              内存                D-cache
+  ─────────────                 ────                ───────
+  STP 写入 → [pending]          (旧数据)            (旧 cache line)
+                                                           │
+  预取器看到内存访问 ────────────────────────────────────▶ 预取
+    模式，推测性预取              (旧数据) ←──────────── fill!
+                                                      (旧 cache line 回来了)
+                                                           │
+  STP 落地 ──────────────▶     (新数据)    (旧 cache line!) ← 不一致！
+                                                           │
+  DC IVAC ──────────────────────────────────────────────▶ invalidate old
+                                                        (新数据在内存中幸存)
+
+  上面的时序中最终结果"碰巧"正确。但如果 DC IVAC 在 STP 落地之前就执行了？</div>
+
+<div class="warn">⚠ <strong>关键风险：</strong>DC IVAC 可能在 STP 落地之前执行——此时 cache line 被 invalidate，但新数据还没到内存。等 MMU 打开后，后续 fetch 拿到的就是<strong>垃圾数据</strong>。多核场景下，另一个 CPU 也可能在 STP 落地前通过 cacheable 访问读到旧数据。</div>
+
+<h5>6.2 dmb sy 如何消除竞态</h5>
+<div class="diagram">// ============ 有 dmb sy 的正确时序 ============
+
+  CPU store buffer          内存          D-cache
+  ─────────────             ────          ───────
+  STP 写入 → [pending]      (旧数据)      (旧 cache line)
+                                                 │
+  dmb sy ═══════════════════════════════════════ │
+    "等 STP 全部落地！"                            │
+                                                 │
+  STP 落地 ──────────────▶ (新数据)                │
+                                                 │
+  dmb sy 通过 ✓ ─────────────────────────────── │
+                                                 │
+  DC IVAC ──────────────────────────────────────▶│ invalidate!
+                                                 │
+  保证：DC IVAC 执行时，新数据已经在内存中了 ✓</div>
+
+<h5>6.3 硬件层面的实现</h5>
+<table>
+<tr><th>步骤</th><th>操作</th></tr>
+<tr><td>1</td><td><strong>Stall</strong> 流水线，等待 store buffer 中所有 pending 写操作完成</td></tr>
+<tr><td>2</td><td>等待这些写操作到达 <strong>PoC</strong>（所有核、所有 cluster 都能看到）</td></tr>
+<tr><td>3</td><td>等待 <strong>acknowledgement</strong> 从 interconnect 返回</td></tr>
+<tr><td>4</td><td>释放流水线，允许后续指令（DC IVAC）执行</td></tr>
+</table>
+
+<p><code>SY</code>（Shareability）参数的含义：这个 barrier 的作用范围是<strong>整个系统</strong>——不仅是当前 CPU 核，还包括所有其他核、DMA 设备等。这是最强的 barrier 变体。</p>
+
+<h5>6.4 为什么 MMU on 路径不需要？</h5>
+<div class="diagram">// ============ 两条路径对比 ============
+
+  cbnz    x19, 0f                // MMU on → 跳转到 0f
+  dmb     sy                     // ★ 只有 MMU off 执行这里
+  ...
+0:  str_l   x19, mmu_enabled_at_boot, x0
+      ret                        // MMU on 路径直接返回
+
+  MMU off 路径:
+    STP (non-cacheable) ──→ [store buffer] ──→ 内存
+                                                │
+    dmb sy ═══════════════════════════════════ │ 强制排空 store buffer
+                                                │
+    DC IVAC ──────────────────────────────────▶│ 安全 invalidate cache
+
+  MMU on 路径:
+    STP (cacheable) ──→ [D-cache] ←→ 内存 (硬件一致性自动同步)
+                         │
+    不需要 barrier ─────┘ cache 就是最新数据，无需 DC IVAC</div>
+
+<ul>
+<li>MMU on 时，STP 写入是 <strong>cacheable</strong> 的，数据写入 D-cache，硬件缓存一致性协议自动管理可见性</li>
+<li>不需要 <code>DC IVAC</code>（cache 里的就是最新数据，为什么要 invalidate？）</li>
+<li>没有 cache maintenance → 不需要 barrier 来保序</li>
+</ul>
+
+<div class="note">💡 <strong>核心结论：<code>dmb sy</code> 在 STP（non-cacheable 写）和 DC IVAC（cache 操作）之间充当"同步点"，强制排空 store buffer，确保前者完全落地到 PoC 后后者才开始执行，消除 store buffer 延迟带来的竞态。</strong></div>
 
 <h4>⑦ <code>add x1, x0, #0x20</code> — 准备结束地址</h4>
 <ul>
@@ -368,7 +484,594 @@ str     src, [tmp, :lo12:sym]  // 写入 mmu_enabled_at_boot = x19</code></pre>
 </table>
 
 <div class="note">💡 <strong>为什么 Cold Boot 需要 D-cache invalidate？</strong><br>
-当 STP 以 non-cacheable（MMU off）方式写入时，数据直接到达内存。但 CPU 的 speculative load 可能在写入前就已经将对应地址的数据加载到了 D-cache 中（预取）。如果不做 D-cache invalidate，后续当 MMU 开启后，cacheable 访问会命中这些陈旧缓存行，读到旧数据而不是刚写入的值。</div>
+当 STP 以 non-cacheable（MMU off）方式写入时，数据直接到达内存。但 D-cache 中可能残留着旧数据。如果不做 D-cache invalidate，后续当 MMU 开启后，cacheable 访问会命中这些陈旧缓存行，读到旧数据而不是刚写入的值。详细分析见 4.3 节。</div>
+
+<h3>4.3 深入：MMU 关闭后 D-cache 为什么会有旧数据？</h3>
+
+<p>核心矛盾在于：<strong>store 走了 non-cacheable 路径（绕过 D-cache 直接写内存），但 D-cache 里可能有之前留下的旧 cache line，这些旧数据不知道 store 已经发生。</strong></p>
+
+<h4>原因一：Bootloader / 固件阶段遗留的脏 cache line（主要原因）</h4>
+<ul>
+<li>在内核启动代码跑到这里<strong>之前</strong>，CPU 处于固件 / bootloader 控制下，那个阶段通常是 <strong>MMU on + cache on</strong> 的状态</li>
+<li>固件的代码和数据可能访问过与 boot_args 或页表区域相同的物理地址</li>
+<li>那些访问把数据留在了 <strong>D-cache</strong> 中（可能是 dirty cache line）</li>
+<li>当 MMU 关闭后，我们的 <code>str</code> 指令因为 MMU off 被当作 Device/nGnRnE 类型——<strong>写穿（write-through），不进 cache</strong></li>
+<li>所以 <code>str</code> 只更新了内存，没有更新 D-cache 中的旧 cache line</li>
+<li>等 MMU 重新打开后，CPU 访问这些地址时会 <strong>hit D-cache</strong>，拿到的是旧数据</li>
+</ul>
+
+<h4>原因二：推测性数据加载（Speculative Load）</h4>
+
+<p>“推测性执行”是现代 CPU 提升性能的核心手段：遇到条件分支时，CPU 不会等待分支结果确定，而是<strong>先猜一个方向并提前执行</strong>。如果猜对了，就能继续全速运行；猜错了，回滚寄存器结果即可。</p>
+
+<p><strong>关键问题：</strong>错误推测时，CPU 会回滚<strong>架构寄存器</strong>的状态，但<strong>cache 的副作用不会自动清除</strong>。具体到我们这段代码的场景：</p>
+
+<div class="diagram">// ============ 推测性加载如何污染 D-cache ============
+
+  CPU 执行流:
+      str x21, [x0]           // non-cacheable write → 直接到内存 ✓
+      cbnz x19, 0f            // 分支指令，CPU 开始预测...
+          │
+          ├── 实际: x19=0，不跳转 (MMU off 路径)
+          │
+          └── 预测: CPU 可能错误地预测会跳转 (x19≠0)
+               │
+               ▼
+              预先执行了:          // 推测执行
+                  adrp x0, mmu_enabled_at_boot
+                  ldr ...          // ★ 推测性 load！
+                                    // 把物理地址上的旧数据拉进了 D-cache
+               │
+               ▼
+              预测错误! → CPU 回滚 x0 等寄存器
+              但 D-cache 中的旧数据没有被回滚！❌
+
+  // 同样，硬件数据预取器（HW Prefetcher）在遇到 str 对 boot_args
+  // 区域的写入时，可能自动把相邻地址的数据提前拉进 D-cache</div>
+
+<table>
+<tr><th>污染来源</th><th>机制</th><th>影响</th></tr>
+<tr><td>固件遗留</td><td>MMU on 时访问过同一物理地址，dirty cache line 残留在 D-cache</td><td class="accent">主要来源</td></tr>
+<tr><td>推测执行</td><td>CPU 在分支结果确定前预先执行 load，数据被拉入 D-cache</td><td>次要来源</td></tr>
+<tr><td>硬件预取器</td><td>硬件看到连续写入，自动预取相邻地址到 D-cache</td><td>次要来源</td></tr>
+</table>
+
+<div class="warn">⚠ <strong>重要澄清：I-cache 与 D-cache 是独立硬件</strong><br>
+指令预取（I-cache 侧）<strong>不会</strong>把数据加载到 D-cache 中。I-cache 和 D-cache 在硬件上是完全分离的——指令预取器获取的指令只进入 I-cache，不会污染 D-cache。以上讨论的两种污染来源都是 <strong>data-side 活动</strong>（D-cache 侧的历史 dirty line、data-side 的推测 load、硬件数据预取器），与 I-cache 无关。</div>
+
+<h4>解决：dcache_inval_poc 做了什么？</h4>
+<ul>
+<li>遍历 <code>[x0, x1)</code> 区间的每一行 cache line</li>
+<li>对每一行执行 <code>DC IVAC</code>（Data Cache Invalidate by Address to Point of Coherency）</li>
+<li><strong>Invalidate 而不是 Clean</strong>：因为是 non-cacheable 写入，内存里已经是正确数据了，cache 里的旧数据直接丢弃即可，不需要写回</li>
+<li>PoC（Point of Coherency）保证所有 CPU 都能看到一致的数据</li>
+</ul>
+
+<div class="note">💡 <strong>一句话总结：</strong>MMU 关闭后 <code>str</code> 绕过了 D-cache，但 D-cache 里残留的旧数据（固件遗留的 dirty line + 推测性 load 拉进的旧数据）不知道这些 store 已经发生。必须用 <code>DC IVAC</code> 显式 invalidate，确保 MMU 打开后读到的是内存里的最新值，而不是 cache 里的过期数据。</div>
+
+<h3 id="s4-dcache">4.4 深入：dcache_inval_poc 逐条分析 ★</h3>
+
+<h4>4.4.1 调用背景</h4>
+
+<p>回顾 <code>preserve_boot_args</code> 的 MMU off 路径（§3.2 ⑦⑧）：</p>
+
+<div class="diagram">// preserve_boot_args MMU off 路径 → 尾调用 dcache_inval_poc
+    add     x1, x0, #0x20          // x1 = boot_args + 32 (结束地址)
+    b       dcache_inval_poc       // 尾调用: dcache_inval_poc(x0=boot_args, x1=boot_args+32)</div>
+
+<ul>
+<li><strong>x0</strong> = boot_args 数组基地址（起始地址，4×8=32 字节）</li>
+<li><strong>x1</strong> = boot_args + 0x20 = 结束地址（开区间 <code>[x0, x1)</code>）</li>
+<li>这是<strong>尾调用</strong>（<code>b</code> 而非 <code>bl</code>），<code>b</code> 不修改 LR 寄存器，所以 <code>dcache_inval_poc</code> 末尾的 <code>ret</code> 返回到 LR 当前值——即 <code>primary_entry</code> 中 <code>bl preserve_boot_args</code> 的下一条指令地址</li>
+</ul>
+
+<h4>4.4.2 完整源码</h4>
+<pre><code>// arch/arm64/mm/cache.S:135-163
+/*
+ *	dcache_inval_poc(start, end)
+ *
+ * 	Ensure that any D-cache lines for the interval [start, end)
+ * 	are invalidated. Any partial lines at the ends of the interval are
+ *	also cleaned to PoC to prevent data loss.
+ *
+ *	- start   - kernel start address of region   (x0)
+ *	- end     - kernel end address of region     (x1)
+ */
+SYM_FUNC_START(__pi_dcache_inval_poc)
+    dcache_line_size x2, x3        // ① 获取 cache line 大小 → x2, 临时用 x3
+    sub     x3, x2, #1             // ② x3 = linesize - 1 (对齐掩码)
+    tst     x1, x3                 // ③ end 是否对齐到 cache line 边界?
+    bic     x1, x1, x3             // ④ 将 end 向下对齐到 cache line 边界
+    b.eq    1f                     //    对齐 → 跳转到 1f
+    dc      civac, x1              // ⑤ 不对齐: Clean+Invalidate 尾部 partial line
+1:  tst     x0, x3                 // ⑥ start 是否对齐到 cache line 边界?
+    bic     x0, x0, x3             // ⑦ 将 start 向下对齐到 cache line 边界
+    b.eq    2f                     //    对齐 → 跳转到 2f (主循环)
+    dc      civac, x0              // ⑧ 不对齐: Clean+Invalidate 首部 partial line
+    b       3f                     //    跳转到循环递增
+2:  dc      ivac, x0               // ⑨ 主循环: 对完整 cache line 做 IVAC（仅 Invalidate，不 Clean）
+3:  add     x0, x0, x2             // ⑩ 递增地址 += linesize
+    cmp     x0, x1                 // ⑪ 比较 当前地址 vs end
+    b.lo    2b                     //    小于 → 继续循环
+    dsb     sy                     // ⑫ 全系统内存屏障
+    ret
+SYM_FUNC_END(__pi_dcache_inval_poc)
+SYM_FUNC_ALIAS(dcache_inval_poc, __pi_dcache_inval_poc)</code></pre>
+
+<h4>4.4.3 指令逐条分析</h4>
+
+<h5>① <code>dcache_line_size x2, x3</code> — 获取 D-cache line 大小</h5>
+<ul>
+<li>ARM64 的 cache line 大小由 <code>CTR_EL0.DminLine</code>（bits [19:16]）编码决定，计算公式：<code>cache_line_size = 4 &lt;&lt; DminLine</code></li>
+<li>典型值：DminLine=<code>0b0010</code>(2) → 4&lt;&lt;2 = <strong>16 bytes</strong>，DminLine=<code>0b0100</code>(4) → 4&lt;&lt;4 = <strong>64 bytes</strong>，DminLine=<code>0b0110</code>(6) → 4&lt;&lt;6 = <strong>256 bytes</strong></li>
+<li>大多数 Cortex-A 核心 DminLine=4，即 <strong>64 bytes</strong></li>
+</ul>
+<pre><code>// dcache_line_size 宏展开 (assembler.h:296-301)
+read_ctr    tmp           // 读 CTR_EL0
+ubfm        tmp, tmp, #16, #19  // 提取 cache line size 编码
+mov         reg, #4       // 4 bytes per word
+lsl         reg, reg, tmp // reg = 4 &lt;&lt; encoding</code></pre>
+
+<h5 id="s4-ctr">附：CTR_EL0 寄存器定义</h5>
+<p><code>CTR_EL0</code>（Cache Type Register）是 ARM64 架构的<strong>只读</strong>系统寄存器，描述 CPU 的 cache 和内存系统拓扑参数。</p>
+
+<table>
+<tr><th>Bits</th><th>字段名</th><th>描述</th></tr>
+<tr><td>[31:30]</td><td>Reserved</td><td>保留（RES1）</td></tr>
+<tr><td>[29]</td><td><code>DIC</code></td><td>Data cache Invalidation Clean to PoU 指令是否需要。0=需要，1=Data cache 到 PoU 的一致性由硬件自动维护，软件无需 DC IVAU</td></tr>
+<tr><td>[28]</td><td><code>IDC</code></td><td>Instruction cache Invalidation Clean to PoU 指令是否需要。0=需要，1=Instruction cache 到 PoU 的一致性由硬件自动维护</td></tr>
+<tr><td>[27:24]</td><td><code>CWG</code></td><td>Cache Writeback Granule。写回粒度的 log2 编码。例如：CWG=4 → 16 bytes (= 2^4×4)，CWG=5 → 32 bytes</td></tr>
+<tr><td>[23:20]</td><td><code>ERG</code></td><td>Exclusives Reservation Granule。独占访问保留粒度的 log2 编码</td></tr>
+<tr><td class="accent">[19:16]</td><td class="accent"><code>DminLine</code></td><td class="accent"><strong>★ D-cache 最小 line 大小</strong>。log2 编码，实际大小 = 4 &lt;&lt; DminLine。例如：0b0100 → 64 bytes，0b0110 → 256 bytes</td></tr>
+<tr><td>[15:14]</td><td><code>L1Ip</code></td><td>L1 Instruction cache 策略。0b00=不存在，0b01=不存在（保留），0b10=VIPT，0b11=PIPT</td></tr>
+<tr><td class="accent">[3:0]</td><td class="accent"><code>IminLine</code></td><td class="accent"><strong>I-cache 最小 line 大小</strong>。同 DminLine 的编码方式，实际大小 = 4 &lt;&lt; IminLine</td></tr>
+</table>
+
+<div class="diagram">// ============ CTR_EL0 寄存器布局 (64-bit) ============
+//
+//  63                    32 31  29  27     23     19     15     3     0
+//  ├───────────────────────┼──┼─┼──┼──────┼──────┼──────┼──────┼─────┤
+//  │      RES1 (高32)      │RS│D│I│ CWG  │ ERG  │DminL │ L1Ip │IminL│
+//  │                       │V │I│D│      │      │ ine  │      │ ine │
+//  │                       │  │C│C│      │      │ ★    │      │     │
+//  └───────────────────────┴──┴─┴──┴──────┴──────┴──────┴──────┴─────┘
+//                          31 29 27 24    20     16     14      4
+//
+//  dcache_line_size 提取 bits [19:16] → DminLine</div>
+
+<p><strong>DminLine 编码表（dcache_line_size 实际使用的字段）：</strong></p>
+<table>
+<tr><th>DminLine (bits[19:16])</th><th>计算</th><th>Cache Line 大小</th><th>典型处理器</th></tr>
+<tr><td><code>0b0010</code></td><td>4 &lt;&lt; 2</td><td>16 bytes</td><td>Cortex-A53/A55 (低端)</td></tr>
+<tr><td><code>0b0011</code></td><td>4 &lt;&lt; 3</td><td>32 bytes</td><td>Cortex-A7/A15 (ARM32)</td></tr>
+<tr><td class="accent"><code>0b0100</code></td><td class="accent">4 &lt;&lt; 4</td><td class="accent"><strong>64 bytes</strong></td><td class="accent">Cortex-A72/A76/A78/X1</td></tr>
+<tr><td><code>0b0101</code></td><td>4 &lt;&lt; 5</td><td>128 bytes</td><td>部分服务器核心</td></tr>
+<tr><td><code>0b0110</code></td><td>4 &lt;&lt; 6</td><td>256 bytes</td><td>Apple M1/M2 Firestorm</td></tr>
+</table>
+
+<div class="note">💡 <strong>为什么要用 CTR_EL0 动态读取而非硬编码？</strong>内核需要运行在不同型号的 ARM64 CPU 上，cache line 大小因微架构而异（16~256 bytes）。如果在汇编中硬编码 64，在 Apple M1（256-byte line）上就会错误地只 invalidate 1/4 的 cache line，导致数据不一致。读取 CTR_EL0 保证了<strong>在所有 ARM64 平台上都正确</strong>。</div>
+
+<div class="warn">⚠ <strong>注意：</strong>CTR_EL0 报告的是 CPU 的<strong>最小</strong> D-cache line 大小（DminLine）。如果 CPU 有多个层级的 cache 且 line 大小不同，软件应使用最小值以保证覆盖所有层级。实际上绝大多数 ARM64 设计在所有 cache 层级使用相同大小的 cache line，所以 DminLine = 实际 cache line 大小。</div>
+
+<h5>② <code>sub x3, x2, #1</code> — 构造对齐掩码</h5>
+<ul>
+<li>例如 cache line = 64 bytes → <code>x3 = 63 = 0b111111</code></li>
+<li>用于检查地址是否对齐（低 6 位是否为 0）</li>
+<li>也用于将地址向下对齐（<code>bic addr, addr, x3</code> 清零低 6 位）</li>
+</ul>
+
+<h5>③④ <code>tst</code> + <code>bic</code> + <code>b.eq</code> — 处理 end 边界</h5>
+
+<p>先回顾源码中这四条指令的顺序：</p>
+<pre><code>tst     x1, x3              // ③ end & (linesize-1) == 0 ?
+bic     x1, x1, x3           // ④ end = end & ~(linesize-1)，向下对齐
+b.eq    1f                   //    对齐 → 跳过 CIVAC
+dc      civac, x1             // ⑤ 不对齐 → Clean+Invalidate 尾部 line</code></pre>
+
+<h6>逐条拆解</h6>
+
+<p><strong><code>tst x1, x3</code></strong> — 按位 AND 测试，不保存结果，只更新 NZCV 标志：</p>
+<ul>
+<li>类似于 <code>ands xzr, x1, x3</code>，但目标寄存器是 xzr（结果丢弃）</li>
+<li><strong>Z=1</strong> → x1 的低 N 位全为 0 → end 已对齐 cache line 边界</li>
+<li><strong>Z=0</strong> → x1 的低 N 位有非零位 → end 落入某个 cache line 的中部 → partial line</li>
+</ul>
+
+<p><strong><code>bic x1, x1, x3</code></strong> — Bit Clear，将 end 向下对齐到 cache line 边界：</p>
+<ul>
+<li><code>bic dst, src, mask</code> = <code>dst = src & ~mask</code></li>
+<li>例如 linesize=64, x3=63=0b111111：<code>bic</code> 将 end 的低 6 位清零</li>
+<li>效果：<code>end = end - (end % linesize)</code>，向<strong>下</strong>取整</li>
+</ul>
+
+<h6>深入：BIC 指令详解</h6>
+<p><code>BIC</code> 是 ARM64 的<strong>位清除</strong>指令，对应 C 语言的 <code>dst = src & (~mask)</code>。它的作用是对 <code>mask</code> 中为 1 的位，将 <code>src</code> 中对应位<strong>清零</strong>。</p>
+
+<pre><code>// BIC 语法
+BIC  Xd, Xn, Xm        // 寄存器形式: Xd = Xn & ~Xm
+BIC  Xd, Xn, #imm      // 立即数形式（仅支持特定的位掩码模式）</code></pre>
+
+<p><strong>与 AND 的区别：</strong></p>
+<div class="diagram">// ============ BIC vs AND ============
+//
+//   AND  Xd, Xn, Xm   →  Xd = Xn & Xm       (保留 mask 为 1 的位)
+//   BIC  Xd, Xn, Xm   →  Xd = Xn & (~Xm)   (清除 mask 为 1 的位)
+//
+//   示例: Xn=0b10101111, Xm=0b00001111
+//     AND: 0b10101111 &  0b00001111 = 0b00001111  (保留低4位)
+//     BIC: 0b10101111 & ~(0b00001111)
+//        = 0b10101111 &  0b11110000 = 0b10100000  (清除低4位)</div>
+
+<p><strong>为什么用 BIC 做对齐？— 位操作的数学原理</strong></p>
+<p>假设地址 <code>A</code> 需要向下对齐到 <code>2^N</code> 字节边界（如 64=2^6），则：</p>
+<ul>
+<li>对齐后的地址 = <code>(A >> N) &lt;&lt; N</code>，即清零低 N 位</li>
+<li><code>A & ~((1 &lt;&lt; N) - 1)</code> = <code>A & ~(2^N - 1)</code></li>
+<li>令 <code>mask = 2^N - 1</code>（如 64-1=63=0b111111），则：<code>BIC A, A, mask</code> 一步完成</li>
+</ul>
+
+<h6>具体示例</h6>
+<p><strong>示例 1：end=0x4173a020, linesize=64</strong></p>
+<div class="diagram">// 已知: x1=0x4173a020, x3=63=0b00000000_0000003F
+//
+//   BIC  x1, x1, x3
+//   = 0x4173a020 & ~0x3F
+//   = 0x4173a020 &  0xFFFFFFFF_FFFFFFC0
+//
+//   二进制:
+//      0x4173a020 = 0b0100_0001_0111_0011_1010_0000_0010_0000
+//      ~0x3F      = 0b1111_1111_1111_1111_1111_1111_1100_0000
+//      ───────────────────────────────────────────────────────
+//   结果           = 0b0100_0001_0111_0011_1010_0000_0000_0000
+//                  = 0x4173a000
+//
+//   验证: 0x4173a000 / 64 = 27445600, 余数 = 0  ✓
+//         0x4173a020 & 63 = 0x20 = 32           ← 原地址低6位</div>
+
+<p><strong>示例 2：end=0x4173a040（恰好对齐）</strong></p>
+<div class="diagram">// 已知: x1=0x4173a040, x3=63=0x3F
+//
+//   BIC  x1, x1, x3
+//   = 0x4173a040 & ~0x3F
+//
+//      0x4173a040 = 0b...0100_0000   ← 低6位全0
+//      ~0x3F      = 0b...1100_0000
+//      ─────────────────────────
+//   结果           = 0b...0100_0000
+//                  = 0x4173a040      ← 不变！
+//
+//   结论: 已对齐的地址经过 BIC 后保持不变 ✓</div>
+
+<p><strong>示例 3：多种 cache line 大小的对比</strong></p>
+<table>
+<tr><th>linesize</th><th>x3 (mask)</th><th>end=0x4173a025 对齐后</th><th>end=0x4173a040 对齐后</th></tr>
+<tr><td>16 bytes</td><td><code>15 = 0xF</code></td><td><code>0x4173a020</code></td><td><code>0x4173a040</code> (不变)</td></tr>
+<tr><td>32 bytes</td><td><code>31 = 0x1F</code></td><td><code>0x4173a020</code></td><td><code>0x4173a040</code> (不变)</td></tr>
+<tr><td class="accent">64 bytes</td><td class="accent"><code>63 = 0x3F</code></td><td><code>0x4173a000</code></td><td class="accent"><code>0x4173a040</code> (不变)</td></tr>
+<tr><td>128 bytes</td><td><code>127 = 0x7F</code></td><td><code>0x4173a000</code></td><td><code>0x4173a000</code></td></tr>
+</table>
+
+<div class="note">💡 <strong>BIC 为什么不更新 NZCV？</strong>ARM64 的数据处理指令默认<strong>不</strong>更新标志位（需要加 <code>S</code> 后缀，如 <code>BICS</code> 才会更新）。这个设计是故意的：BIC 不更新标志 → 前面 <code>tst</code> 设置的 Z 保持 → <code>b.eq</code> 跨两条指令仍能正确分支。详见下一节。</div>
+
+<p><strong><code>b.eq 1f</code></strong> — 利用步骤③的 tst 结果进行条件分支：</p>
+<ul>
+<li>如果 <code>tst</code> 结果为 Z=1（end 已对齐）→ 跳转到 <code>1:</code>，<strong>跳过</strong> DC CIVAC</li>
+<li>如果 <code>tst</code> 结果为 Z=0（end 未对齐）→ 不跳转，执行下一条 <code>dc civac, x1</code></li>
+<li>为什么对齐了就不需要 CIVAC？因为对齐的 end 之后的 cache line 是<strong>完全未触及</strong>的区域，不在目标范围内，也不需要保护</li>
+</ul>
+
+<h6>为什么要 tst 和 bic 分离？— 指令顺序的设计意图</h6>
+<div class="diagram">// ============ 为什么不能合并为一条指令？============
+//
+//   方案 A（错误）: 先 bic 再 tst
+//     bic  x1, x1, x3     // x1 被修改为对齐值
+//     tst  x1_old, x3     // 没法测了！x1_old 已经丢失
+//
+//   方案 B（编译器可以做到但汇编不行）:
+//     ands tmp, x1, x3    // 需要额外寄存器保存测试结果
+//     bic  x1, x1, x3
+//     b.eq 1f
+//     → 多用了一个临时寄存器 (tmp)
+//
+//   方案 C（实际代码）:
+//     tst  x1, x3          // ① 先测试（不修改 x1）
+//     bic  x1, x1, x3      // ② 再修改（不影响 NZCV 标志）
+//     b.eq 1f              // ③ 消费 tst 留下的 Z 标志
+//     → 零额外寄存器，充分利用 NZCV 的跨指令保持特性</div>
+
+<div class="note">💡 <strong>关键知识点：ARM64 中 <code>bic</code> 等数据处理指令默认<strong>不</strong>更新 NZCV 标志</strong>（只有带 <code>S</code> 后缀的版本如 <code>bics</code> 才更新）。所以 <code>bic</code> 不会破坏 <code>tst</code> 设置的 Z 标志，<code>b.eq</code> 在两条指令之后仍然能正确读取 tst 的结果。这是 ARM64 汇编中常见的"测试-修改-消费标志"三连模式。</div>
+
+<h6>多场景示例</h6>
+
+<p><strong>场景 1：end 未对齐（典型情况）</strong></p>
+<div class="diagram">// linesize=64, x3=63=0b111111, end=0x4173a020
+//
+//   ③ tst  x1, x3
+//      0x4173a020 & 63 = 0x20 = 32 ≠ 0  →  Z=0 (不对齐)
+//
+//   ④ bic  x1, x1, x3
+//      x1 = 0x4173a020 & ~63 = 0x4173a000  (向下对齐到 cache line 起始)
+//
+//   b.eq → Z=0，不跳转
+//
+//   ⑤ dc civac, x1
+//      Clean+Invalidate 地址 0x4173a000 所在的 cache line
+//      → 覆盖 [0x4173a000, 0x4173a040)
+//      → 其中 [0x4173a020, 0x4173a040) 是相邻数据，CIVAC 保证其安全
+//
+//   cache line [0x4173a000 ───────────────────────── 0x4173a040)
+//              ├──────────────┼─────────────────────┤
+//              │  boot_args   │   相邻数据 (受保护)   │
+//              │  32 bytes    │   32 bytes           │
+//              0x4173a000     0x4173a020 (end)</div>
+
+<p><strong>场景 2：end 恰好对齐（边界情况）</strong></p>
+<div class="diagram">// linesize=64, x3=63, end=0x4173a040 (恰好和 cache line 边界重合)
+//
+//   ③ tst  x1, x3
+//      0x4173a040 & 63 = 0  →  Z=1 (对齐!)
+//
+//   ④ bic  x1, x1, x3
+//      x1 = 0x4173a040 (本来就是对齐的，bic 不改变)
+//
+//   b.eq → Z=1，跳转到 1:
+//      跳过 DC CIVAC — 因为 end 之后没有任何部分属于当前范围
+//
+//   cache line [0x4173a000 ───────────────────────── 0x4173a040)
+//              ├────────────────────────────────────┤
+//              │            boot_args (或其他数据)    │
+//              │            64 bytes                 │
+//              0x4173a000                            0x4173a040=end
+
+//   下一个 cache line 从 0x4173a040 开始，是全新区域，不需要保护 ✓</div>
+
+<p><strong>场景 3：end 只超出 1 字节（极端情况）</strong></p>
+<div class="diagram">// linesize=64, x3=63, end=0x4173a001
+//
+//   ③ tst  x1, x3
+//      0x4173a001 & 63 = 1 ≠ 0  →  Z=0 (不对齐)
+//
+//   ④ bic  x1, x1, x3
+//      x1 = 0x4173a000
+//
+//   ⑤ dc civac, 0x4173a000
+//      Clean+Invalidate 整个 cache line [0x4173a000, 0x4173a040)
+//      → 只为了 1 字节的目标数据，连带保护 63 字节的相邻数据
+//
+//   虽然"浪费"了一些总线带宽，但保证了数据安全 ✓</div>
+
+<div class="diagram">// ============ 完整流程图 ============
+//
+//   输入: x1=end, x3=linesize-1
+//
+//        ┌─────────────┐
+//        │ tst x1, x3  │  测试 end 是否对齐
+//        └──────┬──────┘
+//               │
+//        ┌──────▼──────┐
+//        │ bic x1, x3  │  x1 = 向下对齐的 end
+//        └──────┬──────┘
+//               │
+//          Z=1? │
+//      ┌────────┴────────┐
+//      ▼ YES (对齐)       ▼ NO (不对齐)
+//   ┌──────┐         ┌──────────────┐
+//   │ b 1f │         │ dc civac, x1 │  Clean+Invalidate
+//   └──┬───┘         │ (保护相邻数据) │
+//      │             └──────┬───────┘
+//      │                    │
+//      └────────┬───────────┘
+//               ▼
+//           1: (继续处理 start 边界)</div>
+
+<h5>⑤ <code>dc civac, x1</code> — Clean + Invalidate 尾部 partial line</h5>
+
+<div class="note">💡 <strong>关键设计：</strong>尾部 partial line 用 <code>DC CIVAC</code>（Clean + Invalidate），而非 <code>DC IVAC</code>（仅 Invalidate）。因为该 cache line 中 <code>[x1, x1+linesize-x1%linesize)</code> 的部分<strong>不属于 boot_args</strong>，可能有其他数据已缓存在该 line 中。如果只用 Invalidate，这些数据会<strong>永久丢失</strong>（脏数据没有写回内存）。Clean+Invalidate 确保脏数据先写回到 PoC 再丢弃 cache line。</div>
+
+<table>
+<tr><th>指令</th><th>操作</th><th>数据安全</th></tr>
+<tr><td><code>DC IVAC</code></td><td>直接丢弃 cache line，不写回</td><td class="warn">❌ 脏数据丢失</td></tr>
+<tr><td><code>DC CIVAC</code></td><td>先 Clean（写回脏数据）再 Invalidate</td><td class="accent">✅ 安全</td></tr>
+</table>
+
+<h5>⑥⑦⑧ — 处理 start 边界（同上逻辑）</h5>
+<ul>
+<li>如果 start 未对齐到 cache line 边界 → <code>DC CIVAC</code> Clean+Invalidate</li>
+<li>如果 start 已对齐 → 跳过，直接进入主循环</li>
+</ul>
+
+<h5>⑨ <code>dc ivac, x0</code> — 主循环体：对每一行完整 cache line 执行 IVAC</h5>
+<ul>
+<li>⑨⑩⑪ 构成一个 <strong>while 循环</strong>：每轮对 <code>[x0, x0+linesize)</code> 这一行完整 cache line 执行 <code>DC IVAC</code>，然后 x0 += linesize 前进到下一行，直到 x0 ≥ end 退出</li>
+<li><strong>为什么完整 cache line 用 <code>DC IVAC</code></strong>（仅 Invalidate，不 Clean）？</li>
+<li>因为：</li>
+<ol>
+<li>MMU 关闭时 <code>STP</code> 已经以 non-cacheable 方式把新数据<strong>写到了内存</strong></li>
+<li>D-cache 中的旧数据不需要写回——内存里已经是正确的</li>
+<li>直接 Invalidate 丢弃旧 cache line 即可（性能更高）</li>
+</ol>
+<li>这与首尾 partial line 的 <code>DC CIVAC</code> 策略相反——首尾是为了<strong>保护相邻数据</strong>，中间是为了<strong>性能</strong></li>
+</ul>
+
+<h5>附：为什么要循环？— DC IVAC 的硬件限制</h5>
+
+<p>ARM64 的 cache maintenance 指令<strong>一次只能操作一行 cache line</strong>，不支持指定长度：</p>
+
+<div class="diagram">// ============ DC IVAC 指令仅操作一行 ============
+//
+//   DC IVAC, &lt;addr&gt;    → Invalidate addr 所在的<strong>那一行</strong> cache line（如 64 bytes）
+//                         没有 "DC IVAC &lt;addr&gt;, &lt;size&gt;" 这种变体
+//
+//   指令只关心 addr 落在哪个 cache line，自动从该行起始地址开始作用一整行。
+//   要对 [start, end) 区间内<strong>每一行</strong>都执行 → 必须循环。</div>
+
+<p><strong>CTR_EL0 提供的是 cache line 大小，不是总容量</strong></p>
+<table>
+<tr><th>能知道</th><th>不能知道</th></tr>
+<tr><td>CTR_EL0.DminLine → cache line 大小（如 64 bytes）</td><td>L1 D-cache 总容量（如 32KB）</td></tr>
+<tr><td>CTR_EL0.IminLine → I-cache line 大小</td><td>L2/L3 cache 总容量</td></tr>
+<tr><td></td><td>cache 相联度（associativity）</td></tr>
+</table>
+<p>要查完整 cache 拓扑需读取 <code>CLIDR_EL1</code> + <code>CCSIDR_EL1</code> 等寄存器，但这与我们的目标无关——<code>dcache_inval_poc</code> 只需要知道<strong>步长</strong>（cache line size），不需要知道<strong>总共有多少行</strong>。</p>
+
+<p><strong>对 boot_args 的具体循环次数</strong></p>
+<div class="diagram">// ============ boot_args (32 bytes, linesize=64) ============
+//
+//                   一行 64 bytes
+//              ├──────────────────────┤
+//              0x4173a000    0x4173a020  0x4173a040
+//                  [──boot_args──]
+//                  ↑             ↑
+//                start          end
+//
+//   迭代1: DC IVAC, 0x4173a000   (覆盖整行 [0x4173a000, 0x4173a040))
+//          addr = 0x4173a000 + 64 = 0x4173a040
+//          0x4173a040 ≥ end=0x4173a020 → 退出
+//
+//   只循环了 <strong>1 次</strong>。
+//
+//   循环次数 = ceil(区间大小 / cache line 大小)，与 cache 总容量无关。
+//   原因: DC IVAC 遍历的是 <strong>"目标地址区间覆盖了哪些 cache line"</strong>，
+//         不是"整个硬件 cache 一共有多少行"。
+//
+//   一个 4KB cache (16B line) 和一个 8KB cache (64B line):
+//     - 16B line → 步长 16，同样 32 bytes 区间要循环 2 次
+//     - 64B line → 步长 64，32 bytes 只需 1 次
+//   差异来自 <strong>line 大小</strong>，不是 cache 容量。
+//
+//
+//   对比: 如果目标区间是 4KB 的页表 (linesize=64):
+//
+//   迭代次数 = ceil(4096 / 64) = <strong>64 次</strong>
+//   每行一个 DC IVAC，共 64 次 cache maintenance 操作</div>
+<div class="diagram">// ============ 主循环 ============
+//
+//   伪代码:
+//   addr = start (向下对齐到 cache line 边界)
+//   while (addr &lt; end) {
+//       DC IVAC, addr       // Invalidate this cache line
+//       addr += linesize    // 移动到下一个 cache line
+//   }
+//
+//   对 boot_args (32 bytes, cache line=64):
+//     iteration 1: IVAC 0x4173a000 (覆盖整个 boot_args)
+//     addr → 0x4173a040 ≥ end=0x4173a020 → 退出
+//     只需 1 次迭代!</div>
+
+<h5>⑫ <code>dsb sy</code> — 最终屏障</h5>
+<ul>
+<li>确保所有 DC IVAC / DC CIVAC 操作<strong>对所有观察者全局可见</strong>后才返回</li>
+<li>与调用前的 <code>dmb sy</code>（§3.2 ⑥）形成首尾呼应：</li>
+</ul>
+<div class="diagram">// ============ 完整的屏障配对 ============
+//
+//   preserve_boot_args 中:
+//     STP ...                  // non-cacheable 写入
+//     dmb sy                   // ★ 屏障1: 确保 STP 落地到 PoC
+//     add x1, x0, #0x20
+//     b   dcache_inval_poc
+//           │
+//           ▼
+//   dcache_inval_poc 中:
+//     DC IVAC ...              // cache maintenance 操作
+//     DC IVAC ...
+//     dsb sy                   // ★ 屏障2: 确保 cache op 全局可见
+//     ret
+//
+//   两个屏障夹住的操作序列:
+//   dmb sy → (STP 先于 cache op) + dsb sy → (cache op 完成后才返回)</div>
+
+<h5>附：<code>ret</code> 返回地址 = LR 寄存器 — 尾调用的关键</h5>
+<p><code>dsb sy</code> 之后的 <code>ret</code> 指令等价于 <code>br x30</code>——跳转到 <strong>LR 寄存器</strong>（x30）中的地址。</p>
+
+<p>关键点：<strong>整个调用链中 LR 从未被修改过</strong>——</p>
+
+<div class="diagram">// ============ 完整的 LR 链路 ============
+//
+//   primary_entry:
+//       bl  preserve_boot_args    ← ① 硬件: LR = primary_entry 的下一条指令
+//           │                         (如 0x4163c0f8)
+//           ▼
+//   preserve_boot_args:
+//       mov  x21, x0
+//       ...                        ← LR 仍为 0x4163c0f8，未被修改
+//       b    dcache_inval_poc      ← ② b 指令不写 LR！LR 保持不变
+//           │
+//           ▼
+//   __pi_dcache_inval_poc:
+//       dcache_line_size x2, x3
+//       ...                        ← LR 仍为 0x4163c0f8
+//       dsb  sy
+//       ret                        ← ③ ret = br x30 → 跳转至 0x4163c0f8
+//
+//   返回位置: primary_entry 中紧接 bl preserve_boot_args 之后的指令</div>
+
+<p><strong>对比：如果是常规 <code>bl</code> 调用</strong></p>
+<div class="diagram">// ============ 对比: 如果用 bl 而非 b ============
+//
+//   preserve_boot_args:
+//       bl   dcache_inval_poc     ← 会修改 LR = preserve_boot_args 中的返回地址
+//           │
+//           ▼
+//   __pi_dcache_inval_poc:
+//       ...
+//       ret                        ← 返回到 preserve_boot_args
+//           │
+//           ▼
+//       ret                        ← 再返回到 primary_entry
+//
+//   多了一次 ret，多压了一次栈（如果需要保存 LR）。尾调用省的就是这一步。</div>
+
+<table>
+<tr><th>调用方式</th><th>LR 何时写入</th><th>dcache_inval_poc 末尾 ret 的目的地</th><th>栈帧</th></tr>
+<tr><td><code>b</code>（尾调用，实际代码）</td><td>只有最初 <code>bl preserve_boot_args</code> 写了一次</td><td class="accent">primary_entry</td><td>不增加</td></tr>
+<tr><td><code>bl</code>（假设的常规调用）</td><td>bl 每次都写</td><td>preserve_boot_args</td><td>多一层</td></tr>
+</table>
+
+<h4>4.4.4 三区段处理策略总结</h4>
+<table>
+<tr><th>区段</th><th>条件</th><th>指令</th><th>原因</th></tr>
+<tr><td>首部 partial line</td><td>start 未对齐到 cache line</td><td class="amber"><code>DC CIVAC</code></td><td>保护 start 之前的相邻数据（先 Clean 再 Invalidate）</td></tr>
+<tr><td>中间完整 lines</td><td>整个 cache line 都属于目标区域</td><td class="accent"><code>DC IVAC</code></td><td>内存已是正确数据，直接丢弃旧 cache line（性能最优）</td></tr>
+<tr><td>尾部 partial line</td><td>end 未对齐到 cache line</td><td class="amber"><code>DC CIVAC</code></td><td>保护 end 之后的相邻数据（先 Clean 再 Invalidate）</td></tr>
+</table>
+
+<div class="diagram">// ============ 图示: boot_args 32字节 (cache line = 64) ============
+//
+//   cache line 0                cache line 1
+//   ├──────────────────────────┼──────────────────────────┤
+//   0x4173a000                                            0x4173a040
+//        [───boot_args 32B───]
+//        ↑                   ↑
+//      start                end
+//
+//   start 对齐? 0x4173a000 & 63 = 0 ✓ → 跳过首部 CIVAC
+//   end   对齐? 0x4173a020 & 63 = 32 ✗ → DC CIVAC, 0x4173a020
+//       (Clean+Invalidate 尾部 line, 保护 0x4173a020~0x4173a040 的相邻数据)
+//   主循环: DC IVAC, 0x4173a000 → addr=0x4173a040 ≥ end → 退出
+//
+//   注: 本例中 boot_args 恰好完全在一个 cache line 内，
+//       首部对齐跳过，尾部 partial 触发 CIVAC，循环只跑 0 次或 1 次</div>
+
+<h4>4.4.5 性能考量</h4>
+<ul>
+<li>对于仅 <strong>32 字节</strong>的 boot_args，以 64-byte cache line 为例：</li>
+<li>最优情况（地址对齐到 cache line）：仅 <strong>1 次</strong> DC IVAC</li>
+<li>最差情况（地址跨越两个 cache line 边界）：1 次 DC CIVAC (首部) + 0~1 次 DC IVAC + 1 次 DC CIVAC (尾部)</li>
+<li>DC CIVAC 比 DC IVAC 昂贵——CIVAC 可能触发写回（write-back），产生总线事务</li>
+<li>因此设计上尽可能让中间完整 cache line 走 IVAC，只有首尾 partial line 走 CIVAC</li>
+</ul>
+
+<h4>4.4.6 涉及的 ARM64 系统指令速查</h4>
+<table>
+<tr><th>指令</th><th>完整名称</th><th>操作</th><th>PoC/PoU</th></tr>
+<tr><td><code>DC IVAC</code></td><td>Invalidate by VA to PoC</td><td>丢弃 cache line，不写回</td><td class="accent">PoC</td></tr>
+<tr><td><code>DC CIVAC</code></td><td>Clean &amp; Invalidate by VA to PoC</td><td>写回脏数据 + 丢弃 cache line</td><td class="accent">PoC</td></tr>
+<tr><td><code>DSB SY</code></td><td>Data Synchronization Barrier, System</td><td>等待所有 cache/tlb 操作全局可见</td><td>—</td></tr>
+<tr><td><code>DMB SY</code></td><td>Data Memory Barrier, System</td><td>等待所有内存访问全局可见</td><td>—</td></tr>
+</table>
+
+<div class="note">💡 <strong>PoC（Point of Coherency）vs PoU（Point of Unification）：</strong>PoC 保证<strong>所有</strong>观察者（CPU 核、DMA 设备、GPU 等）看到一致数据；PoU 只保证当前 cluster 内的 CPU 核一致。D-cache 维护用 PoC 更安全，因为 boot_args 后续可能被 DMA 或非一致性 master 访问。</div>
 </section>
 
 <!-- ====== 5 ====== -->
@@ -439,10 +1142,72 @@ if (boot_args[1] || boot_args[2] || boot_args[3]) {
 }</code></pre>
 
 <ul>
-<li>ARM64 boot protocol 要求 x1~x3 必须为零</li>
-<li>如果非零，打印错误消息（但不 panic）</li>
+<li>ARM64 boot protocol 要求 x1~x3 必须为零（"reserved for future use"）</li>
+<li>如果非零，打印错误消息（但不 panic，内核继续运行）</li>
 <li>这是对 bootloader 兼容性的运行时检查</li>
 </ul>
+
+<h4 id="s6-reserved">6.3.1 深入理解："Reserved for future use" 的设计哲学</h4>
+
+<div class="diagram">// ============ Bootloader ↔ Kernel 接口契约 ============
+
+  ┌─────────────────────────────────────────────────────────┐
+  │                    Boot Protocol                        │
+  │  x0 = FDT 物理地址    (必须提供，内核依赖此参数启动)     │
+  │  x1 = 0              (reserved for future use)          │
+  │  x2 = 0              (reserved for future use)          │
+  │  x3 = 0              (reserved for future use)          │
+  └─────────────────────────────────────────────────────────┘
+
+  "Reserved for future use" 的三层含义：
+
+  1. 占位（Slot Reservation）
+     ┌──────────┐         ┌──────────┐
+     │Bootloader│ ─x0~x3→ │  Kernel  │  4 个寄存器 = 4 个参数槽位
+     └──────────┘         └──────────┘  当前只用了 1 个，剩 3 个留给未来
+
+  2. 零值 = "我不支持扩展" 标记
+     旧 bootloader（不理解新特性） → 写 0
+     新内核（支持新特性）        → 读到 0 → 知道 bootloader 没提供 → 回退到默认
+
+  3. 非零 = "我提供了额外信息" 标记
+     新 bootloader（理解新特性） → 写入有意义的非零值
+     旧内核（不理解新特性）     → 读到非零 → 打印警告但不 panic → 继续运行</div>
+
+<p><strong>为什么只警告而不 panic？</strong></p>
+<ul>
+<li>panic 会阻止内核启动，但 x1~x3 非零本身<strong>不影响内核正常运行</strong>（内核不使用这些值）</li>
+<li>打印警告已经足够让开发者注意到问题（dmesg 中会有显眼的 ERROR 信息）</li>
+<li>保持宽松的兼容性策略：一个"不够规范"的 bootloader 总比一个完全启动不了的内核好</li>
+</ul>
+
+<p><strong>实际应用场景：</strong> 假设未来 Linux 需要从 bootloader 接收 "安全监控固件基地址" 参数：</p>
+<div class="diagram">// ============ 协议扩展场景（假设）============
+
+  当前协议:                          未来协议:
+  x0 = FDT addr                     x0 = FDT addr
+  x1 = 0         ←── 旧约定          x1 = S-EL1 monitor base addr  ←── 新约定
+  x2 = 0                             x2 = 0 (still reserved)
+  x3 = 0                             x3 = 0 (still reserved)
+
+  旧 bootloader 启新内核:          新 bootloader 启旧内核:
+    x1 = 0                            x1 = 0x48000000  (monitor base)
+    ↓                                 ↓
+  新内核检测 x1=0                  旧内核检测 x1≠0
+    ↓                                 ↓
+  知道 bootloader 不支持           打印 WARNING: x1 nonzero
+  → 自动降级（不依赖 monitor）     → 忽略该值，继续启动 ✓</div>
+
+<p><strong>与 ARM32 的历史对比：</strong></p>
+<table>
+<tr><th></th><th>ARM32 (ATAGS 方式)</th><th>ARM64 (FDT 方式)</th></tr>
+<tr><td><code>r0/x0</code></td><td>必须为 0</td><td class="accent">FDT 物理地址（唯一使用的参数）</td></tr>
+<tr><td><code>r1/x1</code></td><td>machine type number（如 0xffffffff 表示使用 FDT）</td><td class="green">0 (reserved)</td></tr>
+<tr><td><code>r2/x2</code></td><td>ATAGS 或 FDT 物理地址</td><td class="green">0 (reserved)</td></tr>
+<tr><td><code>r3/x3</code></td><td>未定义</td><td class="green">0 (reserved)</td></tr>
+</table>
+
+<div class="note">💡 ARM32 上的寄存器语义在切换到 FDT 后经历了不兼容的变更——machine type 从具体值变成了 <code>~0</code> 的魔术数字，这很丑陋。ARM64 吸取了教训：<strong>从第一天起就把 x1~x3 全部预留</strong>，避免未来发生类似的协议断裂。</div>
 
 <h3>6.4 消费点 3 — x0 (FDT) 的使用</h3>
 <div class="diagram">// ============ FDT 地址的传递链 ============
