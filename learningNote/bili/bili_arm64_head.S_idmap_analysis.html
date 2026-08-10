@@ -158,6 +158,12 @@ tr:nth-child(even) td { background: #f8fafc; }
 			<a href="#s5_5" class="sub"><span class="num">5.5</span> 混合映射不会有问题吗？</a>
 			<a href="#s5_6" class="sub"><span class="num">5.6</span> 这个递归设计为什么"巧妙"</a>
 			<a href="#s5_7" class="sub"><span class="num">5.7</span> 参数表</a>
+			<a href="#s5_8" class="sub"><span class="num">5.8</span> pte_none(*tbl) 深入：页表分配与复用机制 ★</a>
+			<a href="#s5_8x1" class="sub2">① pte_none 的语义</a>
+			<a href="#s5_8x2" class="sub2">② TABLE descriptor 构造</a>
+			<a href="#s5_8x3" class="sub2">③ *pte 前进 — 物理页"分配器"</a>
+			<a href="#s5_8x4" class="sub2">④ 核心机制：两次 map_range 如何复用页表</a>
+			<a href="#s5_8x5" class="sub2">⑤ GDB 验证：三步观察法</a>
 			<a href="#s6"><span class="num">6.</span> 实例演练（4KB 页面 + 48bit VA 一步步走）</a>
 			<a href="#s6_1" class="sub"><span class="num">6.1</span> 参数计算</a>
 			<a href="#s6_1x1" class="sub2">为什么 IDMAP 只用 48-bit VA，而不是内核配置的 52-bit？</a>
@@ -595,20 +601,40 @@ $(obj)/%.pi.o: $(obj)/%.o $(obj)/relacheck FORCE
 </table>
 
 <h3 id="s4_3">4.3 两段映射策略 — 为什么分成两段？</h3>
-<div class="diagram">// ============ 内核镜像 ============
+<p>注意：<code>_stext</code> 是 <code>.text</code> 段起点，<strong>不是</strong>内核镜像起点。内核镜像从 <code>_text</code> 开始，<code>.head.text</code> 在 <code>[_text, _stext)</code> 之间，只包含 <code>primary_entry</code> 等最早期的入口代码——idmap 创建完毕后就再也用不到了，所以<strong>idmap 不覆盖 <code>.head.text</code></strong>。</p>
 
-  _stext ──────────────┐
-  .head.text           │
-  .text                ├─ 第一段: ROX (Read-Only + Execute)
-  .rodata              │   map_range(..., text_prot, ...)
-  .init.text           │
-  __initdata_begin ────┤
-  idmap 页表区域        │
-  .init.data           ├─ 第二段: RW (Read-Write, XN)
-  .data                │   map_range(..., data_prot, ...)
-  .bss                 │
-  _end ────────────────┘</div>
-<div class="note">💡 <strong>W^X 安全原则：</strong>代码不可写，数据不可执行。即使攻击者控制了数据段，也无法执行注入的代码。</div>
+<div class="diagram">// ============ idmap 映射的实际分段（对照 vmlinux.lds.S）============
+
+  _text ───────────────────┐
+    .head.text             │  ← <span style="color:#d97706;">不在 idmap 中</span>（primary_entry 已执行完）
+  _stext ──────────────────┤
+    .text                  │
+  _etext ──────────────────┤
+    .rodata                │
+    .rodata.text           │  第一段: ROX (PAGE_KERNEL_ROX)
+    (含 .idmap.text)       │  map_range(_stext, __initdata_begin, text_prot)
+    idmap_pg_dir 等        │
+    .init.text             │
+  __inittext_end ──────────┤
+  __initdata_begin ────────┼───────────────────────────  ← 唯一分界线
+    __pi_init_idmap_pg_dir │  ← idmap 自身的根页表
+    .init.data             │
+  _data ───────────────────┤  第二段: RW (PAGE_KERNEL, XN)
+    .data                  │  map_range(__initdata_begin, _end, data_prot)
+  _edata ──────────────────┤
+    .bss                   │
+    init_pg_dir            │
+    early_init_stack       │
+  _end ────────────────────┘</div>
+
+<p><strong>关键：<code>__pi_init_idmap_pg_dir</code> 在映射范围内——自引用。</strong>idmap 的根页表<code>__pi_init_idmap_pg_dir</code>链接在 <code>__initdata_begin</code> 处，正好是第二段 RW 映射的起点。也就是说：idmap 页表项描述了 idmap 页表自身所在物理页的映射。这是一个典型的自引用结构——与 x86 递归页表不同，ARM64 是通过链接脚本把页表目录嵌入内核镜像、然后被自己的 map_range 覆盖来实现的。</p>
+
+<div class="note">💡 <strong>W^X 安全原则：</strong>代码不可写，数据不可执行。即使攻击者控制了数据段，也无法执行注入的代码。<br><br>
+💡 <strong>四个页表目录都在映射范围内：</strong><br>
+• <code>idmap_pg_dir</code>、<code>swapper_pg_dir</code> 等 —— 在 ROX 段（<code>.rodata.text</code> 之后、<code>__init_begin</code> 之前）<br>
+• <code>__pi_init_idmap_pg_dir</code> —— 在 RW 段起点 <code>__initdata_begin</code><br>
+• <code>init_pg_dir</code> —— 在 RW 段尾部 <code>.bss</code> 末尾<br>
+它们都是内核镜像的一部分，都被 idmap 自身覆盖。</div>
 
 <h3 id="s4_4">4.4 核心机制：_stext 明明是链接高地址，运行时怎么变成物理地址？</h3>
 
@@ -1221,6 +1247,363 @@ protval |= (level == 2) ? PMD_TYPE_SECT : PTE_TYPE_PAGE;</code></pre>
     bool may_use_cont,    // 是否可用 contiguous bit (此处为 false)
     u64 va_offset         // 页表 PA→VA 偏移 (MMU off 时为 0)
 );</code></pre>
+
+<h3 id="s5_8">5.8 pte_none(*tbl) 深入：页表分配与复用机制 ★</h3>
+<p>在 <code>map_range</code> 的递归分支（54-66 行）中，有一个看似简单但含义深远的三行代码。它同时完成了<strong>页表页的分配</strong>和<strong>跨调用复用</strong>，是理解为什么两次 <code>map_range</code> 调用能共用页表结构的关键。</p>
+
+<h4 id="s5_8x1">① pte_none 的语义</h4>
+<pre><code>if (pte_none(*tbl)) {
+    // 当前 entry 为 0 → 从未被写入过 → 需要分配新页表
+}</code></pre>
+<p><code>pte_none(*tbl)</code> 判断当前页表项是否为 0（全零）。在 ARM64 中，全零的 descriptor 就是 invalid descriptor（bits[1:0] = 00），硬件碰到它直接触发 Translation Fault。</p>
+
+<div class="diagram">// ============ pte_none 的底层实现 ============
+
+static inline int pte_none(pte_t pte)
+{
+    return !pte_val(pte);   // pte.pte == 0 ?
+}
+
+// ARM64 descriptor 的 Type 字段 (bits[1:0]):
+//   00 = Invalid  ← pte_none 返回 true 的状态
+//   01 = Block    (叶子, level 1/2)
+//   11 = Table/Page (指针或叶子, 所有 level)
+
+// 一个刚开机、从未被写入的页表，所有 512 个 entry 都是 0x0
+// → pte_none 全部返回 true → 首次进入必然触发分配</div>
+
+<h4 id="s5_8x2">② TABLE descriptor 构造</h4>
+<pre><code>*tbl = __pte(__phys_to_pte_val(*pte) |
+             PMD_TYPE_TABLE | PMD_TABLE_UXN);</code></pre>
+
+<p>这条语句构造一个 <strong>Table descriptor</strong>（bits[1:0] = 11），写入当前 entry，指向下一级页表。我们拆成三部分看：</p>
+
+<table>
+<tr><th>项</th><th>值</th><th>含义</th></tr>
+<tr>
+<td><code>__phys_to_pte_val(*pte)</code></td>
+<td>例如 <code>0x00000000_41731000</code></td>
+<td>将 <code>*pte</code>（空闲物理页地址）转换为 PTE 格式。<br>48-bit PA 时这是 identity 变换；52-bit PA 时做高低位分裂（见 §7.4）。<br><strong>这个值占据 descriptor 的 OA 字段，告诉 MMU 下一级页表在哪个物理页。</strong></td>
+</tr>
+<tr>
+<td><code>PMD_TYPE_TABLE</code></td>
+<td class="accent"><code>3</code>（bits[1:0] = 0b11）</td>
+<td>标记此 entry 为 <strong>Table descriptor</strong> — 不是叶子，继续向下遍历。<br>虽然宏名含 "PMD"，但在 PGD/PUD/PMD 三级通用，因为 Table 编码在所有层级一致。</td>
+</tr>
+<tr>
+<td><code>PMD_TABLE_UXN</code></td>
+<td class="amber"><code>1 &lt;&lt; 60 = 0x10000000_00000000</code></td>
+<td>设置 bit 60（UXN）：EL0 用户态无法执行此表中任何代码。<br>安全加固——内核页表不该被用户态执行。</td>
+</tr>
+</table>
+
+<p><strong>实例：分配第一个 PUD</strong></p>
+<p>假设 PGD 在物理地址 <code>0x41730000</code>，初始 <code>*pte = 0x41731000</code>：</p>
+
+<div class="diagram">// ============ 构造 PGD[0] Table descriptor ============
+
+  *pte = 0x00000000_41731000          // 第一个空闲物理页（作为 PUD 的基址）
+
+  __phys_to_pte_val(0x41731000)       // = 0x00000000_41731000 (48-bit PA, 直接返回)
+  | PMD_TYPE_TABLE                    // = 0x00000000_00000003
+  | PMD_TABLE_UXN                     // = 0x10000000_00000000
+  ─────────────────────────────────────────────────────
+  *tbl (PGD[0])                       // = 0x10000000_41731003
+
+
+  解读 PGD[0] = 0x10000000_41731003:
+    bits[1:0]   = 11  → Table descriptor  ✓
+    bits[47:12] = 0x00000041731 → 下一级在物理地址 0x41731000
+    bits[60]    = 1   → UXN (EL0 不可执行)
+
+  <span style="color:#2563eb;">为什么是 PGD[0] 而不是 PGD[1]、PGD[42]？</span>
+
+  回顾第 42 行的索引计算（§5 开头）:
+    tbl += (start >> (lshift + PAGE_SHIFT)) % PTRS_PER_PTE
+        = (0x40210000 >> 39) % 512
+        = 0                       → PGD[0]
+
+  48-bit VA 的 PGD 取 bits[47:39]（9 bits），每个 entry 覆盖 512GB:
+
+    ┌──────────────────────────────┐  0x0000_0000_0000_0000
+    │         PGD[0]               │  覆盖 [0, 512GB)
+    │    ★ _stext = 0x40210000     │  ≈ 1GB，落在 PGD[0] 内
+    ├──────────────────────────────┤  0x0000_8000_0000_0000  (512GB)
+    │         PGD[1]               │  覆盖 [512GB, 1TB)
+    ├──────────────────────────────┤  0x0001_0000_0000_0000
+    │         PGD[2..511]          │  更高地址
+    └──────────────────────────────┘  0x0000_FFFF_FFFF_FFFF  (256TB)
+
+  内核加载在物理地址 ~1GB 处 → VA 高 25 bits 全是 0 → PGD index 必然是 0。
+  如果内核加载在 600GB 处（比如某些大型服务器），那就是 PGD[1]。
+
+  同理可算 PUD index 和 PMD index:
+    PUD index = (0x40210000 >> 30) & 0x1FF = 1  → PUD[1]  (每个 PUD entry 覆盖 1GB)
+    PMD index = (0x40210000 >> 21) & 0x1FF = 1  → PMD[1]  (每个 PMD entry 覆盖 2MB)
+
+  MMU 遍历到此 entry 时:
+    → 识别为 Table → 从 bits[47:12] 提取 0x41731000 作为 PUD 基址
+    → 继续用 VA[38:30] 索引 PUD[1] → 下一级遍历</div>
+
+<h4 id="s5_8x3">③ *pte 前进 — 物理页"分配器"</h4>
+<pre><code>*pte += PTRS_PER_PTE * sizeof(pte_t);
+//    = 512 * 8
+//    = 4096
+//    = PAGE_SIZE</code></pre>
+
+<p>这条语句是整个 idmap 构建中唯一的"内存分配"操作。没有 malloc、没有伙伴系统、没有 slab——只有一个递增的物理指针：</p>
+
+<div class="diagram">// ============ *pte 的线性增长 ============
+
+  __pi_init_idmap_pg_dir  (例如 0x41730000)
+  ├────────────────────────┤
+  │  PGD (4KB)             │ ← pg_dir, 不消耗 *pte
+  ├────────────────────────┤ ← *pte 初始值 = 0x41731000
+  │  PUD (4KB)             │ ← 第 1 次 pte_none=true → 分配, *pte += 4096
+  │                        │    *pte 变为 0x41732000
+  ├────────────────────────┤
+  │  PMD (4KB)             │ ← 第 2 次 pte_none=true → 分配, *pte += 4096
+  │                        │    *pte 变为 0x41733000
+  ├────────────────────────┤
+  │  PTE (4KB) — 段边界碎片  │ ← 第 3 次 pte_none=true → 分配 (仅在需要时)
+  │                        │    *pte 变为 0x41734000
+  ├────────────────────────┤
+  │  PTE (4KB) — 尾部碎片   │ ← 第 4 次 pte_none=true → 分配 (仅在需要时)
+  │                        │    *pte 变为 0x41735000
+  ├────────────────────────┤
+  │  (unused)              │
+  ├────────────────────────┤
+  │  early_init_stack       │
+  └────────────────────────┘
+
+  *pte 的最终值 = create_init_idmap 的返回值
+  → 用于 dcache_inval_poc 确定 invalidate 范围</div>
+
+<div class="note">💡 <strong>"PTRS_PER_PTE × sizeof(pte_t) = 4096 = PAGE_SIZE"</strong> 不是巧合。ARM64 4KB 页表设计中，每级恰好 512 项 × 8 字节 = 4KB，一张表完美填满一个物理页。<code>*pte + 4096</code> 正好跳到下一个空闲物理页。</div>
+
+<h4 id="s5_8x4">④ 核心机制：两次 map_range 如何复用页表</h4>
+<p>回顾 <code>create_init_idmap</code> 调用 <code>map_range</code> 两次，传的是<strong>同一个 <code>pg_dir</code> 和 <code>&ptep</code></strong>：</p>
+
+<pre><code>// 第一次: 映射代码段 ROX
+map_range(&ptep, _stext, __initdata_begin, _stext, PAGE_KERNEL_ROX,
+          IDMAP_ROOT_LEVEL, (pte_t *)pg_dir, false, 0);
+
+// 第二次: 映射数据段 RW  ← 相同的 pg_dir! 相同的 &ptep!
+map_range(&ptep, __initdata_begin, _end, __initdata_begin, PAGE_KERNEL,
+          IDMAP_ROOT_LEVEL, (pte_t *)pg_dir, false, 0);</code></pre>
+
+<p><strong>第一次调用（ROX text）时：</strong>所有页表都是空的，<code>pte_none(*tbl)</code> 全部为 true → 触发分配：</p>
+
+<div class="diagram">// ============ 第一次 map_range（ROX text）============
+
+  进入 level=0, tbl=PGD
+    PGD[0] = 0x0  → pte_none=true  → 分配 PUD @ 0x41731000
+    → 递归 level=1, tbl=PUD
+
+  进入 level=1, tbl=PUD
+    PUD[1] = 0x0  → pte_none=true  → 分配 PMD @ 0x41732000
+    → 递归 level=2, tbl=PMD
+
+  进入 level=2, tbl=PMD
+    PMD[1]~PMD[9] = 0x0 → pte_none=false? 不检查！
+    因为 level=2 且对齐 → 走 else 分支，直接写 Block descriptor
+    不需要 pte_none 检查！
+
+  (如果段边界碎片 → 递归到 level=3，又可能在 PTE 层触发分配)</div>
+
+<p><strong>第二次调用（RW data）时：</strong>PGD 和 PUD 已经被第一次调用填充好了！</p>
+
+<div class="diagram">// ============ 第二次 map_range（RW data）============
+
+  进入 level=0, tbl=PGD
+    PGD[0] = 0x10000000_41731003  → pte_none=false → <span style="color:#059669;">跳过分配！</span>
+    → 直接递归 level=1, tbl=PUD (复用已有 PUD)
+
+  进入 level=1, tbl=PUD
+    PUD[1] = 0x10000000_41732003  → pte_none=false → <span style="color:#059669;">跳过分配！</span>
+    → 直接递归 level=2, tbl=PMD (复用已有 PMD)
+
+  进入 level=2, tbl=PMD
+    PMD[???] = 要写入的 entry。注意这里 data 和 text 在同一 PMD 表中
+    但 VA 索引不同：text 用 PMD[1]~PMD[9], data 用 PMD[???]~PMD[???]
+    → 同样走 else 分支，直接写 Block descriptor
+
+    <span style="color:#d97706;">★ 关键：第二次调用没有分配新的 PUD 和 PMD！</span>
+    两次调用共用同一套 PGD→PUD→PMD 骨架，只在 PMD entry 中写入不同的属性。</div>
+
+<p><strong>一图胜千言：复用 vs 不复用</strong></p>
+
+<div class="diagram">// ============ 如果每次调用都从空白页表开始 ============
+
+  第一次 (text):  PGD → PUD(text) → PMD(text) → Block entries
+                  分配   分配          分配
+
+  第二次 (data):  PGD → PUD(data) → PMD(data) → Block entries
+                  分配   分配          分配
+
+  <span style="color:#d97706;">总共分配: 2×PGD + 2×PUD + 2×PMD = 6 个新页（浪费 3 个）</span>
+
+
+// ============ 实际行为：复用 ============
+
+  第一次 (text):  PGD → PUD → PMD → PMD[1..9]  ROX Block
+                  分配   分配   分配
+                                │
+  第二次 (data):               └→ PMD[10..15] RW Block
+                                 PMD[?] → PTE (段边界碎片)
+                                         分配
+
+  <span style="color:#059669;">总共分配: PGD(已有) + PUD(1页) + PMD(1页) + PTE(2页, 碎片) = 4 个新页</span>
+  省掉了第二次调用的 PGD/PUD/PMD 分配</div>
+
+<p><strong>为什么 PGD 和 PUD 能复用？</strong>因为 text 段和 data 段都在同一个 512GB PGD entry 和同一个 1GB PUD entry 的覆盖范围内（<code>0x40200000</code> 和 <code>0x41530000</code> 落在 PGD[0]→PUD[1] 的路径上），VA 的高位索引完全相同。第二次调用走到 PGD[0] 时发现已经有了 → 跳过分配；走到 PUD[1] 时发现已经有了 → 跳过分配。直到 PMD 层，不同的 VA 落到不同的 PMD entry 中，各自写入各自的 Block descriptor。</p>
+
+<h4 id="s5_8x5">⑤ GDB 验证：三步观察法</h4>
+<p>我们用 GDB 实际观察 <code>pte_none(*tbl)</code> 的行为——验证第一次调用触发分配、第二次调用跳过分配。</p>
+
+<p><strong>验证思路：</strong>不能直接在 <code>pte_none(*tbl)</code> 那行设断点（每次循环/递归都会触发，太频繁）。更好的策略是：在关键位置设断点 → 观察 <code>*pte</code> 值和页表项内容 → 推断 <code>pte_none</code> 的行为。</p>
+
+<h5>步骤 1：定位符号地址</h5>
+<pre><code>(gdb) p/x (u64)&amp;__pi_init_idmap_pg_dir
+$1 = 0x41730000          # PGD 物理地址
+
+(gdb) p/x (u64)&amp;_stext
+$2 = 0x40200000          # text 段起点 (物理地址)
+
+(gdb) p/x (u64)&amp;__initdata_begin
+$3 = 0x41530000          # text/data 分界线 (物理地址)</code></pre>
+
+<h5>步骤 2：观察两次 map_range 调用前后 *pte 的变化</h5>
+<pre><code># 在 create_init_idmap 设断点
+(gdb) b create_init_idmap
+Breakpoint 1 at 0x4163c120: file arch/arm64/kernel/pi/map_range.c, line 93.
+(gdb) c
+
+# 断点命中后，先看 *pte 初始值
+(gdb) p/x ptep
+$4 = 0x41731000          # *pte 初始值 = PGD + 4KB
+
+# 在第二次 map_range 调用前设断点（第 104 行）
+(gdb) info line arch/arm64/kernel/pi/map_range.c:104
+Line 104 of "arch/arm64/kernel/pi/map_range.c" starts at address 0x4163c170
+(gdb) b *0x4163c170
+Breakpoint 3 at 0x4163c170
+
+(gdb) c
+# 命中 breakpoint 3 — 此时第一次 map_range 已完成，第二次即将开始
+# 查看 *pte 的变化
+(gdb) p/x ptep
+$5 = 0x41733000          # 第一次调用后: 分配了 PUD + PMD = 2 个页
+
+# 计算第一次分配了几个页表页:
+(gdb) p/x (0x41733000 - 0x41731000) / 4096
+$6 = 0x2                 # 分配了 2 页 (PUD + PMD)
+
+# 执行完第二次调用后
+(gdb) fin
+(gdb) p/x ptep
+$7 = 0x41735000          # 第二次调用后: 再多 2 页 = PTE 碎片表
+
+# 第二次调用新增的分配:
+(gdb) p/x (0x41735000 - 0x41733000) / 4096
+$8 = 0x2                 # 第二次分配了 2 页 (两个 PTE 碎片表)
+# ★ 第二次没有新分配 PUD/PMD — 证明复用!</code></pre>
+
+<h5>步骤 3：读取 PGD/PUD 表项，验证复用</h5>
+
+<pre><code># ===== 第二次 map_range 调用之后，读 PGD =====
+
+(gdb) x/4xg 0x41730000       # dump PGD 前 4 项
+0x41730000: 0x1000000041731003  0x0000000000000000
+0x41730010: 0x0000000000000000  0x0000000000000000
+
+# PGD[0] = 0x1000000041731003
+# bit[1:0] = 0b11 → Table descriptor
+# bits[47:12] = 0x41731 → 下一级 PUD @ 0x41731000
+# 只有一个 PGD entry 被填充 — text 和 data 都走 PGD[0]
+
+# 提取 PUD 地址:
+(gdb) set $pud_pa = 0x1000000041731003 &amp; 0x0000fffffffff000
+(gdb) p/x $pud_pa
+$9 = 0x41731000
+
+# ===== dump PUD =====
+(gdb) x/4xg $pud_pa
+0x41731000: 0x0000000000000000  0x1000000041732003
+0x41731010: 0x0000000000000000  0x0000000000000000
+
+# PUD[0] = 0x0 (未使用 — 无 VA 落在第一个 1GB 内)
+# PUD[1] = 0x1000000041732003 ← text 和 data 都走 PUD[1]
+# bit[1:0] = 0b11 → Table descriptor
+# bits[47:12] = 0x41732 → 下一级 PMD @ 0x41732000
+
+# ===== 关键验证：PUD 只有一个 entry 被填充 =====
+# 如果第二次调用新分配了 PUD，PUD[1] 会指向不同的物理页
+# 但这里 PUD[1] 仍然指向 0x41732000 — 证明复用！
+
+# ===== dump PMD，看 text 和 data 的 Block entry =====
+(gdb) set $pmd_pa = 0x1000000041732003 &amp; 0x0000fffffffff000
+(gdb) p/x $pmd_pa
+$10 = 0x41732000
+
+(gdb) x/20xg $pmd_pa
+# 预期看到:
+# PMD[1] = 0x0040200017  ← ROX Block (bit[1:0]=01, PXN=0)
+# PMD[2] = 0x0040400017  ← ROX Block
+# ...
+# PMD[9] = 0x0041200017  ← ROX Block
+# PMD[10]= 0x0041400003  ← Table → PTE (段边界碎片, bit[1:0]=11)
+# PMD[11]= 0x0041600015  ← RW Block (bit[1:0]=01, PXN=1) ← 注意 PXN 位!
+# ...
+# PMD[16]= 0x0042200003  ← Table → PTE (尾部碎片)</code></pre>
+
+<h5>最直接的方法：用 GDB 条件断点捕捉 pte_none 的真假</h5>
+
+<p>如果想直接观察 <code>pte_none(*tbl)</code> 的返回值，可以在 PGD/PUD 层设条件断点：</p>
+
+<pre><code># 在 pte_none 判断那行设断点（map_range.c:59）
+# 只在 level 0/1 时断下（PGD/PUD 层，正是观察复用的关键层级）
+(gdb) b map_range.c:59 if level &lt;= 1
+
+(gdb) c
+# 第一次命中: level=0, 第一次 map_range (text ROX)
+(gdb) p/x *tbl
+$1 = 0x0                 # PGD[0] 为空 → pte_none 返回 true → 分配!
+(gdb) c
+# 第二次命中: level=1, 第一次 map_range (text ROX)
+(gdb) p/x *tbl
+$2 = 0x0                 # PUD[1] 为空 → pte_none 返回 true → 分配!
+(gdb) c
+# 第三次命中: level=0, 第二次 map_range (data RW)
+(gdb) p/x *tbl
+$3 = 0x1000000041731003  # PGD[0] 非零 → pte_none 返回 false → <span style="color:#059669;">跳过!</span>
+(gdb) c
+# 第四次命中: level=1, 第二次 map_range (data RW)
+(gdb) p/x *tbl
+$4 = 0x1000000041732003  # PUD[1] 非零 → pte_none 返回 false → <span style="color:#059669;">跳过!</span></code></pre>
+
+<div class="diagram">// ============ 条件断点输出解读 ============
+//
+//   第一次 map_range (text ROX):
+//     level=0: *tbl = 0x0  → 分配 PUD
+//     level=1: *tbl = 0x0  → 分配 PMD
+//
+//   第二次 map_range (data RW):
+//     level=0: *tbl = 0x1000000041731003  → <span style="color:#059669;">复用 PUD!</span>
+//     level=1: *tbl = 0x1000000041732003  → <span style="color:#059669;">复用 PMD!</span>
+//
+//   这 4 行输出完美验证了:
+//   ① pte_none 第一次返回 true → 分配发生
+//   ② pte_none 第二次返回 false → 分配跳过
+//   ③ 第二次调用读到的正是第一次调用写入的 TABLE descriptor
+//   ④ 页表复用机制的核心就在这 3 行代码</div>
+
+<div class="note">💡 <strong>总结：</strong><code>if (pte_none(*tbl))</code> 是整个页表构建中最"低调"但最关键的三行代码。它同时实现了三个功能：<br>
+<strong>1. 按需分配</strong> — 只在实际用到时才分配页表页，不预分配<br>
+<strong>2. 跨调用复用</strong> — 第二次 <code>map_range</code> 发现 entry 非空就跳过，天然支持共享页表骨架<br>
+<strong>3. 线性增长</strong> — 没有复杂的内存管理器，只有一个递增的物理地址指针<br>
+这三行代码用最简单的 "如果是空的就填，不空就跳过" 逻辑，避免了引入引用计数、位图、链表等复杂机制。配合递归结构，页表的分配和复用完全是<strong>自动的、隐式的</strong>——不需要在 <code>create_init_idmap</code> 层面做任何协调。</div>
+
 </section>
 
 <!-- ====== 6 ====== -->
@@ -1432,26 +1815,26 @@ AP[2] (bit7) = 1 时页面只读，位域中表示为 <code>PTE_RDONLY</code></t
 
 <p>上一节的图里 OA 标注到 bit 47。但你的内核配置了 52-bit PA，需要更多的地址位。ARM 架构的解决方式是把高位 PA 塞进描述符的空闲 bit 里—OA 从一连串变成了两截：</p>
 
-<div class="diagram">// ============ 48-bit PA (标准, OA 连续) ============
+<div class="diagram">// ============ 48-bit PA: OA 连续存放 ============
+//
+//  63                                            12 11               0
+//  +------------------------------------------------+----------------+
+//  |  OA[47:12]               (36 bits)              |    属性        |
+//  +------------------------------------------------+----------------+
+//   63                                            12 11             0
 
-  Page descriptor:
-  +------------------------------------------------+------------------+
-  |  OA[47:12]          (连续 36 bits)               | 属性            |
-  +------------------------------------------------+------------------+
-   63                                              12 11              0
-
-// ============ 52-bit PA (扩展, OA 分裂) ============
-
-  Page descriptor:
-  +----------------------------------------+-------+----+----+---------+
-  |  OA[49:12]     (连续 38 bits)           |  ...  | OA | ...| 属性    |
-  |                                         |       | 51 |    |         |
-  |                                         |       | 50 |    |         |
-  +----------------------------------------+-------+----+----+---------+
-   63                                      12 11  10 9 8  7           0
-                                                    ^^^^^
-                                                    bits[9:8]
-                                              被"挤"到这里的高位 PA</div>
+// ============ 52-bit PA: OA 分裂为两截 ============
+//
+//  63                50 49         12 11  10 9 8  7                  0
+//  +-------------------+-------------+-----+-----+-------------------+
+//  |  属性 (PBHA等)    | OA[49:12]   |     | OA  |     属性          |
+//  |                   |  (38 bits)  |     | 51  |                   |
+//  |                   |  低段连续    |     | 50  |                   |
+//  +-------------------+-------------+-----+-----+-------------------+
+//   63               50 49         12 11 10 9  8 7                  0
+//                                              ^^^^^
+//                                         OA[51:50] 塞在 bits[9:8]
+//                                         高位被"挤"到了这里</div>
 
 <h4>为什么会分裂？</h4>
 
@@ -1463,26 +1846,30 @@ bits[11:0]  — 低属性位 (AttrIndx, AP, SH, AF, nG, NS, Type)</code></pre>
 
 <p>多出的 4 个 PA 位 (bits[51:48]) 没地方放。ARM 的策略不是全部分裂——而是<strong>两截处理</strong>：</p>
 
-<div class="diagram">// ============ 4 个新增 PA 位的分配 ============
-
-  48-bit PA → 52-bit PA, 新增 4 bits: PA[51:48]
-
-  PA[49:48] → <span style="color:#059669;">原位扩容</span> — 扩展标准 OA 字段, PTE[49:48]
-               36 bits → 38 bits, 不需要分裂
-
-  PA[51:50] → <span style="color:#d97706;">分裂出去</span> — PTE[49:48] 上面是属性位没法再扩
-               只能塞进 bits[9:8] (PTE_ADDR_HIGH)
-
-  ┌────────────────────────────────────────────────────────────────┐
-  │ PA bit     →  PTE bit                                         │
-  ├────────────────────────────────────────────────────────────────┤
-  │ PA[51:50]  →  PTE[9:8]      (分裂, 2 bits, PTE_ADDR_HIGH)    │
-  │ PA[49:12]  →  PTE[49:12]    (原位扩容, 38 bits, PTE_ADDR_LOW) │
-  │                                  ↑ 标准 PA 只到 bit 47 (36b)   │
-  │                                    扩展到 bit 49 多了 2 bits   │
-  │ PA[11:0]   →  不用存         (VA offset)                      │
-  └────────────────────────────────────────────────────────────────┘
-  总计: 2 + 38 + 12 = <span style="color:#2563eb;">52 bits</span></div>
+<div class="diagram">// ============ 4 个新增 PA 位如何塞进 PTE ============
+//
+//   48-bit PA → 52-bit PA, 新增 4 bits: PA[51:48]
+//
+//   PA bit        →  PTE bit           处理方式
+//   ─────────────────────────────────────────────────────
+//   PA[49:48]     →  PTE[49:48]        原位扩容 — 扩展 OA 低段字段
+//                                       36 bits → 38 bits, 不分裂
+//
+//   PA[51:50]     →  PTE[9:8]          分裂出去 — bits[49:12] 上面
+//                                       是属性位(PXN/XN/Contiguous/DBM)
+//                                       没法再扩，只能塞进低属性区
+//                                       的空闲 bits[9:8] (PTE_ADDR_HIGH)
+//
+//   PA[11:0]      →  不用存            VA offset, 页内偏移不参与翻译
+//
+//   ┌──────────┬────────────────────────────────────────────────────┐
+//   │ PA bit   │  PTE bit                                           │
+//   ├──────────┼────────────────────────────────────────────────────┤
+//   │ 51:50    │  PTE[9:8]     (分裂, 2 bits, PTE_ADDR_HIGH)       │
+//   │ 49:12    │  PTE[49:12]   (原位, 38 bits, PTE_ADDR_LOW)       │
+//   │ 11:0     │  不存          (VA[11:0] 直接用作 offset)          │
+//   └──────────┴────────────────────────────────────────────────────┘
+//   总计: 2 + 38 + 12 = 52 bits</div>
 
 <h4>硬件如何读回分裂的 OA？</h4>
 
@@ -1506,33 +1893,32 @@ PA[11:0]  = VA[11:0]              // offset (Page descriptor)
 
 <p>以 <code>phys = 0x000C0000_00000000</code>（PA[51:50]=11, PA[49:12]=0）为例，逐步推演：</p>
 
-<div class="diagram">// ============ 逐步推演 ============
-
-  phys       = 0x000C 0000 0000 0000
-                    ^^
-                 PA[51:50] = 11  (原位，在 bits[51:50])
-
-  phys >> 42 = 0x0000 0000 0000 0300
-                               ^^
-                 PA[51:50] 挪到 bits[9:8] ✓
-                 <span style="color:#d97706;">PA[49:42] 的垃圾也下来了, 在 bits[7:0]</span>
-                 <span style="color:#d97706;">(但马上会被 MASK 切掉!)</span>
-
-  phys | (phys>>42) = 0x000C 0000 0000 0300
-                      ^^^^              ^^^^
-                  PA[51:50] 原位    折叠后
-                  (∉ MASK，被切!)   (∈ MASK bits[9:8]，保留!)
-
-  & MASK = & 0x3FFF FFFF F300
-           ───────────── ───
-           PTE_ADDR_LOW   PTE_ADDR_HIGH
-           bits[49:12]    bits[9:8]
-           (38 bits)      (2 bits)
-
-  结果 = 0x0000 0000 0000 0300
-         ^^^^^^^^^^^^^^ ^^ ^^^
-         原位 PA[51:50]  0  只有 bits[9:8]=11 幸存
-         被 MASK 切除!     → OA[51:50] = 11 ✓</div>
+<div class="diagram">// ============ 逐步推演: phys = 0x000C_0000_0000_0000 ============
+//
+//   phys           = 0x000C_0000_0000_0000
+//                    ~~~~^^
+//                    PA[51:50] = 11 (在 bits[51:50] 原位)
+//
+//   phys >> 42     = 0x0000_0000_0000_0300
+//                    ~~~~              ~~^^
+//                    zeros         bits[9:8] = 11 ✓ 挪到位了
+//                                  bits[7:0]  = 垃圾 (PA[49:42] 的残骸)
+//
+//   phys | (>>42)  = 0x000C_0000_0000_0300
+//                    ~~~~^^~~~~        ~~^^
+//                    原位 PA[51:50]=11  折叠后 bits[9:8]=11
+//                    (∉ MASK, 待切)     (∈ MASK, 保留)
+//
+//   & MASK          & 0x3FFF_FFFF_F300
+//                    ~~~~~~~~~~~ ~~~~
+//                    ADDR_LOW    ADDR_HIGH
+//                    bits[49:12] bits[9:8]
+//                    (38 bits)   (2 bits)
+//
+//   最终结果 = 0x0000_0000_0000_0300
+//             ^^^^^^^^^^^^^^^^ ~~~~
+//             原位 PA[51:50]   只有 bits[9:8]=11 幸存
+//             被 MASK 切除 → OA[51:50] = 11 ✓</div>
 
 <p><strong>三步各自的角色：</strong></p>
 <table>
@@ -1573,28 +1959,43 @@ phys >> 42 = 0x300  // 落到 bits[9:8]
 <section id="s8">
 <h2 id="s8">8. 内存布局 &amp; 页表分配策略</h2>
 <h3 id="s8_1">8.1 链接脚本布局 (vmlinux.lds.S)</h3>
-<pre><code>_stext = .;                // ★ 代码段起点
-  .head.text : { HEAD_TEXT }
-  .text      : { TEXT_TEXT ... }
-  .rodata    : { RODATA }
+<pre><code>. = KIMAGE_VADDR;           // 内核虚拟地址起点
 
-__initdata_begin = .;      // ★ 数据段起点
+_text = .;                  // ★ 内核镜像起点（Image header）
+  .head.text : { HEAD_TEXT }     // primary_entry 等入口代码
 
-__pi_init_idmap_pg_dir = .; // ★ idmap PGD (物理地址)
-  . += INIT_IDMAP_DIR_SIZE; // idmap 页表预留空间
+.text : ALIGN(SEGMENT_ALIGN) {
+  _stext = .;               // ★ .text 段起点（idmap ROX 段起点）
+    TEXT_TEXT ...            // 主体代码
+}
+_etext = .;                 // .text 段尾
+
+.rodata : { RODATA }        // 只读数据
+.rodata.text : {             // 特殊代码: .idmap.text / trampoline 等
+  IDMAP_TEXT                 // __enable_mmu 在此
+}
+idmap_pg_dir = .; . += PAGE_SIZE;    // ★ 4 个页表目录
+swapper_pg_dir = .; . += PAGE_SIZE;
+
+__init_begin = .;           // init 区域开始
+  .init.text : { INIT_TEXT }      // 初始化代码
+  .exit.text : { EXIT_TEXT }
+
+__initdata_begin = .;       // ★ idmap RW 段起点（分界线）
+
+__pi_init_idmap_pg_dir = .; // ★ idmap PGD（自引用：被自己的映射覆盖）
+  . += INIT_IDMAP_DIR_SIZE;
 
   .init.data : { INIT_DATA ... }
-  .data   : { ... }
-  .bss    : { ... }
-
+  .data   : { RW_DATA ... }
+  .bss    : { BSS_SECTION }
   . = ALIGN(PAGE_SIZE);
-__pi_init_pg_dir = .;      // 正式内核页表
+__pi_init_pg_dir = .;       // 正式内核页表
   . += INIT_DIR_SIZE;
-  . += SZ_4K;              // ← early_init_stack (仅 4KB!)
+  . += SZ_4K;               // ← early_init_stack (仅 4KB!)
 early_init_stack = .;
 
-  . = ALIGN(SEGMENT_ALIGN);
-_end = .;                  // ★ 内核镜像末尾</code></pre>
+_end = .;                   // ★ 内核镜像末尾（idmap 覆盖终点）</code></pre>
 
 <h3 id="s8_2">8.2 页表分配策略 — 线性增长</h3>
 <div class="diagram">// ============ idmap 页表区域的线性分配 ============

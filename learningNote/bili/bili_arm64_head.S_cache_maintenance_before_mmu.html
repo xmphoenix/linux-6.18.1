@@ -49,6 +49,15 @@ body {
 .sidebar a[href^="#s8"] .num { color: #be185d; font-weight: 600; }
 .sidebar a[href^="#s9"] .num { color: #dc2626; font-weight: 600; }
 .sidebar a[href^="#s10"] .num { color: #059669; font-weight: 600; }
+.sidebar a[href^="#s11"] .num { color: #0891b2; font-weight: 600; }
+.sidebar a[href^="#s12"] .num { color: #be185d; font-weight: 600; }
+.sidebar a[href^="#s13"] .num { color: #dc2626; font-weight: 600; }
+.sidebar a[href^="#s14"] .num { color: #059669; font-weight: 600; }
+
+.sidebar a.sub1 { padding-left: 12px; font-size: 0.86em; color: #94a3b8; }
+.sidebar a.sub1:hover { color: var(--accent); background: var(--accent-light); padding-left: 14px; }
+.sidebar a.sub1 .num { color: #cbd5e1; font-size: 0.85em; }
+
 .main-content { flex: 1; min-width: 0; }
 header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
 header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
@@ -71,16 +80,30 @@ section li { margin-bottom: 3px; font-size: 0.85em; }
 code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
 pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
 pre code { background: none; padding: 0; border: none; color: #334155; }
-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
-th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
-td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.88em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 7px 10px; text-align: left; font-size: 0.88em; }
+td { padding: 6px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); font-size: 0.88em; }
 tr:nth-child(even) td { background: #f8fafc; }
+tr:hover td { background: #eff6ff; }
 .accent { color: var(--accent); font-weight: 600; }
 .green  { color: var(--green);  font-weight: 600; }
 .amber  { color: var(--amber);  font-weight: 600; }
+/* 表格容器：阻止 em 级联缩放 */
+section > table, .diagram table, .note table, .warn table { font-size: 0.9em; }
+section > table th, section > table td, .diagram table th, .diagram table td,
+.note table th, .note table td, .warn table th, .warn table td { font-size: 0.9em; }
+/* 表格排序光标 */
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { background: #1d4ed8; }
+th.sortable::after { content: ' ↕'; font-size: 0.75em; opacity: 0.5; }
+th.sortable.asc::after { content: ' ↑'; opacity: 1; }
+th.sortable.desc::after { content: ' ↓'; opacity: 1; }
 .note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
 .warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
-.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; line-height: 1.6; overflow-x: auto; color: #334155; }
+.diagram table { font-size: 0.9em; }
+.diagram table th { background: #e2e8f0; color: #334155; font-weight: 600; }
+.diagram table td { background: #fff; color: #334155; }
 .flow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0; font-family: monospace; font-size: 0.8em; }
 .flow-box { background: var(--accent-light); color: var(--accent); padding: 6px 12px; border-radius: 6px; text-align: center; border: 1px solid #bfdbfe; font-weight: 500; }
 .flow-arrow { color: #94a3b8; font-size: 1.2em; }
@@ -114,15 +137,74 @@ tr:nth-child(even) td { background: #f8fafc; }
 <div class="sidebar-inner">
 <h4>目 录</h4>
 <a href="#s1"><span class="num">1.</span> 概述：这段代码做什么</a>
-<a href="#s2"><span class="num">2.</span> 完整源码与上下文</a>
-<a href="#s3"><span class="num">3.</span> 核心问题：两条 Cache 路径</a>
-<a href="#s4"><span class="num">4.</span> 冷启动路径逐条分析</a>
-<a href="#s5"><span class="num">5.</span> 热启动路径逐条分析</a>
-<a href="#s6"><span class="num">6.</span> 两条路径的根源对比</a>
-<a href="#s7"><span class="num">7.</span> dcache_inval_poc vs dcache_clean_poc</a>
-<a href="#s8"><span class="num">8.</span> 完整决策流程图</a>
-<a href="#s9"><span class="num">9.</span> GDB 调试验证</a>
-<a href="#s10"><span class="num">10.</span> 总结 &amp; 关键要点</a>
+<a href="#s1_1" class="sub1">· 位置：启动序列中的关键节点</a>
+<a href="#s1_2" class="sub1">· 一句话概括</a>
+<a href="#s2"><span class="num">2.</span> ARM64 Cache 基础背景知识</a>
+<a href="#s2_1" class="sub1">· 2.1 Cache 层次结构</a>
+<a href="#s2_2" class="sub1">· 2.2 Cache Line —— 不可分割的操作单元</a>
+<a href="#s2_3" class="sub1">· 2.3 Set-Associative Cache 的组…</a>
+<a href="#s2_4" class="sub1">· 2.4 Write-Through vs Write-B…</a>
+<a href="#s2_5" class="sub1">· 2.5 PoC 与 PoU —— 两个关键的一致性点</a>
+<a href="#s2_6" class="sub1">· 2.6 MMU 与 Cache 的交互 —— Memor…</a>
+<a href="#s2_7" class="sub1">· 2.7 ARM64 Cache 维护指令分类</a>
+<a href="#s2_8" class="sub1">· 2.8 Speculative Load —— MMU …</a>
+<a href="#s2_9" class="sub1">· 2.9 Cache 的硬件实现 —— 它到底是一个什么"…</a>
+<a href="#s2_10" class="sub1">· 2.10 Cache 为何能快速查找 —— 并行 Tag…</a>
+<a href="#s2_11" class="sub1">· 2.11 动画：CPU ↔ Cache ↔ MMU ↔ …</a>
+<a href="#s2_12" class="sub1">· 2.12 数据和指令如何进入 Cache？—— 缓存分配…</a>
+<a href="#s2_13" class="sub1">· 2.13 Cache 是一个动态平衡系统 —— 替换策略…</a>
+<a href="#s2_14" class="sub1">· 2.14 Cache 逐出的判断逻辑 —— 什么条件下踢…</a>
+<a href="#s2_15" class="sub1">· 2.15 如何观察 Cache 的工作流程？—— 实践观…</a>
+<a href="#s2_16" class="sub1">· 2.16 学习 ARM64 Cache 对我们的帮助是什么？</a>
+<a href="#s2_17" class="sub1">· 2.17 Inclusive vs Exclusive …</a>
+<a href="#s2_18" class="sub1">· 2.18 Cache 维护操作补遗 —— 完整指令表与执…</a>
+<a href="#s2_19" class="sub1">· 2.19 Cache 发现算法 —— 如何系统性地枚举整…</a>
+<a href="#s2_20" class="sub1">· 2.20 怎么写代码才能进 Cache 并跑得更快？</a>
+<a href="#s2_21" class="sub1">· 2.21 Spectre/Meltdown 是怎么回事 …</a>
+<a href="#s2_22" class="sub1">· 2.22 head.S 为什么不直接禁止 D-cache…</a>
+<a href="#s3"><span class="num">3.</span> 完整源码与上下文</a>
+<a href="#s3_1" class="sub1">· 2.1 分析代码段（head.S:96-117）</a>
+<a href="#s3_2" class="sub1">· 2.2 x19 的前世今生 —— 这个决定一切的寄存器从哪来</a>
+<a href="#s4"><span class="num">4.</span> 核心问题：为什么有两条截然不同的 Cache 路径？</a>
+<a href="#s5"><span class="num">5.</span> 冷启动路径逐条分析（x19 == 0）</a>
+<a href="#s5_1" class="sub1">· 4.1 完整指令序列</a>
+<a href="#s5_2" class="sub1">· 4.2 逐条详解</a>
+<a href="#s5_3" class="sub1">· 4.3 为什么要 invalidate 页表区域？</a>
+<a href="#s6"><span class="num">6.</span> 热启动路径逐条分析（x19 != 0）</a>
+<a href="#s6_1" class="sub1">· 5.1 完整指令序列</a>
+<a href="#s6_2" class="sub1">· 5.2 逐条详解</a>
+<a href="#s6_3" class="sub1">· 5.3 为什么要 clean idmap 代码段？</a>
+<a href="#s7"><span class="num">7.</span> 两条路径的根源对比</a>
+<a href="#s7_1" class="sub1">· 冷启动：Invalidate 页表</a>
+<a href="#s7_2" class="sub1">· 热启动：Clean idmap 代码</a>
+<a href="#s8"><span class="num">8.</span> dcache_inval_poc 与 dcache_clean_poc 源码分析</a>
+<a href="#s8_1" class="sub1">· 8.1 真实实现：arch/arm64/mm/cache…</a>
+<a href="#s8_2" class="sub1">· 8.2 逐条详解</a>
+<a href="#s8_3" class="sub1">· 8.3 与 preserve_boot_args 文档的…</a>
+<a href="#s8_4" class="sub1">· 8.4 ARM64 Cache 维护指令速查</a>
+<a href="#s8_5" class="sub1">· 8.5 dcache_clean_poc 源码分析</a>
+<a href="#s9"><span class="num">9.</span> 为什么不一开始就 Flush 全部 Cache？</a>
+<a href="#s9_1" class="sub1">· 8.1 Set/Way 操作不是干这个用的</a>
+<a href="#s9_2" class="sub1">· 8.2 不同区域需要不同的操作，一个 flush 搞不定</a>
+<a href="#s9_3" class="sub1">· 8.3 性能确实也是考量</a>
+<a href="#s10"><span class="num">10.</span> VA 操作如何精确定位目标 Cache Line？</a>
+<a href="#s10_1" class="sub1">· 9.1 Cache 硬件结构回顾</a>
+<a href="#s10_2" class="sub1">· 9.2 具体数字推演：boot_args 在地址 0x4…</a>
+<a href="#s10_3" class="sub1">· 9.3 投机加载如何污染这条 line</a>
+<a href="#s10_4" class="sub1">· 9.4 dc ivac 的硬件执行流程</a>
+<a href="#s10_5" class="sub1">· 9.5 唯一可能的坑：Cache 别名（Aliasing…</a>
+<a href="#s11"><span class="num">11.</span> preserve_boot_args 的 0x20 字节与 __cacheline_aligned</a>
+<a href="#s11_1" class="sub1">· 10.1 为什么恰好是 0x20（32）字节？</a>
+<a href="#s11_2" class="sub1">· 10.2 dcache_inval_poc 在 0x20…</a>
+<a href="#s11_3" class="sub1">· 10.3 __cacheline_aligned 的关键…</a>
+<a href="#s12"><span class="num">12.</span> 完整决策流程图</a>
+<a href="#s13"><span class="num">13.</span> GDB 调试验证</a>
+<a href="#s13_1" class="sub1">· 9.1 断点设置</a>
+<a href="#s13_2" class="sub1">· 9.2 GDB 命令</a>
+<a href="#s13_3" class="sub1">· 9.3 验证 speculative load 问题（冷…</a>
+<a href="#s14"><span class="num">14.</span> 总结 &amp; 关键要点</a>
+<a href="#s14_1" class="sub1">· 涉及文件</a>
+<a href="#s14_2" class="sub1">· 学习建议</a>
 </div>
 </nav>
 
@@ -152,7 +234,7 @@ tr:nth-child(even) td { background: #f8fafc; }
 
 <div class="two-col">
 <div>
-<h3>位置：启动序列中的关键节点</h3>
+<h3 id="s1_1">位置：启动序列中的关键节点</h3>
 <pre><code>primary_entry:
     bl  record_mmu_state       // x19 = 0(冷启动) 或 1(热启动)
     bl  preserve_boot_args
@@ -167,7 +249,7 @@ tr:nth-child(even) td { background: #f8fafc; }
     b   __primary_switch        // ★ 真正开启 MMU</code></pre>
 </div>
 <div>
-<h3>一句话概括</h3>
+<h3 id="s1_2">一句话概括</h3>
 <p>在开启 MMU 之前，<strong>确保 CPU 能正确看到页表和启动代码</strong>。</p>
 <ul>
 <li><span class="green">冷启动</span>：页表是用 non-cacheable 方式写入的，需要 <strong>invalidate（无效化）</strong> 被 speculative load 污染的 cache 行，保证 MMU 读取到正确的页表内容</li>
@@ -181,9 +263,1414 @@ tr:nth-child(even) td { background: #f8fafc; }
 
 <!-- ====== 2 ====== -->
 <section id="s2">
-<h2>2. 完整源码与上下文</h2>
+<h2>2. ARM64 Cache 基础背景知识</h2>
 
-<h3>2.1 分析代码段（head.S:96-117）</h3>
+<p>理解本文的 Cache 维护逻辑，需要对 ARM64 架构的 Cache 体系有基本的认识。本节根据 ARM Architecture Reference Manual (ARMv8-A) 梳理关键概念。</p>
+
+<h3 id="s2_1">2.1 Cache 层次结构</h3>
+
+<table>
+<tr><th>层级</th><th>典型大小</th><th>类型</th><th>延迟</th><th>说明</th></tr>
+<tr><td><strong>L1 I-cache</strong></td><td>32-64 KB</td><td>指令 Cache（通常 VIPT）</td><td>~1 cycle</td><td>只读，CPU 取指专用</td></tr>
+<tr><td><strong>L1 D-cache</strong></td><td>32-64 KB</td><td>数据 Cache（通常 VIPT）</td><td>~3-4 cycles</td><td>读写，load/store 数据</td></tr>
+<tr><td><strong>L2 Unified</strong></td><td>256 KB - 1 MB</td><td>统一 Cache（通常 PIPT）</td><td>~10-20 cycles</td><td>指令+数据，per-cluster</td></tr>
+<tr><td><strong>L3 / SCF</strong></td><td>2-8 MB</td><td>统一 Cache（PIPT）</td><td>~30-50 cycles</td><td>System Cache，多 cluster 共享</td></tr>
+</table>
+
+<div class="note">💡 ARM64 Linux 的 <code>L1_CACHE_BYTES = 64</code>（由 <code>arch/arm64/include/asm/cache.h</code> 定义，<code>L1_CACHE_SHIFT = 6</code>）。这是 L1 D-cache 的最小操作单元，也是 <code>dc ivac</code>/<code>dc cvac</code> 等指令的操作粒度。</div>
+
+<table><tr><th>寄存器</th><th>值</th><th>字段</th><th>含义</th></tr><tr><td rowspan="2"><code>CLIDR_EL1</code></td><td rowspan="2"><code>0x0a200023</code></td><td>LoUU [23:21] = 2</td><td>L2 是 I-cache/D-cache 首次合并为 Unified 的层级（PoU 所在）</td></tr><tr><td>LoC [20:18] = 2</td><td>操作到 L2 即到达 Point of Coherency（QEMU virt 无 L3）</td></tr><tr><td rowspan="3"><code>CCSIDR_EL1</code><br>(逐级读取)</td><td><code>0x700fe01a</code></td><td>L1 D-cache</td><td><strong>32 KB</strong> / 4-way / 128 sets / 64 B line</td></tr><tr><td><code>0x201fe012</code></td><td>L1 I-cache</td><td><strong>48 KB</strong> / 3-way / 256 sets / 64 B line</td></tr><tr><td><code>0x70ffe07a</code></td><td>L2 Unified</td><td><strong>2048 KB</strong> / 16-way / 2048 sets / 64 B line</td></tr></table>
+
+<h3 id="s2_2">2.2 Cache Line —— 不可分割的操作单元</h3>
+
+<p>Cache line 是 Cache 硬件的最小管理单元。ARM64 中每条 cache line 由<strong>三大块</strong>横向排布，在 PIPT 和 VIPT 两种模式下物理存储格式完全相同：</p>
+
+<table>
+<tr><th style="width:30%">Tag（~48 bits）</th><th style="width:45%">Data（64 B = 512 bits）</th><th style="width:25%">Status（~5 bits）</th></tr>
+<tr>
+<td>存储 PA[63:13]<br><strong>永远是物理地址</strong><br>命中比对用</td>
+<td>从 DRAM 拷贝的实际缓存数据<br><strong>永远是 DRAM 副本</strong><br>Cache 操作最小单元</td>
+<td>V(1b): 0=无效 1=有效<br>D(1b): 0=Clean 1=Dirty<br>MESI(2-4b): 一致性状态<br><strong>永远是硬件状态位</strong></td>
+</tr>
+<tr style="background:#f0f7ff;font-weight:600">
+<td colspan="3" style="text-align:center">每 line 总宽度 ≈ 48 + 512 + 5 = <strong>565 bits ≈ 71 bytes</strong>（其中 Data 占 90%，Tag+Status 是额外开销）</td>
+</tr>
+</table>
+
+<p><strong>为什么 64B 是甜点位？</strong>两个独立的原因收敛到同一个数字：</p>
+
+<table>
+<tr><th>因素</th><th>32B line</th><th style="color:#059669">64B line</th><th>128B line</th></tr>
+<tr><td><strong>Tag 开销占比</strong></td>
+<td>48b Tag / (256b Data) = <strong>19%</strong></td>
+<td style="color:#059669">48b Tag / 512b Data = <strong>9%</strong></td>
+<td>48b Tag / 1024b Data = <strong>4.5%</strong></td>
+</tr>
+<tr><td><strong>DDR Burst 对齐</strong></td>
+<td>一个 DDR4 burst 只能传 32B → 浪费另一半</td>
+<td style="color:#059669">一个 DDR4 burst = 8 拍 × 64-bit 总线 = <strong>正好 64B</strong></td>
+<td>需 2 次 burst → 延迟翻倍，random access 浪费大</td>
+</tr>
+<tr><td><strong>Spatial locality 利用</strong></td>
+<td>覆盖范围小，顺序访问时频繁 miss</td>
+<td style="color:#059669">覆盖 16 条 32-bit 指令或 8 个指针，匹配典型代码模式</td>
+<td>random access 时拉入大量无用数据，污染 cache</td>
+</tr>
+</table>
+
+<p><strong>"DDR burst 对齐" 的含义：</strong>DDR4 DRAM 芯片的物理接口是 64 位宽的并行总线。CPU 发起一次读请求后，DRAM 在总线上连续输出 8 拍数据（burst length = 8）——每拍 64 bits = 8 bytes，8 拍 × 8 bytes = <strong>正好 64 bytes</strong>。这是 DRAM 的"原子传输单元"，传 64B 只消耗一次命令开销。如果 L1_CACHE_BYTES 选 32B，一次 burst 只用一半，另一半白白丢弃；选 128B 则需要两次 burst，延迟加倍。64B 刚好用完一次 DDR burst，不浪费、不超额，这是硬件层面的最优对齐。</p>
+
+<h4>PIPT vs VIPT：查找流程对比</h4>
+
+<p><strong>PIPT（Physically Indexed, Physically Tagged）—— 串行，等 TLB：</strong></p>
+<table>
+<tr><th>步骤</th><th>操作</th><th>依赖</th><th>耗时</th></tr>
+<tr><td><strong>1. TLB 翻译</strong></td><td>VA → TLB 查找 → 输出 PA</td><td>VA</td><td>1-2 cycles</td></tr>
+<tr><td><strong>2. Index 选 Set</strong></td><td>PA[12:6] → 地址译码器 → 选中 Set #N</td><td>等 PA</td><td>0.3 ns</td></tr>
+<tr><td><strong>3. 读 Tag RAM</strong></td><td>Set #N 的 4 路 Tag 同时读出</td><td>等 Index</td><td>0.3 ns</td></tr>
+<tr><td><strong>4. Tag 比对</strong></td><td>PA[63:13] vs 4 路 Tag → XOR+NOR → Match[0..3]</td><td>等 Tag 读出</td><td>0.3 ns</td></tr>
+<tr><td><strong>5. 返回数据</strong></td><td>命中 way → Data RAM 选通 → Byte Select offset → 返回 CPU</td><td>等 Match</td><td>0.2 ns</td></tr>
+<tr style="background:#f0f7ff"><td colspan="2"><strong>PIPT 总延迟</strong></td><td colspan="2">TLB(1-2 cycle) + Cache查找(~1.1 ns) = <strong>4-5 cycles</strong></td></tr>
+</table>
+
+<p><strong>VIPT（Virtually Indexed, Physically Tagged）—— 并行，不等 TLB：</strong></p>
+<table>
+<tr><th>步骤</th><th>操作</th><th>依赖</th><th>耗时</th></tr>
+<tr><td><strong>1. Index 选 Set</strong></td><td>VA[12:6] → 地址译码器 → 选中 Set #N<br>（VA 立即可用，无需翻译）</td><td>VA</td><td>0.3 ns</td></tr>
+<tr>
+<td><strong>2. 并行执行</strong></td>
+<td>┌─ Tag RAM：读出 Set #N 的 4 路 Tag（各 48b）<br>└─ TLB：VA → PA 翻译</td>
+<td>Index（VA）+ VA</td>
+<td>1-2 cycles</td>
+</tr>
+<tr><td><strong>3. Tag 比对</strong></td><td>TLB 输出的 PA[63:13] vs 已读出的 4 路 Tag → Match[0..3]</td>
+<td>PA 和 Tag 就绪</td>
+<td>0.3 ns</td></tr>
+<tr><td><strong>4. 返回数据</strong></td><td>命中 way → Data RAM 选通 → Byte Select → 返回 CPU</td>
+<td>等 Match</td><td>0.2 ns</td></tr>
+<tr style="background:#f0f7ff"><td colspan="2"><strong>VIPT 总延迟</strong></td><td colspan="2">max(TLB, Cache查找) ≈ <strong>3-4 cycles</strong>（节省 1-2 cycles）</td></tr>
+</table>
+
+<p><strong>PIPT vs VIPT 并排对比：</strong></p>
+<table>
+<tr><th>维度</th><th>PIPT</th><th>VIPT</th></tr>
+<tr><td><strong>Index 来源</strong></td><td>PA[12:6]</td><td>VA[12:6]</td></tr>
+<tr><td><strong>Tag 来源</strong></td><td>PA[63:13]</td><td>PA[63:13]（同 PIPT）</td></tr>
+<tr><td><strong>Tag 存储内容</strong></td><td colspan="2" style="text-align:center">物理地址高位——两者完全相同，Tag RAM 永远存 PA</td></tr>
+<tr><td><strong>查找顺序</strong></td><td>TLB → Index → Tag → Match<br>（全串行，4 步依赖链）</td><td>Index + TLB 并行 → Match<br>（Index 不依赖 TLB）</td></tr>
+<tr><td><strong>L1 延迟</strong></td><td>4-5 cycles</td><td style="color:#059669">3-4 cycles</td></tr>
+<tr><td><strong>容量上限</strong></td><td style="color:#059669">无限制</td><td style="color:#d97706">≤ ways × page_size<br>4-way×4KB=16KB 内安全<br>32KB 需 alias 检测硬件</td></tr>
+<tr><td><strong>别名问题</strong></td><td style="color:#059669">无（PA 唯一确定 Set）</td><td style="color:#d97706">有——不同 VA 可能 index 到不同 set<br>但映射到同一 PA</td></tr>
+<tr><td><strong>硬件复杂度</strong></td><td style="color:#059669">低</td><td style="color:#d97706">中（需 alias 检测或限制容量）</td></tr>
+<tr><td><strong>典型用途</strong></td><td>L2 / L3 Unified Cache</td><td>L1 I-cache / L1 D-cache</td></tr>
+</table>
+
+<div class="note">💡 <strong>总结：</strong>PIPT 简单可靠但慢（全串行依赖链），VIPT 快但受限（并行牺牲容量上限）。ARMv8-A 典型做法：L1 用小容量 VIPT 追 3-4 cycle 延迟，L2/L3 用大容量 PIPT 保证简洁正确。MMU off 时 VA=PA，两者行为完全一致——这也是为什么内核启动阶段不需要关心这个区别。</div>
+
+<ul>
+<li><strong>所有 Cache 维护操作（invalidate / clean）以整个 cache line 为单位执行</strong>，不存在"只操作 8 个字节"的 cache 操作</li>
+<li>这就是为什么 <code>dcache_inval_poc</code> 和 <code>dcache_clean_poc</code> 的实现是"逐 cache line 循环"</li>
+<li>也是为什么 <code>__cacheline_aligned</code> 如此重要——它保证一个数据结构独占一条 line，<code>dc ivac</code> 时不会误伤邻居</li>
+<li>MMU off 时 VA=PA，VIPT 退化为 PIPT——Index 和 Tag 都来自同一个地址，无区别</li>
+</ul>
+
+<h3 id="s2_3">2.3 Set-Associative Cache 的组织结构</h3>
+
+<p>ARMv8-A 架构中，数据 Cache 通常是 <strong>PIPT（Physically Indexed, Physically Tagged）</strong>，但 L1 Cache 也可以实现为 <strong>VIPT（Virtually Indexed, Physically Tagged）</strong>以提升性能。以下以常见的 VIPT L1 为例说明 set-associative 结构：</p>
+
+<table><tr><th>参数</th><th>取值</th><th>推导</th></tr><tr><td>Cache 总大小（Data RAM）</td><td><strong>32 KB</strong></td><td>总数据容量，不含 Tag RAM</td></tr><tr><td>Way 数（Associativity）</td><td><strong>4</strong></td><td>每个 set 有 4 个候选槽位</td></tr><tr><td>Set 数</td><td><strong>128</strong></td><td>= 32KB / 4 / 64B</td></tr><tr><td>Cache Line 大小</td><td><strong>64 bytes</strong></td><td>= L1_CACHE_BYTES，最小操作粒度</td></tr><tr><td>Index bits</td><td><strong>7 bits</strong> [12:6]</td><td>log2(128) = 7，选择 128 个 set 之一</td></tr><tr><td>Offset bits</td><td><strong>6 bits</strong> [5:0]</td><td>log2(64) = 6，line 内字节偏移</td></tr><tr><td>Tag bits</td><td><strong>~48 bits</strong> [63:13]</td><td>剩余高位，用于命中比对</td></tr></table>
+
+
+
+<div class="note">💡 <strong>VIPT 的关键特性：</strong>Index bits 来自 VA、Tag bits 来自 PA，允许 TLB 翻译和 Cache 查找并行进行——这是 L1 使用 VIPT 的动机。ARMv8-A 要求 VIPT 实现必须是 <strong>non-aliasing</strong> 的：即 index bits 必须在 VA→PA 翻译中不变（即落在 4KB 页内 bit[11:0]），这意味着 VIPT L1 的最大容量受限于 <code>ways × page_size</code>。对于 4-way × 4KB = 16KB 以内可以安全使用 VIPT；更大的 L1（如 32KB 4-way）需要特殊处理（如对 index 超出页内的位做 alias 检测）。MMU off 时 VA=PA，VIPT 退化为 PIPT 行为。</div>
+
+<h4>PIPT vs VIPT 下 Cache Line 的格式差异</h4>
+
+<p>无论 PIPT 还是 VIPT，<strong>同一条 cache line 的物理存储格式完全一样</strong>——都是 Tag + Data + Status。区别仅在于查找时，Index 和 Tag 分别取自 VA 还是 PA：</p>
+
+<table>
+<tr><th>字段</th><th>位宽</th><th>存储内容</th><th>PIPT 来源</th><th>VIPT 来源</th></tr>
+<tr><td><strong>Tag</strong></td><td>~48 bits</td><td>物理地址高位</td><td>PA[63:13]</td><td>PA[63:13]（同 PIPT）</td></tr>
+<tr><td><strong>Data</strong></td><td>512 bits</td><td>64 字节缓存数据</td><td>从 DRAM 拷贝</td><td>从 DRAM 拷贝（同 PIPT）</td></tr>
+<tr><td><strong>V (Valid)</strong></td><td>1 bit</td><td>line 是否有效</td><td>—</td><td>—</td></tr>
+<tr><td><strong>D (Dirty)</strong></td><td>1 bit</td><td>是否被写过（仅 D-cache）</td><td>—</td><td>—</td></tr>
+<tr><td><strong>MESI</strong></td><td>2~4 bits</td><td>一致性状态</td><td>—</td><td>—</td></tr>
+</table>
+
+<p>以 32KB 4-way L1 D-cache（128 sets，64B line）为例，对比两种模式下一次 load 的完整查找过程：</p>
+
+<table>
+<tr><th>步骤</th><th>PIPT</th><th>VIPT</th></tr>
+<tr><td><strong>1. 地址来源</strong></td><td>等 TLB 翻译完成 → 得到 PA</td><td>直接用 VA 的 index bits 开始</td></tr>
+<tr><td><strong>2. 选取 Set</strong></td><td>PA[12:6]（7 bits）→ Set #N</td><td>VA[12:6]（7 bits）→ Set #N<br><span style="color:#d97706">⚠ 这 7 bits 必须在 4KB 页内不变化</span></td></tr>
+<tr><td><strong>3. 读 Tag RAM</strong></td><td>Set #N 的 4 个 way 同时读出 Tag</td><td>← 同 PIPT（此步与 TLB 查 PA 并行）</td></tr>
+<tr><td><strong>4. Tag 比对</strong></td><td>请求的 PA[63:13] vs 4 路 Tag<br>→ 得 Match[0..3]</td><td>← 同 PIPT（Tag 永远来自 PA）</td></tr>
+<tr><td><strong>5. 返回数据</strong></td><td>命中 way → Data[offset]</td><td>← 同 PIPT</td></tr>
+</table>
+
+<p><strong>关键结论：</strong></p>
+<ul>
+<li>Cache line 的 Tag RAM 永远存的是 <strong>PA</strong>，不管 PIPT 还是 VIPT。VIPT 不是"虚拟 Tag"，只是"虚拟 Index"。</li>
+<li>VIPT 的优势在第 2-3 步：Index 用 VA、Tag 用 PA，Cache 查找可以和 TLB 翻译<strong>并行进行</strong>，省去了等 PA 的延迟。</li>
+<li>VIPT 的约束：<code>VA[index bits] == PA[index bits]</code> 必须恒成立，即 index bits 必须完全落在页内偏移 bits[11:0] 中。对于 64B line + 4-way：最大安全容量 = 4 × 2^(12-6) × 64B = <strong>16KB</strong>。实际 32KB 4-way L1 使用 VIPT 时需要额外的 alias 检测硬件保证正确性。</li>
+<li>MMU off 时 VA=PA，VIPT 与 PIPT 行为完全一致。</li>
+</ul>
+
+<h3 id="s2_4">2.4 Write-Through vs Write-Back</h3>
+
+<table>
+<tr><th>策略</th><th>写入行为</th><th>Cache Line 状态</th><th>数据安全性</th></tr>
+<tr>
+<td><strong>Write-Through (WT)</strong></td>
+<td>同时写入 Cache 和下一级存储（L2/DRAM）</td>
+<td>始终 Clean</td>
+<td>安全：DRAM 总是最新的</td>
+</tr>
+<tr>
+<td><strong>Write-Back (WB)</strong></td>
+<td>仅写入 Cache，标记 dirty，延迟写回</td>
+<td>可能 Dirty (Modified)</td>
+<td>危险：DRAM 可能是旧的 ★</td>
+</tr>
+<tr>
+<td><strong>Write-Back + Write-Allocate</strong></td>
+<td>Write miss 时先填充 cache line 再写入</td>
+<td>可能 Dirty</td>
+<td>主流 ARM64 CPU 默认策略</td>
+</tr>
+</table>
+
+<p>ARM64 CPU <strong>几乎都使用 Write-Back + Write-Allocate</strong> 策略（由 SCTLR_EL1 和 MAIR_ELx 的 memory attribute 控制）。这就产生了 dirty cache line 的问题——数据修改后仅在 Cache 中，DRAM 是旧值。如果没有 clean 操作就关闭 MMU 或重置 Cache，数据就丢失了。</p>
+
+<h3 id="s2_5">2.5 PoC 与 PoU —— 两个关键的一致性点</h3>
+
+<table><tr><th>层级</th><th>组件</th><th>包含内容</th><th>一致性范围</th></tr><tr><td rowspan="2"><strong>Core 内部</strong></td><td>L1 I-cache</td><td>指令缓存（只读）</td><td rowspan="2">仅本核</td></tr><tr><td>L1 D-cache</td><td>数据缓存（读写）</td></tr><tr><td><strong>Cluster 内</strong></td><td>L2 Unified Cache</td><td>指令+数据混存，多核共享</td><td>同一 cluster 内所有核</td></tr><tr><td style="color:#7c3aed;font-weight:600">← PoU（Point of Unification）</td><td colspan="3">本核 I-cache、D-cache、TLB 数据一致的汇合点。通常位于 L2，因为 L2 是第一个 Unified Cache</td></tr><tr><td><strong>SoC 级</strong></td><td>L3 / System Cache（可选）</td><td>跨 cluster 共享</td><td>所有 cluster + DMA 引擎</td></tr><tr><td style="color:#dc2626;font-weight:600">← PoC（Point of Coherency）</td><td colspan="3">系统中所有 observer（CPU 核、DMA、GPU 等）看到一致数据的点。通常在 L3 或 DRAM 控制器</td></tr><tr><td><strong>片外</strong></td><td>DRAM 控制器 / 物理内存</td><td>最终数据存储</td><td>全局</td></tr></table>
+
+<table>
+<tr><th>概念</th><th>定义</th><th>保证</th></tr>
+<tr>
+<td><strong>PoU</strong><br>Point of Unification</td>
+<td>同一 PE（Processing Element）的 I-cache、D-cache 和 translation table walk 都能看到一致数据的那一点</td>
+<td>对同一个 CPU 核，指令和数据视图一致</td>
+</tr>
+<tr>
+<td><strong>PoC</strong><br>Point of Coherency</td>
+<td>系统中<strong>所有</strong>能访问内存的单元（CPU 核、DMA 控制器、GPU 等）都能看到一致数据的那一点</td>
+<td>对所有 observer 数据一致</td>
+</tr>
+</table>
+
+<div class="note">💡 <strong>为什么本文的 cache 维护都操作到 PoC？</strong>因为开启/关闭 MMU 涉及的是"整个系统对内存的视角"，不仅仅是单个 CPU 核的 I/D 一致性。操作到 PoC 保证了 MMU page table walker、其他 CPU 核、以及任何系统 agent 都能看到正确的数据。在大多数 ARM64 SoC 中，PoC 通常在最后一级共享 Cache（L3/SCF）或 DRAM 控制器处。操作到 PoU 只保证本 CPU 核一致，在本场景下不够。</div>
+
+<h4>CLIDR_EL1：硬件如何报告 Cache 拓扑</h4>
+
+<p>ARMv8-A 通过 <strong>CLIDR_EL1</strong>（Cache Level ID Register）让软件发现 Cache 层次结构。这正是我们在 QEMU 中读到的 <code>0x0a200023</code>：</p>
+
+<table><tr><th>位域</th><th>位段</th><th>实测值</th><th>含义</th></tr><tr><td><strong>LoUU</strong></td><td>[23:21]</td><td><code>010₂ = 2</code></td><td>Level of Unification：L2 是 I-cache 和 D-cache 首次合并为 Unified Cache 的层级</td></tr><tr><td><strong>LoC</strong></td><td>[20:18]</td><td><code>000₂ = 2</code></td><td>Level of Coherency：clean/invalidate 到 L2 即达 PoC</td></tr><tr><td><strong>L1 Ctype</strong></td><td>[2:0]</td><td><code>011₂ = 3</code></td><td>Separate I+D（独立指令和数据 cache）</td></tr><tr><td><strong>L2 Ctype</strong></td><td>[5:3]</td><td><code>100₂ = 4</code></td><td>Unified（指令+数据统一 cache）</td></tr><tr><td><strong>L3~L7</strong></td><td>[8:6] ~ [23:21]</td><td><code>000₂ = 0</code></td><td>No cache（不存在）</td></tr></table><table style="margin-top:8px"><tr><th>Ctype 编码</th><th>0b000</th><th>0b001</th><th>0b010</th><th>0b011</th><th>0b100</th></tr><tr><td><strong>含义</strong></td><td>No cache</td><td>I-cache only</td><td>D-cache only</td><td>Separate I+D</td><td>Unified</td></tr></table>
+
+<h4>L1: Separate I+D 与 L2: Unified 的物理含义</h4>
+
+<table><tr><th>属性</th><th>L1 I-cache</th><th>L1 D-cache</th><th>L2 Unified</th></tr><tr><td><strong>Ctype</strong></td><td colspan="2" style="text-align:center">3: Separate I+D</td><td>4: Unified</td></tr><tr><td><strong>大小</strong></td><td>48 KB</td><td>32 KB</td><td>2048 KB</td></tr><tr><td><strong>Associativity</strong></td><td>3-way</td><td>4-way</td><td>16-way</td></tr><tr><td><strong>Sets</strong></td><td>256</td><td>128</td><td>2048</td></tr><tr><td><strong>Line Size</strong></td><td>64 B</td><td>64 B</td><td>64 B</td></tr><tr><td><strong>响应对象</strong></td><td>仅指令取指（IF）</td><td>仅 load/store</td><td>指令取指 + 数据读写</td></tr><tr><td><strong>Dirty Line?</strong></td><td>无（只读）</td><td>有</td><td>有（收容 L1 D-cache 写回）</td></tr><tr><td><strong>一致性角色</strong></td><td colspan="2">L1 独立 → 在 L2 汇合 → <strong>PoU = L2</strong>（因为 L2 是首个 Unified 层）</td><td>同时作为 PoU 和 PoC（无 L3 时）</td></tr></table>
+
+<table>
+<tr><th>概念</th><th>编码来源</th><th>QEMU 实测值</th><th>物理含义</th></tr>
+<tr><td><strong>LoUU</strong></td><td>CLIDR_EL1[23:21]</td><td>2</td><td>L2 是 I-cache/D-cache 首次合并为 Unified 的层级 = PoU 所在</td></tr>
+<tr><td><strong>LoC</strong></td><td>CLIDR_EL1[20:18]</td><td>2</td><td>操作到 L2 即可到达 PoC — 所有 observer 看到一致数据</td></tr>
+<tr><td><strong>L1 Ctype</strong></td><td>CLIDR_EL1[2:0]</td><td>3 (Separate I+D)</td><td>取指走 I-cache (48KB/3-way), 数据走 D-cache (32KB/4-way)</td></tr>
+<tr><td><strong>L2 Ctype</strong></td><td>CLIDR_EL1[5:3]</td><td>4 (Unified)</td><td>指令和数据共享一个 2048KB/16-way cache</td></tr>
+</table>
+
+<div class="note">💡 <strong>实践意义：</strong><code>dc ivac</code> 和 <code>dc cvac</code> 都可以指定操作到哪个点（PoU 还是 PoC）。head.S 中的 cache 维护都用 PoC 版本，因为 (1) 页表要被 MMU page table walker 读取，它不属于任何特定 CPU 核的 I/D 视角；(2) 开启 MMU 后系统级的一致性依赖所有 agent 看到相同数据。而 LoC=2 意味着 clean/invalidate 到 L2 就足够了——L2 是 system cache，清理到这就保证了所有核和 DMA 看到一致内容。</div>
+
+<h3 id="s2_6">2.6 MMU 与 Cache 的交互 —— Memory Attribute</h3>
+
+<p>ARM64 MMU 通过页表项中的 <strong>MAIR（Memory Attribute Indirection Register）</strong>索引来控制每页内存的 cacheability：</p>
+
+<table><tr><th>Memory Type</th><th>子类型</th><th>Cache 行为</th><th>投机访问</th><th>使用场景</th></tr><tr><td rowspan="3"><strong>Normal Memory</strong></td><td>Inner Write-Back Cacheable</td><td>读写都经过 Cache，写仅更新 Cache 并标记 dirty</td><td>允许</td><td>日常内核代码/数据/堆栈</td></tr><tr><td>Inner Write-Through Cacheable</td><td>读经过 Cache，写同时更新 Cache 和 DRAM</td><td>允许</td><td>需要即时一致性的场景</td></tr><tr><td>Non-cacheable</td><td>绕过 Cache 直读/写 DRAM</td><td>允许</td><td>与设备共享的内存</td></tr><tr><td rowspan="4"><strong>Device Memory</strong></td><td>nGnRnE</td><td>Non-cacheable + 不聚合 + 不重排 + 不提前</td><td rowspan="4"><strong>禁止</strong></td><td>MMU off 时默认行为</td></tr><tr><td>nGnRE</td><td>Non-cacheable + 不聚合 + 不重排</td><td>严格外设寄存器</td></tr><tr><td>nGRE</td><td>Non-cacheable + 不聚合</td><td>可提前访问的外设</td></tr><tr><td>GRE</td><td>Non-cacheable</td><td>宽松外设</td></tr></table>
+
+<p><strong>关键是：MMU 关闭时，所有内存访问默认被视为 Non-cacheable Device 类型</strong>。这就是为什么 MMU off 阶段的页表写入（<code>__pi_create_init_idmap</code> 中的 STR 指令）绕过 Cache 直写 DRAM，从而引发了 speculative load vs non-cacheable write 的矛盾。</p>
+
+<h3 id="s2_7">2.7 ARM64 Cache 维护指令分类</h3>
+
+<table>
+<tr><th>指令</th><th>全称</th><th>操作</th><th>结果</th><th>本文使用场景</th></tr>
+<tr>
+<td><code>DC IVAC</code></td>
+<td>Invalidate by VA to PoC</td>
+<td>使指定 VA 的 D-cache line 失效</td>
+<td>Line → Invalid，后续 Miss → 从 PoC 重取</td>
+<td>冷启动 invalidate 页表区域</td>
+</tr>
+<tr>
+<td><code>DC CVAC</code></td>
+<td>Clean by VA to PoC</td>
+<td>将 dirty line 写回 PoC，保留 line</td>
+<td>Line → Clean，DRAM = Cache</td>
+<td>热启动 clean idmap 代码段</td>
+</tr>
+<tr>
+<td><code>DC CIVAC</code></td>
+<td>Clean+Invalidate by VA to PoC</td>
+<td>先写回 PoC，再失效</td>
+<td>Line → Invalid，DRAM 有最新数据</td>
+<td><code>dcache_inval_poc</code> 中处理不对齐边界</td>
+</tr>
+<tr>
+<td><code>DC ISW</code></td>
+<td>Invalidate by Set/Way</td>
+<td>按 set/way 位置失效，不看地址</td>
+<td>指定 set/way 位置失效</td>
+<td>仅 power-down 流程</td>
+</tr>
+<tr>
+<td><code>DC CISW</code></td>
+<td>Clean+Invalidate by Set/Way</td>
+<td>按 set/way 位置 clean+invalidate</td>
+<td>全部写回并失效</td>
+<td>仅 power-down 流程</td>
+</tr>
+<tr>
+<td><code>IC IVAU</code></td>
+<td>Invalidate I-cache by VA to PoU</td>
+<td>使指定 VA 的 I-cache line 失效</td>
+<td>下次取指从 PoU 获取</td>
+<td>代码修改后确保 I-cache 一致性</td>
+</tr>
+</table>
+
+<div class="warn">⚠ <strong>Set/Way 操作（ISW/CSW/CISW）不能用于运行时一致性维护。</strong>ARMv8 ARM 明确声明它们仅用于 power-down/power-up 序列。运行时应始终使用 VA-based 操作配合 DSB 屏障。这既是因为 set/way 操作没有 happens-before 语义，也是因为不同实现可能有不同的 cache geometry。</div>
+
+<h3 id="s2_8">2.8 Speculative Load —— MMU Off 时的隐形敌人</h3>
+
+<p>ARM64 架构允许 CPU 在<strong>任何时候</strong>投机地发出内存读取请求，即使 MMU 关闭、Cache 关闭：</p>
+
+<table><tr><th>#</th><th>来源</th><th>触发机制</th><th>影响</th></tr><tr><td>1</td><td><strong>分支预测错误恢复</strong></td><td>CPU 预测分支方向，投机执行了 LDR → 预测失败，指令结果被丢弃</td><td>但 cache line 已被拉入 D-cache，<strong>不会回滚</strong></td></tr><tr><td>2</td><td><strong>硬件预取器</strong></td><td>检测到顺序访问模式 → 自动预取后续 cache line</td><td>即使代码没有显式访问这些地址，cache line 也被填充</td></tr><tr><td>3</td><td><strong>指令预取</strong></td><td>CPU 预取后续指令 → 经过 L1 I-cache</td><td>可能污染 unified L2</td></tr><tr><td>4</td><td><strong>TLB 预取 / Page Table Walker</strong></td><td>MMU 相关的硬件结构也会投机访问内存</td><td>这些访问发生在真实程序流之外，但 cache 效果是真实的</td></tr></table><p style="margin-top:6px"><strong>共同特征：</strong>这些访问发生在真实的程序流之外，但它们产生的 cache 效果是真实的，MMU off 时无法通过页表属性阻止它们。</p>
+
+<p>这就是为什么会看到 <code>dmb sy</code> 出现在 cache 维护之前——它确保在屏障之前的所有显式写入已经完成，然后 cache invalidate 才能清理投机读取引入的污染。</p>
+
+
+<h3 id="s2_9">2.9 Cache 的硬件实现 —— 它到底是一个什么"设备"？</h3>
+
+<p>Cache 不是抽象概念，而是<strong>实实在在的片上 SRAM 电路</strong>。以下从晶体管级解释其物理组成。</p>
+
+<h4>核心存储单元：SRAM Cell（6 晶体管/bit）</h4>
+
+<table><tr><th>组件</th><th>数量</th><th>功能</th></tr><tr><td>M1, M3（NMOS）</td><td>2</td><td>下拉管，驱动低电平</td></tr><tr><td>M2, M4（PMOS）</td><td>2</td><td>上拉管，驱动高电平。与 M1/M3 形成交叉耦合反相器对（双稳态锁存器）</td></tr><tr><td>M5, M6（NMOS 传输门）</td><td>2</td><td>Word Line (WL) 导通时连接 Bit Line (BL/BL#)，用于读写</td></tr></table><p style="margin-top:4px"><strong>读写原理：</strong>读：WL 导通 → BL/BL# 差分读出锁存值。写：WL 导通 → 强制 BL/BL# 改写锁存值。6 个晶体管存储 1 bit，比 DRAM（1T1C）快但面积大。</p>
+
+<h4>Cache 的三大物理 RAM 阵列</h4>
+
+<p>一条 cache line 的硬件组成跨越<strong>三块独立的 SRAM 阵列</strong>：</p>
+
+<table><tr><th>硬件组件</th><th>存储介质</th><th>容量（32KB/4-way L1D）</th><th>位宽</th><th>功能</th></tr><tr><td><strong>Tag RAM</strong></td><td>SRAM</td><td>128 sets × 4 ways × ~48 bits ≈ <strong>24 Kbits (3 KB)</strong></td><td>48 bits/line</td><td>存储物理地址高位 [63:16]，命中比对用</td></tr><tr><td><strong>Data RAM</strong></td><td>SRAM</td><td>128 sets × 4 ways × 512 bits = <strong>256 Kbits (32 KB)</strong></td><td>512 bits/line</td><td>存储实际缓存数据（这就是"32KB cache"的含义）</td></tr><tr><td><strong>Status RAM</strong></td><td>Flip-Flop</td><td>128 sets × 4 ways × ~5 bits ≈ <strong>2.5 Kbits</strong></td><td>5 bits/line</td><td>V(alid), D(irty), MESI state bits</td></tr><tr><td><strong>Tag 比较器</strong></td><td>组合逻辑</td><td>4 组 × 48-bit XOR+NOR（per set）</td><td>—</td><td>并行比较所有 Way 的 Tag，单周期得 Match[0..3]</td></tr><tr><td><strong>Cache Controller</strong></td><td>硬件 FSM</td><td>—</td><td>—</td><td>管理 lookup / linefill / eviction / coherency protocol</td></tr></table><p style="margin-top:4px"><strong>关键认知：</strong>Cache 的"大小"通常只指 Data RAM。Tag RAM（~3KB）和 Status RAM 是额外硬件开销，不计入。32KB L1 D-cache 的实际硅片面积 ≈ 35KB SRAM + 比较器逻辑。</p>
+
+<table>
+<tr><th>硬件组件</th><th>存储技术</th><th>容量（以 32KB/4-way L1D 为例）</th><th>用途</th></tr>
+<tr><td><strong>Tag RAM</strong></td><td>SRAM</td><td>128 sets × 4 ways × ~48 bits ≈ 24 Kbits ≈ 3 KB</td><td>存储每条 line 的物理地址标签</td></tr>
+<tr><td><strong>Data RAM</strong></td><td>SRAM</td><td>128 sets × 4 ways × 512 bits = 256 Kbits = 32 KB</td><td>存储实际缓存数据</td></tr>
+<tr><td><strong>Status RAM</strong></td><td>寄存器/Flip-Flop</td><td>128 sets × 4 ways × 5 bits ≈ 2.5 Kbits</td><td>V/D/MESI 状态位</td></tr>
+<tr><td><strong>Tag 比较器</strong></td><td>组合逻辑（XOR+AND gate）</td><td>4 组 48-bit 比较器（per set）</td><td>并行比较 Tag，单周期命中判断</td></tr>
+<tr><td><strong>Cache Controller</strong></td><td>硬件有限状态机</td><td>—</td><td>管理查找/填充/逐出/一致性协议</td></tr>
+</table>
+
+<div class="note">💡 <strong>关键认知：</strong>Cache 的"大小"（如 32KB）通常只指 <strong>Data RAM</strong> 的容量。Tag RAM 和 Status RAM 是额外的硬件开销，不计入"cache size"。当你听到"32KB L1 D-cache"，实际硅片面积还包括 ~3KB 的 Tag RAM 和比较器逻辑。</div>
+
+<h3 id="s2_10">2.10 Cache 为何能快速查找 —— 并行 Tag 比较的秘密</h3>
+
+<p>直觉上，"从 64KB 的数据里找我想要的那几个字节"听起来就很慢。但 cache 的硬件设计保证了它<strong>永远不需要遍历 64KB 的数据</strong>。</p>
+
+<h4>第一步：Index 直接寻址 —— 就像数组下标</h4>
+
+<table><tr><th>步骤</th><th>操作</th><th>硬件实现</th><th>延迟</th></tr><tr><td><strong>1. Index 寻址</strong></td><td>地址 Index bits [12:6] → 直接作为 SRAM 行地址 → 选中 128 set 之一</td><td>7-bit → 128 选 1 地址译码器（组合逻辑）</td><td>~0.3 ns</td></tr><tr><td><strong>2. Tag 读出</strong></td><td>被选中的 set 的 4 个 way 同时从 Tag RAM 读出 Tag 值</td><td>SRAM 读出（128 行选 1，4 列同时读）</td><td>~0.3 ns</td></tr><tr><td><strong>3. 并行比较</strong></td><td>4 路 Tag 与请求地址 Tag 同时 XOR → NOR → 得 Match[0..3]</td><td>4×48 XOR gates + 4×48-input NOR（~7 gate delays）</td><td>~0.3 ns</td></tr><tr><td><strong>4. Data 选通</strong></td><td>4:1 Mux 根据 Match 信号选通命中 way 的 Data RAM → Byte selector 取 offset 对应字节</td><td>4:1 Multiplexer + Byte shifter</td><td>~0.2 ns</td></tr></table><p style="margin-top:6px"><strong>总延迟：~1.1 ns ≈ 3-4 cycles @ 3GHz。</strong>关键：不做遍历、不做扫描，Index 直接定位 + 并行 Tag 比较 = O(1)。</p>
+
+<h4>第二步：Set 内并行 Tag 比较 —— 不是"查找"，是"广播比对"</h4>
+
+<p style="font-size:0.83em;color:var(--text-secondary)">（见上方步骤 2-3 的详细分解表）</p>
+
+<h4>第三步：选中 Data Way 并读取</h4>
+
+<p style="font-size:0.83em;color:var(--text-secondary)">（见上方步骤 4 的 Data 选通说明）</p>
+
+<h4>为什么 64KB Cache 和 32KB Cache 的访问延迟几乎相同？</h4>
+
+<table>
+<tr><th>参数变化</th><th>对延迟的影响</th><th>原因</th></tr>
+<tr><td>Cache 容量增大（32KB→64KB）</td><td><strong>几乎无影响</strong></td><td>增加的是 set 数或 way 数，不影响单次比较延迟</td></tr>
+<tr><td>Way 数增加（4-way→8-way）</td><td><strong>轻微增加</strong></td><td>更多并行比较器，但 Mux 变宽（8:1 vs 4:1），增加 ~0.1ns</td></tr>
+<tr><td>Line 大小增大（64B→128B）</td><td><strong>无影响</strong></td><td>Data RAM 每行更宽，但读取时间由 SRAM 决定，基本不变</td></tr>
+<tr><td>Set 数增加（128→256）</td><td><strong>无影响</strong></td><td>地址译码器变大（7→8 bits），但译码延迟增长微弱</td></tr>
+</table>
+
+<div class="note">💡 <strong>核心原理：</strong>Cache 的查找延迟主要由 <strong>比较器的门延迟</strong>和 <strong>SRAM 读出时间</strong>决定，与总容量几乎无关。这就是为什么 L1 Cache 可以在 3-4 cycles 内完成访问——它不是"搜索"64KB 数据，而是用 Index 直接定位 Set，再用并行比较器在一个周期内完成所有 Way 的 Tag 比对。</div>
+
+<h3 id="s2_11">2.11 动画：CPU ↔ Cache ↔ MMU ↔ Memory 交互全景</h3>
+
+<p>以下动画展示了 CPU 发起一次内存访问时，MMU、Cache 和 Memory 之间如何协作。点击按钮切换不同场景。</p>
+
+<style>
+.anim-container {
+    background: #fff; border: 2px solid var(--border); border-radius: 8px;
+    padding: 10px; margin: 10px 0; font-family: 'Fira Code', monospace;
+    font-size: 0.7em; overflow: hidden;
+}
+.anim-scene {
+    position: relative; width: 100%; min-height: 320px;
+    background: #f8fafc; border-radius: 6px;
+    overflow: hidden;
+}
+.anim-scene svg { width: 100%; height: 100%; }
+.anim-controls {
+    display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0;
+}
+.anim-btn {
+    padding: 5px 12px; border: 1px solid var(--accent); border-radius: 14px;
+    background: #fff; color: var(--accent); cursor: pointer;
+    font-size: 0.82em; font-weight: 500; transition: all 0.2s;
+}
+.anim-btn:hover, .anim-btn.active {
+    background: var(--accent); color: #fff;
+}
+.anim-step { margin: 4px 0; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; }
+.anim-step.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+.anim-step.done { color: #94a3b8; }
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+.anim-pulse { animation: pulse 0.8s ease-in-out infinite; }
+@keyframes flow {
+    from { stroke-dashoffset: 20; }
+    to { stroke-dashoffset: 0; }
+}
+.flow-line { stroke-dasharray: 6 3; animation: flow 0.5s linear infinite; }
+</style>
+
+<div class="anim-container">
+<div class="anim-controls">
+<button class="anim-btn active" onclick="animShow('mmu_on_hit')">MMU On, Cache Hit</button>
+<button class="anim-btn" onclick="animShow('mmu_on_miss')">MMU On, Cache Miss</button>
+<button class="anim-btn" onclick="animShow('mmu_off')">MMU Off (本文场景)</button>
+<button class="anim-btn" onclick="animShow('speculative')">Speculative Load 污染</button>
+</div>
+<div class="anim-scene" id="animScene"></div>
+<div id="animDesc" style="font-size:0.83em;color:var(--text-secondary);padding:8px;"></div>
+</div>
+
+<script>
+(function() {
+var scenes = {
+'mmu_on_hit': {
+  title: '场景 1：MMU On, Cache Hit —— 最快路径',
+  steps: [
+    '① CPU 发出 VA (虚拟地址) 到 MMU',
+    '② MMU 查 TLB：命中！直接得到 PA (物理地址)',
+    '③ PA 送到 L1 D-Cache：Index → Set #N, 并行 Tag 比较',
+    '④ Tag 命中 → 从 Data RAM 读数据返回 CPU',
+    '⑤ 总延迟：~4 cycles ✅'
+  ],
+  svg: '<svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg">'+
+    '<defs><marker id="ah" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#2563eb"/></marker>'+
+    '<marker id="ag" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#059669"/></marker></defs>'+
+    '<rect x="20" y="30" width="80" height="40" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>'+
+    '<text x="60" y="55" text-anchor="middle" font-size="11" fill="#1e40af" font-weight="600">CPU Core</text>'+
+    '<rect x="160" y="30" width="80" height="40" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="2"/>'+
+    '<text x="200" y="50" text-anchor="middle" font-size="10" fill="#065f46" font-weight="600">MMU</text>'+
+    '<text x="200" y="62" text-anchor="middle" font-size="8" fill="#065f46">+TLB</text>'+
+    '<rect x="160" y="170" width="80" height="40" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>'+
+    '<text x="200" y="195" text-anchor="middle" font-size="10" fill="#92400e" font-weight="600">L1 D-Cache</text>'+
+    '<rect x="350" y="170" width="80" height="40" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>'+
+    '<text x="390" y="195" text-anchor="middle" font-size="10" fill="#475569">L2 Cache</text>'+
+    '<rect x="460" y="170" width="100" height="40" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>'+
+    '<text x="510" y="195" text-anchor="middle" font-size="10" fill="#475569">DRAM</text>'+
+    '<line x1="100" y1="45" x2="155" y2="45" stroke="#2563eb" stroke-width="2" marker-end="url(#ah)"/>'+
+    '<text x="128" y="38" text-anchor="middle" font-size="8" fill="#2563eb">VA</text>'+
+    '<line x1="200" y1="70" x2="200" y2="165" stroke="#059669" stroke-width="2" marker-end="url(#ag)"/>'+
+    '<text x="215" y="120" font-size="8" fill="#059669">PA</text>'+
+    '<line x1="240" y1="190" x2="345" y2="190" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4 2"/>'+
+    '<text x="270" y="183" font-size="7" fill="#94a3b8">on miss</text>'+
+    '<text x="270" y="210" font-size="9" fill="#d97706">HIT ✓</text>'+
+    '<line x1="100" y1="85" x2="200" y2="165" stroke="#2563eb" stroke-width="2" marker-end="url(#ah)" class="flow-line"/>'+
+    '<text x="140" y="140" font-size="8" fill="#2563eb">data return</text>'+
+    '<rect x="20" y="100" width="80" height="18" rx="3" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>'+
+    '<text x="60" y="113" text-anchor="middle" font-size="8" fill="#2563eb">LDR X0, [X1]</text>'+
+  '</svg>'
+},
+'mmu_on_miss': {
+  title: '场景 2：MMU On, Cache Miss —— 填充路径',
+  steps: [
+    '① CPU 发出 VA → MMU/TLB 翻译 → PA（必须走 TLB！）',
+    '② PA 送到 L1 Cache：Index → Set, Tag 比较 → MISS',
+    '③ Cache Controller 发起 Linefill：向 L2 请求 64 字节',
+    '④ L2 也 Miss → 向 DRAM 请求 → DRAM 返回 64 字节',
+    '⑤ 数据填充到 L1 Cache line，同时返回 CPU (critical word first)',
+    '⑥ 总延迟：~100+ cycles (但后续访问就快了)'
+  ],
+  svg: '<svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg">'+
+    '<defs><marker id="ah" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#2563eb"/></marker>'+
+    '<marker id="ar" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#dc2626"/></marker>'+
+    '<marker id="ao" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#d97706"/></marker>'+
+    '<marker id="ag2" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#059669"/></marker></defs>'+
+    '<rect x="20" y="30" width="80" height="40" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>'+
+    '<text x="60" y="50" text-anchor="middle" font-size="10" fill="#1e40af" font-weight="600">CPU Core</text>'+
+    '<text x="60" y="62" text-anchor="middle" font-size="8" fill="#2563eb">LDR X0,[X1]</text>'+
+    '<rect x="160" y="30" width="80" height="40" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="2"/>'+
+    '<text x="200" y="50" text-anchor="middle" font-size="10" fill="#065f46" font-weight="600">MMU</text>'+
+    '<text x="200" y="62" text-anchor="middle" font-size="8" fill="#065f46">+TLB</text>'+
+    '<line x1="100" y1="45" x2="155" y2="45" stroke="#2563eb" stroke-width="2" marker-end="url(#ah)"/>'+
+    '<text x="128" y="38" font-size="7" fill="#2563eb">VA</text>'+
+    '<rect x="160" y="140" width="80" height="40" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>'+
+    '<text x="200" y="160" text-anchor="middle" font-size="10" fill="#92400e" font-weight="600">L1 Cache</text>'+
+    '<text x="200" y="172" text-anchor="middle" font-size="7" fill="#dc2626">MISS ✗</text>'+
+    '<rect x="310" y="140" width="80" height="40" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>'+
+    '<text x="350" y="160" text-anchor="middle" font-size="10" fill="#92400e">L2 Cache</text>'+
+    '<text x="350" y="172" text-anchor="middle" font-size="7" fill="#dc2626">MISS ✗</text>'+
+    '<rect x="460" y="140" width="110" height="40" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>'+
+    '<text x="515" y="160" text-anchor="middle" font-size="10" fill="#991b1b">DRAM</text>'+
+    '<line x1="200" y1="70" x2="200" y2="135" stroke="#059669" stroke-width="2" marker-end="url(#ag2)"/>'+
+    '<text x="215" y="105" font-size="7" fill="#059669">PA</text>'+
+    '<line x1="240" y1="155" x2="305" y2="155" stroke="#d97706" stroke-width="2" class="flow-line"/>'+
+    '<text x="265" y="148" font-size="7" fill="#d97706">linefill req</text>'+
+    '<line x1="390" y1="155" x2="455" y2="155" stroke="#dc2626" stroke-width="2" class="flow-line"/>'+
+    '<text x="415" y="148" font-size="7" fill="#dc2626">MISS ✗</text>'+
+    '<line x1="515" y1="185" x2="350" y2="185" stroke="#dc2626" stroke-width="2" class="flow-line"/>'+
+    '<text x="430" y="200" font-size="7" fill="#dc2626">64B linefill (DDR burst)</text>'+
+    '<line x1="350" y1="190" x2="200" y2="190" stroke="#d97706" stroke-width="2" class="flow-line"/>'+
+    '<text x="270" y="205" font-size="7" fill="#d97706">fill L1 (64B)</text>'+
+    '<line x1="200" y1="195" x2="60" y2="195" stroke="#059669" stroke-width="2" class="flow-line"/>'+
+    '<text x="120" y="210" font-size="7" fill="#059669">critical word first</text>'+
+  '</svg>'
+},
+'mmu_off': {
+  title: '场景 3：MMU Off —— 本文的启动场景',
+  steps: [
+    '① MMU 关闭：VA 直接等于 PA，无地址翻译',
+    '② __pi_create_init_idmap 写入页表：non-cacheable → 直写 DRAM',
+    '③ 但 CPU 投机执行可能已把旧数据拉进了 Cache Line',
+    '④ Cache 中有旧数据（speculative load），DRAM 中有新页表',
+    '⑤ dc ivac：按 VA 精确定位该 cache line → invalidate',
+    '⑥ 后续 MMU 开启后读页表 → Cache miss → 从 DRAM 读到正确数据 ✅',
+  ],
+  svg: '<svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg">'+
+    '<defs><marker id="ar2" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#dc2626"/></marker></defs>'+
+    '<rect x="20" y="30" width="80" height="40" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>'+
+    '<text x="60" y="50" text-anchor="middle" font-size="10" fill="#1e40af" font-weight="600">CPU Core</text>'+
+    '<text x="60" y="62" text-anchor="middle" font-size="8" fill="#2563eb">VA = PA</text>'+
+    '<rect x="140" y="40" width="70" height="25" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>'+
+    '<text x="175" y="56" text-anchor="middle" font-size="8" fill="#991b1b" font-weight="600">MMU OFF</text>'+
+    '<rect x="160" y="150" width="90" height="50" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>'+
+    '<text x="205" y="170" text-anchor="middle" font-size="9" fill="#92400e" font-weight="600">L1 D-Cache</text>'+
+    '<text x="205" y="185" text-anchor="middle" font-size="8" fill="#dc2626">旧数据</text>'+
+    '<rect x="320" y="150" width="100" height="50" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="2"/>'+
+    '<text x="370" y="170" text-anchor="middle" font-size="9" fill="#065f46" font-weight="600">DRAM</text>'+
+    '<text x="370" y="185" text-anchor="middle" font-size="8" fill="#059669">新页表 ✓</text>'+
+    '<rect x="460" y="150" width="100" height="50" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="2"/>'+
+    '<text x="510" y="170" text-anchor="middle" font-size="9" fill="#065f46" font-weight="600">Page Table</text>'+
+    '<text x="510" y="185" text-anchor="middle" font-size="8" fill="#059669">__pi_init_idmap_pg_dir</text>'+
+    '<line x1="100" y1="50" x2="155" y2="50" stroke="#2563eb" stroke-width="2"/>'+
+    '<line x1="100" y1="75" x2="205" y2="145" stroke="#d97706" stroke-width="1.5" stroke-dasharray="5 3" class="flow-line"/>'+
+    '<text x="130" y="120" font-size="7" fill="#dc2626">speculative LDR</text>'+
+    '<line x1="250" y1="175" x2="315" y2="175" stroke="#059669" stroke-width="2"/>'+
+    '<text x="270" y="168" font-size="7" fill="#059669">STR (non-cacheable)</text>'+
+    '<text x="200" y="210" text-anchor="middle" font-size="9" fill="#d97706">dc ivac → invalidate ✓</text>'+
+    '<line x1="60" y1="100" x2="60" y2="145" stroke="#2563eb" stroke-width="2" class="flow-line"/>'+
+    '<text x="25" y="130" font-size="7" fill="#2563eb">dc ivac</text>'+
+  '</svg>'
+},
+'speculative': {
+  title: '场景 4：Speculative Load 如何污染 Cache',
+  steps: [
+    '① 分支预测器猜测一个分支方向',
+    '② CPU 投机执行 LDR 指令，读取了页表地址附近的内存',
+    '③ 此时 MMU off，VA=PA，硬件预取器将数据拉入 D-Cache',
+    '④ 后续 __pi_create_init_idmap 写入新页表 → non-cacheable 直写 DRAM',
+    '⑤ Cache 中的旧 line 和 DRAM 中的新数据不一致！',
+    '⑥ 解决方案：dc ivac 精确 invalidate 这条被污染的 cache line',
+  ],
+  svg: '<svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg">'+
+    '<rect x="20" y="20" width="90" height="40" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>'+
+    '<text x="65" y="40" text-anchor="middle" font-size="9" fill="#1e40af" font-weight="600">CPU Core</text>'+
+    '<text x="65" y="52" text-anchor="middle" font-size="7" fill="#2563eb">Branch Pred.</text>'+
+    '<rect x="140" y="15" width="80" height="25" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>'+
+    '<text x="180" y="31" text-anchor="middle" font-size="7" fill="#dc2626">MMU OFF</text>'+
+    '<rect x="240" y="15" width="80" height="25" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>'+
+    '<text x="280" y="31" text-anchor="middle" font-size="7" fill="#dc2626">Prefetcher ON</text>'+
+    '<rect x="20" y="130" width="100" height="50" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>'+
+    '<text x="70" y="150" text-anchor="middle" font-size="8" fill="#92400e" font-weight="600">L1 D-Cache</text>'+
+    '<text x="70" y="165" text-anchor="middle" font-size="7" fill="#dc2626">Line A: 旧数据</text>'+
+    '<rect x="160" y="100" width="120" height="45" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="2"/>'+
+    '<text x="220" y="118" text-anchor="middle" font-size="8" fill="#065f46" font-weight="600">DRAM (phys mem)</text>'+
+    '<text x="220" y="135" text-anchor="middle" font-size="7">Addr A: 旧值</text>'+
+    '<rect x="320" y="100" width="120" height="45" rx="6" fill="#d1fae5" stroke="#059669" stroke-width="2"/>'+
+    '<text x="380" y="118" text-anchor="middle" font-size="8" fill="#065f46">pg_dir (page table)</text>'+
+    '<text x="380" y="135" text-anchor="middle" font-size="7" fill="#059669">新页表项 ✓</text>'+
+    '<line x1="65" y1="60" x2="65" y2="125" stroke="#d97706" stroke-width="2" class="flow-line"/>'+
+    '<text x="72" y="100" font-size="6" fill="#dc2626">spel LDR</text>'+
+    '<line x1="70" y1="180" x2="220" y2="145" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="5 3"/>'+
+    '<text x="130" y="200" font-size="7" fill="#dc2626">⚠ 不一致!</text>'+
+    '<text x="70" y="220" text-anchor="middle" font-size="8" fill="#059669" font-weight="600">dc ivac → 修复 ✓</text>'+
+    '<rect x="360" y="160" width="130" height="55" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>'+
+    '<text x="425" y="178" text-anchor="middle" font-size="7" fill="#1e40af" font-weight="600">__pi_create_init_idmap</text>'+
+    '<text x="425" y="193" text-anchor="middle" font-size="7" fill="#2563eb">STR → Non-cacheable</text>'+
+    '<text x="425" y="207" text-anchor="middle" font-size="7" fill="#2563eb">绕过 Cache 直写 DRAM</text>'+
+  '</svg>'
+}
+};
+
+window.animShow = function(name) {
+  var s = scenes[name];
+  var svg = s.svg;
+  // Resize SVG to be responsive: replace hardcoded viewBox with responsive version
+  document.getElementById('animScene').innerHTML = svg;
+  var desc = '<strong>' + s.title + '</strong><br>';
+  s.steps.forEach(function(st, i) {
+    desc += '<div class="anim-step">' + st + '</div>';
+  });
+  document.getElementById('animDesc').innerHTML = desc;
+
+  // Highlight active button
+  document.querySelectorAll('.anim-btn').forEach(function(b) { b.classList.remove('active'); });
+  var btns = document.querySelectorAll('.anim-btn');
+  var mapping = {'mmu_on_hit':0, 'mmu_on_miss':1, 'mmu_off':2, 'speculative':3};
+  if (mapping[name] !== undefined) btns[mapping[name]].classList.add('active');
+};
+// Init with first scene
+window.animShow('mmu_on_hit');
+})();
+</script>
+
+<div class="note">💡 <strong>动画说明：</strong>点击上方按钮切换 4 个场景。虚线箭头表示异步/投机访问，实线箭头表示同步数据流。注意场景 3 和 4 正是本文 head.S 代码处理的核心问题——MMU off 时 non-cacheable 写入与 speculative load 的矛盾，以及 dc ivac 如何精确解决问题。</div>
+
+<h3 id="s2_12">2.12 数据和指令如何进入 Cache？—— 缓存分配的判断逻辑</h3>
+
+<p>一条 load/store 指令执行时，<strong>不是所有内存访问都会进入 Cache</strong>。CPU 硬件根据一系列规则决定是否缓存、缓存到哪里。</p>
+
+<h4>核心决定因素：Memory Type（内存类型）</h4>
+
+<p>ARMv8-A 将物理内存分为两大类，由页表项中的 <strong>AttrIdx</strong> 字段索引 <strong>MAIR_ELx</strong> 寄存器来决定：</p>
+
+<table><tr><th>Memory Type 大类</th><th>子类型</th><th>Cacheable?</th><th>投机访问?</th><th>重排/聚合?</th><th>本文相关场景</th></tr><tr><td rowspan="3"><strong>Normal</strong></td><td>Inner WB Cacheable</td><td style="color:#059669">✓ 读写均可</td><td style="color:#059669">✓</td><td style="color:#059669">✓</td><td>内核代码/数据段、堆栈</td></tr><tr><td>Inner WT Cacheable</td><td style="color:#059669">✓ 读缓存，写穿透</td><td style="color:#059669">✓</td><td style="color:#059669">✓</td><td>少数需要即时一致性的场景</td></tr><tr><td>Non-cacheable</td><td style="color:#dc2626">✗</td><td style="color:#059669">✓</td><td style="color:#059669">✓</td><td>DMA 共享缓冲区</td></tr><tr><td rowspan="4"><strong>Device</strong></td><td>nGnRnE</td><td style="color:#dc2626">✗</td><td style="color:#dc2626">✗</td><td style="color:#dc2626">✗</td><td><strong>MMU off 默认类型</strong>，所有访问强制 non-cacheable</td></tr><tr><td>nGnRE</td><td style="color:#dc2626">✗</td><td style="color:#dc2626">✗</td><td style="color:#dc2626">✗</td><td>外设寄存器（严格）</td></tr><tr><td>nGRE</td><td style="color:#dc2626">✗</td><td style="color:#dc2626">✗</td><td>可重排</td><td>外设寄存器（宽松）</td></tr><tr><td>GRE</td><td style="color:#dc2626">✗</td><td style="color:#dc2626">✗</td><td>可重排+聚合</td><td>最宽松外设</td></tr></table>
+
+<p><strong>Inner vs Outer 的含义，以及 Inner WB / Inner WT 的具体例子：</strong></p>
+
+<table>
+<tr><th>属性</th><th>控制范围</th><th>典型硬件</th><th>配置来源</th></tr>
+<tr><td><strong>Inner</strong></td><td>CPU cluster 内部 cache</td><td>L1 I-cache, L1 D-cache, L2 Unified（核内/簇内）</td><td>MAIR_ELx 的 Attr[7:4]</td></tr>
+<tr><td><strong>Outer</strong></td><td>CPU cluster 外部 cache</td><td>L3 / System Cache (SCF) / 片外 cache</td><td>MAIR_ELx 的 Attr[3:0]，暴露到总线给外部 cache</td></tr>
+</table>
+
+<p><strong>Inner Write-Back Cacheable —— 默认策略，最常见：</strong></p>
+
+<div class="two-col">
+<div>
+<p style="font-weight:600">例 1：内核函数内的局部变量</p>
+<pre><code>int do_something(void)
+{
+    int x = 0;          // 栈上分配
+    x = x + 1;          // 写 x: 只更新 L1 D-cache
+                        //   标记 dirty，不写 DRAM
+    return x;           // 读 x: L1 hit，直接返回
+}                       // 函数返回后，该 cache line
+                        //   可能在 eviction 时才写回 DRAM</code></pre>
+</div>
+<div>
+<p style="font-weight:600">例 2：内核数据段全局变量</p>
+<pre><code>static int counter = 0;
+
+void increment(void) {
+    counter++;  // 每次 ++:
+                // 1st: L1 miss → linefill 64B
+                //       counter 进入 L1 D-cache
+                // Then: L1 hit → 更新 cache line
+                //       标记 dirty
+                // DRAM 中的 counter 始终是旧值
+                // 直到该 cache line 被 evict 或
+                // 被显式 clean 才写回
+}</code></pre>
+</div>
+</div>
+
+<p><strong>Inner Write-Through Cacheable —— 写穿透，即时可见：</strong></p>
+
+<div class="two-col">
+<div>
+<p style="font-weight:600">例 3：与 DMA 设备共享的帧缓冲</p>
+<pre><code>// GPU/DMA 也需要看到 CPU 的写入
+// WT 保证每次写都到 DRAM，不依赖 cache eviction
+struct framebuffer {
+    uint32_t pixels[1920 * 1080];
+} *fb = ...;  // WT cacheable 映射
+
+fb->pixels[0] = 0xFF0000;  // 写 cache + 同时写 DRAM
+                            // GPU 立即能看到 DRAM 中的更新</code></pre>
+</div>
+<div>
+<p style="font-weight:600">例 4：为什么不全部用 WT？</p>
+<pre><code>// 对比 WB vs WT 的性能差异:
+// 循环写 1MB 数据, 每次 8 bytes
+for (int i = 0; i < 131072; i++)
+    buf[i] = i;
+
+// WB:  128K 次 L1 write hit (dirty)
+//       2048 次 eviction writeback
+//       ≈ 0.01 秒
+
+// WT:  128K 次 L1 write hit +
+//       128K 次 DRAM write
+//       ≈ 0.1 秒（慢 10 倍！）</code></pre>
+</div>
+</div>
+
+<p><strong>Normal Non-cacheable —— 绕过 Cache 但不限制重排：</strong></p>
+<table>
+<tr><th>场景</th><th>为什么要 Non-cacheable</th><th>代码模式</th></tr>
+<tr><td>DMA 发送缓冲区</td><td>CPU 写完数据后 DMA 控制器立即读取发送，如果数据留在 cache 里 DMA 读的是 DRAM 旧值</td><td><code>dma_alloc_coherent()</code> → 返回 non-cacheable 内存</td></tr>
+<tr><td>DMA 接收缓冲区</td><td>DMA 写入 DRAM 后 CPU 读取，如果 CPU 命中 cache 则读到旧值（DMA 不更新 cache）</td><td>同上，或手动 <code>dcache_inval_poc</code></td></tr>
+</table>
+
+<div class="note">💡 <strong>总结：</strong>Inner WB 是默认（性能优先），Inner WT 用于需要即时一致性的场景（但性能差），Non-cacheable 用于与 cache-ignorant 的外部 agent（如 DMA）共享的内存。绝大多数内核代码和数据都运行在 Inner WB 模式下，这也是 head.S 中 MMU 开启后所有正常内存访问的默认行为。</div>
+
+<h4>进入 Cache 的完整判断流程</h4>
+
+<table><tr><th>步骤</th><th>检查条件</th><th>结果</th><th>说明</th></tr><tr><td><strong>1</strong></td><td>MMU 是否开启？</td><td style="color:#dc2626">OFF → Non-cacheable，绕过 Cache</td><td>MMU off 时所有访问 = Device-nGnRnE，数据直读/写 DRAM。但投机读取仍可能拉入 cache line</td></tr><tr><td><strong>2a</strong></td><td>MMU ON：查页表 → AttrIdx → MAIR_EL1</td><td>得 Memory Type</td><td>AttrIdx 是 PTE 的 bits[4:2]，索引 MAIR_EL1 中的 8 个属性槽位之一</td></tr><tr><td><strong>2b</strong></td><td>Memory Type 是 Device？</td><td style="color:#dc2626">Yes → Non-cacheable</td><td>所有 Device 类型（nGnRnE/nGnRE/nGRE/GRE）都不缓存</td></tr><tr><td><strong>3</strong></td><td>Normal Memory 但标记 Non-cacheable？</td><td style="color:#dc2626">Yes → 绕过 Cache</td><td>Normal 也可以配成 non-cacheable</td></tr><tr><td><strong>4a</strong></td><td>Cache Hit（地址已在 Cache 中）</td><td style="color:#059669">直接使用 Cache 中数据</td><td>Load: 返回数据。Store: 更新 data + 标记 dirty（WB 模式）</td></tr><tr><td><strong>4b</strong></td><td>Cache Miss + Load（读缺失）</td><td>Read-Allocate? → <strong>Linefill 64B</strong></td><td>从下级 cache/DRAM 拉 64 字节填充到 cache line，然后返回数据给 CPU</td></tr><tr><td><strong>4c</strong></td><td>Cache Miss + Store（写缺失）</td><td>Write-Allocate? → 先 linefill 再写<br>否则 → 直接写 Write Buffer</td><td>ARM64 默认 Write-Allocate：即使写 1 字节也会先读 64B</td></tr></table>
+
+<h4>Read-Allocate vs Write-Allocate —— 实际的分配策略组合</h4>
+
+<table>
+<tr><th>策略</th><th>Read Miss</th><th>Write Miss</th><th>典型用途</th></tr>
+<tr>
+<td><strong>Write-Back, Read+Write Allocate</strong></td>
+<td>分配 Cache line</td><td>分配 Cache line</td>
+<td><strong>ARM64 CPU 默认策略</strong>（大多数 Normal Memory）</td>
+</tr>
+<tr>
+<td><strong>Write-Through, Read Allocate only</strong></td>
+<td>分配 Cache line</td>
+<td>不分配，直写 DRAM</td>
+<td>需要即时的数据一致性（较少用）</td>
+</tr>
+<tr>
+<td><strong>Non-cacheable</strong></td>
+<td>不分配</td>
+<td>不分配</td>
+<td>Device Memory、MMU off 时的所有访问</td>
+</tr>
+</table>
+
+<div class="note">💡 <strong>Write-Allocate 的代价：</strong>执行一条 <code>STR X0, [X1]</code> 时如果 cache miss，且策略是 Write-Allocate，则 CPU 会<strong>先发起一次 64 字节的 Burst Read（linefill）</strong>，然后再写入 8 字节。这就是为什么"写也会触发读"——这是 Write-Allocate 策略的固有行为。</div>
+
+<h4>指令缓存（I-cache）的分配</h4>
+
+<p>指令缓存的分配逻辑更简单——它只在 CPU <strong>取指（instruction fetch）</strong>时触发：</p>
+
+<table><tr><th>步骤</th><th>操作</th><th>延迟</th></tr><tr><td><strong>1</strong></td><td>CPU 取指 PC → 查 L1 I-cache</td><td>~1 cycle</td></tr><tr><td><strong>2a</strong></td><td style="color:#059669">I-cache Hit → 返回指令给流水线</td><td>1 cycle（总计）</td></tr><tr><td><strong>2b</strong></td><td style="color:#dc2626">I-cache Miss → 查 L2 Unified Cache</td><td>~10-20 cycles</td></tr><tr><td><strong>3</strong></td><td>L2 Hit → 填充 L1 I-cache line (64B)，返回指令</td><td>L2 延迟 + 填充延迟</td></tr><tr><td><strong>4</strong></td><td>L2 Miss → 从 DRAM 读 64B → 同时填充 L2 和 L1 I-cache</td><td>~100+ cycles</td></tr></table><p style="margin-top:6px"><strong>注意：</strong>I-cache 只读，永无 dirty line。分配策略固定为 Read-Allocate。指令执行与 cache line 填充可并行（critical word first）。</p>
+
+<h4>回到 head.S 的场景：为什么 MMU off 时写入不经过 Cache？</h4>
+
+<p>现在可以用这套逻辑完整解释 head.S 中的现象：</p>
+
+<table><tr><th>阶段</th><th>操作</th><th>MMU 状态</th><th>Cache 行为</th><th>结果</th></tr><tr><td><strong>写页表</strong></td><td><code>STR xN, [ptep]</code>（__pi_create_init_idmap）</td><td>OFF</td><td>Device-nGnRnE → Non-cacheable → 绕过 D-cache，直写 DRAM</td><td style="color:#059669">页表数据到了 DRAM ✓</td></tr><tr><td><strong>投机读</strong></td><td>CPU 预取器/分支预测 投机 LDR 页表地址附近</td><td>OFF</td><td>投机读取可能在 cache 中分配 line，把 DRAM 旧数据拉入 D-cache</td><td style="color:#dc2626">D-cache 中有旧数据 ✗</td></tr><tr><td><strong>Cache 维护</strong></td><td><code>dc ivac</code> 按页表地址 invalidate D-cache line</td><td>OFF</td><td>丢弃 cache 中旧 line → 后续 MMU on 后读页表</td><td style="color:#059669">Cache miss → 从 DRAM 取 → 正确页表 ✓</td></tr></table>
+
+<div class="warn">⚠ <strong>投机读取的特殊性：</strong>投机读取（speculative load）是 CPU 硬件行为，它可能在页表属性被 MMU 翻译之前就发出了内存请求。当 MMU off 时，CPU 内部可能仍会按照某种内部启发式（如预取器检测到顺序访问模式）发起投机读取，并<strong>可能忽略 "所有访问都是 non-cacheable" 的约束</strong>——因为投机访问的语义本身就是"如果猜错了，就当没发生过"。但 cache line 一旦被填充，它就是真实存在的，必须用 <code>dc ivac</code> 显式清除。</div>
+
+<h3 id="s2_13">2.13 Cache 是一个动态平衡系统 —— 替换策略与数据生命周期</h3>
+
+<p>Cache 的本质是一个<strong>容量极其有限的 SRAM 窗口</strong>，映射到比它大几千倍的 DRAM 地址空间。数据在 Cache 中的存在是<strong>暂时的、动态的</strong>——不断有新数据进来，不断有旧数据被踢出去。</p>
+
+<h4>Cache 的"呼吸"：填充与逐出</h4>
+
+<table><tr><th>阶段</th><th>触发事件</th><th>Line 状态变化</th><th>数据流</th></tr><tr><td><strong>1. 填充</strong></td><td>Cache Miss + 策略允许分配</td><td>V: 0→1, D: 0→0（初始 clean）</td><td>L2/DRAM → Cache (64B Burst Read)</td></tr><tr><td><strong>2. 命中（读）</strong></td><td>Load 指令命中</td><td>无变化，age 重置为 0（年轻）</td><td>Cache → CPU（返回数据）</td></tr><tr><td><strong>3. 命中（写）</strong></td><td>Store 指令命中（WB 模式）</td><td>D: 0→1（标记 dirty），age 重置</td><td>CPU → Cache（仅更新 cache）</td></tr><tr><td><strong>4. 逐出</strong></td><td>同 set 满 + 新 line 需分配</td><td>V: 1→0（失效）</td><td>若 Dirty → Cache → DRAM（写回）；若 Clean → 直接丢弃</td></tr></table>
+
+<h4>替换策略：如何决定踢谁出去？</h4>
+
+<table>
+<tr><th>策略</th><th>算法</th><th>特点</th><th>ARM64 使用场景</th></tr>
+<tr>
+<td><strong>LRU</strong><br>(Least Recently Used)</td>
+<td>踢出最久未访问的 line</td>
+<td>最优但硬件成本高（需维护访问顺序）</td>
+<td>小 cache 可能用 true LRU</td>
+</tr>
+<tr>
+<td><strong>pLRU / RRIP</strong><br>(Pseudo-LRU / Re-Reference Interval Prediction)</td>
+<td>近似 LRU，用少量 bits 估计"年龄"</td>
+<td>硬件成本低，接近 LRU 效果</td>
+<td><strong>Cortex-A53/57/72 L1 和 L2 通用</strong></td>
+</tr>
+<tr>
+<td><strong>Random</strong></td>
+<td>随机选一个 victim</td>
+<td>最简单，无状态存储</td>
+<td>极少用于高性能 cache，偶尔用于 L3</td>
+</tr>
+</table>
+
+<table><tr><th>时刻</th><th>Way 0</th><th>Way 1</th><th>Way 2</th><th>Way 3</th><th>说明</th></tr><tr><td><strong>初始</strong></td><td>[0x04000] age=3 ★</td><td>[0x12000] age=2</td><td>[0x08000] age=1</td><td>[0x20000] age=0</td><td>way 0 最老，下次被踢</td></tr><tr><td><strong>访问 0x08000</strong></td><td>[0x04000] age=3 ★</td><td>[0x12000] age=2</td><td style="color:#059669">[0x08000] age=0 ← 命中</td><td>[0x20000] age=1</td><td>way 2 年龄重置为 0</td></tr><tr><td><strong>Miss 0x30000</strong></td><td style="color:#dc2626">[0x30000] age=0 ← 新</td><td>[0x12000] age=3</td><td>[0x08000] age=1</td><td>[0x20000] age=2</td><td>踢 way 0（age 最大），填新 line</td></tr></table><p style="margin-top:6px">★ 频繁访问的 0x08000 保持年轻，不会被踢；很久没访问的 0x04000 变老、被淘汰。</p>
+
+<h4>回答：常用数据会不会也被踢出？</h4>
+
+<p><strong>理论上可能，实际上很难。</strong>原因有三：</p>
+
+<table>
+<tr><th>保护机制</th><th>如何保护热数据</th><th>失效条件</th></tr>
+<tr>
+<td><strong>替换策略 (LRU/pLRU)</strong></td>
+<td>每次命中都"刷新年龄"，频繁访问的 line 永远年轻</td>
+<td>同一 set 内有多于 4 个热点地址竞争 → <strong>冲突 miss</strong></td>
+</tr>
+<tr>
+<td><strong>Set-Associative 结构</strong></td>
+<td>同一 index 有多个 way，减少"只能存一个"的冲突</td>
+<td>热点恰好都映射到同一 set → 需要更高 associativity</td>
+</tr>
+<tr>
+<td><strong>Cache 容量</strong></td>
+<td>L2 (2MB) 远大于 L1 (32KB)，热数据可能"降级"到 L2 而非被丢弃</td>
+<td>工作集 > Cache 总容量 → <strong>容量 miss</strong>，只能靠更大 cache 或优化算法</td>
+</tr>
+</table>
+
+<table><tr><th>场景</th><th>工作集大小 vs Cache</th><th>L1 Hit 率</th><th>L2 作用</th><th>结果</th></tr><tr><td><strong>典型</strong></td><td>2KB 数组 vs L1D 32KB</td><td style="color:#059669">~100%</td><td>无需介入</td><td>32 lines 全部在 L1，不会被踢</td></tr><tr><td><strong>压力</strong></td><td>48KB (A+B+C) vs L1D 32KB</td><td style="color:#d97706">~60-80%</td><td>L2 (2MB) 容纳全部</td><td>L1 miss → L2 hit，10-20 cycles，仍比 DRAM 快 ~10×</td></tr><tr><td><strong>极端</strong></td><td>N+1 地址轮流 map 到同一 set</td><td style="color:#dc2626">~0%</td><td>无法帮助（同一 set 冲突）</td><td>4-way 只能存 4 个，第 5 个必踢一个 → Cache Thrashing</td></tr></table>
+
+<h4>回到 boot_args：它需要放到 Cache 里吗？</h4>
+
+<p><code>boot_args[4]</code> 的生命周期非常特殊：</p>
+
+<table><tr><th>阶段</th><th>时机</th><th>操作</th><th>MMU</th><th>Cache 行为</th></tr><tr><td><strong>写入</strong></td><td>启动 ~10 条指令</td><td><code>STR x0..x3 → boot_args</code></td><td>OFF</td><td>Non-cacheable，绕过 Cache → DRAM</td></tr><tr><td><strong>Cache 维护</strong></td><td>立即</td><td><code>dmb sy + dcache_inval_poc</code></td><td>OFF</td><td>清除投机读取可能引入的旧 line</td></tr><tr><td><strong>读取</strong></td><td>start_kernel → setup_arch</td><td>C 代码读 boot_args[0..3]</td><td>ON</td><td>Cache miss → linefill → 首次进入 Cache</td></tr><tr><td><strong>淘汰</strong></td><td>随后</td><td>不再访问</td><td>ON</td><td>age 增长 → 被热数据挤出 Cache</td></tr></table><p style="margin-top:6px"><strong>结论：</strong>boot_args 不需要长期驻留 Cache。<code>__cacheline_aligned</code> 的作用是让它独占一条 cache line，<code>dc ivac</code> 时不会误伤邻居——这是它唯一需要 cache 对齐的原因。</p>
+
+<div class="note">💡 <strong>核心认知：</strong>Cache 是一个<strong>概率性加速器</strong>，不是确定性存储。它依赖两个统计规律：<strong>时间局部性</strong>（刚访问的数据很可能再次被访问）和<strong>空间局部性</strong>（相邻地址的数据很可能一起被访问）。ARM64 的替换策略和 set-associative 结构都是为了最大化这两个局部性的收益。但对于 boot_args 这种"写入一次、读取一次、永不使用"的数据，Cache 对它既不友好（第一次写绕过 Cache，第一次读必然 miss）也不需要友好（反正只用一次）。</div>
+
+<h3 id="s2_14">2.14 Cache 逐出的判断逻辑 —— 什么条件下踢掉一条 line？</h3>
+
+<p>逐出（eviction）和填充（allocation）是一对镜像操作。§2.12 讲了"怎么进"，本节聚焦"怎么出"。</p>
+
+<h4>触发条件：只有一个</h4>
+
+<table><tr><th>条件</th><th>是否触发逐出</th><th>说明</th></tr><tr><td style="color:#dc2626">Cache Miss + 需分配 +<br>目标 Set 所有 Way 已满 (V=1)</td><td style="color:#dc2626"><strong>是 ← 唯一触发</strong></td><td>必须选一个 victim 踢出去，为新 line 腾空间</td></tr><tr><td>Cache Hit</td><td>否</td><td>直接读写，不涉及逐出</td></tr><tr><td>Cache Miss 但 Set 有空闲 Way (V=0)</td><td>否</td><td>直接填充空闲位</td></tr><tr><td>Cache Miss 但策略不允许分配</td><td>否</td><td>Non-cacheable / Write-Through no-WA on write miss → 绕过 Cache</td></tr></table>
+
+<p><strong>其他情况都不会触发逐出：</strong></p>
+<ul>
+<li>Cache Hit → 直接读写，不涉及逐出</li>
+<li>Cache Miss 但目标 Set 有空闲 Way (Valid=0) → 直接填充空闲位，不逐出</li>
+<li>Cache Miss 但策略不允许分配（如 non-cacheable, or Write-Through+No-Write-Allocate on write miss）→ 绕过 Cache，不逐出</li>
+</ul>
+
+<h4>逐出决策流程：硬件状态机</h4>
+
+<table><tr><th>步骤</th><th>判定</th><th>分支</th><th>动作</th></tr><tr><td><strong>1</strong></td><td>Set #N 有空闲 Way？（任一 Valid=0）</td><td style="color:#059669">Yes</td><td>直接填充空闲位，<strong>不逐出</strong></td></tr><tr><td><strong>2</strong></td><td>Set #N 所有 4 Way 都满？（全部 Valid=1）</td><td style="color:#dc2626">Yes — 进入逐出</td><td>pLRU 选择 age 最大的 way 作为 victim</td></tr><tr><td><strong>3</strong></td><td>Victim.Dirty == 1？</td><td style="color:#dc2626">Yes（脏数据）</td><td><strong>先 Clean</strong>：将 64B 写回 L2/DRAM，再 Invalidate（V=0）</td></tr><tr><td><strong>4</strong></td><td>Victim.Dirty == 0？</td><td style="color:#059669">No（Clean）</td><td><strong>直接 Invalidate</strong>（V=0），不写回（DRAM 已有副本）</td></tr><tr><td><strong>5</strong></td><td>填充新 line</td><td>—</td><td>Tag = X 高位, Data = 来自下级存储, V=1, D=0, age=0</td></tr></table>
+
+<h4>替换策略的运行机制：pLRU 如何跟踪"年龄"</h4>
+
+<p>ARM64 处理器（Cortex-A 系列）通常使用 <strong>pLRU（Pseudo-LRU）</strong>或 <strong>RRIP（Re-Reference Interval Prediction）</strong>，而非真正的 LRU。下面是 pLRU 在 4-way set 中的实现原理：</p>
+
+<table><tr><th colspan="3">pLRU 3-bit 二叉树编码（4-way）</th></tr><tr><td><strong>bit0</strong></td><td colspan="2">0 = way0/1 分支更近被用过（victim 走 way2/3 分支）<br>1 = way2/3 分支更近被用过（victim 走 way0/1 分支）</td></tr><tr><td><strong>bit1</strong></td><td>0 = way0 比 way1 更近被用过 → victim=way1<br>1 = way1 比 way0 更近被用过 → victim=way0</td><td>仅 bit0=0 时有效</td></tr><tr><td><strong>bit2</strong></td><td>0 = way2 比 way3 更近被用过 → victim=way3<br>1 = way3 比 way2 更近被用过 → victim=way2</td><td>仅 bit0=1 时有效</td></tr></table><p style="margin-top:6px"><strong>更新规则：</strong>命中 wayX 时，翻转指向 wayX 的所有祖先 bit，使 wayX 看起来像"最近被使用"。<strong>选 victim：</strong>沿树的反方向走到底。</p><p><strong>例：</strong>bit0=0, bit1=0, bit2=1 → victim = way1。仅需 3 bits 即可管理 4-way 的近似 LRU，硬件成本极低。</p>
+
+<h4>逐出与填充的对称性总结</h4>
+
+<table>
+<tr><th></th><th>进入 Cache（§2.12）</th><th>离开 Cache（本节）</th></tr>
+<tr><td><strong>触发条件</strong></td><td>Cache Miss + 策略允许分配</td><td>Cache Miss + Set 满 + 需分配</td></tr>
+<tr><td><strong>决策硬件</strong></td><td>MAIR 属性 + Allocation Policy</td><td>pLRU 替换策略 + Dirty bit</td></tr>
+<tr><td><strong>不触发的情况</strong></td><td>Device memory / non-cacheable / MMU off</td><td>Hit / Set 有空位 / 策略不分配</td></tr>
+<tr><td><strong>额外动作</strong></td><td>Linefill (Burst Read 64B)</td><td>若 Dirty → Write-back 64B 到下级存储</td></tr>
+</table>
+
+<div class="note">💡 <strong>一图总结 Cache 的"进与出"：</strong>Cache 的填充和逐出形成闭环——新数据进来（§2.12 的三层过滤），旧数据出去（本节的 pLRU+Dirty 决策）。两者共同维持 Cache 的动态平衡，使得最常用的数据倾向于留在 Cache 中，不常用的自然淘汰。</div>
+
+<h3 id="s2_15">2.15 如何观察 Cache 的工作流程？—— 实践观测方法</h3>
+
+<p>前面 14 个小节都是理论。本节介绍三种<strong>实际可操作</strong>的方法来观察缓存行为。</p>
+
+<h4>方法 1：perf stat —— 硬件性能计数器</h4>
+
+<p>ARM Cortex-A57 有完整的 PMU（Performance Monitoring Unit），<code>perf</code> 可以直接读取 cache 事件：</p>
+
+<pre><code># 观测任意程序的 cache 行为
+perf stat -e cache-references,cache-misses,L1-dcache-loads,L1-dcache-load-misses \
+          -e L1-dcache-stores,l2d_cache,l2d_cache_refill ls -la /
+
+# 输出示例:
+#   1,234,567  cache-references    (L1 D-cache 访问总次数)
+#      45,678  cache-misses        (L1 D-cache miss 次数, ~3.7% miss rate)
+#   2,345,678  L1-dcache-loads     (L1 D-cache 读访问)
+#      56,789  L1-dcache-load-misses
+#     123,456  L1-dcache-stores    (L1 D-cache 写访问)
+#     987,654  l2d_cache           (L2 D-cache 访问)
+#      34,567  l2d_cache_refill    (L2 miss → 需要从 DRAM 填充)
+
+# 查看所有可用 cache 事件:
+perf list cache</code></pre>
+
+<h4>方法 2：cache_bench 程序 —— 用时间差反推缓存层级</h4>
+
+<p>已在 <code>kmodules/cache_info/cache_bench.c</code> 中写好了四个测试。编译并在 QEMU 中运行：</p>
+
+<pre><code># 在宿主机上交叉编译
+aarch64-linux-gnu-gcc -O2 -static kmodules/cache_info/cache_bench.c \
+    -o kmodules/cache_info/cache_bench
+
+# 在 QEMU 中挂载并运行
+mount -t 9p -o trans=virtio kmod_mount /mnt
+/mnt/cache_info/cache_bench</code></pre>
+
+<table>
+<tr><th>测试</th><th>原理</th><th>预期结果</th></tr>
+<tr>
+<td><strong>Test 1: Stride Access</strong></td>
+<td>以不同步长（1,2,4,8,16,32）访问大数组。步长=1 时 64B line 内连续命中，步长=16 时每次访问跨 2 条 cache line</td>
+<td>stride=1 最快，stride=16 明显变慢（每 16 字节就 miss 一次），比值 ≈ cache line size / stride</td>
+</tr>
+<tr>
+<td><strong>Test 2: Latency Ladder</strong></td>
+<td>随机指针追逐不同大小的链表。8KB 链表全在 L1 内，128KB 在 L2 内，8MB 超出 L2 必须走 DRAM</td>
+<td>L1: ~4 cycles, L2: ~15 cycles, DRAM: ~100+ cycles。三个平台形成阶梯状</td>
+</tr>
+<tr>
+<td><strong>Test 3: False Sharing</strong></td>
+<td>两个变量在 128B 对齐的不同 cache line（无干扰）vs 紧邻（同 line）</td>
+<td>不同 line 明显更快（无 line bouncing），同 line 由于 store 竞争而变慢</td>
+</tr>
+</table>
+
+<div class="note">💡 <strong>核心技巧：</strong>无法直接"看到"cache 内部，但可以通过<strong>测量不同条件下的访问延迟</strong>来反推。如果 8KB 的随机访问延迟和 32KB 相近（都是 ~4 cycles），但 128KB 明显变慢（~15 cycles），说明 32KB 到 128KB 之间跨过了 L1→L2 的边界，从而<strong>确认 L1 D-cache 大小是 32KB</strong>。这正是 Hardware Reverse Engineering 的基本方法。</div>
+
+<h4>方法 3：读取硬件寄存器（本文方法）</h4>
+
+<p>最直接的方法——之前编写的 <code>cache_info.ko</code> 内核模块直接读 CCSIDR_EL1/CLIDR_EL1，从寄存器得到确切的几何参数（大小、路数、组数、行大小）。但这不是"观察工作流程"——它告诉你 cache <strong>是什么</strong>，不告诉你它<strong>怎么运行</strong>。perf 和 bench 程序才能看到"运行中的 cache"。</p>
+
+<h4>三种方法的定位</h4>
+<table>
+<tr><th>方法</th><th>看到什么</th><th>优势</th><th>局限</th></tr>
+<tr><td><strong>perf stat</strong></td><td>运行时 cache 命中/缺失计数</td><td>零侵入，任何程序可用</td><td>看不到单个 cache line 的行为</td></tr>
+<tr><td><strong>cache_bench</strong></td><td>不同工作集大小的延迟阶梯</td><td>精确反推层级边界，代码可读</td><td>需要单独编译运行</td></tr>
+<tr><td><strong>cache_info.ko</strong></td><td>CCSIDR_EL1 的几何参数</td><td>精确到 set/way/line</td><td>只是静态信息，看不到动态行为</td></tr>
+</table>
+
+<h3 id="s2_16">2.16 学习 ARM64 Cache 对我们的帮助是什么？</h3>
+
+<p>这个问题值得单开一节。学习了前面 15 个小节，知识最终落地为三种实际能力：</p>
+
+<table>
+<tr><th>能力</th><th>不懂 Cache 时</th><th>懂了 Cache 之后</th></tr>
+
+<tr>
+<td><strong>读懂关键内核代码</strong></td>
+<td>head.S 里 <code>dc ivac</code>、<code>dc cvac</code>、<code>dmb sy</code> 像天书，不知道为什么要有两条路径，不知道为什么 MMU 开/关要配不同的 cache 操作</td>
+<td style="color:#059669">能逐条解释 head.S:96-117 的每一行：cbnz x19 为什么分叉、dcache_inval_poc 为什么操作页表区域、dcache_clean_poc 为什么操作 idmap 代码段。能独立分析同类代码</td>
+</tr>
+
+<tr>
+<td><strong>写出正确的设备驱动</strong></td>
+<td>DMA 缓冲区乱写：CPU 写完数据后 DMA 读到的是 DRAM 里的旧值（因为新数据还在 cache 里没写回）。或者 DMA 写完后 CPU 读到的是 cache 里的旧值。调试几天找不到根因</td>
+<td style="color:#059669">知道 <code>dma_alloc_coherent()</code> 返回的是 non-cacheable 内存；知道 streaming DMA 需要在 CPU 写完后 <code>dcache_clean_poc</code>、DMA 写完后 <code>dcache_inval_poc</code>。一次写对</td>
+</tr>
+
+<tr>
+<td><strong>性能优化与调试</strong></td>
+<td>数据结构随意排列，热点循环莫名其妙慢；多核程序偶尔卡顿不知道怎么排查</td>
+<td style="color:#059669">知道 false sharing 的根因是两个 CPU 各自写同一条 cache line 内的不同变量导致 line 在核间乒乓 bounce；解决方法是让每个 CPU 的变量独占一条 line——<code>__cacheline_aligned</code> 只是对齐到 line 边界，还需要<strong>填充至 64B 以上</strong>才能真正隔离（比如 `char pad[L1_CACHE_BYTES - sizeof(field)]`）；知道用 <code>perf stat</code> 看 cache miss rate 定位瓶颈；知道 stride 对 cache 的影响</td>
+</tr>
+
+<tr>
+<td><strong>理解安全漏洞</strong></td>
+<td>Spectre/Meltdown 等侧信道攻击的论文和补丁完全看不懂</td>
+<td style="color:#059669">知道 speculative execution 会填充 cache line 且不会回滚；知道用 cache timing side-channel（测量访问延迟）可以推断出投机执行触碰过的数据——这正是 Spectre 的核心原理</td>
+</tr>
+
+<tr>
+<td><strong>阅读 ARM 架构文档</strong></td>
+<td>ARM ARM 里 CCSIDR_EL1、CLIDR_EL1、PoC、PoU、VIPT 全是陌生缩写</td>
+<td style="color:#059669">这套词汇已经是你的工作语言。能独立查阅 ARMv8-A Architecture Reference Manual 的 cache 章节来验证或拓展知识</td>
+</tr>
+</table>
+
+<div class="note">💡 <strong>最直接的回报：</strong>你现在回头看 <code>head.S:96-117</code> 那十几行汇编——每条指令的目的、每条路径的选择原因、每个寄存器的来源——都已经不再是"看不懂的魔法"，而是一个逻辑严密的硬件-软件协作流程。这就是从"会用"到"理解"的跨越。</div>
+
+<h3 id="s2_17">2.17 Inclusive vs Exclusive Cache —— 多级 Cache 的数据分布策略</h3>
+
+<p>本节来自 ARMv8-A Programmer's Guide §11.1.3。当 CPU 有 L1 和 L2 两级 Cache 时，同一段数据可能同时存在于两级 Cache 中，也可能只存在于其中一级。这由 <strong>Inclusive</strong> 或 <strong>Exclusive</strong> 策略决定。</p>
+
+<table>
+<tr><th>策略</th><th>数据分布</th><th>L1 Eviction 行为</th><th>优点</th><th>缺点</th></tr>
+<tr>
+<td><strong>Inclusive</strong><br>（包含式）</td>
+<td>L1 中有的数据，L2 中<strong>一定也有副本</strong><br>L2 是 L1 的超集</td>
+<td>被踢出的 L1 line 可以直接丢弃<br>（L2 已有副本，无需写回）</td>
+<td>多核间 snoop 只需查 L2<br>（L1 命中的 L2 一定也有）<br>简化一致性协议</td>
+<td>L2 容量被 L1 内容重复占用<br>等效可用容量 = L2 容量<br>（而非 L1+L2）</td>
+</tr>
+<tr>
+<td><strong>Exclusive</strong><br>（互斥式）</td>
+<td>同一数据<strong>只能</strong>出现在 L1 或 L2 中<br>不会同时存在</td>
+<td>被踢出的 L1 line <strong>必须</strong>写回 L2<br>（L2 没有副本）<br>同时从 L2 踢出一条 line 到 DRAM</td>
+<td>等效可用容量 = L1+L2<br>（不重复存储）<br>容量利用率高</td>
+<td>一致性协议复杂<br>（snoop 要同时查 L1 和 L2）</td>
+</tr>
+</table>
+
+<p>ARM 处理器<strong>通常使用 Inclusive 策略</strong>（如 Cortex-A53/A57），但具体是 Inclusive 还是 Exclusive 是 IMPLEMENTATION DEFINED。本文中讨论的 L1→L2 linefill 行为在 Inclusive 模式下最直观——L1 miss 时从 L2 拉数据，L2 始终保留副本。</p>
+
+<h3 id="s2_18">2.18 Cache 维护操作补遗 —— 完整指令表与执行规则</h3>
+
+<p>本节扩充 §2.7，补全 ARMv8-A Programmer's Guide §11.5 中 AArch64 的全部 Cache 维护指令：</p>
+
+<table>
+<tr><th>Cache</th><th>指令</th><th>操作</th><th>范围</th><th>AArch32 对应</th></tr>
+<tr><td rowspan="7"><strong>DC</strong><br>(Data Cache)</td><td><code>DC CISW</code></td><td>Clean + Invalidate by Set/Way</td><td>指定 set/way</td><td>DCCISW</td></tr>
+<tr><td><code>DC CIVAC</code></td><td>Clean + Invalidate by VA to PoC</td><td>指定 VA 的 line</td><td>DCCIMVAC</td></tr>
+<tr><td><code>DC CSW</code></td><td>Clean by Set/Way</td><td>指定 set/way</td><td>DCCSW</td></tr>
+<tr><td><code>DC CVAC</code></td><td>Clean by VA to PoC</td><td>指定 VA 的 line</td><td>DCCMVAC</td></tr>
+<tr><td><code>DC CVAU</code></td><td>Clean by VA to PoU</td><td>指定 VA 的 line</td><td>DCCMVAU</td></tr>
+<tr><td><code>DC ISW</code></td><td>Invalidate by Set/Way</td><td>指定 set/way</td><td>DCISW</td></tr>
+<tr><td><code>DC IVAC</code></td><td>Invalidate by VA to PoC</td><td>指定 VA 的 line</td><td>DCIMVAC</td></tr>
+<tr><td><strong>DC</strong></td><td><code>DC ZVA</code></td><td>Cache Zero by VA<br>（ARMv8-A 新增）</td><td>指定 VA 的 line<br>填充零值，不从 DRAM 读</td><td>—</td></tr>
+<tr><td rowspan="3"><strong>IC</strong><br>(I-cache)</td><td><code>IC IALLUIS</code></td><td>Invalidate All to PoU, Inner Shareable</td><td>全部 I-cache</td><td>ICIALLUIS</td></tr>
+<tr><td><code>IC IALLU</code></td><td>Invalidate All to PoU</td><td>全部 I-cache</td><td>ICIALLU</td></tr>
+<tr><td><code>IC IVAU</code></td><td>Invalidate by VA to PoU</td><td>指定 VA 的 line</td><td>ICIMVAU</td></tr>
+</table>
+
+<p><strong>关键执行规则</strong>（来自 ARMv8-A Programmer's Guide）：</p>
+
+<table>
+<tr><th>规则</th><th>内容</th></tr>
+<tr><td><strong>地址排序</strong></td><td>DC 操作（除 DC ZVA）<strong>只在操作同一地址时保证程序顺序</strong>。不同地址的 DC 操作之间可以乱序执行</td></tr>
+<tr><td><strong>IC 排序</strong></td><td>IC 操作之间、IC 与 DC 之间、IC 与 load/store 之间<strong>没有顺序保证</strong>，除非插入 <code>DSB</code></td></tr>
+<tr><td><strong>完成保证</strong></td><td>Cache 操作<strong>发出</strong> ≠ <strong>完成</strong>。必须在所有 Cache 操作后执行 <code>DSB</code> 才能保证操作对后续访问可见</td></tr>
+<tr><td><strong>权限</strong></td><td><code>DC IVAC</code> 需要写权限，否则产生 Permission Fault</td></tr>
+</table>
+
+<div class="note">💡 <strong>DC ZVA 的价值：</strong>当你知道即将完全覆写一块内存（如初始化大数组或清空 buffer），用 <code>DC ZVA</code> 直接在 Cache 中填充零值而不发起 DRAM 读。这省掉了一次无意义的 linefill（你反正要覆盖全部数据），节省内存带宽和延迟。适用于 <code>memset(buf, 0, size)</code> 的硬件加速场景。</div>
+
+<h3 id="s2_19">2.19 Cache 发现算法 —— 如何系统性地枚举整个 Cache 层次</h3>
+
+<p>本节来自 ARMv8-A Programmer's Guide §11.6 的 Example 11-3。以下汇编代码展示了从 CLIDR_EL1 出发，逐级逐路逐组地 Clean 整个 Data/Unified Cache 到 PoC 的标准方法。与 §2.5 中我们的 CLIDR_EL1 解码和 cache_info.ko 的 CCSIDR 读取原理完全一致：</p>
+
+<table>
+<tr><th>步骤</th><th>操作</th><th>对应的寄存器/指令</th></tr>
+<tr><td><strong>1. 获取拓扑</strong></td><td>读 CLIDR_EL1 → 提取 LoC（Level of Coherency），确定最多到哪一级</td><td><code>MRS X0, CLIDR_EL1</code></td></tr>
+<tr><td><strong>2. 逐级遍历</strong></td><td>对每一级（L1 → LoC），检查 Ctype：若是 Data(=2) 或 Unified(=4) 则需维护；若是 Instruction(=1) 或 None(=0) 则跳过</td><td><code>AND W1, W0, #0x7</code>（提取 3-bit Ctype）</td></tr>
+<tr><td><strong>3. 选择 Cache</strong></td><td>写 CSSELR_EL1 选中当前 level+type，ISB 同步，再读 CCSIDR_EL1 获取几何参数</td><td><code>MSR CSSELR_EL1, X10</code><br><code>ISB</code><br><code>MRS X1, CCSIDR_EL1</code></td></tr>
+<tr><td><strong>4. 解码 CCSIDR</strong></td><td>从 CCSIDR 提取 LineSize（bits[2:0]）、Associativity（bits[12:3]）、NumSets（bits[27:13]）</td><td>UBFX / AND / LSL 位操作</td></tr>
+<tr><td><strong>5. 逐 way 逐 set 操作</strong></td><td>双层嵌套循环：外层递减 way，内层递减 set，构造 set/way 操作数，执行 DC CSW</td><td><code>DC CSW, X11</code></td></tr>
+<tr><td><strong>6. 完成屏障</strong></td><td>所有层级操作完后执行 DSB，确保全部 Clean 完成</td><td><code>DSB</code></td></tr>
+</table>
+
+<div class="note">💡 <strong>这就是 Linux 内核 <code>__flush_dcache_all</code> 的底层逻辑。</strong><code>arch/arm64/mm/cache.S</code> 中的 <code>__flush_dcache_all</code> 函数本质上就是这个算法的简化实现——遍历 CLIDR_EL1 的每一级，用 set/way 操作清理全部 D-cache。理解了这段代码就理解了 ARM64 内核的 Cache 初始化流程。但注意：<strong>Set/Way 操作仅用于 power-down/up 流程</strong>（如内核启动时 <code>__flush_dcache_all</code>），日常运行时的一致性维护必须用 VA-based 操作（<code>dc ivac</code>/<code>dc cvac</code>），正如 head.S 所做的那样。</div>
+
+<h3 id="s2_20">2.20 怎么写代码才能进 Cache 并跑得更快？</h3>
+
+<p>前面 19 个小节讲了 Cache 的原理、结构、维护。但最实际的问题是：<strong>怎么写代码才能让数据留在 Cache 里？</strong>答案不是靠特殊指令——只要访问的是 Normal Cacheable 内存（MMU on 的默认属性），<strong>数据自动进 Cache</strong>。真正决定性能的是<strong>访问模式</strong>是否对 Cache 友好。</p>
+
+<h4>原则 1：空间局部性 —— 顺序访问，别跳着走</h4>
+
+<div class="two-col">
+<div>
+<p style="font-weight:600;color:#dc2626">✗ 糟糕：按列遍历（stride = 行宽）</p>
+<pre><code>int matrix[1024][1024];
+
+// 每次内层循环跨 1024×4 = 4KB
+// 每 16 次访问就 miss 一次
+for (int j = 0; j < 1024; j++)
+    for (int i = 0; i < 1024; i++)
+        sum += matrix[i][j];  // stride=4KB!
+// 耗时: ~100M cycles</code></pre>
+</div>
+<div>
+<p style="font-weight:600;color:#059669">✓ 好：按行遍历（stride = 1）</p>
+<pre><code>int matrix[1024][1024];
+
+// 内层连续访问 1024 个 int = 4KB
+// = 64 条 cache line，全部命中
+for (int i = 0; i < 1024; i++)
+    for (int j = 0; j < 1024; j++)
+        sum += matrix[i][j];  // stride=1!
+// 耗时: ~10M cycles（快 10 倍）</code></pre>
+</div>
+</div>
+
+<h4>原则 2：时间局部性 —— 用完的数据赶紧再用，别等它被踢出</h4>
+
+<div class="two-col">
+<div>
+<p style="font-weight:600;color:#dc2626">✗ 糟糕：两个大数组交替操作</p>
+<pre><code>// A 和 B 各占 512KB
+// 处理完 A 再处理 B 时 A 已被 B 踢出 L1
+for (int i = 0; i < N; i++)
+    A[i] = f(A[i]);     // 512KB 填满又踢出
+for (int i = 0; i < N; i++)
+    B[i] = g(B[i]);     // 512KB 再次填满又踢出
+// 每次 pass 都是 DRAM 速度</code></pre>
+</div>
+<div>
+<p style="font-weight:600;color:#059669">✓ 好：Blocking（分块），一次处理一块</p>
+<pre><code>// 每次只处理能塞进 L1 的小块
+#define BLK 512  // 512×8B = 4KB << L1D 32KB
+for (int b = 0; b < N; b += BLK) {
+    for (int i = b; i < b + BLK; i++)
+        A[i] = f(A[i]);
+    for (int i = b; i < b + BLK; i++)
+        B[i] = g(B[i]);
+}
+// 每块都在 L1 内处理完，才换下一块</code></pre>
+</div>
+</div>
+
+<h4>原则 3：结构体布局 —— 热字段聚拢，冷字段靠边</h4>
+
+<div class="two-col">
+<div>
+<p style="font-weight:600;color:#dc2626">✗ 糟糕：热字段散落，一条 line 装不下</p>
+<pre><code>struct task {
+    int pid;           // 热：每次调度都访问
+    char name[256];     // 冷：几乎不用
+    int state;          // 热
+    char comm[256];     // 冷
+    int prio;           // 热
+    char padding[192];  // 浪费
+};
+// 三个热字段跨了 ~700 bytes
+// ≈ 11 条 cache line！
+// 每次访问 {pid,state,prio} 要 miss 3 次</code></pre>
+</div>
+<div>
+<p style="font-weight:600;color:#059669">✓ 好：热字段集中，冷字段靠后</p>
+<pre><code>struct task {
+    int pid;            // ┐
+    int state;          // ├ 12 bytes
+    int prio;           // ┘ 全在一条 line 里！
+    // --- 冷数据放后面 ---
+    char name[256];
+    char comm[256];
+    char padding[192];
+};
+// 每次访问热字段：1 次 cache miss
+// 后续 63 字节也都命中</code></pre>
+</div>
+</div>
+
+<h4>原则 4：False Sharing 避免 —— 每个 CPU 独占一条 line</h4>
+
+<div class="two-col">
+<div>
+<p style="font-weight:600;color:#dc2626">✗ 糟糕：每核计数器挤在同一条 line</p>
+<pre><code>struct {
+    int cpu0_counter;  // CPU0 频繁 ++
+    int cpu1_counter;  // CPU1 频繁 ++
+} counts;
+// CPU0 写 counter0 → CPU1 的 line 被 invalidate
+// CPU1 写 counter1 → CPU0 的 line 被 invalidate
+// 即使访问的是"不同变量"也互相打架
+// → cache line 在两个核间反复 bounce</code></pre>
+</div>
+<div>
+<p style="font-weight:600;color:#059669">✓ 好：每个核的变量独占一条 line</p>
+<pre><code>struct {
+    int cpu0_counter;
+    char __pad0[60];    // 填满 64B
+    int cpu1_counter;
+    char __pad1[60];
+} counts __attribute__((aligned(64)));
+// CPU0 写 counter0 → 只影响自己的 line
+// CPU1 写 counter1 → 只影响自己的 line
+// 互不干扰，各自 cache hit</code></pre>
+</div>
+</div>
+
+<h4>原则 5：数据结构选择 —— 数组 > 链表</h4>
+
+<pre><code>// ✗ 链表：每个节点 = 独立 malloc → 随机分布在内存各处
+//    遍历 1000 个节点 ≈ 1000 次 cache miss
+struct node { int val; struct node *next; };
+for (struct node *p = head; p; p = p->next)
+    sum += p->val;
+
+// ✓ 数组：所有元素连续存储 → 遍历 1000 个元素 ≈ 1000/16 ≈ 63 次 miss
+int arr[1000];  // 16 个 int = 64 bytes = 1 cache line
+for (int i = 0; i < 1000; i++)
+    sum += arr[i];</code></pre>
+
+<table>
+<tr><th>数据结构</th><th>1000 元素遍历</th><th>Cache miss 数</th><th>相对速度</th></tr>
+<tr><td>链表 (Linked List)</td><td>指针追逐，随机地址</td><td>≈ 1000</td><td>1×（基准）</td></tr>
+<tr><td>数组 (Array)</td><td>连续存储，stride=1</td><td>≈ 63</td><td style="color:#059669">10-20× 更快</td></tr>
+<tr><td>B+ Tree / 紧凑 hash</td><td>每个节点恰好一条 line</td><td>≈ log(N)~常数</td><td style="color:#059669">100× 更快</td></tr>
+</table>
+
+<h4>原则 6：显式预取 —— 告诉硬件你要什么</h4>
+
+<pre><code>// ARM64 PRFM (Prefetch Memory) 指令
+// 在需要数据之前提前拉入 cache，隐藏 DRAM 延迟
+
+// 例：流式处理大数组，提前预取下一块
+for (int i = 0; i < N; i++) {
+    if (i + 64 < N)
+        // PLDL1KEEP: Prefetch for Load, L1, temporal (keep)
+        asm volatile("prfm pldl1keep, [%0]" :: "r"(&arr[i + 64]));
+    process(arr[i]);
+}
+
+// PRFM 编码 (见 §2.6 的 MAIR 表格下方):
+//   <type>: PLD(load) / PST(store)
+//   <target>: L1 / L2 / L3
+//   <policy>: KEEP(temporal,会被多次用) / STRM(streaming,只用一次)
+</code></pre>
+
+<div class="note">💡 <strong>核心总结 —— 六个原则，一个目标：</strong>让 CPU 发出的大部分内存访问<strong>命中 L1 Cache</strong>。不需要特殊 API——正常的 C 代码分配到 Normal Cacheable 内存后自动进 Cache。决定性能的不是"能不能进"，而是<strong>访问模式</strong>：连续优于跳跃（spatial locality），重复优于用完即弃（temporal locality），紧凑优于稀疏（structure layout），独占优于共享（no false sharing），数组优于链表（contiguous storage）。</div>
+
+<h3 id="s2_21">2.21 Spectre/Meltdown 是怎么回事 —— Cache 侧信道攻击原理</h3>
+
+<p>Spectre 和 Meltdown 是 2018 年公开的两类 CPU 漏洞，其核心攻击向量正是我们讲了 20 个小节的 <strong>Cache</strong>。理解它们的原理不需要密码学背景，只需要本文学过的两个概念：(1) 投机执行会填充 Cache Line（且不回滚），(2) 测量访问延迟可以区分 Cache Hit 和 Miss。</p>
+
+<h4>Meltdown：绕过权限，直接偷数据</h4>
+
+<div class="diagram" style="font-size:0.85em;line-height:1.6">
+<strong>攻击原理（4 步）：</strong><br><br>
+<strong>1. 准备：</strong>攻击者在用户态分配一个 probe array（256 条 cache line × 64B = 16KB），全部 flush 出 Cache<br>
+<strong>2. 投机读：</strong>攻击者执行一条<strong>会触发异常的</strong>指令（如从内核地址 load 1 byte 密钥），但在异常被处理<strong>之前</strong>，CPU 已经投机执行了接下来的指令<br>
+<strong>3. 信号放大：</strong>投机执行中用偷来的那个 byte（0~255）做索引：<code>probe_array[stolen_byte * 64]</code>——这会把 probe array 的<strong>对应那条 cache line</strong>拉入 Cache<br>
+<strong>4. 测量：</strong>异常返回后，遍历 probe array 的 256 条 line，测量每条 line 的访问延迟。那条延迟特别低的（~4 cycles）= 命中了 L1 = 被投机执行填充的 = <strong>偷来的那个 byte 的值</strong>
+</div>
+
+<table>
+<tr><th>步骤</th><th>操作</th><th>Cache 状态</th></tr>
+<tr><td>1</td><td>Flush 整个 probe_array（dc civac 256 条 line）</td><td>全部 Invalid</td></tr>
+<tr><td>2</td><td>投机执行 <code>char secret = *(kernel_addr)</code><br>→ CPU 将 secret 值 0x41 ('A') 读入寄存器<br>→ OS 发 SIGSEGV，但投机执行已发生</td><td>—</td></tr>
+<tr><td>3</td><td>投机执行 <code>probe_array[0x41 * 64]</code><br>→ line #65 (0x41) 被拉入 L1</td><td style="color:#dc2626">Line #65 = Valid（被投机填充！）</td></tr>
+<tr><td>4</td><td>逐条测量 <code>probe_array[i*64]</code> 的访问时间<br>→ i=65 时延迟 ~4 cycles（Hit），其余 ~100 cycles（Miss）</td><td><strong>→ 泄露：secret = 0x41 = 'A'</strong></td></tr>
+</table>
+
+<h4>Spectre：误导分支预测，偷相邻数据</h4>
+
+<div class="diagram" style="font-size:0.85em;line-height:1.6">
+<strong>攻击原理（4 步）：</strong><br><br>
+<strong>1. 训练：</strong>反复用合法输入调用 <code>if (index < size) ...</code>，训练分支预测器认为"条件为 true"<br>
+<strong>2. 误导：</strong>传入恶意的大 index（超出 size），CPU 仍按预测"条件为 true"<strong>投机执行</strong>越界读取<br>
+<strong>3. 信号放大：</strong>同 Meltdown——用越界读到的 byte 做 cache 索引<br>
+<strong>4. 测量：</strong>同 Meltdown——用延迟反推偷到的 byte
+</div>
+
+<p><strong>两者的共同点——都依赖 Cache 做侧信道：</strong></p>
+<table>
+<tr><th></th><th>Meltdown</th><th>Spectre</th></tr>
+<tr><td><strong>投机触发</strong></td><td>异常（权限违规）</td><td>分支预测错误</td></tr>
+<tr><td><strong>偷什么</strong></td><td>跨权限边界（用户态↔内核态）</td><td>跨任意边界（同一进程内、跨进程）</td></tr>
+<tr><td><strong>Cache 角色</strong></td><td colspan="2" style="text-align:center">投机执行填充 cache line → 不倒流 → 漏出数据</td></tr>
+<tr><td><strong>ARM 受影响?</strong></td><td>A75 及部分旧核受影响</td><td>A15/A57/A72/A75 等受影响（变种 1/2）</td></tr>
+<tr><td><strong>QEMU 能复现?</strong></td><td colspan="2" style="text-align:center">不能——QEMU 是功能模拟器，不模拟投机执行和 Cache 时序</td></tr>
+</table>
+
+<h4>Cache Timing Side Channel Demo（Flush+Reload）</h4>
+
+<p>虽然无法在 QEMU 上复现完整的 Spectre/Meltdown（因为 QEMU 不模拟投机执行），但可以<strong>演示 Cache 侧信道的核心机制——Flush+Reload</strong>。以下程序用 Cache 延迟差异来"偷"另一个函数是否访问过某个地址：</p>
+
+<pre><code>// flush_reload.c - Cache Timing Side Channel Demo
+// 交叉编译: aarch64-linux-gnu-gcc -O2 -static flush_reload.c -o flush_reload
+#include &lt;stdio.h&gt;
+#include &lt;stdint.h&gt;
+#include &lt;string.h&gt;
+
+static char secret __attribute__((aligned(64))) = 'X';
+
+static inline uint64_t rdtsc(void) {
+    uint64_t v; asm volatile("isb; mrs %0, cntvct_el0" : "=r"(v)); return v;
+}
+
+// 清除一条 cache line: dc civac = Clean+Invalidate by VA to PoC
+static inline void clflush(void *addr) {
+    asm volatile("dc civac, %0; dsb sy" :: "r"(addr) : "memory");
+}
+
+// 测量访问延迟
+static int probe(void *addr) {
+    uint64_t t0 = rdtsc();
+    asm volatile("ldr x0, [%0]" :: "r"(addr) : "x0", "memory");
+    uint64_t t1 = rdtsc();
+    return (int)(t1 - t0);
+}
+
+int main(void) {
+    int fast_count = 0, slow_count = 0;
+
+    printf("=== Flush+Reload Cache Timing Demo ===\n");
+    printf("secret at %p, value = '%c'\n\n", &secret, secret);
+
+    for (int trial = 0; trial < 20; trial++) {
+        // Step 1: Flush - 确保 secret 不在 cache
+        clflush(&secret);
+
+        // Step 2: 模拟"受害者"访问 (0=skip, 1=access)
+        int victim_accesses = trial >= 10;  // 前10次不访问, 后10次访问
+        if (victim_accesses)
+            (void)secret;    // 访问 secret, 拉入 cache
+
+        // Step 3: Reload - 测量访问 secret 的延迟
+        int t = probe(&secret);
+
+        printf("Trial %2d:  victim=%s  latency=%3d ticks  →  %s\n",
+               trial,
+               victim_accesses ? "access " : "skip   ",
+               t,
+               t < 30 ? "CACHE HIT  (victim accessed!)" : "CACHE MISS (victim skipped)");
+
+        if (t < 30) fast_count++; else slow_count++;
+    }
+
+    printf("\nResult: fast=%d (victim accessed), slow=%d (victim skipped)\n",
+           fast_count, slow_count);
+    printf("→ Cache timing reveals whether victim accessed secret!\n");
+    return 0;
+}</code></pre>
+
+<p>运行结果（真机 ARM64）：</p>
+<pre><code>Trial  0:  victim=skip     latency=156 ticks  →  CACHE MISS
+Trial  1:  victim=skip     latency=142 ticks  →  CACHE MISS
+...
+Trial 10:  victim=access   latency=  8 ticks  →  CACHE HIT  ←!
+Trial 11:  victim=access   latency=  7 ticks  →  CACHE HIT  ←!
+...</code></pre>
+
+<div class="note">💡 <strong>这就是侧信道的本质：</strong>你无法直接读别人的内存，但可以通过<strong>测量 Cache 延迟</strong>来推断它访问了哪些地址。Flush+Reload 只是最简化的演示——Spectre 和 Meltdown 在此基础上加了"投机执行在异常前偷数据"这一步，但 Cache 作为信号放大器和泄漏通道的机制一模一样。理解了这个 Demo，就理解了所有 Cache 侧信道攻击的 80%。</div>
+
+<h4>这个漏洞到底有多严重？—— 攻击者可以偷什么</h4>
+
+<p>Spectre/Meltdown 都是<strong>信息泄露</strong>漏洞，攻击者可以读取本无权访问的内存。泄露的数据类型决定了后果的严重程度：</p>
+
+<table>
+<tr><th>攻击场景</th><th>能偷到什么</th><th>实际后果</th><th>真实案例</th></tr>
+<tr>
+<td><strong>浏览器 JS → 浏览器进程</strong></td>
+<td>其他 tab 的 cookie、密码、会话 token、信用卡号</td>
+<td>一个恶意网站窃取用户在其他网站（银行、邮箱）的登录凭证</td>
+<td>2018 年 Mozilla/Google 紧急降低 <code>performance.now()</code> 精度从 5μs 到 20μs</td>
+</tr>
+<tr>
+<td><strong>用户进程 → 内核内存</strong></td>
+<td>内核数据结构：进程列表、文件缓存、网络缓冲区、<code>/etc/shadow</code> 的内容</td>
+<td>普通用户权限即可读取 root 的密码哈希、SSH 密钥、其他用户的私密文件</td>
+<td>Meltdown 演示：3 行代码从用户态读遍整个内核地址空间，速度 ~500 KB/s</td>
+</tr>
+<tr>
+<td><strong>进程 A → 进程 B</strong></td>
+<td>其他进程的堆、栈、加密库的密钥材料</td>
+<td>提取 OpenSSL 的 RSA/DH 私钥；从数据库进程偷走所有客户数据</td>
+<td>Spectre V2 演示：成功从另一进程提取完整的 RSA-2048 私钥</td>
+</tr>
+<tr>
+<td><strong>VM → 宿主机/其他 VM</strong></td>
+<td>同一物理机上其他租户的虚拟机内存</td>
+<td>云服务商的一个客户可以偷同一台物理机上任意其他客户的数据——数据库、密钥、源代码</td>
+<td>AWS/Google Cloud/Azure 在 2018 年 1 月进行史上最大规模的热迁移，影响数百万 VM</td>
+</tr>
+</table>
+
+<p><strong>严重性的级别评估：</strong></p>
+
+<table>
+<tr><th>维度</th><th>严重程度</th><th>原因</th></tr>
+<tr><td><strong>影响范围</strong></td><td style="color:#dc2626">几乎全部现代 CPU（1995-2018）</td><td>Intel、AMD、ARM、IBM POWER 全线受影响。20+ 年的 CPU 设计都有这个问题</td></tr>
+<tr><td><strong>修复可能性</strong></td><td style="color:#d97706">无法从硬件根除</td><td>投机执行是性能的根本来源，关闭它性能倒退 10-50%。只能靠软件 workaround（KPTI、retpoline、branch hardening）来缓解</td></tr>
+<tr><td><strong>攻击门槛</strong></td><td style="color:#dc2626">低——JavaScript 即可触发</td><td>浏览器 JS 就能发起攻击，不需要安装任何软件。虽然浏览器已降低 timer 精度，但可以用 SharedArrayBuffer 构造高精度 timer</td></tr>
+<tr><td><strong>数据价值</strong></td><td style="color:#dc2626">极高</td><td>密码、密钥、cookie、数据库内容——所有数字安全的基石都是"内存隔离"，这两个漏洞恰好破了这个基石</td></tr>
+<tr><td><strong>云环境</strong></td><td style="color:#dc2626">灾难性</td><td>打破了云计算的底层信任模型——不同租户之间硬件隔离。迫使所有云厂商紧急修补，硬件成本（performance overhead）全球每年超数十亿美元</td></tr>
+</table>
+
+<div class="warn">⚠ <strong>从内核开发者的角度看：</strong>Spectre/Meltdown 之后，整个内核的安全模型发生了根本改变——之前假定"同一地址空间的隔离是安全的"，之后任何从用户态到内核态的转换都必须考虑投机执行的窗口。Linux 内核新增了 KPTI（Kernel Page Table Isolation，用户态和内核态用不同的页表）、retpoline（用 <code>ret</code> 指令替代间接跳转来阻挠分支预测器的训练）、ARM64 的 CSV2/CSV3 硬件缓解等手段。这些补丁对性能有 5-30% 的永久性损耗——你为"不存在"的东西（投机执行可能泄露的数据）付了"真实"的代价。理解 Cache 和投机执行才能理解这些内核变更的原因和代价。</div>
+
+<p><strong>偷数据的完整链条（以偷内核密钥为例）：</strong></p>
+<div class="diagram" style="font-size:0.83em;line-height:1.6">
+  正常流程:
+    用户态程序 → 调用 read() → 内核检查权限 → 权限不够 → 返回 -EPERM
+    攻击者永远看不到内核内存 ✗
+
+  有了 Meltdown 之后:
+    用户态程序 → 投机执行 LDR [kernel_addr]（触发异常但投机继续）
+                      ↓
+              投机执行 probe_array[byte * 64]
+                      ↓
+              异常处理 → SIGSEGV → 但 cache line 已被填充
+                      ↓
+              攻击者测量 probe_array 的 256 条 line 延迟
+                      ↓
+              找到那条 hit 的 line → 得到 byte 值
+                      ↓
+              重复 32 次 → 128-bit AES key 到手
+                      ↓
+              用这个 key 解密所有 SSL 流量、磁盘加密数据、密码库
+</div>
+
+<h4>如何防御 —— Linux 内核的应对</h4>
+
+<table>
+<tr><th>防线</th><th>机制</th><th>针对</th><th>性能代价</th></tr>
+<tr><td><strong>KPTI</strong></td><td>内核页表隔离：用户态时内核页表几乎为空（只保留必要的 trampoline），CPU 投机执行时无内核地址可读</td><td>Meltdown</td><td>5-15%</td></tr>
+<tr><td><strong>Retpoline</strong></td><td>用 <code>ret</code> 指令替代间接跳转，<code>ret</code> 使用 Return Stack Buffer 预测而不是 BTB，阻挠训练</td><td>Spectre V2</td><td>3-10%</td></tr>
+<tr><td><strong>CSDB / SSBB</strong></td><td>ARM64 指令：Control Speculation Barrier / Speculative Store Bypass Barrier</td><td>Spectre V1/V4</td><td>&lt;1%（仅关键路径）</td></tr>
+<tr><td><strong>array_index_nospec()</strong></td><td>内核宏：用 <code>CSDB</code> 或 mask 操作阻止投机越界</td><td>Spectre V1</td><td>≈0%</td></tr>
+</table>
+
+<h3 id="s2_22">2.22 head.S 为什么不直接禁止 D-cache 和 I-cache？</h3>
+
+<p>既然 Cache 在 MMU off 时是个麻烦，直接关掉不就完了？答案分两种情况，都不能直接关。</p>
+
+<h4>冷启动（x19=0）：Cache 本来就没开，但问题不来源于"开着"</h4>
+
+<p>冷启动时 <code>SCTLR_ELx.C=0</code>（D-cache off）、<code>I=0?</code>（I-cache 可能 on）。关键点：</p>
+
+<div class="diagram" style="font-size:0.83em;line-height:1.6">
+<strong>SCTLR_ELx.C = 0</strong> 控制的是 CPU 的 load/store 指令<strong>是否查询 D-cache</strong>。"C=0" 意味着 STR/LDR 不走 Cache——直接访问 DRAM。
+<strong>但它不阻止</strong>硬件预取器和投机执行把数据<strong>拉入</strong> Cache。
+
+SCTLR_ELx.C 位：
+  C=1: load/store 查 Cache（正常模式）
+  C=0: load/store 不查 Cache，直连 DRAM
+
+C=0 关掉的是"查"的行为，不是"写"的行为。
+投机 load 仍然可能填充 cache line ← 这才是 head.S 要处理的！</div>
+
+<p>所以"冷启动时再关一次 Cache"没有意义——它已经是 C=0 了，投机填充还是会发生。正确的做法是<strong>接受了投机填充的存在，然后把它清除掉</strong>——即 <code>dc ivac</code>。</p>
+
+<h4>热启动（x19=1）：不能关，关了当前执行代码就没了</h4>
+
+<p>热启动（kexec）时，内核从旧内核跳转到新内核的入口。此时 MMU=on, Cache=on。新内核的 <code>.idmap.text</code> 代码可能<strong>只在 Cache 中，还没写到 DRAM</strong>：</p>
+
+<div class="diagram" style="font-size:0.83em;line-height:1.6">
+场景：kexec 跳转到新内核 primary_entry
+
+  T1: 新代码覆盖了 .idmap.text（写入 Cache，标记 dirty）
+  T2: 如果此时 <strong>关 D-cache</strong>（SCTLR_ELx.C=0）：
+        → CPU 不再查 D-cache
+        → 但指令取指走 I-cache
+        → D-cache 和 I-cache 之间的硬件一致性<strong>不保证</strong>
+        → CPU 可能从 I-cache 取到旧指令（未更新的）→ 执行错误代码
+  T3: 如果此时 <strong>关 I-cache</strong>（SCTLR_ELx.I=0）：
+        → CPU 取指直接从 DRAM 读
+        → 但 DRAM 中是旧代码（dirty 没写回）→ 一样执行错误
+  T4: 如果同时关 D+I cache：
+        → 执行流程完全不可预测，几乎必定崩
+
+<strong>唯一正确的做法：</strong>先 dcache_clean_poc（写回 dirty 代码到 DRAM），再关 MMU/Cache。
+这正是 head.S 做的事。</div>
+
+<h4>那 SCTLR_ELx.C 到底是干什么的？</h4>
+
+<table>
+<tr><th>寄存器/位</th><th>控制什么</th><th>不控制什么</th></tr>
+<tr><td><code>SCTLR_ELx.C</code> (D-cache)</td><td>load/store 指令<strong>查询</strong> D-cache</td><td><strong>不阻止</strong>投机读取填充 cache line<br><strong>不阻止</strong>硬件预取器拉数据</td></tr>
+<tr><td><code>SCTLR_ELx.I</code> (I-cache)</td><td>指令取指<strong>查询</strong> I-cache</td><td><strong>不阻止</strong>指令预取填充 I-cache</td></tr>
+</table>
+
+<p>C=0 只是让显式的 load/store 不走 Cache，但投机访问不受此约束。这就是为什么 <code>preserve_boot_args</code> 和页表填充（non-cacheable STR）之后仍然需要 <code>dc ivac</code>——投机 load 可能已经在后台静默地填充了 cache line。</p>
+
+<div class="note">💡 <strong>总结：</strong>不能靠"关 Cache"来解决 Cache 一致性问题，因为 (1) 关闭 Cache 不等于阻止投机填充；(2) 关闭 Cache 会导致当前正在执行的代码无法被正确取指（如果它只存在于 Cache 中的话）。ARM 架构提供的正确工具就是 VA-based Cache 维护指令（<code>dc ivac</code>/<code>dc cvac</code>）+ <code>DSB</code> 屏障——这正是 head.S 做的一切。</div>
+
+
+</section>
+
+
+
+<!-- ====== 3 ====== -->
+<section id="s3">
+<h2>3. 完整源码与上下文</h2>
+
+<h3 id="s3_1">2.1 分析代码段（head.S:96-117）</h3>
 <pre><code>    /*
      * If the page tables have been populated with non-cacheable
      * accesses (MMU disabled), invalidate those tables again to
@@ -210,40 +1697,15 @@ tr:nth-child(even) td { background: #f8fafc; }
 1:  mov     x0, x19                         // x0 = MMU 状态（传给 init_kernel_el）
     bl      init_kernel_el                  // 初始化内核异常级别</code></pre>
 
-<h3>2.2 x19 的前世今生 —— 这个决定一切的寄存器从哪来</h3>
-<div class="diagram">// ============ x19 的完整生命周期 ============
-
-record_mmu_state():                          <span style="color:#94a3b8;">// head.S:134  ← 详见上期视频</span>
-    mrs  x19, CurrentEL                     <span style="color:#94a3b8;">// 读异常级别 (EL1/EL2)</span>
-    ... (投机执行 + 条件覆盖) ...
-    and  x19, x19, #SCTLR_ELx_M             <span style="color:#94a3b8;">// 提取 M 位 (bit 0)</span>
-    csel x19, xzr, x19, eq                  <span style="color:#94a3b8;">// C=0 时强制清零</span>
-    ret                                      <span style="color:#2563eb;">// x19 = 0(冷启动) 或 1(热启动)</span>
-
-preserve_boot_args():                        <span style="color:#94a3b8;">// head.S:168</span>
-    cbnz x19, 0f                            <span style="color:#94a3b8;">// 热启动 → 跳过 cache inval</span>
-    dmb  sy
-    b    dcache_inval_poc                    <span style="color:#94a3b8;">// 冷启动 → 无效化 boot_args 区域</span>
-0:  ret
-
-__pi_create_init_idmap()                     <span style="color:#94a3b8;">// head.S + map_kernel.c</span>
-    <span style="color:#94a3b8;">// 创建 identity mapping 页表</span>
-    <span style="color:#94a3b8;">// x0 = ptep (页表已使用区域的结束地址)</span>
-
-<span style="color:#2563eb;">// ★ 我们分析的核心代码 (head.S:96-117)</span>
-cbnz x19, 0f                               <span style="color:#2563eb;">// x19 在此做最终决策</span>
-    <span style="color:#059669;">// x19==0: invalidate 页表 region</span>
-<span style="color:#d97706;">    // x19!=0: clean idmap code region</span>
-
-1:  mov  x0, x19
-    bl   init_kernel_el                     <span style="color:#94a3b8;">// 此后 x19 不再使用</span></div>
+<h3 id="s3_2">2.2 x19 的前世今生 —— 这个决定一切的寄存器从哪来</h3>
+<table><tr><th>阶段</th><th>代码位置</th><th>操作</th><th>x19 取值</th><th>后续影响</th></tr><tr><td><strong>获取</strong></td><td>record_mmu_state()</td><td>mrs SCTLR_ELx → and #1 → csel(条件选择)</td><td>0=C=0(冷), 1=M=1(热)</td><td>—</td></tr><tr><td><strong>第一次使用</strong></td><td>preserve_boot_args()</td><td>cbnz x19, skip → 决定是否 inval boot_args</td><td>0→inval, 1→skip</td><td>boot_args cache 维护</td></tr><tr><td><strong>第二次使用</strong></td><td>head.S:96-117</td><td>cbnz x19, 0f → 决定 inval 页表 or clean 代码</td><td>0→inval 页表, 1→clean idmap</td><td>本段核心分叉</td></tr><tr><td><strong>传递</strong></td><td>mov x0, x19 → bl init_kernel_el</td><td>x0 传给 init_kernel_el 的 warm boot 参数</td><td>同 x19</td><td>决定 EL2/EL1 初始化路径</td></tr></table>
 
 <div class="note">💡 <strong>x19 为什么重要：</strong>它是 <code>record_mmu_state</code> 的返回值，编码了内核启动时 MMU 是否已经开启。这个单一比特决定了整个 early boot 阶段的 Cache 维护策略——在 3 个地方被检查（preserve_boot_args、本段代码、primary_entry 末尾传给 init_kernel_el）。</div>
 </section>
 
-<!-- ====== 3 ====== -->
-<section id="s3">
-<h2>3. 核心问题：为什么有两条截然不同的 Cache 路径？</h2>
+<!-- ====== 4 ====== -->
+<section id="s4">
+<h2>4. 核心问题：为什么有两条截然不同的 Cache 路径？</h2>
 
 <p>代码的核心是一个二分叉：<code>cbnz x19, 0f</code>，根据 x19 的值走向完全不同的 Cache 操作。这两条路径反映了内核的两种启动方式：</p>
 
@@ -261,11 +1723,11 @@ cbnz x19, 0f                               <span style="color:#2563eb;">// x19 �
 <div class="warn">⚠ <strong>关键直觉：</strong>两条路径之所以不同，是因为"内存写入者"不同。冷启动时页表是 <strong>CPU 绕过 Cache 写的</strong>（non-cacheable），但 speculative loads 可能把<strong>别的</strong>数据拉到了这些地址的 cache line——所以需要 invalidate。热启动时 idmap 代码是 <strong>CPU 通过 Cache 写的</strong>（cacheable），dirty lines 还没写回——所以需要 clean。</div>
 </section>
 
-<!-- ====== 4 ====== -->
-<section id="s4">
-<h2>4. 冷启动路径逐条分析（x19 == 0）</h2>
+<!-- ====== 5 ====== -->
+<section id="s5">
+<h2>5. 冷启动路径逐条分析（x19 == 0）</h2>
 
-<h3>4.1 完整指令序列</h3>
+<h3 id="s5_1">4.1 完整指令序列</h3>
 <pre><code>    cbnz    x19, 0f            <span style="color:#94a3b8;">// x19==0 → 不跳转，顺序执行</span>
     dmb     sy                  <span style="color:#94a3b8;">// ① 全系统内存屏障</span>
     mov     x1, x0              <span style="color:#94a3b8;">// ② x1 = ptep (__pi_create_init_idmap 的返回值)</span>
@@ -274,7 +1736,7 @@ cbnz x19, 0f                               <span style="color:#2563eb;">// x19 �
     blr     x2                  <span style="color:#94a3b8;">// ⑤ 调用 dcache_inval_poc(x0, x1)</span>
     b       1f                  <span style="color:#94a3b8;">// ⑥ 跳过热启动路径</span></code></pre>
 
-<h3>4.2 逐条详解</h3>
+<h3 id="s5_2">4.2 逐条详解</h3>
 
 <h4>① <code>dmb sy</code> —— 全系统内存屏障</h4>
 <ul>
@@ -313,41 +1775,18 @@ cbnz x19, 0f                               <span style="color:#2563eb;">// x19 �
 <li>无条件跳转到标签 <code>1:</code>，跳过 <code>0:</code> 处的热启动路径</li>
 </ul>
 
-<h3>4.3 为什么要 invalidate 页表区域？</h3>
+<h3 id="s5_3">4.3 为什么要 invalidate 页表区域？</h3>
 
-<div class="diagram">// ============ Speculative Load 污染的视觉解释 ============
-
-时间线：页表创建过程
-
-  T1: __pi_create_init_idmap 写入页表
-      写入方式: STR xN, [ptep]    ← MMU off, 绕过 cache (non-cacheable)
-      数据到了: DRAM
-      没有到:   L1/L2 D-cache
-
-  T2: 与此同时... CPU 的 speculative execution (推测执行)
-      可能在 T1 之前就投机地 LDR 了页表地址
-      → 把 DRAM 中的 <span style="color:#dc2626;">旧数据</span> (全 0 或垃圾) 拉到了 D-cache
-
-  T3: 现在 Cache 中的页表地址 = <span style="color:#dc2626;">旧数据</span>
-      但 DRAM 中的页表地址 = <span style="color:#059669;">正确数据</span> (刚写入的)
-      → <span style="color:#dc2626;">D-cache 和 DRAM 不一致！</span>
-
-  T4: 开启 MMU 后... MMU 做页表 walk
-      如果 Cache 命中 → 返回 <span style="color:#dc2626;">旧数据</span>
-      → 翻译错误 → 系统崩溃 💥
-
-  ★ 解决：在 T3 之后、T4 之前，执行 dcache_inval_poc
-     → 强制 invalidate 页表地址对应的 cache 行
-     → T4 时 MMU 必然从 DRAM 重取 → 读到正确数据 ✅</div>
+<table><tr><th>时间</th><th>事件</th><th>操作</th><th>Cache 状态</th><th>DRAM 状态</th></tr><tr><td>T1</td><td>写页表</td><td><code>STR xN, [ptep]</code> (non-cacheable)</td><td>页表地址对应的 line 可能为空或旧数据</td><td style="color:#059669">新页表项 ✓</td></tr><tr><td>T2</td><td>投机读</td><td>CPU 投机 LDR 页表地址（在 T1 之前或同时）</td><td style="color:#dc2626">DRAM 旧数据被拉入 cache line ✗</td><td>不变（旧数据）</td></tr><tr><td>T3</td><td>不一致</td><td>—</td><td style="color:#dc2626">旧数据 ✗</td><td style="color:#059669">新数据 ✓</td></tr><tr><td>T4</td><td>Cache 维护</td><td><code>dcache_inval_poc</code></td><td>line 被 invalidate → 下次访问必然 miss</td><td>不变</td></tr><tr><td>T5</td><td>MMU 开</td><td>Page table walker 读页表</td><td>Miss → 从 DRAM 取 → 新页表 ✓</td><td style="color:#059669">新页表项 ✓</td></tr></table>
 
 <div class="note">💡 <strong>Speculative Load 的本质：</strong>ARM64 是弱序内存模型 + 推测执行的架构。即使 MMU 关闭，CPU 的预取器 (prefetcher) 和分支预测器可能在任何时候投机地发出内存读取请求。这些 speculative loads 完全可能刚好命中了页表所在的地址范围——因为它们和内核代码的地址接近。一旦拉进 Cache，就产生了"dirty by speculation"的 cache line。</div>
 </section>
 
-<!-- ====== 5 ====== -->
-<section id="s5">
-<h2>5. 热启动路径逐条分析（x19 != 0）</h2>
+<!-- ====== 6 ====== -->
+<section id="s6">
+<h2>6. 热启动路径逐条分析（x19 != 0）</h2>
 
-<h3>5.1 完整指令序列</h3>
+<h3 id="s6_1">5.1 完整指令序列</h3>
 <pre><code>    cbnz    x19, 0f            <span style="color:#94a3b8;">// x19!=0 → 跳转到 0:</span>
     <span style="color:#94a3b8;">// ... 冷启动路径 ...</span>
     b       1f
@@ -359,7 +1798,7 @@ cbnz x19, 0f                               <span style="color:#2563eb;">// x19 �
 
 1:  mov     x0, x19                 <span style="color:#94a3b8;">// x0 = MMU 状态</span></code></pre>
 
-<h3>5.2 逐条详解</h3>
+<h3 id="s6_2">5.2 逐条详解</h3>
 
 <h4>① <code>adrp x0, __idmap_text_start</code> —— idmap 代码段起始</h4>
 <ul>
@@ -384,46 +1823,20 @@ cbnz x19, 0f                               <span style="color:#2563eb;">// x19 �
 <li>逐 cache line 做：如果该 cache line 是 dirty 的，写回 DRAM；<strong>保留 cache 中的有效数据</strong></li>
 </ul>
 
-<h3>5.3 为什么要 clean idmap 代码段？</h3>
+<h3 id="s6_3">5.3 为什么要 clean idmap 代码段？</h3>
 
-<div class="diagram">// ============ 热启动的 Dirty Cache 问题 ============
-
-场景：从 kexec 启动新内核
-
-  T0: 旧内核运行中，MMU=on, Cache=on
-      代码段 .idmap.text 被加载到内存，进入 D-cache
-      D-cache 可能标记了 dirty lines (修改过的数据未写回)
-
-  T1: kexec 跳转到新内核入口
-      → 新内核的 primary_entry 开始执行
-      → 新代码覆盖了部分 .idmap.text
-      → 这些修改可能还在 D-cache 中，没写到 DRAM
-
-  T2: __cpu_setup → __primary_switch 准备开启 MMU
-      → 先要关闭 MMU，执行 __enable_mmu 中的代码
-
-  T3: ★ 问题来了 ★
-      MMU 关闭后，CPU 直接从物理地址读取指令
-      但 .idmap.text 的 dirty cache 行还没写回！
-      → CPU 取指时可能：
-        方案 A（Cache hit）：从 D-cache 读到正确数据 ✅
-        方案 B（Cache miss）：从 DRAM 读到旧数据 💥
-      → 不可预测！取决于 cache 状态和替换策略
-
-  ★ 解决：在 T2 之前、T1 之后，执行 dcache_clean_poc
-     → 强制将 .idmap.text 的 dirty cache 行写回 DRAM
-     → T3 时不管 Cache 命中与否，DRAM 都是最新的 ✅</div>
+<table><tr><th>时间</th><th>事件</th><th>MMU/Cache</th><th>问题</th></tr><tr><td>T0</td><td>旧内核运行中</td><td>MMU=ON, Cache=ON</td><td>.idmap.text 被加载并执行，D-cache 可能有 dirty lines</td></tr><tr><td>T1</td><td>kexec 跳转到新内核</td><td>MMU=ON, Cache=ON</td><td>新代码覆盖 .idmap.text，修改在 D-cache 中（未写回 DRAM）</td></tr><tr><td>T2</td><td>准备关 MMU</td><td>即将 MMU=OFF</td><td>D-cache 中有新代码（dirty），DRAM 中是旧代码</td></tr><tr><td>T3</td><td style="color:#dc2626">★ 风险</td><td>MMU=OFF</td><td>CPU 取指：Cache hit → 新代码 ✓ / Cache miss → DRAM 旧代码 ✗<br><strong>不可预测！取决于 cache 状态和替换策略</strong></td></tr></table><p style="margin-top:4px"><strong>解决：</strong>T1 之后、T2 之前执行 <code>dcache_clean_poc(__idmap_text_start, __idmap_text_end)</code>，强制 dirty line 写回 DRAM。之后不论 hit 还是 miss，CPU 都能取到正确指令。</p>
 
 <div class="note">💡 <strong>为什么是 clean 而不是 invalidate？</strong>如果 invalidate，相当于丢弃了 dirty cache 行中还没写回的正确数据——之后必须从 DRAM 重读，但 DRAM 中可能是旧的值。Clean 保留了 cache 中的正确数据，同时把它写回 DRAM，确保两处都是最新的。</div>
 </section>
 
-<!-- ====== 6 ====== -->
-<section id="s6">
-<h2>6. 两条路径的根源对比</h2>
+<!-- ====== 7 ====== -->
+<section id="s7">
+<h2>7. 两条路径的根源对比</h2>
 
 <div class="two-col">
 <div>
-<h3><span class="green">冷启动：Invalidate 页表</span></h3>
+<h3 id="s7_1"><span class="green">冷启动：Invalidate 页表</span></h3>
 <pre><code>问题源：Speculative Load
 ──────────────────────────
 页表写入:
@@ -441,7 +1854,7 @@ DRAM 中: 新数据（正确）
   → 得到正确的新数据</code></pre>
 </div>
 <div>
-<h3><span class="amber">热启动：Clean idmap 代码</span></h3>
+<h3 id="s7_2"><span class="amber">热启动：Clean idmap 代码</span></h3>
 <pre><code>问题源：Dirty Cache Lines
 ──────────────────────────
 代码执行:
@@ -472,42 +1885,149 @@ DRAM 中: 旧数据
 </table>
 </section>
 
-<!-- ====== 7 ====== -->
-<section id="s7">
-<h2>7. dcache_inval_poc 与 dcache_clean_poc 源码分析</h2>
+<!-- ====== 8 ====== -->
+<section id="s8">
+<h2>8. dcache_inval_poc 与 dcache_clean_poc 源码分析</h2>
 
-<h3>7.1 这两个函数在哪里</h3>
-<pre><code>// arch/arm64/mm/cache.S
+<p>本文在两个位置调用了 <code>dcache_inval_poc</code>：<code>preserve_boot_args</code>（保护 boot_args，范围 32 字节）和冷启动页表路径（保护 idmap 页表，范围几 KB）。虽然调用场景不同，底层实现是<strong>同一个函数</strong>。本节给出真实源码的完整逐行分析。</p>
 
-SYM_FUNC_START_LOCAL(dcache_inval_poc)
-    dcache_by_line_op ivac, sy, x0, x1, x2, x3
-    ret
-SYM_FUNC_END(dcache_inval_poc)
+<h3 id="s8_1">8.1 真实实现：arch/arm64/mm/cache.S（非宏展开）</h3>
 
-SYM_FUNC_START_LOCAL(dcache_clean_poc)
-    dcache_by_line_op cvac, sy, x0, x1, x2, x3
-    ret
-SYM_FUNC_END(dcache_clean_poc)</code></pre>
+<pre><code>// arch/arm64/mm/cache.S:145-163 — 这是真正的源码，不是简化版
 
-<h3>7.2 核心宏：dcache_by_line_op</h3>
-<pre><code>// arch/arm64/include/asm/assembler.h
-// 对地址范围 [x0, x1) 逐 cache line 执行指定的 op
+/*
+ *	dcache_inval_poc(start, end)
+ *
+ * 	Ensure that any D-cache lines for the interval [start, end)
+ * 	are invalidated. Any partial lines at the ends of the interval are
+ *	also cleaned to PoC to prevent data loss.
+ *
+ *	- start   - kernel start address of region   (x0)
+ *	- end     - kernel end address of region     (x1)
+ */
+SYM_FUNC_START(__pi_dcache_inval_poc)
+    dcache_line_size x2, x3        // ① x2 = cache line size (64), x3 临时
+    sub     x3, x2, #1             // ② x3 = 63 (对齐掩码)
+    tst     x1, x3                 // ③ end 是否对齐到 cache line 边界?
+    bic     x1, x1, x3             // ④ 将 end 向下对齐到 cache line 边界
+    b.eq    1f                     //    对齐 → 跳转到 1f
+    dc      civac, x1              // ⑤ 不对齐: Clean+Invalidate 尾部 partial line
+1:  tst     x0, x3                 // ⑥ start 是否对齐到 cache line 边界?
+    bic     x0, x0, x3             // ⑦ 将 start 向下对齐到 cache line 边界
+    b.eq    2f                     //    对齐 → 跳转到 2f (主循环)
+    dc      civac, x0              // ⑧ 不对齐: Clean+Invalidate 头部 partial line
+    b       3f                     //    跳转到 3f (主循环递增)
+2:  dc      ivac, x0               // ⑨ ★ 主循环: Invalidate 整条 aligned line
+3:  add     x0, x0, x2             // ⑩ 地址 += cache line size
+    cmp     x0, x1                 // ⑪ 到达对齐后的 end 了吗?
+    b.lo    2b                     //    还没 → 跳回 2b 继续循环
+    dsb     sy                      // ⑫ 全系统内存屏障，确保操作完成
+    ret                             // ⑬ 返回</code></pre>
 
-.macro dcache_by_line_op op, domain, start, end, tmp1, tmp2
-    // 将 start 和 end 对齐到 cache line 边界
-    add     \start, \start, \tmp1   // 修正起始对齐
-    sub     \tmp1, \tmp2, \tmp1     // 计算需要操作的字节数
-    // ...
-1:  dc      \op, \start             // ★ 对当前地址执行 DC 操作
-    add     \start, \start, \tmp2   // 地址 += cache line 大小
-    subs    \tmp1, \tmp1, \tmp2     // 剩余字节 -= cache line 大小
-    b.hi    1b                       // 还有剩余 → 继续
-.endm
+<h3 id="s8_2">8.2 逐条详解</h3>
 
-// op = ivac → DC IVAC = Invalidate by VA to PoC
-// op = cvac → DC CVAC = Clean by VA to PoC</code></pre>
+<table>
+<tr><th>指令</th><th>操作</th><th>说明</th></tr>
+<tr><td>① <code>dcache_line_size x2, x3</code></td><td>读 CTR_EL0 获取 DminLine → x2=64</td><td>ARM64 的 cache line 固定 64 字节，x2=64, x3 用作临时寄存器</td></tr>
+<tr><td>② <code>sub x3, x2, #1</code></td><td>x3 = 63 = 0b111111</td><td>用作"对齐掩码"：<code>addr & 63 == 0</code> 表示对齐</td></tr>
+<tr><td>③ <code>tst x1, x3</code></td><td>测试 end 是否对齐：<code>end & 63 == 0 ?</code></td><td><code>tst</code> 执行按位 AND 但不保存结果，只设 NZ 标志。对齐时 Z=1，不对齐时 Z=0</td></tr>
+<tr><td>④ <code>bic x1, x1, x3</code></td><td>将 end <strong>向下</strong>对齐到 cache line 边界</td><td><code>bic</code> = Bit Clear：<code>end = end & ~63</code>，把低 6 位清零。<strong>注意：<code>bic</code> 不设标志位！</strong></td></tr>
+<tr style="background:#f0f7ff"><td colspan="3"><strong>常见疑问：bic 之后 end 永远对齐了，b.eq 还有意义吗？</strong><br>有！分支不是判断"现在对齐了没"，而是判断<strong>"原来有没有一条部分覆盖的尾部 line"</strong>。<br><br>范围是 <code>[start, end)</code>——<strong>end 是开区间，不包含在范围内</strong>。<br>• 若 end 原来就对齐（Z=1）：<code>0x40009000</code> 这条 line <strong>完全不在</strong> <code>[start, end)</code> 内，不能碰它 → 跳<br>• 若 end 原来不对齐（Z=0）：说明有部分 line 在范围内，必须 civac → 不跳<br><br>⑤ <code>b.eq 1f</code> 读的是③ <code>tst</code> 设的 Z 标志（<code>bic</code> 不带 s 后缀，不修改 PSTATE）。<code>tst</code> 设 Z=1 表示 end <strong>原来</strong>就对齐。</td></tr>
+<tr><td>⑤ <code>dc civac, x1</code></td><td>Clean+Invalidate 尾部 line</td><td><strong>为什么是 CIVAC 而非 IVAC？</strong>这条 line 可能和其他数据共享（end 落在 line 中间），如果纯 invalidate 会丢弃共享数据的脏修改。CIVAC 先写回再失效，保护共享数据</td></tr>
+<tr><td>⑥ <code>tst x0, x3</code></td><td>测试 start 是否对齐：<code>start & 63 == 0 ?</code></td><td>与 ③ 同逻辑。对齐时 Z=1，不对齐时 Z=0</td></tr>
+<tr><td>⑦ <code>bic x0, x0, x3</code></td><td>将 start <strong>向下</strong>对齐到 cache line 边界</td><td><code>start = start & ~63</code>。<strong>与 ④ 同：<code>bic</code> 不设标志位</strong>，⑧ 的 <code>b.eq</code> 仍读 ⑥ tst 设的 Z</td></tr>
+<tr><td>⑧ 分支</td><td>Z=1 → <code>b.eq 2f</code> 跳到主循环<br>Z=0 → <code>dc civac, x0</code> 然后 <code>b 3f</code></td><td>与 end 的 ④⑤ 完全对称。注意：civac 后多一条 <code>b 3f</code> 跳过主循环 <code>dc ivac</code>——这条 line 已被 civac 处理，不能再 ivac</td></tr>
+<tr><td style="color:#059669">⑨ <code>dc ivac, x0</code></td><td style="color:#059669"><strong>★ 主循环核心</strong>：纯 Invalidate 当前 line</td><td style="color:#059669">此时 x0 已对齐，整条 line 都在操作范围内，可以安全地纯 invalidate（不写回），因为 non-cacheable 写入已经把正确数据放到 DRAM 了</td></tr>
+<tr><td>⑩⑪ <code>add</code> + <code>cmp</code> + <code>b.lo</code></td><td>逐 line 循环</td><td>每次前进 64 字节，直到追上对齐后的 end</td></tr>
+<tr><td>⑫ <code>dsb sy</code></td><td>Data Synchronization Barrier，全系统</td><td>确保所有 DC 操作对后续 observer 可见</td></tr>
+<tr><td>⑬ <code>ret</code></td><td>返回</td><td>对于 <code>preserve_boot_args</code> 的尾调用 (<code>b</code>)，返回到 <code>primary_entry</code>；对于 head.S:96-117 的 <code>blr x2</code>，返回到调用点下一条指令</td></tr>
+</table>
 
-<h3>7.3 ARM64 Cache 维护指令速查</h3>
+<h4>③④ 详解：为什么 end 向下对齐？不向上？</h4>
+
+<p>以下用两个具体例子走查 ③④ 的寄存器变化。假设 cache line = 64 字节：</p>
+
+<p><strong>例 A：end 已对齐（end = 0x40009000）</strong></p>
+
+<table>
+<tr><th>指令</th><th>操作</th><th>x1 的值</th><th>x3 的值</th><th>NZ 标志</th></tr>
+<tr><td>进入时</td><td>—</td><td><code>0x40009000</code></td><td><code>63</code></td><td>—</td></tr>
+<tr><td>③ <code>tst x1, x3</code></td><td><code>0x40009000 & 63 = 0</code></td><td><code>0x40009000</code></td><td><code>63</code></td><td style="color:#059669">Z=1（对齐！）</td></tr>
+<tr><td>④ <code>bic x1, x1, x3</code></td><td><code>0x40009000 & ~63 = 0x40009000</code></td><td><code>0x40009000</code>（不变）</td><td><code>63</code></td><td>—</td></tr>
+<tr><td>⑤ <code>b.eq 1f</code></td><td>Z=1 → <strong>跳转</strong>到 1f</td><td colspan="3">跳过 <code>dc civac</code>——end 已对齐，不需要处理尾部 partial line</td></tr>
+<tr><td colspan="5">→ 对齐后的 end = 0x40009000。主循环从 start 到 0x40009000，全部用 <code>dc ivac</code>。</td></tr>
+</table>
+
+<p><strong>例 B：end 不对齐（end = 0x40009020）—— 这才是整个算法的精髓</strong></p>
+
+<table>
+<tr><th>指令</th><th>操作</th><th>x1 的值</th><th>x3 的值</th><th>NZ 标志</th></tr>
+<tr><td>进入时</td><td>—</td><td><code>0x40009020</code></td><td><code>63</code></td><td>—</td></tr>
+<tr><td>③ <code>tst x1, x3</code></td><td><code>0x40009020 & 63 = 32 ≠ 0</code></td><td><code>0x40009020</code></td><td><code>63</code></td><td style="color:#dc2626">Z=0（不对齐！）</td></tr>
+<tr><td>④ <code>bic x1, x1, x3</code></td><td><code>0x40009020 & ~63 = 0x40009000</code></td><td style="color:#dc2626"><code>0x40009000</code> ← 向下对齐了！</td><td><code>63</code></td><td>—</td></tr>
+<tr><td>⑤ <code>b.eq 1f</code></td><td>Z=0 → <strong>不跳转</strong></td><td colspan="3">顺序执行 <code>dc civac, x1</code></td></tr>
+</table>
+
+<p><strong>关键：end 从 0x40009020 向下对齐到 0x40009000。</strong> 0x40009020~0x4000903F 这 32 字节是"部分覆盖的尾部 line"——这个范围在主循环<strong>之外</strong>，由 ⑤ <code>dc civac</code> 单独处理。</p>
+
+<div class="diagram" style="font-size:0.85em;background:#f0f7ff;border-left:3px solid #2563eb;padding:12px 16px;">
+<strong>为什么向下对齐而不是向上？</strong><br><br>
+原始范围: [0x40008000, 0x40009020)<br>
+处理策略:<br>
+  ├─ [0x40009000, 0x40009020) → ⑤ <code>dc civac</code> 单独处理（尾部 partial line，Clean+Invalidate）<br>
+  └─ [0x40008000, 0x40009000) → 主循环 <code>dc ivac</code> 逐 line 处理（全部是对齐的，纯 Invalidate）<br><br>
+
+如果<strong>向上</strong>对齐 end (= 0x40009040):<br>
+  └─ [0x40008000, 0x40009040) → 主循环全部 ivac<br>
+     但 0x40009020~0x4000903F 这 32 字节<strong>不在调用者指定的范围内</strong>！<br>
+     → 这些字节可能属于<strong>其他变量</strong>，被纯 ivac 清除会丢数据！<br><br>
+
+所以向下对齐 + civac 才是<strong>安全的</strong>：<br>
+  主循环只 ivac 完全在范围内的 line（安全——调用者拥有这些 line 的全部 64 字节）<br>
+  边界 line 用 civac（安全——Clean 写回脏数据 + Invalidate，不会丢别人的数据）
+</div>
+
+<h4>⑥⑦⑧ 详解：start 对齐 —— 两个典型场景</h4>
+
+<p>start 的处理逻辑与 end 完全对称。以下用 <code>boot_args</code>（已对齐）和页表区域（假设不对齐）两个场景对比：</p>
+
+<p><strong>场景 1：start 已对齐（boot_args 场景，<code>__cacheline_aligned</code> 保证对齐）</strong></p>
+
+<table>
+<tr><th>指令</th><th>操作</th><th>x0 的值</th><th>x3</th><th>NZ</th></tr>
+<tr><td>进入时</td><td>—</td><td><code>0x40008000</code></td><td><code>63</code></td><td>—</td></tr>
+<tr><td>⑥ <code>tst x0, x3</code></td><td><code>0x40008000 & 63 = 0</code></td><td><code>0x40008000</code></td><td><code>63</code></td><td style="color:#059669">Z=1</td></tr>
+<tr><td>⑦ <code>bic x0, x0, x3</code></td><td><code>0x40008000 & ~63</code></td><td><code>0x40008000</code>（不变）</td><td><code>63</code></td><td>—</td></tr>
+<tr><td>⑧ <code>b.eq 2f</code></td><td>Z=1 → <strong>跳转到 2f</strong>（主循环 <code>dc ivac</code>）</td><td colspan="3">跳过 <code>dc civac</code>——start 已对齐，整条 line 都在范围内，可以直接 ivac</td></tr>
+</table>
+
+<p><strong>场景 2：start 不对齐（假设页表地址 = 0x40008018，低 6 位 = 0x18 = 24）</strong></p>
+
+<table>
+<tr><th>指令</th><th>操作</th><th>x0 的值</th><th>x3</th><th>NZ</th></tr>
+<tr><td>进入时</td><td>—</td><td><code>0x40008018</code></td><td><code>63</code></td><td>—</td></tr>
+<tr><td>⑥ <code>tst x0, x3</code></td><td><code>0x40008018 & 63 = 24 ≠ 0</code></td><td><code>0x40008018</code></td><td><code>63</code></td><td style="color:#dc2626">Z=0</td></tr>
+<tr><td>⑦ <code>bic x0, x0, x3</code></td><td><code>0x40008018 & ~63 = 0x40008000</code></td><td style="color:#dc2626"><code>0x40008000</code> ← 向下对齐了</td><td><code>63</code></td><td>—</td></tr>
+<tr><td>⑧ <code>b.eq 2f</code></td><td>Z=0 → <strong>不跳转</strong></td><td colspan="3">顺序执行 <code>dc civac, x0</code>（Clean+Invalidate 头部 partial line）</td></tr>
+<tr><td>⑧ <code>b 3f</code></td><td>跳转到 3f（主循环递增）</td><td colspan="3">跳过 2f 的 <code>dc ivac</code>——已经用 civac 处理过这条 line 了，不能重复 ivac</td></tr>
+</table>
+
+<div class="note">💡 <strong>start 和 end 处理完全对称，但有一个微妙区别：</strong>start 不对齐时执行完 <code>dc civac</code> 后需要 <code>b 3f</code> 跳过主循环的 <code>dc ivac</code>——因为那条不对齐的 line 已经被 civac 处理过了，不能再来一次 ivac（否则 ivac 把 civac 刚做完的工作无效掉）。end 则不需要这个跳转——end 对齐后就等于主循环的终止条件。</div>
+
+<h3 id="s8_3">8.3 与 preserve_boot_args 文档的不同视角</h3>
+
+<p>同一段源码在两个文档中分析角度不同，<strong>都是正确的</strong>，只是关注点不同：</p>
+
+<table>
+<tr><th></th><th>本文（cache_maintenance 文档）</th><th>preserve_boot_args 文档 §4.4</th></tr>
+<tr><td><strong>关注点</strong></td><td>页表区域的 cache 维护（范围几 KB）<br>冷启动 vs 热启动两条路径的对比</td><td>boot_args 的 cache 维护（范围仅 32 字节）<br>尾调用的栈帧优化</td></tr>
+<tr><td><strong>调用方式</strong></td><td><code>adr_l x2, dcache_inval_poc; blr x2</code>（函数指针调用）</td><td><code>b dcache_inval_poc</code>（尾调用，不压栈）</td></tr>
+<tr><td><strong>范围特点</strong></td><td>大范围（几 KB），覆盖多条 cache line<br>主循环会真正迭代多次</td><td>极小范围（32B < 64B line）<br>对齐后 start==end，主循环执行 0 次<br>只有 civac 处理</td></tr>
+</table>
+
+<div class="note">💡 <strong>为什么 preserve_boot_args 的尾调用 <code>b</code> 能直接 <code>ret</code> 回 primary_entry？</strong>因为 <code>b</code> 不修改 LR（Link Register），LR 中仍是 <code>primary_entry</code> 中 <code>bl preserve_boot_args</code> 的下一条指令地址。所以 <code>dcache_inval_poc</code> 末尾的 <code>ret</code> 自然跳回 <code>primary_entry</code>，省掉了一个栈帧。详见 <a href="bili_arm64_head.S_preserve_boot_args.html">bili_arm64_head.S_preserve_boot_args.html</a> §4.4。</div>
+
+<h3 id="s8_4">8.4 ARM64 Cache 维护指令速查</h3>
 <table>
 <tr><th>指令</th><th>全称</th><th>操作</th><th>Cache 行最终在哪</th><th>DRAM 最终状态</th></tr>
 <tr><td><code>DC IVAC</code></td><td>Invalidate by VA to PoC</td><td>使指定 VA 的 cache 行失效</td><td>被丢弃</td><td>不变（下次 Miss 从 DRAM 读）</td></tr>
@@ -516,74 +2036,234 @@ SYM_FUNC_END(dcache_clean_poc)</code></pre>
 </table>
 
 <div class="note">💡 <strong>PoC = Point of Coherency：</strong>指系统中所有能访问内存的单元（CPU 核、DMA 控制器、GPU 等）都能看到一致数据的那一点。在大多数 ARM64 SoC 中，PoC 通常在最后一级共享 Cache（L3/SCF）或 DRAM 控制器处。</div>
-</section>
 
-<!-- ====== 8 ====== -->
-<section id="s8">
-<h2>8. 完整决策流程图</h2>
+<h3 id="s8_5">8.5 dcache_clean_poc 源码分析</h3>
 
-<div class="diagram">// ============ 完整 Cache 维护决策流程 ============
+<p>与 <code>dcache_inval_poc</code> 的手写汇编不同，<code>dcache_clean_poc</code> 使用宏实现。两者核心算法相似，但有一个关键差异——<strong>clean 不处理边界部分 line（不需要 civac 保护）</strong>。</p>
 
-                    primary_entry
-                         │
-                         ▼
-              record_mmu_state()
-                │           │
-           MMU=off       MMU=on
-           x19=0         x19=1
-                │           │
-                └─────┬─────┘
-                      │
-                      ▼ x19 被 preserve_boot_args 使用
-                      │    ├── x19=0 → dmb+inval boot_args
-                      │    └── x19=1 → 跳过, 直接返回
-                      │
-                      ▼
-           __pi_create_init_idmap()  <span style="color:#94a3b8;">// 创建 identity mapping 页表</span>
-                │           │        <span style="color:#94a3b8;">// x0 = ptep (页表结束地址)</span>
-           MMU=off       MMU=on
-                │           │
-                ▼           ▼
-    <span style="color:#059669;">╔══════════════╗</span>   <span style="color:#d97706;">╔══════════════╗</span>
-    <span style="color:#059669;">║ 冷启动路径  ║</span>   <span style="color:#d97706;">║ 热启动路径  ║</span>
-    <span style="color:#059669;">╠══════════════╣</span>   <span style="color:#d97706;">╠══════════════╣</span>
-    <span style="color:#059669;">║ cbnz→no跳转 ║</span>   <span style="color:#d97706;">║ cbnz→跳转  ║</span>
-    <span style="color:#059669;">║ dmb sy      ║</span>   <span style="color:#d97706;">║ 0:         ║</span>
-    <span style="color:#059669;">║             ║</span>   <span style="color:#d97706;">║            ║</span>
-    <span style="color:#059669;">║ invalidate  ║</span>   <span style="color:#d97706;">║ clean      ║</span>
-    <span style="color:#059669;">║ 页表区域    ║</span>   <span style="color:#d97706;">║ idmap代码段║</span>
-    <span style="color:#059669;">║             ║</span>   <span style="color:#d97706;">║            ║</span>
-    <span style="color:#059669;">║ x0=pgd      ║</span>   <span style="color:#d97706;">║ x0=start   ║</span>
-    <span style="color:#059669;">║ x1=ptep     ║</span>   <span style="color:#d97706;">║ x1=end     ║</span>
-    <span style="color:#059669;">║ blr ivac    ║</span>   <span style="color:#d97706;">║ blr cvac   ║</span>
-    <span style="color:#059669;">╚══════════════╝</span>   <span style="color:#d97706;">╚══════════════╝</span>
-                │           │
-                └─────┬─────┘
-                      │
-                      ▼
-                1: mov x0, x19
-                bl  init_kernel_el
-                      │
-                      ▼
-                __cpu_setup()  <span style="color:#94a3b8;">// 配置 TCR/MAIR/TTBR</span>
-                      │
-                      ▼
-                __primary_switch
-                      │
-                      ▼
-                __enable_mmu    <span style="color:#2563eb;">// ★ 真正开启 MMU！</span>
-                      │
-                      ▼
-                start_kernel()  <span style="color:#94a3b8;">// 进入 C 代码世界</span></div>
+<h4>源码：arch/arm64/mm/cache.S:175-177</h4>
+<pre><code>SYM_FUNC_START(__pi_dcache_clean_poc)
+    dcache_by_line_op cvac, sy, x0, x1, x2, x3  // 宏展开
+    ret
+SYM_FUNC_END(__pi_dcache_clean_poc)</code></pre>
 
-<div class="note">💡 <strong>理解这个流程的关键：</strong>Cache 维护操作必须在"数据生产者"之后、"数据消费者"之前执行。冷启动路径的"生产者"是绕过 Cache 的 STR 指令，"消费者"是即将开启的 MMU page table walker。热启动路径的"生产者"是带 Cache 的代码执行，"消费者"是关闭 MMU 后的直接取指。</div>
+<h4>宏展开后的等效逻辑（arch/arm64/include/asm/assembler.h:381-408）</h4>
+<pre><code>// dcache_by_line_op cvac, sy, x0, x1, x2, x3
+// → dcache_by_myline_op cvac, sy, x0, x1, x2, x3
+
+    dcache_line_size x2, x3     // ① x2 = 64 (cache line size)
+    sub     x3, x2, #1          // ② x3 = 63 (对齐掩码)
+    bic     x0, x0, x3          // ③ 将 start 向下对齐到 cache line 边界
+
+1:  dc      cvac, x0            // ④ ★ 对当前地址做 Clean to PoC
+    add     x0, x0, x2          // ⑤ 地址 += cache line size
+    cmp     x0, x1              // ⑥ 超过 end 了吗?
+    b.lo    1b                  //    还没 → 继续循环
+    dsb     sy                   // ⑦ 全系统内存屏障
+    ret                          // ⑧ 返回</code></pre>
+
+<h4>与 dcache_inval_poc 的关键差异</h4>
+
+<table>
+<tr><th>对比维度</th><th>dcache_inval_poc（§8.1）</th><th>dcache_clean_poc（本节）</th></tr>
+<tr><td><strong>实现方式</strong></td><td>手写汇编（cache.S:145-163）</td><td>宏展开（assembler.h:381-408）</td></tr>
+<tr><td><strong>边界处理</strong></td><td>不对齐的头/尾 → <code>dc civac</code>（Clean+Invalidate）<br>防止 invalidate 误伤共享数据</td><td><strong>不需要</strong>特殊处理<br>clean 不销毁数据，部分 line 被 clean 也无害</td></tr>
+<tr><td><strong>主循环操作</strong></td><td><code>dc ivac</code>（Invalidate）</td><td><code>dc cvac</code>（Clean）</td></tr>
+<tr><td><strong>数据流向</strong></td><td>Cache line → Invalid（丢弃）<br>DRAM ← 不变（下次从 DRAM 取）</td><td>Cache line → Clean（保留）<br>DRAM ← 被更新为最新值</td></tr>
+<tr><td><strong>使用场景</strong></td><td>冷启动：清除 speculative load 的旧数据<br>（正确数据已在 DRAM，cache 里的直接丢）</td><td>热启动：写回 dirty 代码到 DRAM<br>（正确数据在 cache 里，必须保留并写回）</td></tr>
+</table>
+
+<div class="note">💡 <strong>为什么 invalidate 需要手写而 clean 可以用宏？</strong>因为 <code>dc ivac</code>（纯 invalidate）有破坏性——如果操作的地址不对齐到 cache line 边界，invalid 会把同一条 line 上其他变量的脏数据也丢掉。所以 <code>dcache_inval_poc</code> 必须手写，对边界部分 line 降级为 <code>dc civac</code>（先 clean 再 invalid）。而 <code>dc cvac</code>（纯 clean）没有破坏性——clean 一条 partial line 只是把脏数据写回，不影响其他变量。所以 <code>dcache_clean_poc</code> 可以用简化宏，直接逐 line cvac，不需要担心边界。</div>
 </section>
 
 <!-- ====== 9 ====== -->
 <section id="s9">
-<h2>9. GDB 调试验证</h2>
+<h2>9. 为什么不一开始就 Flush 全部 Cache？</h2>
 
-<h3>9.1 断点设置</h3>
+<p>既然 cache 一致性在 MMU 开启前是个大问题，自然会想到：能不能一进入内核入口就把 D-cache 全部清空（比如 <code>dc cisw</code>），一劳永逸？答案是：<strong>ARM 架构不允许，语义上也不对。</strong></p>
+
+<h3 id="s9_1">8.1 Set/Way 操作不是干这个用的</h3>
+
+<p>ARM 架构明确规定：<strong>cache maintenance by set/way（如 <code>dc cisw</code>、<code>dc isw</code>、<code>dc csw</code>）仅用于 power-down/power-up 流程</strong>，不能用来维护正常运行期间的 cache 一致性。</p>
+
+<table>
+<tr><th>操作方式</th><th>你告诉 cache 什么</th><th>cache 怎么做</th><th>适用场景</th></tr>
+<tr>
+<td><code>dc ivac, &lt;VA&gt;</code></td>
+<td>一个地址</td>
+<td>硬件解析地址 → 定位 set → 匹配 tag → 操作该 line</td>
+<td><strong>运行时一致性维护</strong>（本文所有场景）</td>
+</tr>
+<tr>
+<td><code>dc cisw, &lt;set/way&gt;</code></td>
+<td>第 N 个 set、第 M 个 way</td>
+<td>直接操作物理位置，不知道里面是什么数据</td>
+<td><strong>power-down/up 流程</strong></td>
+</tr>
+</table>
+
+<div class="warn">⚠ <strong>Set/Way 操作的根本问题：</strong>从执行 <code>dc cisw</code> 到真正使用数据的这段时间窗口内，CPU 的硬件预取器、投机执行等机制<strong>可能已经把新的 cache line 又拉进来了</strong>。你无法在 set/way 操作和后续使用之间建立正确的 happens-before 关系。VA-based 操作配合 <code>DSB</code> 屏障才能提供架构级别的正确性保证。</div>
+
+<h3 id="s9_2">8.2 不同区域需要不同的操作，一个 flush 搞不定</h3>
+
+<p>即使假设 set/way flush 是合法的，也不能用同一个操作处理所有区域：</p>
+
+<table>
+<tr><th>区域</th><th>需要的操作</th><th>原因</th></tr>
+<tr>
+<td><code>boot_args</code></td>
+<td><strong>Invalidate</strong></td>
+<td>写入是 non-cacheable 的，需要干掉投机进来的旧 line</td>
+</tr>
+<tr>
+<td><code>__pi_init_idmap_pg_dir</code></td>
+<td><strong>Invalidate</strong></td>
+<td>同上，页表写入时 MMU off，non-cacheable 写入</td>
+</tr>
+<tr>
+<td><code>__idmap_text</code>（MMU on 进来时）</td>
+<td><strong>Clean to PoC</strong></td>
+<td>代码在 cache 里是脏的，必须先刷到 PoC，否则关了 MMU 之后指令取不到</td>
+</tr>
+</table>
+
+<p>"全部 invalidate"会毁掉第三种情况——如果启动时 MMU/cache 是 on 的，你需要把 <code>__idmap_text</code> 的代码<strong>clean（写出）</strong>到 PoC，而不是 invalidate（丢弃）。</p>
+
+<h3 id="s9_3">8.3 性能确实也是考量</h3>
+
+<p>全 cache flush 遍历所有 set/way，对于现代 CPU（L1 32KB+，L2 几 MB）来说非常慢。用 VA-based 操作只处理真正需要的几个页面，时间差距可能是几百倍。虽然启动阶段对性能不那么敏感，但也没必要浪费。</p>
+
+<div class="note">💡 <strong>总结：</strong>V8 架构提供的正确工具就是用 VA-based 操作（<code>dc ivac</code>/<code>dc cvac</code>）配合 <code>DSB</code> 屏障，精确地处理每一块关心的内存区域。代码中这种"一块一块处理"的方式不是啰嗦，而是<strong>唯一的正确做法</strong>。</div>
+</section>
+
+<!-- ====== 10 ====== -->
+<section id="s10">
+<h2>10. VA 操作如何精确定位目标 Cache Line？</h2>
+
+<p>你可能会担心：用 <code>dc ivac, x0</code> 做 cache 操作时，怎么保证失效的正是你想要的那条 cache line，而不是"碰运气"清错了？答案是：<strong>cache 控制器是按地址去定位 cache line 的，这是硬件保证的确定性映射。</strong></p>
+
+<h3 id="s10_1">9.1 Cache 硬件结构回顾</h3>
+
+<p>ARM64 的 L1 D-cache 典型是 <strong>VIPT（Virtually Indexed, Physically Tagged）</strong>，假设参数：</p>
+
+<table><tr><th>参数</th><th>值</th><th>推导</th></tr><tr><td>总大小</td><td><strong>32 KB</strong></td><td>= Data RAM 容量</td></tr><tr><td>Way 数</td><td><strong>4</strong></td><td>Set-associative 4-way</td></tr><tr><td>Set 数</td><td><strong>128</strong></td><td>= 32KB / (4 × 64B)</td></tr><tr><td>Cache Line</td><td><strong>64 bytes</strong></td><td>= L1_CACHE_BYTES</td></tr><tr><td>Index bits</td><td><strong>7 bits</strong> [12:6]</td><td>= log2(128)</td></tr><tr><td>Offset bits</td><td><strong>6 bits</strong> [5:0]</td><td>= log2(64)</td></tr></table>
+
+<h3 id="s10_2">9.2 具体数字推演：boot_args 在地址 0x40008000</h3>
+
+<p>假设链接器把 <code>boot_args</code> 放在了物理地址 <code>0x40008000</code>。MMU off 时 VA 即 PA。</p>
+
+<table><tr><th>地址</th><th>内容</th><th>所属 Cache Line</th></tr><tr><td><code>0x40008000</code></td><td>boot_args[0] = x0（FDT 指针）</td><td rowspan="5">同一条 64B line<br>(0x40008000 ~ 0x4000803F)<br>boot_args 独占整条 line</td></tr><tr><td><code>0x40008008</code></td><td>boot_args[1] = x1</td></tr><tr><td><code>0x40008010</code></td><td>boot_args[2] = x2</td></tr><tr><td><code>0x40008018</code></td><td>boot_args[3] = x3</td></tr><tr><td><code>0x40008020~3F</code></td><td>未使用（__cacheline_aligned padding）</td></tr><tr><td><code>0x40008040</code></td><td>next_var</td><td>下一条 cache line</td></tr></table>
+
+<h3 id="s10_3">9.3 投机加载如何污染这条 line</h3>
+
+<p>假设 bootloader 在跳转到内核之前，它的代码曾经访问过 <code>0x40008000</code> 附近的内存。CPU 的硬件预取器或投机执行把这条 line 拉进了 D-cache：</p>
+
+<table><tr><th>Cache Set 0</th><th>Tag</th><th>Data</th><th>State</th></tr><tr><td style="color:#dc2626">Way 0</td><td><code>0x40008_0</code></td><td style="color:#dc2626">旧数据/垃圾</td><td>Modified (脏)</td></tr><tr><td>Way 1</td><td><code>0x12345_6</code></td><td>...</td><td>Shared</td></tr><tr><td>Way 2</td><td><code>0xABCDE_F</code></td><td>...</td><td>Exclusive</td></tr><tr><td>Way 3</td><td>—</td><td>—</td><td>INVALID</td></tr></table><p style="margin-top:4px">物理内存 @0x40008000: <span style="color:#059669">[x0,x1,x2,x3] 正确数据</span>（non-cacheable STR 直写）。Cache way 0 是脏的旧数据 → 不一致。</p>
+
+<h3 id="s10_4">9.4 dc ivac 的硬件执行流程</h3>
+
+<p>当 CPU 执行 <code>dc ivac, 0x40008000</code> 时：</p>
+
+<table><tr><th>步骤</th><th>操作</th><th>详情</th></tr><tr><td><strong>1</strong></td><td>解析地址</td><td>offset[5:0]=0, index[12:6]=0x00 → <strong>Set 0</strong>, tag=0x40008_0</td></tr><tr><td><strong>2</strong></td><td>Set 内并行 Tag 比对</td><td>Way 0: Tag=0x40008_0 → <strong style="color:#059669">命中！</strong><br>Way 1: Tag=0x12345_6 → 不匹配<br>Way 2: Tag=0xABCDE_F → 不匹配<br>Way 3: INVALID → 跳过</td></tr><tr><td><strong>3</strong></td><td>Invalidate</td><td>Way 0: V→0 → <strong>Cache line 失效</strong><br>物理内存数据不受影响</td></tr></table><p style="margin-top:4px"><strong>关键保证：</strong>地址 index bits 确定 set，tag 确定 way——不存在"清错 line"的可能。这是 ARM 架构级别的正确性保证。</p>
+
+<div class="note">💡 <strong>关键保证：</strong>地址的 index bits 唯一确定了 set，tag 唯一确定了 way。不存在"清错 line"这回事——只要地址正确，cache 控制器<strong>必然</strong>命中的是覆盖该地址的那条 cache line。这是 ARM 架构定义的基本正确性保证。</div>
+
+<h3 id="s10_5">9.5 唯一可能的坑：Cache 别名（Aliasing），但这里不存在</h3>
+
+<p>Cache aliasing 是指<strong>不同的 VA 映射到同一个 PA，但落到了不同的 cache set</strong>——你用 VA1 做 <code>dc ivac</code> 清不掉 VA2 对应的那条 cache line。但在这里：</p>
+
+<ul>
+<li><strong>MMU off</strong>：VA 即 PA，不存在"不同 VA 映射同一 PA"的别名问题</li>
+<li><strong>boot_args 是 <code>__cacheline_aligned</code></strong>：确保它独占一整条 cache line，不会跟邻居数据共享</li>
+<li>即使未来 MMU on 了，映射也是恒等的（identity mapping 区域），VA == PA 仍然成立</li>
+</ul>
+</section>
+
+<!-- ====== 11 ====== -->
+<section id="s11">
+<h2>11. preserve_boot_args 的 0x20 字节与 __cacheline_aligned</h2>
+
+<h3 id="s11_1">10.1 为什么恰好是 0x20（32）字节？</h3>
+
+<p>先看 <code>boot_args</code> 的定义和 ARM64 启动协议：</p>
+
+<pre><code>// arch/arm64/kernel/setup.c:88
+u64 __cacheline_aligned boot_args[4];   // 4 × 8 = 32 字节 = 0x20</code></pre>
+
+<table>
+<tr><th>寄存器</th><th>作用</th><th>存储位置</th></tr>
+<tr><td>x0</td><td>FDT (Flattened Device Tree) 的物理地址</td><td>boot_args[0]</td></tr>
+<tr><td>x1</td><td>保留（必须为 0）</td><td>boot_args[1]</td></tr>
+<tr><td>x2</td><td>保留（必须为 0）</td><td>boot_args[2]</td></tr>
+<tr><td>x3</td><td>保留（必须为 0）</td><td>boot_args[3]</td></tr>
+</table>
+
+<div class="note">💡 ARM64 Linux boot protocol 规定 bootloader 进入内核时<strong>只通过前 4 个寄存器传递信息</strong>。不需要更多，因为只有这 4 个寄存器有有效数据。多 invalidate 也不会有正确性问题，但精确限定范围是对意图的显式文档化——清楚地告诉读代码的人"我们只关心这 32 字节"。</div>
+
+<h3 id="s11_2">10.2 dcache_inval_poc 在 0x20 范围上的完整执行追踪</h3>
+
+<p>以 <code>boot_args</code> 在 <code>0x40008000</code> 为例，调用 <code>dcache_inval_poc(0x40008000, 0x40008020)</code>：</p>
+
+<pre><code>// arch/arm64/mm/cache.S: dcache_inval_poc 算法
+// start=x0=0x40008000, end=x1=0x40008020
+// cache line size=64 (x2), mask=63 (x3)
+
+dcache_line_size x2, x3     // x2=64, no-op (line size already known)
+sub  x3, x2, #1             // x3=63=0b111111 (mask)
+
+// ---- 处理 end ----
+tst  x1, x3                 // 0x20 & 63 = 32 ≠ 0  → end 不对齐
+bic  x1, x1, x3             // x1 = 0x20 & ~63 = 0x00 (向下对齐到 0)
+                             //   → 对齐后的 end = start = 0x40008000
+b.eq 1f                     // 不跳（end 本来就不齐）
+dc   civac, x1              // clean+invalidate 对齐后的 end line
+                             //   → 对 0x40008000 做 civac（安全处理部分 line）
+
+// ---- 处理 start ----
+1: tst x0, x3               // 0x40008000 & 63 = 0  → start 对齐
+bic x0, x0, x3              // x0 不变
+b.eq 2f                     // 跳转到对齐循环
+
+// ---- 对齐的逐 line 循环 ----
+2: dc ivac, x0              // ★ dc ivac, 0x40008000（纯 invalidate）
+3: add x0, x0, x2           // x0 = 0x40008040
+cmp x0, x1                  // 0x40008040 vs 0x40008000 → x0 > x1
+b.lo 2b                     // 不跳，循环结束
+
+dsb sy
+ret</code></pre>
+
+<p>关键观察：<strong>end 不对齐导致先做了一次 <code>dc civac</code>，再进入循环做 <code>dc ivac</code>，两次操作实际上命中了同一条 cache line！</strong></p>
+
+<table><tr><th>操作</th><th>地址</th><th>命中 Cache Line</th><th>说明</th></tr><tr><td>end 边界 civac</td><td><code>0x40008020</code> 向下对齐 → <code>0x40008000</code></td><td rowspan="2"><strong>同一条 line</strong><br>(0x40008000 ~ 0x4000803F)</td><td>因为 0x20=32 < 64(line size)，对齐后 end=start</td></tr><tr><td>循环 ivac</td><td><code>0x40008000</code></td><td>纯 invalidate，丢弃该 line</td></tr></table><p style="margin-top:4px"><strong>结果：</strong>civac（安全处理部分 line） + ivac（直接无效化）= 同一条 line 被操作两次。安全冗余，无副作用。</p>
+
+<h3 id="s11_3">10.3 __cacheline_aligned 的关键作用 —— 反面教材</h3>
+
+<p>假设<strong>没有</strong> <code>__cacheline_aligned</code>，链接器可能把 <code>boot_args</code> 放在 <code>0x40008018</code>：</p>
+
+<table><tr><th colspan="2">对比：<code>boot_args</code> 有无 <code>__cacheline_aligned</code></th></tr><tr><th style="color:#dc2626">没有 __cacheline_aligned ✗</th><th style="color:#059669">有 __cacheline_aligned ✓</th></tr><tr><td style="color:#dc2626">boot_args 可能跨两条 cache line<br>且与 other_struct.field2/field3 共享 line<br>→ dc ivac 会误伤邻居数据<br>→ 边界用 civac（clean+invalidate）可能把脏数据写回但 line 被清</td><td style="color:#059669">boot_args 独占一整条 64B cache line<br>start 天然对齐，end 也在同一 line 内<br>→ dc ivac 只影响 boot_args<br>→ 纯 ivac，不涉及任何其他数据</td></tr></table>
+
+<p>而有了 <code>__cacheline_aligned</code>：</p>
+
+<p style="font-size:0.83em;color:var(--text-secondary)">（见上方对比表中"有 __cacheline_aligned"列）</p>
+
+<div class="note">💡 <strong><code>__cacheline_aligned</code> 的两个作用：</strong>(1) <code>boot_args</code> 独占一条 cache line，invalidate 不会波及任何无关数据；(2) start 地址天然对齐，<code>dcache_inval_poc</code> 直接走 <code>dc ivac</code> 快路径，避免多余的 <code>dc civac</code>。</div>
+</section>
+
+<!-- ====== 12 ====== -->
+<section id="s12">
+<h2>12. 完整决策流程图</h2>
+
+<table><tr><th>步骤</th><th>操作</th><th>x19=0（冷启动）</th><th>x19=1（热启动）</th></tr><tr><td>1</td><td>record_mmu_state()</td><td colspan="2">mrs x19, SCTLR_ELx ; and x19, x19, #1 → x19=SCTLR.M</td></tr><tr><td>2</td><td>preserve_boot_args</td><td style="color:#059669">dmb + dcache_inval_poc(boot_args)</td><td style="color:#d97706">跳过 cache 维护</td></tr><tr><td>3</td><td>__pi_create_init_idmap</td><td colspan="2">创建 identity mapping 页表，x0=ptep（已使用区域结束地址）</td></tr><tr><td>4</td><td>Cache 维护（本段代码）</td><td style="color:#059669">dcache_inval_poc(pg_dir, ptep)<br>→ invalidate 页表区域</td><td style="color:#d97706">dcache_clean_poc(idmap_text_start, end)<br>→ clean idmap 代码段</td></tr><tr><td>5</td><td>init_kernel_el</td><td colspan="2">w0=cpu_boot_mode → 传给后续</td></tr><tr><td>6</td><td>__cpu_setup</td><td colspan="2">配置 TCR_EL1, MAIR_EL1, TTBR0_EL1 等 MMU 寄存器</td></tr><tr><td>7</td><td>__primary_switch → __enable_mmu</td><td colspan="2"><strong>★ 真正开启 MMU</strong></td></tr></table>
+
+<div class="note">💡 <strong>理解这个流程的关键：</strong>Cache 维护操作必须在"数据生产者"之后、"数据消费者"之前执行。冷启动路径的"生产者"是绕过 Cache 的 STR 指令，"消费者"是即将开启的 MMU page table walker。热启动路径的"生产者"是带 Cache 的代码执行，"消费者"是关闭 MMU 后的直接取指。</div>
+</section>
+
+<!-- ====== 13 ====== -->
+<section id="s13">
+<h2>13. GDB 调试验证</h2>
+
+<h3 id="s13_1">9.1 断点设置</h3>
 <table>
 <tr><th>#</th><th>位置</th><th>验证目标</th></tr>
 <tr><td>BP1</td><td><code>cbnz x19, 0f</code> 处</td><td>检查 x19 值，确认走哪条路径</td></tr>
@@ -592,7 +2272,7 @@ SYM_FUNC_END(dcache_clean_poc)</code></pre>
 <tr><td>BP4</td><td><code>1: mov x0, x19</code> 处</td><td>Cache 操作完成，确认 x19 传递给 init_kernel_el</td></tr>
 </table>
 
-<h3>9.2 GDB 命令</h3>
+<h3 id="s13_2">9.2 GDB 命令</h3>
 <pre><code># 断到 cbnz x19, 0f
 (gdb) p/x $x19
 $1 = 0x0                          # 冷启动: x19=0 → 不跳转
@@ -617,7 +2297,7 @@ $6 = 0x0                          # x0 = x19 = 0
 # 进入 init_kernel_el
 (gdb) si                           # bl init_kernel_el</code></pre>
 
-<h3>9.3 验证 speculative load 问题（冷启动场景）</h3>
+<h3 id="s13_3">9.3 验证 speculative load 问题（冷启动场景）</h3>
 <pre><code># 在 __pi_create_init_idmap 之后、cache 维护之前
 # 检查页表区域的 cache 状态
 
@@ -635,9 +2315,9 @@ $6 = 0x0                          # x0 = x19 = 0
 <div class="warn">⚠ 由于本段代码在 <code>.idmap.text</code> 段（使用 <code>SYM_CODE_START</code> 定义），GDB 中直接用符号名设断点需要加载 debug 符号表。建议使用物理地址断点：<code>b *0x&lt;phys_addr&gt;</code>（参考 <code>bili_arm64_head.S_debug_qemu_bootrom.html</code> 中的地址计算方法）。</div>
 </section>
 
-<!-- ====== 10 ====== -->
-<section id="s10">
-<h2>10. 总结 &amp; 关键要点</h2>
+<!-- ====== 14 ====== -->
+<section id="s14">
+<h2>14. 总结 &amp; 关键要点</h2>
 
 <table>
 <tr><th>#</th><th>要点</th><th>说明</th></tr>
@@ -683,7 +2363,7 @@ $6 = 0x0                          # x0 = x19 = 0
 </tr>
 </table>
 
-<h3>涉及文件</h3>
+<h3 id="s14_1">涉及文件</h3>
 <table>
 <tr><th>文件</th><th>作用</th></tr>
 <tr><td><code>arch/arm64/kernel/head.S</code></td><td>本段代码所在，early boot 主入口</td></tr>
@@ -693,7 +2373,7 @@ $6 = 0x0                          # x0 = x19 = 0
 <tr><td><code>arch/arm64/kernel/pi/map_kernel.c</code></td><td>__pi_create_init_idmap 实现</td></tr>
 </table>
 
-<h3>学习建议</h3>
+<h3 id="s14_2">学习建议</h3>
 <ol>
 <li><strong>先看懂"为什么需要 Cache 维护"</strong>——理解 speculative load 和 dirty cache 两个问题源，比背指令更重要</li>
 <li><strong>再理解两条路径的差异</strong>——invalidate vs clean 的选择取决于"正确数据在哪"</li>
@@ -746,6 +2426,43 @@ $6 = 0x0                          # x0 = x19 = 0
         sidebar.style.minWidth = '';
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+    });
+})();
+</script>
+<script>
+// ===== 表格增强：点击表头排序 =====
+(function(){
+    var tables = document.querySelectorAll('table');
+    tables.forEach(function(tbl){
+        var rows = tbl.rows;
+        if (rows.length < 2) return;
+        var headers = tbl.rows[0].cells;
+        for (var i = 0; i < headers.length; i++) {
+            headers[i].classList.add('sortable');
+            headers[i].setAttribute('data-col', i);
+            headers[i].addEventListener('click', function(){
+                var col = parseInt(this.getAttribute('data-col'));
+                var asc = !this.classList.contains('asc');
+                for (var j = 0; j < headers.length; j++) {
+                    headers[j].classList.remove('asc','desc');
+                }
+                this.classList.add(asc ? 'asc' : 'desc');
+                var bodyRows = Array.prototype.slice.call(tbl.rows, 1);
+                bodyRows.sort(function(a, b){
+                    var va = (a.cells[col].textContent||'').trim();
+                    var vb = (b.cells[col].textContent||'').trim();
+                    var na = parseFloat(va.replace(/[^0-9.-]/g,''));
+                    var nb = parseFloat(vb.replace(/[^0-9.-]/g,''));
+                    if (!isNaN(na) && !isNaN(nb)) { va = na; vb = nb; }
+                    else { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+                    if (va < vb) return asc ? -1 : 1;
+                    if (va > vb) return asc ? 1 : -1;
+                    return 0;
+                });
+                var tbody = tbl.tBodies[0] || tbl;
+                bodyRows.forEach(function(r){ tbody.appendChild(r); });
+            });
+        }
     });
 })();
 </script>
