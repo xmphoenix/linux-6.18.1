@@ -368,6 +368,22 @@ hr {
 
 </style>
 
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  }
+};
+</script>
+<script id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+
 </head>
 <body>
 <h1>Linux ARM64 内存架构：NUMA / SPARSEMEM_VMEMMAP / Zone</h1>
@@ -968,23 +984,404 @@ struct page → pfn：
 
 <h3 id="61-虚拟地址空间布局48-bit4k-页">6.1 虚拟地址空间布局（48-bit，4K 页）</h3>
 
-<pre><code>高地址 0xFFFF_FFFF_FFFF_FFFF ─────────────────────────
-                              fixmap（固定映射）
-                              PCI I/O 空间
-                              vmemmap（struct page 映射）
-  内核空间                    vmalloc / ioremap 区域
-  0xFFFF_0000_0000_0000       内核直接映射（PAGE_OFFSET）
-                              内核代码 / 数据 / BSS
-高地址 0xFFFF_0000_0000_0000 ─────────────────────────
+<h4>6.1.1 为什么分「用户」和「内核」两半</h4>
 
-          （空洞，非规范地址）
+<p>ARM64 用 <strong>两个独立的基址寄存器</strong>分别翻译用户态和内核态的地址：</p>
 
-低地址 0x0000_FFFF_FFFF_FFFF ─────────────────────────
-  用户空间                    栈（向下增长）
-  0x0000_0000_0000_0000       代码段 / 数据段 / 堆
-低地址 0x0000_0000_0000_0000 ─────────────────────────</code></pre>
+<pre><code>TTBR0_EL1 → 用户空间页表（进程自己的 pgd）
+TTBR1_EL1 → 内核空间页表（swapper_pg_dir，所有进程共享）
 
-<p>ARM64 虚拟地址有效位数取决于页大小配置：</p>
+判断规则只看最高位 bit[63]：
+  bit[63] = 0  → 用户地址，走 TTBR0
+  bit[63] = 1  → 内核地址，走 TTBR1</code></pre>
+
+<p>这是 ARM64 与 x86 最大的不同：<strong>x86 用户和内核共用一套页表</strong>（内核映射塞在用户页表的高地址区），而 ARM64 用两套基址寄存器天然隔离，切换进程时只需改 TTBR0，内核页表始终不变。</p>
+
+<h4>6.1.2 完整地址布局（含精确地址值）</h4>
+
+<p>48-bit / 4K 页（<code>VA_BITS=48</code>，无 KASAN）下，全 64 位虚拟地址空间被切成三大段：</p>
+
+<pre><code>0xFFFF_FFFF_FFFF_FFFF ───────────────────────────── 内核空间顶
+  Fixmap（固定映射）        0xFFFF_FFFF_FF80_0000 起，8MB   ← FIXADDR_TOP
+  PCI I/O 空间             0xFFFF_FFFF_C080_0000 起，16MB
+  vmemmap（struct page 映射）0xFFFF_FDFF_C000_0000 起，2TB
+  vmalloc / ioremap 区域    动态（内核映像之上，见下）
+  kernel image             0xFFFF_8000_8000_0000 起   ← KIMAGE_VADDR
+  modules 区域             0xFFFF_8000_0000_0000 起，2GB
+  ───────────────────────────────────────────────
+  Linear Map（线性映射）     0xFFFF_0000_0000_0000     ← PAGE_OFFSET
+                           ~ 0xFFFF_8000_0000_0000   ← PAGE_END（128TB）
+0xFFFF_0000_0000_0000 ───────────────────────────── 内核空间底
+
+        （非规范地址空洞，访问即 fault）
+
+0x0000_FFFF_FFFF_FFFF ───────────────────────────── 用户空间顶
+  用户空间                 0x0000_0000_0000_0000
+                           （栈向下增长 / 堆向上增长）
+0x0000_0000_0000_0000 ───────────────────────────── 用户空间底</code></pre>
+
+<p><strong>规范地址（canonical address）规则</strong>：48-bit 有效位意味着 bit[63:48] 必须全为 0（用户）或全为 1（内核），否则是「非规范地址」，硬件直接报 translation fault。中间那段 `0x0000_FFFF_FFFF_FFFF ~ 0xFFFF_0000_0000_0000` 的巨大空洞就是因此产生的——虽然物理上存在这些位模式，但 CPU 拒绝翻译。</p>
+
+<h4>6.1.3 内核空间各区域详解</h4>
+
+<table>
+<thead><tr>
+<th>区域</th>
+<th>起始地址</th>
+<th>结束地址</th>
+<th>大小</th>
+<th>来源宏</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Linear Map（线性映射）</td>
+<td><code>0xFFFF_0000_0000_0000</code></td>
+<td><code>0xFFFF_8000_0000_0000</code></td>
+<td>128TB</td>
+<td><code>PAGE_OFFSET</code> → <code>PAGE_END</code></td>
+</tr>
+<tr>
+<td>modules</td>
+<td><code>0xFFFF_8000_0000_0000</code></td>
+<td><code>0xFFFF_8000_8000_0000</code></td>
+<td>2GB</td>
+<td><code>MODULES_VADDR</code> + <code>MODULES_VSIZE</code></td>
+</tr>
+<tr>
+<td>kernel image</td>
+<td><code>0xFFFF_8000_8000_0000</code></td>
+<td>向上增长</td>
+<td>几十 MB</td>
+<td><code>KIMAGE_VADDR</code> = <code>MODULES_END</code></td>
+</tr>
+<tr>
+<td>vmalloc / ioremap</td>
+<td>动态</td>
+<td>动态</td>
+<td>可配置</td>
+<td><code>VMALLOC_START</code> / <code>VMALLOC_END</code></td>
+</tr>
+<tr>
+<td>vmemmap</td>
+<td><code>0xFFFF_FDFF_C000_0000</code></td>
+<td><code>0xFFFF_FFFF_C000_0000</code></td>
+<td>2TB</td>
+<td><code>VMEMMAP_START</code> / <code>VMEMMAP_END</code></td>
+</tr>
+<tr>
+<td>PCI I/O</td>
+<td><code>0xFFFF_FFFF_C080_0000</code></td>
+<td><code>0xFFFF_FFFF_C180_0000</code></td>
+<td>16MB</td>
+<td><code>PCI_IO_START</code> / <code>PCI_IO_END</code></td>
+</tr>
+<tr>
+<td>Fixmap</td>
+<td><code>FIXADDR_TOT_START</code></td>
+<td><code>0xFFFF_FFFF_FF80_0000</code></td>
+<td>~数 MB</td>
+<td><code>FIXADDR_TOP</code></td>
+</tr>
+</tbody></table>
+
+<h4>6.1.4 关键宏的数学推导</h4>
+
+<p>这些地址不是随便拍的，全部由 <code>memory.h</code> 里的宏算出来：</p>
+
+<pre><code class="language-c">// arch/arm64/include/asm/memory.h
+#define VA_BITS           48                        // 有效虚拟地址位数
+#define _PAGE_OFFSET(va)  (-(UL(1) << (va)))        // 负数技巧：2^48 的补码
+#define PAGE_OFFSET       (_PAGE_OFFSET(VA_BITS))   // = 0xFFFF_0000_0000_0000
+
+#define _PAGE_END(va)     (-(UL(1) << ((va) - 1)))  // 2^47 的补码
+#define PAGE_END          (_PAGE_END(VA_BITS_MIN))  // = 0xFFFF_8000_0000_0000
+
+#define MODULES_VADDR     (_PAGE_END(VA_BITS_MIN))  // = PAGE_END（紧贴线性映射顶）
+#define MODULES_VSIZE     (SZ_2G)                   // 2GB
+#define MODULES_END       (MODULES_VADDR + MODULES_VSIZE)
+#define KIMAGE_VADDR      (MODULES_END)             // 内核映像 = modules 之上
+
+#define VMEMMAP_END       (-UL(SZ_1G))              // = 0xFFFF_FFFF_C000_0000
+#define VMEMMAP_RANGE     (_PAGE_END(VA_BITS_MIN) - PAGE_OFFSET)   // 128TB
+#define VMEMMAP_SIZE      ((VMEMMAP_RANGE >> PAGE_SHIFT) * sizeof(struct page))  // 2TB
+#define VMEMMAP_START     (VMEMMAP_END - VMEMMAP_SIZE)
+
+#define PCI_IO_START      (VMEMMAP_END + SZ_8M)     // vmemmap 顶 + 8MB
+#define PCI_IO_END        (PCI_IO_START + SZ_16M)
+#define FIXADDR_TOP       (-UL(SZ_8M))              // = 0xFFFF_FFFF_FF80_0000</code></pre>
+
+<p><strong>「负数宏」技巧</strong>：<code>-(1UL &lt;&lt; 48)</code> 在无符号 64 位里就是 <code>0xFFFF_0000_0000_0000</code>，因为补码取反再加一。用负数写可以保证「离地址空间顶部有多远」这个语义直接看数值大小——<code>VMEMMAP_END = -SZ_1G</code> 就是「从顶部往下 1GB」，<code>FIXADDR_TOP = -SZ_8M</code> 就是「从顶部往下 8MB」。</p>
+
+<h4>6.1.5 Linear Map 与 vmemmap 的关系</h4>
+
+<p>这两块最容易混淆，本质是<strong>同一块物理内存的两种不同视角</strong>：</p>
+
+<pre><code>物理内存（假设 1GB @ 0x4000_0000）
+
+  Linear Map（线性映射）:
+    目的：让内核能「直接解引用」物理内存的任意字节
+    映射：物理地址 + PAGE_OFFSET = 虚拟地址（恒等偏移）
+    例子：物理 0x4000_0000 → 虚拟 0xFFFF_0000_4000_0000
+
+  vmemmap（struct page 元数据）:
+    目的：为每个物理页放一个 64 字节的 struct page 描述符
+    映射：不是 1:1，而是把所有 struct page 密集排布在虚拟空间
+    例子：物理 pfn → 虚拟 vmemmap + pfn × 64 字节
+
+区别：
+  Linear Map 映射的是「物理内存本身」（1GB 物理 → 1GB 虚拟）
+  vmemmap 映射的是「物理内存的元数据」（1GB 物理 → 16MB 元数据）</code></pre>
+
+<p>这就是为什么 <code>VMEMMAP_SIZE</code> 的公式是 <code>(128TB / 4KB) × 64B = 2TB</code>——如果 128TB 的物理内存全装 struct page，需要 2TB 的虚拟空间来放描述符，但只占物理内存的 1/64（因为 4KB 物理页配 64 字节描述符）。</p>
+
+<h5>Linear Map：128TB 的精确推导</h5>
+
+<pre><code>PAGE_OFFSET = -(1UL &lt;&lt; 48)   = 0xFFFF_0000_0000_0000   ← 线性映射起点
+PAGE_END    = -(1UL &lt;&lt; 47)   = 0xFFFF_8000_0000_0000   ← 线性映射终点
+
+大小 = PAGE_END - PAGE_OFFSET
+     = 0xFFFF_8000_0000_0000 - 0xFFFF_0000_0000_0000
+     = 0x0000_8000_0000_0000
+     = 2^47 = 128 TB</code></pre>
+
+<p>为什么是 128TB？因为 48-bit VA 下，<code>PAGE_OFFSET</code> 占掉最高位（bit 47=1 区分内核），剩下的 <strong>47 个有效位</strong> 全部留给线性映射。所以线性映射理论上最多能容纳 2^47 = 128TB 的物理内存——这正好是 48-bit 物理地址空间的一半。</p>
+
+<p><strong>关键理解</strong>：128TB 是「上限容量」，不是「实际占用」。实际映射多少取决于机器装了多少物理 RAM。1GB 内存的机器，线性映射只用了 128TB 里的 1GB；128TB 内存的服务器才刚好装满。空洞和未装内存的部分没有页表映射。</p>
+
+<h5>vmemmap：2TB 的精确推导</h5>
+
+<pre><code>VMEMMAP_END   = -UL(SZ_1G)    = 0xFFFF_FFFF_C000_0000   ← 从顶部往下 1GB
+VMEMMAP_RANGE = PAGE_END - PAGE_OFFSET = 2^47 = 128 TB   ← 对应线性映射的容量
+VMEMMAP_SIZE  = (128TB / 4KB) × 64 字节
+              = (2^47 / 2^12) × 2^6
+              = 2^35 × 2^6
+              = 2^41 = 2 TB
+VMEMMAP_START = VMEMMAP_END - VMEMMAP_SIZE
+              = 0xFFFF_FFFF_C000_0000 - 0x2_0000_0000_0000
+              = 0xFFFF_FDFF_C000_0000</code></pre>
+
+<p>推导逻辑：vmemmap 要为「线性映射能覆盖的每一页物理内存」准备一个 64 字节的 struct page。线性映射上限 128TB = 2^35 个 4KB 页，每页 64 字节 → 共 2^41 = 2TB。</p>
+
+<h5>两者的数学关系：1/64 的黄金比例</h5>
+
+<pre><code>线性映射容量 : vmemmap 容量 = 128TB : 2TB = 64 : 1
+
+这 64 不是巧合：
+  4KB 物理页 = 4096 字节
+  struct page = 64 字节
+  4096 / 64 = 64
+
+所以 struct page 描述符总体积 = 物理内存 / 64
+即：管理 64GB 物理内存，只需 1GB 的元数据</code></pre>
+
+<h5>vmemmap 基址的巧妙偏移：<code>memstart_addr</code></h5>
+
+<p>物理内存几乎从不从地址 0 开始（ARM64 上通常从 0x4000_0000 起）。如果 <code>pfn_to_page(0)</code> 直接指向 <code>VMEMMAP_START</code>，那么物理内存起点（pfn=0x40000）对应的 struct page 会偏到 VMEMMAP_START 之后 0x40000×64 字节，浪费前端虚拟空间。内核用一个「基址指针前移」的技巧解决：</p>
+
+<pre><code class="language-c">// arch/arm64/include/asm/pgtable.h:31
+#define vmemmap  ((struct page *)VMEMMAP_START - (memstart_addr &gt;&gt; PAGE_SHIFT))
+
+// include/asm-generic/memory_model.h:46
+#define __pfn_to_page(pfn)  (vmemmap + (pfn))
+#define __page_to_pfn(page) ((unsigned long)((page) - vmemmap))</code></pre>
+
+<p>展开 <code>pfn_to_page(pfn)</code>：</p>
+
+<pre><code>pfn_to_page(pfn)
+  = vmemmap + pfn
+  = VMEMMAP_START - (memstart_addr &gt;&gt; 12) + pfn
+  = VMEMMAP_START - memstart_pfn + pfn
+
+当 pfn = memstart_pfn（第一页物理内存）时：
+  = VMEMMAP_START - memstart_pfn + memstart_pfn
+  = VMEMMAP_START   ← 第一页的 struct page 正好落在 VMEMMAP_START，零浪费！</code></pre>
+
+<h5>具体例子：1GB @ 0x4000_0000</h5>
+
+<p>还是用前面那台 1GB 机器（物理内存 0x4000_0000 ~ 0x8000_0000）：</p>
+
+<pre><code>memstart_addr = 0x4000_0000
+memstart_pfn  = 0x4000_0000 / 0x1000 = 0x40000 = 262144
+
+【Linear Map 视角】—— 访问物理内存「内容」
+  物理 0x4000_0000  →  虚拟 0xFFFF_0000_4000_0000  （+ PAGE_OFFSET）
+  物理 0x8000_0000  →  虚拟 0xFFFF_0000_8000_0000
+  内核读这 1GB，就是读 0xFFFF_0000_4000_0000 起的 1GB 虚拟区间
+
+【vmemmap 视角】—— 访问物理内存「描述符」
+  vmemmap 指针 = VMEMMAP_START - 0x40000
+  pfn_to_page(0x40000) = vmemmap + 0x40000 = VMEMMAP_START
+                        = 0xFFFF_FDFF_C000_0000
+  所以 1GB 内存的 struct page 数组从 0xFFFF_FDFF_C000_0000 起，
+  共 262144 × 64 字节 = 16MB
+
+【对比】
+  1GB 物理内存
+   → Linear Map 用 1GB 虚拟空间（1:1 映射内容）
+   → vmemmap 用 16MB 虚拟空间（只映射 64 字节描述符）</code></pre>
+
+<p>一句话总结两者：<strong>Linear Map 是「物理内存内容的搬运工」，vmemmap 是「物理内存的档案柜」。前者 1:1 照搬 128TB 上限，后者按 1/64 比例浓缩成 2TB 描述符。</strong></p>
+
+<h4>6.1.6 Linear Map 映射的具体内容</h4>
+
+<p>Linear Map 不是把 128TB 虚拟空间全映射，而是<strong>只映射实际存在的物理 RAM（DRAM）</strong>。建立过程在 <code>map_mem()</code>（<code>arch/arm64/mm/mmu.c:1071</code>）：</p>
+
+<pre><code class="language-c">static void __init map_mem(pgd_t *pgdp)
+{
+    ...
+    /* 1. 先把内核映像 [_text, __init_begin) 标记为 NOMAP，
+          避免在下面的循环里为它建立「可写的线性别名」 */
+    memblock_mark_nomap(kernel_start, kernel_end - kernel_start);
+
+    /* 2. 遍历 memblock 所有内存 bank（RAM 区间） */
+    for_each_mem_range(i, &amp;start, &amp;end) {
+        __map_memblock(pgdp, start, end,
+                       pgprot_tagged(PAGE_KERNEL),   // RW + NX + 写回缓存
+                       NO_EXEC_MAPPINGS);            // 线性映射不可执行
+    }
+
+    /* 3. 再单独映射内核映像的线性别名，属性 NX + 后续转只读 */
+    __map_memblock(pgdp, kernel_start, kernel_end,
+                   PAGE_KERNEL, NO_CONT_MAPPINGS);
+    memblock_clear_nomap(kernel_start, kernel_end - kernel_start);
+}</code></pre>
+
+<p>映射结果可以用一句话概括：</p>
+
+<pre><code>Linear Map = 把所有「物理 RAM」线性平铺到 PAGE_OFFSET 之上
+           映射关系：虚拟地址 = 物理地址 + PAGE_OFFSET（恒等偏移）
+           映射属性：PAGE_KERNEL = 可读可写 + 不可执行(NX) + 写回缓存</code></pre>
+
+<h5>① 映射什么：所有物理 RAM</h5>
+
+<p><code>for_each_mem_range()</code> 遍历的是 <code>memblock.memory[]</code>——即固件（DTB/ACPI）报告给内核的<strong>所有内存 bank</strong>。每个 bank 独立映射，bank 之间的空洞（MMIO、flash）不映射：</p>
+
+<pre><code>物理地址空间（示意）:
+0x0000_0000 [flash/MMIO 空洞] ← 不映射
+0x4000_0000 [RAM bank 0: 1GB] ← 映射到 PAGE_OFFSET + 0x4000_0000
+0x8000_0000 [MMIO 空洞]       ← 不映射
+0x1_0000_0000 [RAM bank 1]   ← 映射到 PAGE_OFFSET + 0x1_0000_0000</code></pre>
+
+<p>所以 <code>virt_to_phys()</code> 只能安全作用于「确实有 RAM 的线性映射地址」。如果对空洞地址调用，结果毫无意义。</p>
+
+<h5>② 特殊处理：内核映像的「线性别名」</h5>
+
+<p>内核映像（代码/数据）本来在 kimg 虚拟地址区（<code>KIMAGE_VADDR</code> 起），但它对应的物理内存也落在某个 RAM bank 里。如果不做特殊处理，<code>for_each_mem_range()</code> 循环会顺带把内核映像的物理内存也映射成「可写」的线性地址，造成<strong>同一块物理内存有两个虚拟映射、且其中一个可写</strong>，破坏只读保护。</p>
+
+<p>所以 <code>map_mem()</code> 先 <code>memblock_mark_nomap()</code> 跳过内核映像，再单独映射它的线性别名，属性为 <code>NX</code>（不可执行），后续 <code>mark_rodata_ro()</code> 再把它转成只读：</p>
+
+<pre><code>同一块内核映像物理内存的两个虚拟映射:
+
+  kimg 映射（KIMAGE_VADDR 起）:   用于执行内核代码（RX 开头，rodata 转 RO）
+  Linear Map 线性别名:            用于 hibernation 等需要「按线性地址访问内核映像」
+                                 属性 NX + RO，不能执行、不能写</code></pre>
+
+<h5>③ 线性映射为什么必须 NX（不可执行）</h5>
+
+<p><code>map_mem()</code> 传了 <code>NO_EXEC_MAPPINGS</code>，意味着整个 Linear Map 都带 NX 位。这是安全设计：内核代码只能从 kimg 区执行，任何「跳到线性映射地址执行」的尝试（如 ret2dir 攻击、内核 bug）都会立刻触发 instruction fault。</p>
+
+<h5>④ Linear Map 的用途</h5>
+
+<table>
+<thead><tr>
+<th>用途</th>
+<th>说明</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>virt_to_phys()</code> / <code>phys_to_virt()</code></td>
+<td>线性映射地址和物理地址之间做「加减偏移」的 O(1) 转换，不查页表</td>
+</tr>
+<tr>
+<td>访问任意物理页</td>
+<td>内核拿到一个 pfn 后，直接 <code>__va(pfn&lt;&lt;12)</code> 就能读写该页内容（如 DMA 缓冲区）</td>
+</tr>
+<tr>
+<td>页表 / 描述符解析</td>
+<td><code>__va()</code> 把页表项里的物理地址转成内核可解引用的指针</td>
+</tr>
+<tr>
+<td>page cache / 匿名页内容</td>
+<td>文件 IO、内存回收等场景需要直接操作页内容时走线性映射</td>
+</tr>
+</tbody></table>
+
+<p><strong>关键前提</strong>：线性映射在启动早期（<code>paging_init()</code>）就建立，早于 buddy 系统，所以内核的页表创建、<code>early_ioremap</code> 等早期操作都依赖它。这也是为什么 fixmap 那套东西在更早阶段还要靠 <code>__pa_symbol()</code> + <code>kimage_voffset</code>——那时连线性映射都还没建好。</p>
+
+<h4>6.1.7 内核映像与 vmalloc 共享的空间</h4>
+
+<p>理解内核映像的「大小」要分清两个完全不同的概念：</p>
+
+<h5>① 内核映像本身的真实大小：约 35MB（链接期固定）</h5>
+
+<p>从实际 vmlinux 符号表实测（不同配置会略有差异）：</p>
+
+<pre><code>_text  = 0xFFFF_8000_8000_0000   ← 正好等于 KIMAGE_VADDR
+_end   = 0xFFFF_8000_8232_0000
+
+内核映像大小 = _end - _text = 0x232_0000 = 36,831,232 字节 ≈ 35 MB</code></pre>
+
+<p>这个大小是编译链接时定死的，运行期不再变化。里面包含 <code>.text</code>（代码）、<code>.rodata</code>（只读数据）、<code>.data</code>、<code>.bss</code>、以及页表、异常向量表等。</p>
+
+<h5>② 内核映像「可使用的」虚拟地址空间：126 TB（与 vmalloc 共享）</h5>
+
+<p>关键设计：<strong>内核映像和 vmalloc 共享同一块虚拟区域</strong>，它们的起点相同：</p>
+
+<pre><code class="language-c">// arch/arm64/include/asm/pgtable.h
+#define VMALLOC_START  (MODULES_END)          // = KIMAGE_VADDR，同一个起点！
+#define VMALLOC_END    (VMEMMAP_START - SZ_8M)</code></pre>
+
+<pre><code>0xFFFF_FDFF_BF80_0000  ← VMALLOC_END（= vmemmap 起点 - 8MB）
+        ▲
+        │  vmalloc / ioremap 从这里向上分配
+        │
+        │  （内核映像只占底部 ~35MB，其余全是 vmalloc 空间）
+        │
+0xFFFF_8000_8232_0000  ← 内核映像终点 _end
+0xFFFF_8000_8000_0000  ← KIMAGE_VADDR = VMALLOC_START = MODULES_END</code></pre>
+
+<p>整个区域大小：</p>
+
+<pre><code>VMALLOC_END - VMALLOC_START
+= 0xFFFF_FDFF_BF80_0000 - 0xFFFF_8000_8000_0000
+= 0x7DFF_3F80_0000
+≈ 126 TB</code></pre>
+
+<h5>③ 完整内核 VA 空间的 256TB 账本</h5>
+
+<pre><code>0xFFFF_FFFF_FFFF_FFFF
+  ├─ fixmap + PCI I/O       ~2GB 区（顶部）
+  ├─ vmemmap                2 TB   (0xFFFF_FDFF_C000_0000 ~ 0xFFFF_FFFF_C000_0000)
+  ├─ kernel image + vmalloc 126 TB (0xFFFF_8000_8000_0000 ~ 0xFFFF_FDFF_BF80_0000) ★
+  ├─ modules                2 GB   (0xFFFF_8000_0000_0000 ~ 0xFFFF_8000_8000_0000)
+  ├─ linear map             128 TB (0xFFFF_0000_0000_0000 ~ 0xFFFF_8000_0000_0000)
+0xFFFF_0000_0000_0000
+────────────────────────────
+合计 ≈ 256 TB (= 2^48)</code></pre>
+
+<p><strong>结论</strong>：内核映像本身的代码/数据只有 ~35MB，但它和 vmalloc 共享一块 <strong>126TB</strong> 的虚拟地址空间。内核映像占底部 35MB，其余 126TB 减去这 35MB 全是 vmalloc/ioremap 的动态分配空间。这也解释了为什么 ARM64 上 vmalloc 区域几乎用不完——126TB 对任何内核模块、ioremap 映射都绰绰有余。</p>
+
+<h4>6.1.8 用户空间：进程视角</h4>
+
+<p>每个用户进程拥有独立的 128TB 用户空间，从低到高典型布局：</p>
+
+<pre><code>0x0000_0000_0000_0000
+  NULL / 保护页（前 4KB 不可访问，捕获空指针）
+  .text   代码段（只读可执行）
+  .rodata 只读数据
+  .data   已初始化数据
+  .bss    未初始化数据
+  heap    堆（brk/mmap 向上增长）
+  mmap    内存映射区（共享库、文件映射）
+  stack   栈（向下增长，初始 ~132KB）
+  ...
+0x0000_FFFF_FFFF_FFFF</code></pre>
+
+<p>用户空间地址通过 TTBR0 翻译，进程切换时 <code>switch_mm()</code> 只换 TTBR0 指向新的进程页表，内核侧（TTBR1）不受影响。</p>
+
+<h4>6.1.9 页大小决定 VA 位数</h4>
+
+<p>ARM64 虚拟地址有效位数（<code>VA_BITS</code>）由页大小和页表级数共同决定：</p>
 
 <table>
 <thead><tr>
@@ -1167,7 +1564,8 @@ Buddy System 在每个 Zone 内独立维护空闲页链表。</p>
     否 → 加入 free_area[0]</code></pre>
 
 <p><strong>Buddy 计算公式</strong>：<br>
-$$\text{buddy\_pfn} = \text{pfn} \oplus (1 \ll \text{order})$$</p>
+$$buddy_{pfn} = pfn \oplus 2^{order}$$</p>
+<p>其中 <code>⊕</code> 是异或（XOR），<code>2^{order}</code> 等价于 C 代码里的 <code>1UL &lt;&lt; order</code>——即把 <code>pfn</code> 的第 <code>order</code> 位翻转，得到它的伙伴页框号。</p>
 
 <h3 id="75-关键函数" >7.5 关键函数</h3>
 

@@ -84,6 +84,7 @@ tr:nth-child(even) td { background: #f8fafc; }
 <a href="#2-1-关键宏定义" class="sub2">2.1 关键宏定义</a>
 <a href="#2-2-fixmap-枚举槽位-从高地址到低地址增长" class="sub2">2.2 fixmap 枚举槽位（从高地址到低地址增长）</a>
 <a href="#2-3-在页表中的索引" class="sub2">2.3 在页表中的索引</a>
+<a href="#2-4-enum-fixed-addresses--fixaddr-top--fixaddr-start-的关系" class="sub2">2.4 enum 与 FIXADDR_* 的关系</a>
 <a href="#3--页表存储位置" class="sub">3. 页表存储位置</a>
 <a href="#3-1-分配方式对比" class="sub2">3.1 分配方式对比</a>
 <a href="#3-2-实际-vmlinux-符号地址" class="sub2">3.2 实际 vmlinux 符号地址</a>
@@ -105,6 +106,10 @@ tr:nth-child(even) td { background: #f8fafc; }
 <a href="#7-5-pgdp---p4dp-的地址性质" class="sub2">7.5 pgdp / p4dp 的地址性质</a>
 <a href="#8--16k-页的特殊处理" class="sub">8. 16K 页的特殊处理</a>
 <a href="#9----set-fixmap---填充-pte" class="sub">9. __set_fixmap()：填充 PTE</a>
+<a href="#9-1-fix-ptepmdpudp4dpgd：五级临时窗口" class="sub2">9.1 五个槽的作用：临时映射页表页</a>
+<a href="#9-2-五级都要的原因：层层分配" class="sub2">9.2 五级都要的原因：层层分配</a>
+<a href="#9-3-fix-pgd-详解：映射-swapper-pg-dir-本身" class="sub2">9.3 FIX_PGD 详解：生命周期与调用链</a>
+<a href="#9-4-rodata-is-rw-的分界" class="sub2">9.4 rodata_is_rw 的分界</a>
 <a href="#10--第一个使用者-fixmap-remap-fdt" class="sub">10. 第一个使用者：fixmap_remap_fdt()</a>
 <a href="#11--总结" class="sub">11. 总结</a>
 <a href="#12--源码索引" class="sub">12. 源码索引</a>
@@ -136,8 +141,10 @@ tr:nth-child(even) td { background: #f8fafc; }
 <tr><th>宏</th><th>值 (4KB/48-bit)</th><th>来源</th></tr>
 <tr><td><code>FIXADDR_TOP</code></td><td><code>0xFFFF_FFFF_FF80_0000</code></td><td><code>memory.h:54</code> → <code>-UL(SZ_8M)</code></td></tr>
 <tr><td><code>__end_of_fixed_addresses</code></td><td>~数百（取决于 CONFIG）</td><td><code>fixmap.h</code> enum</td></tr>
-<tr><td><code>FIXADDR_TOT_SIZE</code></td><td><code>__end_of_fixed_addresses << PAGE_SHIFT</code> ≈ 数 MB</td><td><code>fixmap.h:95</code></td></tr>
-<tr><td><code>FIXADDR_TOT_START</code></td><td><code>FIXADDR_TOP - FIXADDR_TOT_SIZE</code></td><td><code>fixmap.h:96</code></td></tr>
+<tr><td><code>FIXADDR_SIZE</code></td><td><code>__end_of_permanent_fixed_addresses << PAGE_SHIFT</code></td><td><code>fixmap.h:102</code></td></tr>
+<tr><td><code>FIXADDR_START</code></td><td><code>FIXADDR_TOP - FIXADDR_SIZE</code></td><td><code>fixmap.h:103</code>（宏名缺失，见 2.4）</td></tr>
+<tr><td><code>FIXADDR_TOT_SIZE</code></td><td><code>__end_of_fixed_addresses << PAGE_SHIFT</code> ≈ 数 MB</td><td><code>fixmap.h:104</code></td></tr>
+<tr><td><code>FIXADDR_TOT_START</code></td><td><code>FIXADDR_TOP - FIXADDR_TOT_SIZE</code></td><td><code>fixmap.h:105</code></td></tr>
 </table>
 <section>
 <h4>2.2 fixmap 枚举槽位（从高地址到低地址增长）</h4>
@@ -168,6 +175,55 @@ FIXADDR_TOT_START ≈ 0xFFFF_FFFF_FB3x_xxxx</code></pre>
 <tr><td>PUD</td><td><strong>511</strong></td><td>bits [38:30] = 0x1FF</td></tr>
 <tr><td>PMD</td><td>多个</td><td>跨越约 3 个 2MB PMD 条目（取决于 fixmap 总大小）</td></tr>
 </table>
+<section>
+<h4>2.4 enum fixed_addresses 与 FIXADDR_TOP / FIXADDR_START 的关系</h4>
+</section>
+<p>enum 值是 <strong>页序号（index）</strong> 而非地址。转换为虚拟地址的公式：</p>
+<pre><code>// include/asm-generic/fixmap.h:21
+#define __fix_to_virt(x)  (FIXADDR_TOP - ((x) << PAGE_SHIFT))</code></pre>
+<p>enum 值每 +1，虚拟地址向下偏移 <strong>1 个 4KB 页面</strong>：</p>
+<pre><code>FIX_HOLE             = 0   →  __fix_to_virt(0) = FIXADDR_TOP - 0*4K      = FIXADDR_TOP
+FIX_FDT_END          = 1   →  __fix_to_virt(1) = FIXADDR_TOP - 1*4K      = FIXADDR_TOP - 0x1000
+FIX_EARLYCON_MEM_BASE      →  __fix_to_virt(2) = FIXADDR_TOP - 2*4K
+FIX_TEXT_POKE0              →  __fix_to_virt(3) = FIXADDR_TOP - 3*4K
+...
+__end_of_permanent_fixed_addresses →  __fix_to_virt(此值) = FIXADDR_TOP - FIXADDR_SIZE
+                                                                         = FIXADDR_START
+...
+__end_of_fixed_addresses          →  __fix_to_virt(此值) = FIXADDR_TOP - FIXADDR_TOT_SIZE
+                                                                         = FIXADDR_TOT_START</code></pre>
+<p><strong>需要 > 4KB 空间的条目，通过跳过多个 enum 值来「预留」多个页面：</strong></p>
+<pre><code>// 设备树：需要 DIV_ROUND_UP(MAX_FDT_SIZE, PAGE_SIZE) + 1 个页面
+FIX_FDT_END,                                          // idx = N
+FIX_FDT = FIX_FDT_END + DIV_ROUND_UP(MAX_FDT_SIZE, PAGE_SIZE) + 1,  // idx = N + 页数
+
+// KVM VNCR：每个 CPU 一个 4KB 槽
+FIX_VNCR_END,
+FIX_VNCR = FIX_VNCR_END + NR_CPUS,
+
+// 临时 boot 映射：256KB × 7 个 slot = 448 个页面
+FIX_BTMAP_BEGIN = FIX_BTMAP_END + TOTAL_FIX_BTMAPS - 1,  // 448 pages</code></pre>
+<p><strong>FIXADDR_SIZE = __end_of_permanent_fixed_addresses << PAGE_SHIFT 的直观含义：</strong></p>
+<p><code>__end_of_permanent_fixed_addresses</code> 的值 ≈ 永久 fixmap 区域占用的 enum 槽位数。左移 PAGE_SHIFT (12) 后就是占用的<strong>总字节数</strong>：槽位数 × 4KB。</p>
+<div class="diagram">        FIXADDR_TOP
+        │
+        │  FIX_HOLE           (idx 0)       ← __fix_to_virt(0)
+        │  FIX_FDT_END         (idx 1)
+        │  ...FIX_FDT...       (idx N)       ← max_fdt 窗口
+        │  FIX_EARLYCON_MEM_BASE
+        │  FIX_TEXT_POKE0
+        │  FIX_VNCR            (KVM 可选)
+        │  FIX_ENTRY_TRAMP_TEXT* (KPTI 可选)
+        │
+        ├── __end_of_permanent_fixed_addresses  ← 永久区域底部
+        │                                        __fix_to_virt(此值) = <strong>FIXADDR_START</strong>
+        │
+        │  FIX_BTMAP_BEGIN ... FIX_BTMAP_END  ← early_ioremap 临时映射
+        │  FIX_PTE, PMD, PUD, P4D, PGD        ← 页表创建窗口
+        │
+        └── __end_of_fixed_addresses             ← 全部 fixmap 底部
+                                                  __fix_to_virt(此值) = <strong>FIXADDR_TOT_START</strong></div>
+<p><strong>注意：</strong> 源码中 <code>fixmap.h:103</code> 有一个小 bug —— <code>#define FIXADDR_START (FIXADDR_TOP - FIXADDR_SIZE)</code> 缺了宏名 <code>FIXADDR_START</code>，但因为 arm64 代码中无引用，不影响编译。</p>
 <p>---</p>
 <section>
 <h3>3. 页表存储位置</h3>
@@ -402,6 +458,124 @@ str_l   x4, kimage_voffset  // 存入全局变量</code></pre>
     return &amp;bm_pte[BM_PTE_TABLE_IDX(addr)][pte_index(addr)];
 }</code></pre>
 <p>这是因为 <code>bm_pte</code> 数组既是页表本身（MMU 硬件通过物理地址访问），又是内核可直接寻址的 BSS 变量（CPU 通过虚拟地址访问）。两者指向同一块物理内存。</p>
+<section>
+<h4>9.1 FIX_PTE/PMD/PUD/P4D/PGD：五级临时窗口</h4>
+</section>
+<p>fixmap 末尾的这 5 个槽各自对应一级页表的 <strong>单页临时映射窗口</strong>，用于把某个页表页映射到 fixmap 空间从而读写它的条目：</p>
+<pre><code>// pgtable.h 中的定义
+#define pgd_set_fixmap(addr)   ((pgd_t *)set_fixmap_offset(FIX_PGD, addr))
+#define pte_set_fixmap(addr)   ((pte_t *)set_fixmap_offset(FIX_PTE, addr))
+#define pmd_set_fixmap(addr)   ((pmd_t *)set_fixmap_offset(FIX_PMD, addr))
+
+// pud_set_fixmap / p4d_set_fixmap 同理</code></pre>
+<table>
+<tr><th>槽名</th><th>映射的物理页</th><th>典型场景</th></tr>
+<tr><td><code>FIX_PTE</code></td><td>某个 PTE 表页（叶子，512 个 PTE 条目）</td><td>分配新 PTE 页后填充映射</td></tr>
+<tr><td><code>FIX_PMD</code></td><td>某个 PMD 表页（512 个 PMD 条目）</td><td>分配新 PMD 页后连接 PUD→PMD</td></tr>
+<tr><td><code>FIX_PUD</code></td><td>某个 PUD 表页（512 个 PUD 条目）</td><td>分配新 PUD 页后连接 P4D→PUD</td></tr>
+<tr><td><code>FIX_P4D</code></td><td>某个 P4D 表页（512 个 P4D 条目）</td><td>分配新 P4D 页后连接 PGD→P4D</td></tr>
+<tr><td><code>FIX_PGD</code></td><td><code>swapper_pg_dir</code> 本身</td><td>运行时修改只读的 PGD 条目</td></tr>
+</table>
+<p><strong>核心矛盾：你要修改的页表页本身也是一个物理页，需要虚拟地址才能访问。</strong> 当 linear map 覆盖不到，或者内核映像已变成只读时，fixmap 就是唯一途径。</p>
+<section>
+<h4>9.2 五级都要的原因：层层分配</h4>
+</section>
+<p>以 vmalloc 创建 PGD → PTE 的完整路径为例，每一步都可能需要分配一个新的页表页：</p>
+<pre><code>alloc_init_p4d(pgdp, addr, ...)
+  │
+  │  PGD 条目为空？
+  ├─ YES → 分配 P4D 表页 → p4d_set_fixmap(p4d_phys)    // FIX_P4D 临时映射 P4D 页
+  │                          __pgd_populate(pgdp, ...)   // set_swapper_pgd → FIX_PGD 窗口
+  │
+  └─ alloc_init_pud(p4dp, addr, ...)
+       │  P4D 条目为空？
+       ├─ YES → 分配 PUD 表页 → pud_set_fixmap(pud_phys)  // FIX_PUD 临时映射 PUD 页
+       │
+       └─ alloc_init_pmd(pudp, addr, ...)
+            │  PUD 条目为空？
+            ├─ YES → 分配 PMD 表页 → pmd_set_fixmap(pmd_phys) // FIX_PMD
+            │
+            └─ alloc_init_pte(pmdp, addr, ...)
+                 │  PMD 条目为空？
+                 └─ YES → 分配 PTE 表页 → pte_set_fixmap(pte_phys)  // FIX_PTE
+                                              init_pte(ptep, addr, phys, prot)</code></pre>
+<p><strong>FIX_PGD 和 FIX_P4D 都是临时映射页表页，只不过 FIX_PGD 映射的是 PGD 级表页（swapper_pg_dir），FIX_P4D 映射的是 P4D 级表页。</strong></p>
+<section>
+<h4>9.3 FIX_PGD 详解：生命周期与调用链</h4>
+</section>
+<p><strong>唯一使用点：</strong><code>set_swapper_pgd()</code>（<code>mmu.c:77</code>）</p>
+<pre><code>void set_swapper_pgd(pgd_t *pgdp, pgd_t pgd)
+{
+    pgd_t *fixmap_pgdp;
+
+    if (rodata_is_rw) {
+        WRITE_ONCE(*pgdp, pgd);           // 早期：swapper_pg_dir 还处于可写状态
+        return;
+    }
+
+    // 后期：swapper_pg_dir 已只读，必须通过 fixmap 后门
+    spin_lock(&amp;swapper_pgdir_lock);
+    fixmap_pgdp = pgd_set_fixmap(__pa_symbol(pgdp));
+    //            └─ set_fixmap_offset(FIX_PGD, PA(swapper_pg_dir))
+    //                 └─ __set_fixmap(FIX_PGD, PA, 可写)
+    //                      └─ bm_pte[2][idx] = PA | 可写属性   ← 填入 PTE
+    WRITE_ONCE(*fixmap_pgdp, pgd);         // 通过 fixmap 窗口写 swapper_pg_dir
+    pgd_clear_fixmap();                    // 用完立刻清除 PTE
+    spin_unlock(&amp;swapper_pgdir_lock);
+}</code></pre>
+<p><strong>FIX_PGD 的生命周期：</strong></p>
+<div class="diagram">early_fixmap_init()       mark_rodata_ro()         vmalloc() → set_swapper_pgd()
+═══════════════════       ═══════════════         ════════════════════════════════
+
+bm_pte[FIX_PGD] = 0       bm_pte[FIX_PGD] = 0     pgd_set_fixmap()
+（骨架就绪，末级空）        （仍然为空）                → PTE = PA(swapper_pg_dir) | RW
+                                                        ↓
+rodata_is_rw = TRUE       rodata_is_rw = FALSE       WRITE_ONCE → 写入
+                                                        ↓
+直接写无保护              必须走后门                  pgd_clear_fixmap()
+                                                        → PTE = 0 （归还）</div>
+<p><strong>调用 set_swapper_pgd 的场景：</strong></p>
+<table>
+<tr><th>调用者</th><th>场景</th><th>代码位置</th></tr>
+<tr><td><code>set_pgd()</code></td><td>直接设置 PGD 条目</td><td><code>pgtable.h:1132</code></td></tr>
+<tr><td><code>__pgd_populate()</code></td><td>分配新 P4D 表页后连接</td><td><code>pgalloc.h:74</code></td></tr>
+<tr><td><code>set_p4d() / set_pud() / set_pmd()</code></td><td>页表层折叠时退化为写 PGD</td><td><code>pgtable.h:862,923,1004</code></td></tr>
+</table>
+<p><strong>这些调用链的最终触发源：</strong>vmalloc/vmap、KASAN 初始化、EFI 运行时映射——任何运行时需要往 swapper_pg_dir 插入新条目的操作。</p>
+<section>
+<h4>9.4 rodata_is_rw 的分界</h4>
+</section>
+<p>下面是 <code>set_swapper_pgd()</code> 的两个阶段：</p>
+<pre><code>阶段 1：paging_init() 之前（rodata_is_rw == TRUE）
+
+  pgdp = &amp;swapper_pg_dir[509];     // kimg 虚拟地址，对应内核映像内的位置
+  WRITE_ONCE(*pgdp, new_pgd);      // 直接写——此时内核映像页权限为 RW
+
+
+阶段 2：paging_init() → mark_rodata_ro() 之后（rodata_is_rw == FALSE）
+
+  pgdp = &amp;swapper_pg_dir[509];     // 同样的 kimg 虚拟地址
+  WRITE_ONCE(*pgdp, new_pgd);      // ❌ PAGE FAULT——同一 VA 现在映射为 RO
+
+  // swapper_pg_dir 这同一块物理内存现在有两个 VA 映射：
+  //   映射 1（kimg）：只读  — 用于 CPU 读页表、MMU 走表
+  //   映射 2（fixmap）：可写 — 用于 CPU 修改页表条目
+
+  fixmap_pgdp = pgd_set_fixmap(__pa_symbol(pgdp));
+  //            └─ 给 PA(swapper_pg_dir) 建立第 2 个映射，权限 RW
+  WRITE_ONCE(*fixmap_pgdp, new_pgd);   // ✅ 走 fixmap 写同一块物理内存</code></pre>
+<div class="diagram">           PA(swapper_pg_dir) = 0x8145_F000（同一块 4KB 物理内存）
+                        │
+         ┌──────────────┴──────────────┐
+         │                             │
+    映射 1（kimg VA）               映射 2（fixmap VA）
+    VA = kernel_image_base        VA = __fix_to_virt(FIX_PGD)
+       + offset(swapper_pg_dir)     = FIXADDR_TOP - FIX_PGD*4K
+    权限：RO（！）                 权限：RW
+         │                             │
+         ▼                             ▼
+    CPU 可读，不可写               CPU 可读可写
+    MMU 走表用                     set_swapper_pgd 专用</div>
 <p>---</p>
 <section>
 <h3>10. 第一个使用者：fixmap_remap_fdt()</h3>
