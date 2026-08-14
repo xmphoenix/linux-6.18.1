@@ -259,33 +259,262 @@ SYM_FUNC_END(__enable_mmu)</code></pre>
 </section>
 
 <section id="s4">
-<h2>4. MMU ON 之后：__pi_early_map_kernel (head.S:516-518)</h2>
+<h2>4. MMU ON 之后：__pi_early_map_kernel 详解 (map_kernel.c)</h2>
 
 <pre><code>    mov     x0, x20                        // cpu_boot_mode
     mov     x1, x21                        // FDT 物理地址
     bl      __pi_early_map_kernel          // 映射 + 重定位内核!</code></pre>
 
-<p>这个 PI 函数 (在 <code>map_kernel.c</code> 中) 做三件事：</p>
-<ol>
-<li><strong>构建正式页表</strong> — 在 init_pg_dir 中创建内核的高 VA (0xffff...) 映射</li>
-<li><strong>重新创建 idmap</strong> — 用正确的 PA 重建 identity mapping (此时已知 kimage_voffset)</li>
-<li><strong>安装 TTBR1</strong> — 把 init_pg_dir 设为 TTBR1_EL1</li>
-</ol>
+<p>这里的 <code>bl __pi_early_map_kernel</code> 调用的不是汇编, 而是一个 <strong>C 函数</strong>
+<code>early_map_kernel()</code> (定义于 <code>arch/arm64/kernel/pi/map_kernel.c:241</code>)。
+它执行时 <strong>MMU 刚开启、内核仍在 idmap (VA==PA 物理地址) 上跑</strong>, 此时还没有高 VA 映射,
+所以它必须是一段 <strong>位置无关代码 (PI, position-independent)</strong>。</p>
 
-<div class="note">💡 <strong>为什么需要重新创建 idmap？</strong> 第一次 <code>create_init_idmap</code> 用的 VA==PA 是通过 -fpie PC-relative 拿到的物理地址。现在 <code>__pi_early_map_kernel</code> 里可以精确计算 kimage_voffset, 创建正确的 "VA(高) → PA(实际)" 映射。旧的 idmap PGD 仍然在 TTBR0 中, 但在 __primary_switched 之后会被替换。</div>
+<h3>4.1 为什么叫 __pi_ 前缀？</h3>
+<div class="diagram">// ============ __pi_ 前缀的来源 ============
 
-<h3>完成后的页表布局</h3>
-<div class="diagram">// ============ __pi_early_map_kernel 后的页表 ============
+  arch/arm64/kernel/pi/Makefile:
+    KBUILD_CFLAGS += -fpie                 // 编译成位置无关代码 (PIE)
 
-  TTBR0_EL1 → __pi_init_idmap_pg_dir (旧的 idmap)
-               VA=PA, 仍然有效
+    $(obj)/%.pi.o: OBJCOPYFLAGS := --prefix-symbols=__pi_
+    $(obj)/%.pi.o: $(obj)/%.o
+        objcopy --prefix-symbols=__pi_ ...  // 所有符号加 __pi_ 前缀
 
-  TTBR1_EL1 → init_pg_dir (新的正式页表)
-               0xffff8000_80000000 → PA 0x40200000  (内核代码)
-               0xffff8000_81000000 → PA 0x41000000  (内核数据)
-               ...
+  early_map_kernel  --编译--&gt;  map_kernel.pi.o
+                     --objcopy--&gt;  __pi_early_map_kernel  (PIE 版本)
 
-  现在内核主体可以在高 VA 下运行了!</div>
+  head.S 里 bl __pi_early_map_kernel 就是跳转到这个 PIE 版本。
+  因为此刻还没有绝对地址可用, 只能用 PC-relative 寻址。</div>
+
+<div class="note">💡 <strong>注意:</strong> 之前关于 "重新创建 idmap" 的说法不准确。
+<code>__pi_early_map_kernel</code> 的<strong>核心任务</strong>是构建内核的<strong>高 VA 页表 (TTBR1)</strong>并完成重定位,
+而不是重建 idmap。重建 idmap 只在 <code>CONFIG_ARM64_LPA2</code> 且 VA 位宽足够时才发生
+(<code>remap_idmap_for_lpa2</code>), 属于特例。旧的 idmap 仍在 TTBR0 里继续服务, 直到 <code>br x8</code> 跳走后。</div>
+
+<h3>4.2 early_map_kernel 主流程 (map_kernel.c:241-289)</h3>
+
+<pre><code>asmlinkage void __init early_map_kernel(u64 boot_status, phys_addr_t fdt)
+{
+    static char const chosen_str[] __initconst = "/chosen";
+    u64 va_base, pa_base = (u64)&_text;            // pa_base = 内核当前物理基址
+    u64 kaslr_offset = pa_base % MIN_KIMG_ALIGN;    // 低 21bit 来自物理摆放 (2MB 对齐)
+    int root_level = 4 - CONFIG_PGTABLE_LEVELS;
+    int va_bits = VA_BITS;
+    int chosen;
+    void *fdt_mapped = map_fdt(fdt);                // ① 先把 FDT 映射进 idmap
+
+    memset(__bss_start, 0,                           // ② 清 BSS + 清 init 页表区域
+           (char *)init_pg_end - (char *)__bss_start);
+
+    chosen = fdt_path_offset(fdt_mapped, chosen_str); // ③ 找 /chosen 节点
+    init_feature_override(boot_status, fdt_mapped, chosen); // 解析命令行 feature override
+
+    if (IS_ENABLED(CONFIG_ARM64_64K_PAGES) && !cpu_has_lva())
+        va_bits = VA_BITS_MIN;                       // ④ 降级 VA 位宽
+    else if (IS_ENABLED(CONFIG_ARM64_LPA2) && !cpu_has_lpa2()) {
+        va_bits = VA_BITS_MIN;
+        root_level++;
+    }
+
+    if (va_bits > VA_BITS_MIN)
+        sysreg_clear_set(tcr_el1, TCR_T1SZ_MASK, TCR_T1SZ(va_bits)); // ⑤ 设定 TCR_EL1.T1SZ
+
+    if (IS_ENABLED(CONFIG_RANDOMIZE_BASE)) {         // ⑥ KASLR 偏移
+        u64 kaslr_seed = kaslr_early_init(fdt_mapped, chosen);
+        if (kaslr_seed && kaslr_requires_kpti())
+            arm64_use_ng_mappings = ng_mappings_allowed();
+        kaslr_offset |= kaslr_seed & ~(MIN_KIMG_ALIGN - 1);
+    }
+
+    if (IS_ENABLED(CONFIG_ARM64_LPA2) && va_bits > VA_BITS_MIN)
+        remap_idmap_for_lpa2();                      // ⑦ LPA2 专用: 重建 idmap
+
+    va_base = KIMAGE_VADDR + kaslr_offset;           // ⑧ 内核最终 VA 基址
+    map_kernel(kaslr_offset, va_base - pa_base, root_level); // ⑨ ★ 核心映射 + 重定位
+}</code></pre>
+
+<table>
+<tr><th>步</th><th>动作</th><th>为什么此时做</th></tr>
+<tr><td>①</td><td><code>map_fdt(fdt)</code></td><td>FDT 此刻还在物理地址, 必须先临时映射进 idmap, 后面的 <code>fdt_path_offset</code>/<code>fdt_getprop</code> 才能访问它</td></tr>
+<tr><td>②</td><td><code>memset(__bss_start, 0, ...)</code></td><td>清 BSS 段 + 清 <code>init_pg_dir .. init_pg_end</code> 这段临时页表区, 保证页表从零开始干净</td></tr>
+<tr><td>③</td><td><code>init_feature_override</code></td><td>解析 <code>/chosen/bootargs</code> 里的 CPU 特性覆盖 (类似 <code>id_aa64*</code> 模拟), 影响后续页表属性</td></tr>
+<tr><td>④⑤</td><td>调整 <code>va_bits</code> / <code>T1SZ</code></td><td>64K 页/LPA2 不支持时降级; 据此设 TCR_EL1.T1SZ, 决定高 VA 翻译的地址宽度</td></tr>
+<tr><td class="amber">⑥</td><td class="amber"><code>kaslr_early_init</code></td><td class="amber">从 <code>/chosen/kaslr-seed</code> (或 RNDR 指令) 拿随机种子, 算 KASLR 偏移高位。<br><code>kaslr_offset</code> = 物理摆放低位 | 种子高位</td></tr>
+<tr><td>⑦</td><td><code>remap_idmap_for_lpa2</code></td><td>仅 LPA2: LPA2 打开后 PTE 的 [9:8] 位含义改变, 需重建一个 LPA2 兼容的临时 idmap</td></tr>
+<tr><td class="green">⑧⑨</td><td class="green"><code>map_kernel(...)</code></td><td class="green">★ 核心: 六段映射到高 VA + <code>relocate_kernel</code> 重定位 + 安装 TTBR1</td></tr>
+</table>
+
+<h3>4.3 map_kernel：六段映射 + 安装 TTBR1 (map_kernel.c:39-139)</h3>
+
+<pre><code>static void __init map_kernel(u64 kaslr_offset, u64 va_offset, int root_level)
+{
+    bool twopass = IS_ENABLED(CONFIG_RELOCATABLE);   // 需要重定位 → 两遍映射
+    phys_addr_t pgdp = (phys_addr_t)init_pg_dir + PAGE_SIZE; // 次级页表分配指针
+    pgprot_t text_prot = PAGE_KERNEL_ROX;            // 代码: 只读可执行
+    pgprot_t data_prot = PAGE_KERNEL;                // 数据: 可读可写
+    pgprot_t prot = twopass ? data_prot : text_prot; // 第一遍先 RW, 重定位后再 ROX
+
+    // ---- 六个内核段逐个映射 (VA = PA + va_offset) ----
+    map_segment(init_pg_dir, &pgdp, va_offset, _text, _stext, data_prot, false, root_level);
+    map_segment(init_pg_dir, &pgdp, va_offset, _stext, _etext, prot, !twopass, root_level);
+    map_segment(init_pg_dir, &pgdp, va_offset, __start_rodata, __inittext_begin, data_prot, false, root_level);
+    map_segment(init_pg_dir, &pgdp, va_offset, __inittext_begin, __inittext_end, prot, false, root_level);
+    map_segment(init_pg_dir, &pgdp, va_offset, __initdata_begin, __initdata_end, data_prot, false, root_level);
+    map_segment(init_pg_dir, &pgdp, va_offset, _data, _end, data_prot, true, root_level);
+    dsb(ishst);
+
+    idmap_cpu_replace_ttbr1((phys_addr_t)init_pg_dir); // ★ 临时 TTBR1 = init_pg_dir
+
+    if (twopass) {
+        if (IS_ENABLED(CONFIG_RELOCATABLE))
+            relocate_kernel(kaslr_offset);            // ★ 重定位: 修正所有绝对指针
+        if (enable_scs)
+            scs_patch(...);                           // SCS 影子调用栈补丁
+        unmap_segment(init_pg_dir, va_offset, _stext, _etext, root_level);
+        __tlbi(vmalle1);                              // 先 unmap 代码段
+        map_segment(init_pg_dir, NULL, va_offset, _stext, _etext, text_prot, true, root_level);
+        map_segment(init_pg_dir, NULL, va_offset, __inittext_begin, __inittext_end, text_prot, false, root_level);
+        // 第二遍: 把代码段重新映射为 ROX
+    }
+
+    memcpy((void *)swapper_pg_dir + va_offset, init_pg_dir, PAGE_SIZE); // 拷贝根页表到最终位置
+    dsb(ishst);
+    idmap_cpu_replace_ttbr1((phys_addr_t)swapper_pg_dir); // ★ 最终 TTBR1 = swapper_pg_dir
+}</code></pre>
+
+<table>
+<tr><th>内核段</th><th>起始 → 结束</th><th>保护</th><th>说明</th></tr>
+<tr><td>镜像头</td><td><code>_text</code> → <code>_stext</code></td><td>RW (NX)</td><td>PE/COFF 头等不可执行数据, 启动后不再执行</td></tr>
+<tr><td>代码段</td><td><code>_stext</code> → <code>_etext</code></td><td>ROX</td><td>内核主体代码 (两遍时先 RW 重定位, 再 ROX)</td></tr>
+<tr><td>只读数据</td><td><code>__start_rodata</code> → <code>__inittext_begin</code></td><td>RW</td><td>rodata, 此时仍 RW, 之后 <code>mark_rodata_ro</code> 才改 RO</td></tr>
+<tr><td>init 代码</td><td><code>__inittext_begin</code> → <code>__inittext_end</code></td><td>ROX</td><td><code>.init.text</code>, 启动后释放</td></tr>
+<tr><td>init 数据</td><td><code>__initdata_begin</code> → <code>__initdata_end</code></td><td>RW</td><td><code>.init.data</code></td></tr>
+<tr><td>主数据</td><td><code>_data</code> → <code>_end</code></td><td>RW</td><td>主数据段 + BSS</td></tr>
+</table>
+
+<div class="note">💡 <strong>为什么重定位要两遍 (twopass)？</strong>
+<code>CONFIG_RELOCATABLE</code> 下, 内核要执行 <code>relocate_kernel</code> 修正绝对指针,
+而这会<strong>改写代码段里的数据</strong> (relocation 位置)。所以第一遍把代码段临时映射成 RW,
+重定位完成后再 unmap + 重映成 ROX。非 RELOCATABLE 内核没有这一步, 一遍 ROX 直接到位。</div>
+
+<h3>4.4 relocate_kernel：重定位 (relocate.c:15-64)</h3>
+<pre><code>void __init relocate_kernel(u64 offset)
+{
+    // ① RELA 表: R_AARCH64_RELATIVE 类型
+    for (rela = rela_start; rela < rela_end; rela++)
+        *(u64 *)(rela->r_offset + offset) = rela->r_addend + offset;
+
+    // ② RELR 表: 压缩格式, 每 64bit 位图可表达 63 个相对重定位
+    for (relr = relr_start; relr < relr_end; relr++) {
+        if ((*relr & 1) == 0) {          // 地址项: 一个重定位
+            place = (u64 *)(*relr + offset);
+            *place++ += offset;
+        } else {                          // 位图项: 后续连续地址逐个 +offset
+            for (p = place, r = *relr >> 1; r; p++, r >>= 1)
+                if (r & 1) *p += offset;
+            place += 63;
+        }
+    }
+}</code></pre>
+<p>内核是 <code>-fpie</code> 编译的 PIE, 内部所有取绝对地址的地方都记录在 RELA/RELR 重定位表里。
+把它们统一 <code>+ kaslr_offset</code>, 内核就能在新 VA 地址 (KIMAGE_VADDR + kaslr_offset) 正确运行。</p>
+
+<h3>4.5 KASLR offset 的计算</h3>
+<div class="diagram">// ============ kaslr_offset 的两个来源 ============
+
+  kaslr_offset = pa_base % MIN_KIMG_ALIGN          // 低位: 物理摆放 (2MB 对齐的余量)
+               | kaslr_seed & ~(MIN_KIMG_ALIGN-1)  // 高位: /chosen/kaslr-seed 种子
+
+  va_base   = KIMAGE_VADDR + kaslr_offset           // 内核运行时 VA 基址
+  va_offset = va_base - pa_base                     // 映射偏移量
+  map_segment:  VA = PA + va_offset                 // 每段都套这个偏移
+
+  ★ 关键: 有 KASLR 时, 内核符号运行时地址 = 链接地址 + kaslr_offset</div>
+
+<div class="warn">⚠️ <strong>对 GDB 断点的直接影响:</strong> 如果启用了 KASLR (QEMU 提供 <code>kaslr-seed</code> 且未加 <code>nokaslr</code>),
+那么 <code>start_kernel</code> 等的<strong>运行时虚拟地址</strong>会偏移一个随机的 <code>kaslr_offset</code>。
+这时按 vmlinux 链接地址设的断点会打不中。调试时建议在 cmdline 加 <code>nokaslr</code>,
+或读取运行时的 <code>kimage_voffset</code> 后手动加偏移。</div>
+
+<h3>4.6 idmap_cpu_replace_ttbr1：为什么必须在 idmap.text</h3>
+<pre><code>// arch/arm64/mm/proc.S — 位于 .idmap.text 段
+SYM_TYPED_FUNC_START(idmap_cpu_replace_ttbr1)
+    __idmap_cpu_set_reserved_ttbr1 x1, x3   // 先切到 reserved 空页表 (防空窗)
+    offset_ttbr1 x0, x3                      // x0 (物理) → TTBR1 格式
+    msr     ttbr1_el1, x0                    // ★ 写 TTBR1_EL1
+    isb
+    ret
+SYM_FUNC_END(idmap_cpu_replace_ttbr1)</code></pre>
+<p>这个函数在 <code>map_kernel</code> 里被调用两次 (先 <code>init_pg_dir</code> 后 <code>swapper_pg_dir</code>)。
+它<strong>必须放在 <code>.idmap.text</code></strong>: 因为写 <code>TTBR1_EL1</code> 的瞬间, 若当前指令取自 TTBR1 翻译的地址,
+就会因页表切换出现"正在执行的代码消失"的取指异常。放在 idmap (由 TTBR0 翻译, VA==PA) 里执行,
+切换 TTBR1 不影响自身取指, 安全。</p>
+
+<h3>4.7 收尾：memcpy 拷贝 PGD + 切换正式 TTBR1</h3>
+
+<pre><code>// map_kernel.c:136-138 — map_kernel 的最后三行
+memcpy((void *)swapper_pg_dir + va_offset, init_pg_dir, PAGE_SIZE);
+dsb(ishst);
+idmap_cpu_replace_ttbr1((phys_addr_t)swapper_pg_dir);</code></pre>
+
+<p>这是 <code>map_kernel</code> 的<strong>收尾</strong>：把建好的根页表从临时位置搬到正式位置，再切到正式页表。</p>
+
+<h4>为什么有 init_pg_dir 和 swapper_pg_dir 两套</h4>
+<table>
+<tr><th>页表</th><th>位置</th><th>大小</th><th>用途</th></tr>
+<tr><td><code>init_pg_dir</code></td><td>BSS(零初始化区)，<code>INIT_DIR_SIZE</code> 字节</td><td>大块</td><td>构建用：容纳 PGD + 所有下级页表</td></tr>
+<tr><td><code>swapper_pg_dir</code></td><td>RO 区(vmlinux.lds.S:234)</td><td>一页 4KB</td><td>正式 PGD，后续 <code>map_mem()</code> 等全引用它</td></tr>
+</table>
+
+<h4>为什么只拷 PAGE_SIZE 一页就够了</h4>
+<div class="diagram">// ============ PGD 拷贝的语义 ============
+
+  init_pg_dir (BSS, 永久):
+    [页0] PGD   ← memcpy 只拷这一页
+    [页1] PUD   ← 留在原地
+    [页2] PMD   ← 留在原地
+    [页3] PTE   ← 留在原地
+    ...
+
+  swapper_pg_dir (RO 区, 4KB):
+    [页0] PGD (拷贝来的) → 指向 init_pg_dir 里的下级页表
+
+  PGD 条目里存的是"下级页表的物理地址"，
+  拷了 PGD，下级页表就自动被新 PGD 指到了。</div>
+<p>关键：下级页表留在 <code>init_pg_dir</code> 的 <strong>BSS 区域里，BSS 是永久内存</strong>，
+不会像 <code>.init.text</code>/<code>.init.data</code> 那样被 <code>free_initmem</code> 释放。</p>
+
+<h4>+ va_offset 是什么意思</h4>
+<p>此刻代码仍跑在 idmap(物理地址)上，<code>swapper_pg_dir</code> 符号被引用得到的是<strong>物理地址</strong>。
+<code>+ va_offset</code> 把它换算成最终内核映射里的<strong>虚拟地址</strong>（link 地址 + kaslr_offset），
+所以 memcpy 的目标走 TTBR1（已装好 init_pg_dir 的高 VA 映射），落到正确的物理页。</p>
+<div class="note">💡 <strong>同一个符号两种用法：</strong><br>
+<code>(void *)swapper_pg_dir + va_offset</code> 是<strong>访问内存</strong> → 用虚拟地址（走 MMU 翻译）；<br>
+<code>(phys_addr_t)swapper_pg_dir</code> 是<strong>装进 TTBR1_EL1</strong> → 用物理地址
+（该函数内部 <code>offset_ttbr1</code> 会把物理地址转成 TTBR 格式）。</div>
+
+<h4>dsb(ishst) 为什么必须加</h4>
+<p>MMU 的<strong>页表走读不经过 CPU 的 store buffer</strong>。如果 PGD 的拷贝还躺在 store buffer 里没落内存，
+下一句切 TTBR1 后硬件就会读到旧页表。所以先 <code>dsb(ishst)</code> 强制写穿。</p>
+
+<h4>第二次(最终)安装 TTBR1</h4>
+<p>这是第二次切 TTBR1（第一次在 map_kernel.c:99 装 init_pg_dir）。这次换成正式的 <code>swapper_pg_dir</code>。
+两次都是调 proc.S 的 <code>idmap_cpu_replace_ttbr1</code>，它必须放 <code>.idmap.text</code>：切 TTBR1 瞬间自身取指不能依赖 TTBR1。</p>
+
+<h3>4.8 完成后的页表布局</h3>
+<div class="diagram">// ============ __pi_early_map_kernel 返回后的页表 ============
+
+  TTBR0_EL1 → __pi_init_idmap_pg_dir     (旧 idmap, VA=PA, 仍在服务)
+  TTBR1_EL1 → swapper_pg_dir             (正式内核页表)
+
+  swapper_pg_dir 内容 (va_offset = KIMAGE_VADDR + kaslr_offset - pa_base):
+      KIMAGE_VADDR + kaslr_offset + 0x00000000 → PA 0x40200000  (代码 _stext)
+      KIMAGE_VADDR + kaslr_offset + 0x01000000 → PA 0x41000000  (rodata)
+      ... (六段映射全部就位) ...
+
+  返回后 __primary_switch 执行:
+      ldr x8, =__primary_switched         // 高 VA (已按 kaslr_offset 修正)
+      br  x8                              // ★ 跳到虚拟地址世界!</div>
 </section>
 
 <section id="s5">

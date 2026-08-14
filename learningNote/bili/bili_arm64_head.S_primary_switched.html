@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__primary_switched: 内核进入虚拟地址世界与 start_kernel 入口</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 320px; min-width: 0;
+    transition: max-width 0.25s ease; overflow: hidden;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; overflow-x: hidden; height: 100%; }
+.resizer {
+    flex-shrink: 0; width: 5px; cursor: col-resize; z-index: 30;
+    background: transparent; position: relative; margin-left: -3px;
+}
+.resizer:hover, .resizer.active { background: var(--accent-light); }
+.resizer::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 1px; width: 2px;
+    background: var(--border);
+}
+.resizer:hover::after, .resizer.active::after { background: var(--accent); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 2px 0; border-radius: 3px; white-space: nowrap; font-size: 1em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); padding-left: 2px; }
+.sidebar a .num { color: #94a3b8; font-size: 0.9em; margin-right: 2px; font-weight: 400; }
+.sidebar a.sub { padding-left: 16px; font-size: 0.92em; }
+.sidebar a[href^="#s1"] .num, .sidebar a[href^="#s2"] .num { color: var(--accent); font-weight: 600; }
+.sidebar a[href^="#s3"] .num, .sidebar a[href^="#s4"] .num { color: var(--green); font-weight: 600; }
+.sidebar a[href^="#s5"] .num { color: var(--amber); font-weight: 600; }
+.sidebar a[href^="#s6"] .num, .sidebar a[href^="#s7"] .num { color: #7c3aed; font-weight: 600; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; letter-spacing: -0.02em; }
+header .subtitle { font-size: 0.85em; color: var(--text-secondary); line-height: 1.8; }
+header .tag-row { margin-top: 14px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 500; margin: 2px; }
+.tag-blue  { background: #dbeafe; color: #1e40af; }
+.tag-green { background: #d1fae5; color: #065f46; }
+.tag-amber { background: #fef3c7; color: #92400e; }
+.tag-gray  { background: #e2e8f0; color: #475569; }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin-bottom: 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .sidebar a { font-size: 0.92em; padding: 1px 0; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+    section { padding: 16px 0; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+
+<nav class="sidebar" id="sidebar">
+<div class="sidebar-inner">
+<h4>目 录</h4>
+<a href="#s1"><span class="num">1.</span> 概述：虚拟地址世界的入口</a>
+<a href="#s2"><span class="num">2.</span> __primary_switched 完整源码</a>
+<a href="#s3"><span class="num">3.</span> init_cpu_task：建立 init_task 上下文</a>
+<a href="#s4"><span class="num">4.</span> 安装异常向量表 VBAR_EL1</a>
+<a href="#s5"><span class="num">5.</span> 保存 FDT 指针 __fdt_pointer</a>
+<a href="#s6"><span class="num">6.</span> kimage_voffset：VA-PA 偏移 ★</a>
+<a href="#s7"><span class="num">7.</span> boot mode / VHE / start_kernel</a>
+<a href="#s8"><span class="num">8.</span> GDB 调试验证 ★</a>
+</div>
+</nav>
+
+<div class="resizer" id="resizer" title="拖动调整目录宽度"></div>
+
+<div class="main-content">
+<header>
+<h1>__primary_switched<br>内核进入虚拟地址世界与 start_kernel 入口</h1>
+<div class="subtitle">
+<p>📁 <code>arch/arm64/kernel/head.S:220-248</code></p>
+<p>🎯 目标: 追踪从 <code>br x8</code> 跳到虚拟地址后, 到 <code>bl start_kernel</code> 进入 C 世界的全过程</p>
+<p>🛠 涉及: init_cpu_task / VBAR_EL1 / __fdt_pointer / kimage_voffset / finalise_el2</p>
+</div>
+<div class="tag-row">
+<span class="tag tag-blue">head.S</span><span class="tag tag-green">ARM64</span><span class="tag tag-amber">start_kernel</span><span class="tag tag-gray">kimage_voffset</span><span class="tag tag-gray">VBAR_EL1</span><span class="tag tag-gray">init_task</span>
+</div>
+</header>
+
+<main>
+
+<section id="s1">
+<h2>1. 概述：虚拟地址世界的入口</h2>
+
+<p><code>__primary_switched</code> 是内核<strong>第一段跑在虚拟地址空间</strong>的代码。
+上一段 <code>__primary_switch</code> 的最后两行 <code>ldr x8, =__primary_switched; br x8</code> 把 PC 从
+物理地址（idmap）跳到了高 VA。到这里为止, MMU 已开、TTBR1 已指向 <code>swapper_pg_dir</code>, 内核真正"活"在了 <code>0xffff8000...</code> 的虚拟地址里。</p>
+
+<div class="diagram">// ============ 调用链与寄存器入参 ============
+
+  primary_entry
+    → __cpu_setup → __primary_switch → __enable_mmu (MMU ON)
+      → __pi_early_map_kernel (建高 VA 页表 + 重定位 + 装 TTBR1)
+        ldr x8, =__primary_switched
+        br  x8            ★ 跳到虚拟地址世界!
+
+  __primary_switched 入参 (从 primary_entry 一路保存下来):
+    x0  = __pa(KERNEL_START)  = _text 的物理地址
+    x20 = cpu_boot_mode        (BOOT_CPU_MODE_EL1 / EL2)
+    x21 = FDT 物理地址指针
+
+  注释 (head.S:218):
+    "executed with the MMU enabled"  —— 此函数全程 MMU 开启</div>
+
+<p><strong>它的使命是"架桥": 把汇编阶段攒下的关键信息(启动模式、FDT)落到全局变量, 初始化 C 代码运行所需的一切(current、异常向量表、per-cpu 偏移), 最后调用 C 世界的 <code>start_kernel()</code>。</strong></p>
+</section>
+
+<section id="s2">
+<h2>2. __primary_switched 完整源码 (head.S:220-248)</h2>
+
+<pre><code>SYM_FUNC_START_LOCAL(__primary_switched)
+    adr_l   x4, init_task                // ① 取 init_task 地址
+    init_cpu_task x4, x5, x6             // ② 初始化 CPU 任务上下文 (current/栈/FP)
+
+    adr_l   x8, vectors                  // ③ 加载异常向量表 (虚拟地址)
+    msr     vbar_el1, x8                 //    安装到 VBAR_EL1
+    isb
+
+    stp     x29, x30, [sp, #-16]!        // ④ 标准 C 函数序言 (压 FP/LR)
+    mov     x29, sp
+
+    str_l   x21, __fdt_pointer, x5       // ⑤ 全局保存 FDT 指针
+
+    adrp    x4, _text                    // ⑥ ★ 计算 kimage_voffset
+    sub     x4, x4, x0                   //    = VA(_text) - PA(_text)
+    str_l   x4, kimage_voffset, x5       //    保存到全局变量
+
+    mov     x0, x20
+    bl      set_cpu_boot_mode_flag       // ⑦ 记录 boot CPU mode
+
+#if defined(CONFIG_KASAN_GENERIC) || defined(CONFIG_KASAN_SW_TAGS)
+    bl      kasan_early_init             // ⑧ KASAN 早期初始化 (可选)
+#endif
+    mov     x0, x20
+    bl      finalise_el2                 // ⑨ 尝试启用 VHE (EL2 模式)
+
+    ldp     x29, x30, [sp], #16          // ⑩ 恢复栈帧
+    bl      start_kernel                 // ⑪ ★ 进入 C 代码主函数!
+    ASM_BUG()                            // ⑫ start_kernel 不返回, 永远不会到这
+SYM_FUNC_END(__primary_switched)</code></pre>
+
+<table>
+<tr><th>步</th><th>指令</th><th>作用</th></tr>
+<tr><td>①②</td><td><code>adr_l x4, init_task; init_cpu_task</code></td><td>建立 init_task 上下文: current、内核栈、帧指针、per-cpu 偏移</td></tr>
+<tr><td class="accent">③</td><td class="accent"><code>msr vbar_el1, vectors</code></td><td class="accent">★ 安装异常向量表, 此前系统还没有向量表</td></tr>
+<tr><td>④</td><td><code>stp x29,x30; mov x29,sp</code></td><td>建立 C 栈帧, 便于 backtrace</td></tr>
+<tr><td class="green">⑤</td><td class="green"><code>str_l x21, __fdt_pointer</code></td><td class="green">FDT 物理地址写入全局变量, 供 setup_arch() 解析设备树</td></tr>
+<tr><td class="amber">⑥</td><td class="amber"><code>sub x4, x4, x0</code></td><td class="amber">★ 计算 kimage_voffset = VA - PA, 内核最重要的运行时常量之一</td></tr>
+<tr><td>⑦</td><td><code>set_cpu_boot_mode_flag</code></td><td>把 boot CPU mode 写入 __boot_cpu_mode[]</td></tr>
+<tr><td>⑨</td><td><code>finalise_el2</code></td><td>支持 VHE 则让内核跑在 EL2, 否则降到 EL1</td></tr>
+<tr><td class="accent">⑪</td><td class="accent"><code>bl start_kernel</code></td><td class="accent">★ 进入 C 世界, 汇编启动流程到此结束</td></tr>
+</table>
+</section>
+
+<section id="s3">
+<h2>3. init_cpu_task：建立 init_task 上下文 (head.S:195-213)</h2>
+
+<p>这是 C 代码能否运行的<strong>根基</strong>:C 世界里 <code>current</code> 宏、内核栈、backtrace 全都依赖这几步。宏定义如下:</p>
+
+<pre><code>.macro  init_cpu_task tsk, tmp1, tmp2
+    msr     sp_el0, \tsk                    // ① sp_el0 = init_task → current 可用
+
+    ldr     \tmp1, [\tsk, #TSK_STACK]       // ② 读 init_task 的内核栈基址
+    add     sp, \tmp1, #THREAD_SIZE         // ③ sp = 栈顶
+    sub     sp, sp, #PT_REGS_SIZE           //    预留 pt_regs 空间
+
+    stp     xzr, xzr, [sp, #S_STACKFRAME]   // ④ 清零 stackframe (fp, lr)
+    mov     \tmp1, #FRAME_META_TYPE_FINAL   // ⑤ 标记为 FINAL 帧
+    str     \tmp1, [sp, #S_STACKFRAME_TYPE] //    (unwinder 的终止条件)
+    add     x29, sp, #S_STACKFRAME          // ⑥ FP = 帧记录地址
+
+    scs_load_current                        // ⑦ 加载影子调用栈指针 (若启用)
+
+    adr_l   \tmp1, __per_cpu_offset         // ⑧ 读本 CPU 的 per-cpu 偏移
+    ldr     w\tmp2, [\tsk, #TSK_TI_CPU]     //    从 thread_info 拿 CPU 号
+    ldr     \tmp1, [\tmp1, \tmp2, lsl #3]   //    offset = __per_cpu_offset[cpu]
+    set_this_cpu_offset \tmp1               //    写入 tpidr_el1
+.endm</code></pre>
+
+<h3>逐行要点</h3>
+<table>
+<tr><th>行</th><th>含义</th></tr>
+<tr><td>①</td><td><strong>ARM64 的 <code>current</code> 存在 <code>sp_el0</code> 里。</strong><code>msr sp_el0, init_task</code> 之后, C 代码里 <code>current</code> 宏读 sp_el0 就能拿到 init_task, 不必走 thread_info</td></tr>
+<tr><td>②③</td><td>从 <code>init_task</code> 的 <code>stack</code> 字段拿到栈底, 加 <code>THREAD_SIZE</code> 到栈顶, 再减去 <code>PT_REGS_SIZE</code> 预留一段 pt_regs 空间, 与用户任务/kthread 的布局保持一致</td></tr>
+<tr><td class="green">④⑤⑥</td><td class="green"><strong>造一个 FINAL 帧记录:</strong> 在栈顶放 fp=0, lr=0, 并把类型标记为 <code>FRAME_META_TYPE_FINAL</code>。这样 unwinder 走到这里就知道是栈底, <code>backtrace</code> 不会越过它继续往非法地址解引用</td></tr>
+<tr><td>⑦</td><td><code>scs_load_current</code>: 若启用了影子调用栈 (SCS), 把 SCS 指针装进 x18</td></tr>
+<tr><td class="amber">⑧</td><td class="amber"><strong>per-cpu 偏移:</strong> 从 <code>thread_info.cpu</code> 拿到 CPU 号, 索引 <code>__per_cpu_offset[]</code>, 把该 CPU 的偏移写到 <code>tpidr_el1</code>。<code>per_cpu_ptr()</code> 宏就靠这个偏移换算每个 CPU 的变量地址</td></tr>
+</table>
+
+<div class="note">💡 <strong>为什么此时才设置这些？</strong> 因为 <code>init_cpu_task</code> 访问的都是虚拟地址 (<code>init_task</code>、<code>__per_cpu_offset</code>、栈), 只有在 MMU 开启、内核映射到高 VA 之后才能安全访问。这正是它出现在 <code>__primary_switched</code> 最开头的原因。</div>
+
+<h3>3.1 预留 pt_regs 空间：sub sp, sp, #PT_REGS_SIZE</h3>
+
+<p><code>sub sp, sp, #PT_REGS_SIZE</code> 就是把栈指针往下挪 <code>sizeof(struct pt_regs)</code> 字节, 在<strong>内核栈最顶端预留一整块 <code>struct pt_regs</code></strong>。</p>
+
+<p>先看栈是怎么一步步设出来的:</p>
+<pre><code>ldr     \tmp1, [\tsk, #TSK_STACK]     // tmp1 = init_task 的栈底地址
+add     sp, \tmp1, #THREAD_SIZE       // sp = 栈顶 (栈底 + THREAD_SIZE)
+sub     sp, sp, #PT_REGS_SIZE         // sp 下移, 预留 pt_regs 空间 ★</code></pre>
+
+<p>栈是<strong>向下生长</strong>的, 而 ARM64 的内核栈约定是:<strong><code>struct pt_regs</code> 固定放在栈的最顶端</strong>。所以先让 sp 指到栈顶, 再往下挪一个 pt_regs 的大小, 空出的这块就是 pt_regs 的位置。</p>
+
+<h4>pt_regs 是什么</h4>
+<p><code>struct pt_regs</code> ([ptrace.h:156](arch/arm64/include/asm/ptrace.h#L156)) 是 CPU 在异常/系统调用时保存<strong>全套寄存器</strong>的固定布局:</p>
+<pre><code>struct pt_regs {
+    union {
+        struct user_pt_regs user_regs;
+        struct {
+            u64 regs[31];   // x0..x30
+            u64 sp;
+            u64 pc;
+            u64 pstate;
+        };
+    };
+    u64 orig_x0;
+    s32 syscallno; u32 pmr;
+    u64 sdei_ttbr1;
+    struct frame_record_meta stackframe;   // ← fp + pc/type
+};</code></pre>
+
+<h4>栈布局</h4>
+<div class="diagram">// ============ init_task 内核栈布局 ============
+
+  高地址
+  +------------------------+  stack_base + THREAD_SIZE  ← 栈顶
+  |                        |
+  |    struct pt_regs      |  ← sub 之后 sp 指到这块底部
+  |  (x0..x30, sp, pc,     |     [栈顶-PT_REGS_SIZE, 栈顶)
+  |   pstate, stackframe)  |
+  +------------------------+  ← sp 现在指向这里
+  |                        |
+  |    实际可用栈空间        |  ← 后续 push 从这里继续向下
+  |    (向下生长)           |
+  |                        |
+  +------------------------+  stack_base  ← 栈底 (TSK_STACK)
+  低地址
+
+  这对应宏 task_pt_regs(task) =
+      (struct pt_regs *)(THREAD_SIZE + task_stack_page(task)) - 1</div>
+
+<h4>为什么每个任务都要预留</h4>
+<ol>
+<li><strong>给 unwinder 一个可识别的"最终帧"</strong> — backtrace 靠 <code>task_pt_regs(current)</code> 这个固定位置找最底层帧记录。这里把 <code>pt_regs.stackframe</code> 清零并标 <code>FRAME_META_TYPE_FINAL</code>, unwinder 走到这知道是栈底, 不会越界往非法地址解引用。</li>
+<li><strong>与用户任务/kthread 保持一致</strong> — 用户进程进内核时它的 pt_regs 就放在栈顶 (存被保存的用户态寄存器)。init_task 永远不会有"从用户态进来", 但同样预留, 让 <code>task_pt_regs(current)</code> 这个通用宏对任何任务都成立, 不用特判。</li>
+</ol>
+
+<h3>3.2 scs_load_current：影子调用栈 (SCS)</h3>
+
+<p><code>scs_load_current</code> 是 SCS (Shadow Call Stack, 影子调用栈) 的初始化: 把当前任务的 SCS 指针装进 <strong>x18</strong>。展开后 (arch/arm64/include/asm/scs.h:13-16):</p>
+
+<pre><code>#ifdef CONFIG_SHADOW_CALL_STACK
+    scs_sp  .req    x18                 // 声明 x18 为 SCS 指针
+
+    .macro scs_load_current
+    get_current_task scs_sp              // ① x18 = current (读 sp_el0)
+    ldr     scs_sp, [scs_sp, #TSK_TI_SCS_SP]  // ② x18 = current->thread_info.scs_sp
+    .endm
+#else
+    .macro scs_load_current              // 未启用 SCS → 空宏, 无操作
+    .endm
+#endif</code></pre>
+
+<h4>SCS 是什么</h4>
+<p><strong>影子调用栈是一种防 ROP (Return-Oriented Programming) 的安全机制</strong>(Clang 提出, Android/arm64 上大量使用)。核心思想:</p>
+<div class="diagram">// ============ 普通栈 vs 影子调用栈 ============
+
+  普通调用:
+    bl foo         → 返回地址 x30 压到普通栈
+    普通栈可能被缓冲区溢出覆盖 → 攻击者改写返回地址 → ROP
+
+  SCS 方案:
+    函数序言: str x30, [x18]; add x18, x18, #8   // 返回地址额外压到影子栈
+    函数尾声: ldr x30, [x18, #-8]; sub x18, x18, #8
+    x18 指向的是一块独立内存 (影子栈), 只存返回地址
+    普通栈溢出碰不到影子栈 → 返回地址安全</div>
+
+<p>关键在于 <strong>x18 是 ARM64 的平台寄存器 (platform register)</strong>, 被约定专门留给 SCS 指针使用。编译器 (Clang <code>-fsanitize=shadow-call-stack</code>) 会在每个函数的序言/尾声自动插入上面的 push/pop 指令, 无需手写。</p>
+
+<h4>两步拆解</h4>
+<table>
+<tr><th>步</th><th>指令</th><th>含义</th></tr>
+<tr><td>①</td><td><code>get_current_task scs_sp</code> = <code>mrs x18, sp_el0</code></td><td>拿到 current 任务指针 (前面已 <code>msr sp_el0, init_task</code>)</td></tr>
+<tr><td>②</td><td><code>ldr x18, [x18, #TSK_TI_SCS_SP]</code></td><td>读 <code>thread_info.scs_sp</code> 字段, 得到该任务自己的影子栈指针, 装进 x18</td></tr>
+</table>
+
+<p>每个任务都有自己独立的影子栈, 指针存在 <code>thread_info.scs_sp</code> 里 (上下文切换时通过 <code>scs_save</code>/<code>scs_load</code> 保存恢复)。init_task 的初始值指向静态分配的 <code>init_shadow_call_stack</code> ([thread_info.h:122](arch/arm64/include/asm/thread_info.h#L122))。</p>
+
+<div class="note">💡 <strong>两种 SCS 别混淆:</strong> 这里 <code>scs_load_current</code> 是<strong>编译期 SCS</strong> (<code>CONFIG_SHADOW_CALL_STACK</code>, 编译器直接生成 push/pop)。
+与之相对的是 <code>map_kernel.c</code> 里的 <code>scs_patch()</code> —— 那是<strong>动态 SCS</strong> (<code>CONFIG_UNWIND_PATCH_PAC_INTO_SCS</code>), 在没有 PAC/BTI 的机器上启动时把 paciasp/autiasp 指令补丁成 SCS push/pop。两者都是为了让返回地址不进普通栈。</div>
+</section>
+
+<section id="s4">
+<h2>4. 安装异常向量表 VBAR_EL1</h2>
+
+<pre><code>    adr_l   x8, vectors        // 加载 vectors 的虚拟地址
+    msr     vbar_el1, x8       // 写 VBAR_EL1
+    isb</code></pre>
+
+<p>这是<strong>极其关键</strong>的一步:在此之前(整个汇编启动阶段), <code>VBAR_EL1</code> 要么是 0、要么是无效值, 系统<strong>没有可用的异常向量表</strong>。</p>
+
+<p>而 <code>__enable_mmu</code> 之后 MMU 已经开启, 任何内存访问都要经过页表翻译——一旦出现缺页、取指异常、中断, CPU 会跳到 VBAR 指向的向量。如果 VBAR 没装好, 异常就是未定义行为。</p>
+
+<div class="warn">⚠️ <strong>MMU ON → VBAR 装好 之间的空窗期:</strong> 从 <code>set_sctlr_el1</code> (MMU 开启) 到这条 <code>msr vbar_el1</code>, 中间如果发生异常, 后果不可预知。
+所以 <code>__primary_switched</code> 一进来就赶紧装向量表, 把这个空窗缩到最小。</div>
+
+<p>装好之后, 内核就能处理 IRQ、缺页、系统调用等异常了。这也是为什么 <code>start_kernel()</code> 之前必须先到这里。</p>
+</section>
+
+<section id="s5">
+<h2>5. 保存 FDT 指针 __fdt_pointer</h2>
+
+<pre><code>    str_l   x21, __fdt_pointer, x5   // 把 FDT 物理地址写入全局变量</code></pre>
+
+<p><code>x21</code> 是启动时从 <code>preserve_boot_args</code> 一路保存下来的 FDT (设备树) 物理地址。
+这里把它落到全局变量 <code>__fdt_pointer</code>, 之后 <code>setup_arch()</code> 靠它解析设备树(内存布局、CPU 拓扑、外设信息等)。</p>
+
+<p>注意存的是<strong>物理地址</strong>: 设备树此时还在低物理内存里, 由 idmap 映射, 尚未建立独立映射。内核后续会自行处理它的访问。</p>
+</section>
+
+<section id="s6">
+<h2>6. kimage_voffset：VA-PA 偏移 ★</h2>
+
+<pre><code>    adrp    x4, _text            // x4 = VA(_text)
+    sub     x4, x4, x0           // x0 = PA(_text) → x4 = VA - PA
+    str_l   x4, kimage_voffset, x5</code></pre>
+
+<p>这是<strong>整个内核最重要的运行时常量之一</strong>。它记录"内核虚拟地址与物理地址之间的固定偏移", 之后任意内核符号都可以在 VA 和 PA 之间互转:</p>
+
+<div class="diagram">// ============ kimage_voffset 的两个用法 ============
+
+  include/asm/memory.h:
+    #define __kimg_to_phys(addr)  ((addr) - kimage_voffset)   // VA → PA
+    #define __phys_to_kimg(x)     ((unsigned long)((x) + kimage_voffset))  // PA → VA
+
+  __pa(x)  / __va(x) 等宏最终都落到这两个公式上</div>
+
+<h3>数值示例 (QEMU, 无 KASLR)</h3>
+<div class="diagram">// ============ 计算过程 ============
+
+  adrp x4, _text   // 此刻在 VA 空间, adrp 得到 _text 的链接地址
+                   //   x4 = 0xffff800080000000
+
+  x0 = __pa(_text) // __primary_switch 传进来的物理地址
+                   //   x0 = 0x40200000
+
+  sub x4, x4, x0   // kimage_voffset
+                   //   = 0xffff800080000000 - 0x40200000
+                   //   = 0xffff80003FE00000</div>
+
+<div class="note">💡 <strong>有 KASLR 时:</strong> <code>adrp x4, _text</code> 得到的是 <code>KIMAGE_VADDR + kaslr_offset</code>,
+所以 <code>kimage_voffset = (KIMAGE_VADDR + kaslr_offset) - pa_base</code>。KASLR 的位移被"吸收"进了这个偏移里,
+这也是为什么 <code>kimage_voffset</code> 是随机值、每台机器/每次启动都不同。</div>
+
+<h3>为什么此时算, 不在更早算？</h3>
+<p>要算 <code>VA(_text)</code>, 必须让 <code>adrp</code> 在<strong>虚拟地址空间</strong>里解析 <code>_text</code>。
+只有 MMU 开启、内核映射到高 VA 之后, <code>adrp x4, _text</code> 才会得到链接时的 VA。
+在之前的 idmap(物理地址)阶段, 同样一条 <code>adrp</code> 得到的是物理地址, 减出来是 0, 没意义。</p>
+</section>
+
+<section id="s7">
+<h2>7. boot mode / VHE / start_kernel</h2>
+
+<h3>⑦ set_cpu_boot_mode_flag (head.S:418-425)</h3>
+<pre><code>SYM_FUNC_START_LOCAL(set_cpu_boot_mode_flag)
+    adr_l   x1, __boot_cpu_mode
+    cmp     w0, #BOOT_CPU_MODE_EL2
+    b.ne    1f
+    add     x1, x1, #4
+1:  str     w0, [x1]            // __boot_cpu_mode[0]=EL1 或 __boot_cpu_mode[1]=EL2
+    ret
+SYM_FUNC_END(set_cpu_boot_mode_flag)</code></pre>
+<p>把启动时的 CPU 模式 (EL1 还是 EL2) 记进 <code>__boot_cpu_mode[]</code>。之后内核需要知道"是否从 EL2 启动"来决策 KVM、VHE 等, 就查这个数组。</p>
+
+<h3>⑨ finalise_el2：VHE (hyp-stub.S:244-258)</h3>
+<p>如果内核是从 EL2 启动的, 这里做两件事:</p>
+<ul>
+<li><strong>硬件支持 VHE</strong> → 启用 VHE, 让内核以 EL2 的宿主权限运行(异常向量、系统寄存器都按 EL2 解释);</li>
+<li><strong>不支持 VHE</strong> → 把 CPU 降到 EL1, 并初始化 EL2 的 stub (供之后 KVM 用)。</li>
+</ul>
+
+<h3>⑩⑪ bl start_kernel</h3>
+<pre><code>    ldp     x29, x30, [sp], #16   // 恢复栈帧
+    bl      start_kernel          // 进入 C 世界
+    ASM_BUG()                     // start_kernel 永不返回</code></pre>
+<p><code>bl start_kernel</code> 之后, 控制权交给 <code>init/main.c</code> 的 C 代码, 汇编启动流程正式结束。
+<code>start_kernel()</code> 是一个 <code>__noreturn</code> 函数, 如果它真返回了, <code>ASM_BUG()</code> 会触发一个明确崩溃, 而不是静默跑到未知地址。</p>
+</section>
+
+<section id="s8">
+<h2>8. GDB 调试验证 ★</h2>
+
+<h3>8.1 关键断点</h3>
+<table>
+<tr><th>断点</th><th>地址性质</th><th>验证目标</th></tr>
+<tr><td><code>__primary_switched</code> 入口</td><td class="amber">虚拟地址 ★</td><td>PC 首次变为 0xffff8000_xxxx_xxxx, 确认进入虚拟地址世界</td></tr>
+<tr><td><code>msr vbar_el1, x8</code> 之后</td><td>虚拟地址</td><td><code>VBAR_EL1</code> 已指向 vectors</td></tr>
+<tr><td><code>str_l x21, __fdt_pointer</code> 之后</td><td>虚拟地址</td><td><code>__fdt_pointer</code> 等于 x21 (FDT 物理地址)</td></tr>
+<tr><td><code>str_l x4, kimage_voffset</code> 之后</td><td>虚拟地址</td><td><code>kimage_voffset</code> = VA(_text) - PA(_text)</td></tr>
+<tr><td><code>start_kernel</code> 入口</td><td>虚拟地址</td><td>C 代码入口, 启动流程完整</td></tr>
+</table>
+
+<h3>8.2 物理/虚拟地址分界</h3>
+<div class="warn">⚠️ <strong>调试时最容易踩的坑:</strong> <code>__primary_switched</code> 是<strong>物理地址与虚拟地址的分界点</strong>。
+它之前的代码 (含 <code>__enable_mmu</code>) 跑在物理地址, 它及之后 (含 <code>start_kernel</code>) 跑在虚拟地址。
+
+如果你的 GDB 脚本 (如 <code>fix_vmlinux_head_entry.sh</code>) 把所有符号按固定公式重定位到<strong>物理地址</strong>来设断点,
+那么从 <code>__primary_switched</code> 开始这些断点就再也打不中了——因为运行时 PC 已经是高 VA。
+
+此时要改用<strong>虚拟地址</strong>断点, 例如:
+<pre><code>hbreak *0xffff800081450380          # start_kernel 的虚拟地址 (硬件断点)
+symbol-file vmlinux
+break start_kernel                  # 或者用虚拟符号直接断</code></pre></div>
+
+<h3>8.3 验证清单</h3>
+<table>
+<tr><th>检查项</th><th>预期值</th><th>失败含义</th></tr>
+<tr><td><code>__primary_switched</code> 的 PC</td><td>0xffff8000_xxxx_xxxx</td><td>没有跳到高 VA, 页表或 br x8 有问题</td></tr>
+<tr><td><code>sp_el0</code> (进入后)</td><td>= <code>init_task</code> 地址</td><td>current 没建立, C 代码会崩</td></tr>
+<tr><td><code>VBAR_EL1</code></td><td>= <code>vectors</code> VA</td><td>异常向量表没装, 之后异常会失控</td></tr>
+<tr><td><code>kimage_voffset</code></td><td>0xffff8000_3FE00000 (无 KASLR)</td><td>VA-PA 偏移算错, __pa/__va 全错</td></tr>
+<tr><td><code>__fdt_pointer</code></td><td>= x21 (FDT 物理地址)</td><td>设备树没保存, setup_arch 拿不到</td></tr>
+<tr><td><code>start_kernel</code> 被调用</td><td>断点命中</td><td>内核启动流程完成!</td></tr>
+</table>
+</section>
+
+</main>
+</div><!-- .main-content -->
+</div><!-- .page-wrapper -->
+
+<script>
+(function () {
+    var resizer = document.getElementById('resizer');
+    if (!resizer) return;
+    var sidebar = document.getElementById('sidebar');
+    var wrapper = document.querySelector('.page-wrapper');
+    var dragging = false;
+    resizer.addEventListener('mousedown', function (e) {
+        e.preventDefault(); dragging = true;
+        resizer.classList.add('active');
+        sidebar.style.transition = 'none';
+        sidebar.style.minWidth = '0px';
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', function (e) {
+        if (!dragging) return;
+        var x = e.clientX - wrapper.getBoundingClientRect().left;
+        if (x < 0) x = 0;
+        sidebar.style.width = x + 'px';
+        sidebar.style.maxWidth = x + 'px';
+        sidebar.style.minWidth = '0px';
+    });
+    document.addEventListener('mouseup', function () {
+        if (!dragging) return;
+        dragging = false;
+        resizer.classList.remove('active');
+        sidebar.style.transition = '';
+        sidebar.style.minWidth = '';
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+})();
+</script>
+</body>
+</html>
