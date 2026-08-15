@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 bootmem_init 深度解析 —— 从 memblock 到 buddy 的交接</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 240px;
+    transition: max-width 0.25s ease; overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; height: 100%; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 2px 0; border-radius: 3px; white-space: nowrap; font-size: 0.9em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); }
+.sidebar a.sub { padding-left: 16px; font-size: 0.85em; }
+.sidebar a.sub2 { padding-left: 32px; font-size: 0.8em; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+header p { font-size: 0.85em; color: var(--text-secondary); }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin: 20px 0 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目录</h4>
+<a href="#arm64-bootmem-init-深度解析" class="">ARM64 bootmem_init 深度解析</a>
+<a href="#1--bootmem-init-在启动流程中的位置" class="sub">1. bootmem_init 在启动流程中的位置</a>
+<a href="#2--bootmem-init-源码总览" class="sub">2. bootmem_init 源码总览</a>
+<a href="#3--逐步分析" class="sub">3. 逐步分析</a>
+<a href="#3-1-计算-pfn-范围" class="sub2">3.1 计算 PFN 范围</a>
+<a href="#3-2-early-memtest-内存测试" class="sub2">3.2 early_memtest 内存测试</a>
+<a href="#3-3-arch-numa-init" class="sub2">3.3 arch_numa_init</a>
+<a href="#3-4-各类预留" class="sub2">3.4 各类预留（hugetlb CMA / KVM hyp）</a>
+<a href="#3-5-sparse-init-分配-struct-page" class="sub2">3.5 sparse_init 分配 struct page</a>
+<a href="#3-6-zone-sizes-init-建立-zone" class="sub2">3.6 zone_sizes_init 建立 zone</a>
+<a href="#3-7-dma-contiguous-reserve-预留-cma" class="sub2">3.7 dma_contiguous_reserve 预留 CMA</a>
+<a href="#3-8-arch-reserve-crashkernel" class="sub2">3.8 arch_reserve_crashkernel</a>
+<a href="#3-9-memblock-dump-all" class="sub2">3.9 memblock_dump_all</a>
+<a href="#4--关键区分-bootmem-init-vs-memblock-free-all" class="sub">4. 关键区分：bootmem_init vs memblock_free_all</a>
+<a href="#5--serial-logs-真实数据对照" class="sub">5. serial.logs 真实数据对照</a>
+<a href="#6--总结表" class="sub">6. 总结表</a>
+</div>
+</nav>
+<div class="main-content">
+<header>
+<h1>ARM64 bootmem_init 深度解析</h1>
+<p>从 memblock 到 buddy 分配器的交接：struct page、zone、CMA 是怎么建立的</p>
+</header>
+<main>
+
+<section id="1--bootmem-init-在启动流程中的位置">
+<h2>1. bootmem_init 在启动流程中的位置</h2>
+<p><code>bootmem_init()</code> 是 <code>paging_init()</code> 的下一步,也是 memblock 时代的「收官」动作。它在 <code>setup_arch()</code> 里位于 <code>paging_init()</code> 之后(<code>arch/arm64/kernel/setup.c:344</code>):</p>
+<pre><code>arm64_memblock_init();   // ① 解析 FDT，建立 memblock
+paging_init();           // ② 建立线性映射 + 身份映射
+...
+unflatten_device_tree();
+bootmem_init();          // ③ 建立 struct page + zone（本文主角）
+kasan_init();            // ④ KASAN 影子内存（依赖 struct page 已就绪）</code></pre>
+<p>它的定位可以用一句话概括:<span class="accent">把「内存」从 memblock 的粗粒度 region 描述,转化成 buddy 分配器所需的细粒度数据结构(struct page 数组 + zone 空闲链表)</span>。</p>
+<div class="note"><strong>与 paging_init 的关系:</strong><code>paging_init</code> 解决「能不能访问到内存」(建页表映射);<code>bootmem_init</code> 解决「怎么管理内存」(建 memmap + zone)。前者是后者的前提——分配 <code>struct page</code> 数组本身就需要通过线性映射访问。</div>
+</section>
+
+<section id="2--bootmem-init-源码总览">
+<h2>2. bootmem_init 源码总览</h2>
+<p>完整源码(<code>arch/arm64/mm/init.c:292</code>):</p>
+<pre><code>void __init bootmem_init(void)
+{
+    unsigned long min, max;
+
+    min = PFN_UP(memblock_start_of_DRAM());   // ① 起始 PFN
+    max = PFN_DOWN(memblock_end_of_DRAM());   // ② 结束 PFN
+
+    early_memtest(min << PAGE_SHIFT, max << PAGE_SHIFT);  // ③ 内存测试
+
+    max_pfn = max_low_pfn = max;              // ④ 记录全局 PFN 边界
+    min_low_pfn = min;
+
+    arch_numa_init();                          // ⑤ NUMA 初始化
+
+    arm64_hugetlb_cma_reserve();               // ⑥ 巨页 CMA（条件编译）
+    kvm_hyp_reserve();                         // ⑦ KVM hyp 内存预留
+
+    sparse_init();                             // ⑧ 分配 struct page 数组（memmap）
+    zone_sizes_init();                         // ⑨ 建立 zone + free_area（buddy 骨架）
+
+    dma_contiguous_reserve(arm64_dma_phys_limit);  // ⑩ 预留 CMA（32MB）
+
+    arch_reserve_crashkernel();                // ⑪ crashkernel 预留
+
+    memblock_dump_all();                       // ⑫ 打印最终 memblock 状态
+}</code></pre>
+<p>每一步都承上启下,下面逐条展开。注意其中的<span class="accent">顺序约束</span>:注释里明确写了「<code>sparse_init()</code> 要从 memblock 分配内存,所以必须在固定预留之后」「<code>arch_numa_init()</code> 要先于 <code>hugetlb_cma_reserve()</code>」。</p>
+</section>
+
+<section id="3--逐步分析">
+<h2>3. 逐步分析</h2>
+
+<h3 id="3-1-计算-pfn-范围">3.1 计算 PFN 范围</h3>
+<pre><code>min = PFN_UP(memblock_start_of_DRAM());   // 向上取整到页
+max = PFN_DOWN(memblock_end_of_DRAM());   // 向下取整到页</code></pre>
+<p>从 memblock 的 DRAM 起止地址算出 <span class="accent">页帧号(PFN)</span> 范围。<code>PFN_UP</code> / <code>PFN_DOWN</code> 分别向上/向下对齐到页。这一步把「物理地址」换算成 buddy 系统里的基本单位「页号」。在本机 QEMU 上:DRAM 为 <code>[0x40000000, 0x7fffffff]</code>,所以 <code>min = 0x40000</code>、<code>max = 0x80000</code>,共 <code>0x40000 = 262144</code> 页(正好对上日志里的 <code>Total pages: 262144</code>)。</p>
+
+<h3 id="3-2-early-memtest-内存测试">3.2 early_memtest 内存测试</h3>
+<pre><code>early_memtest(min << PAGE_SHIFT, max << PAGE_SHIFT);</code></pre>
+<p>如果命令行带了 <code>memtest=...</code>,这里会对 DRAM 做早期读写测试(检测坏内存)。默认(本机)不开启,是个 no-op。</p>
+
+<h3 id="3-3-arch-numa-init">3.3 arch_numa_init</h3>
+<p>初始化 NUMA 拓扑:解析 FDT/ACPI 里的 memory node,建立 <code>node_data[]</code>、<code>node_online_map</code> 等。单节点机器(本机 QEMU)会「<span class="amber">Faking a node</span>」——伪造一个覆盖全部内存的 node 0,对应日志:</p>
+<pre><code>NUMA: Faking a node at [mem 0x0000000040000000-0x000000007fffffff]
+NODE_DATA(0) allocated [mem 0x7fdf9a00-0x7fdfc07f]</code></pre>
+<p>注意它必须在 <code>sparse_init</code> 之前:后面分配 <code>struct page</code> 需要知道每个页属于哪个 node。</p>
+
+<h3 id="3-4-各类预留">3.4 各类预留（hugetlb CMA / KVM hyp）</h3>
+<pre><code>arm64_hugetlb_cma_reserve();   // CONFIG_HUGETLB_PAGE && CONFIG_CMA 时
+kvm_hyp_reserve();             // 预留 KVM 虚拟机监控器的物理内存</code></pre>
+<p>这两步是<span class="accent">固定预留</span>:提前用 memblock 划出巨页 CMA、KVM hypervisor 需要的内存。注释强调它们必须先于 <code>sparse_init()</code>——因为 <code>sparse_init</code> 自己也要从 memblock 分配 memmap,顺序乱了会互相抢占地址空间。</p>
+
+<h3 id="3-5-sparse-init-分配-struct-page">3.5 sparse_init 分配 struct page</h3>
+<pre><code>sparse_init();   // 建立稀疏内存模型的 mem_section + struct page 数组</code></pre>
+<p>这是整个函数里<span class="accent">最关键的一步</span>:分配并初始化 <code>struct page</code> 数组(即 memmap)。每个物理页对应一个 <code>struct page</code>(本机 64 字节),buddy 分配器以后就是靠这些 <code>struct page</code> 里的 <code>flags</code>、<code>_mapcount</code>、<code>lru</code> 等字段来管理页的。</p>
+<p>在本机 1GB RAM 上:<code>262144 页 × 64B = 16MB</code> 的 <code>struct page</code> 数组,日志里精确对应:</p>
+<pre><code>memblock_alloc_exact_nid_raw: 16777216 bytes align=0x200000 ... memmap_alloc+0x20/0x38
+__memblock_reserve: [0x7ec00000-0x7fbfffff] ...   // 16MB @ 0x7ec00000</code></pre>
+
+<h3 id="3-6-zone-sizes-init-建立-zone">3.6 zone_sizes_init 建立 zone</h3>
+<p>源码(<code>arch/arm64/mm/init.c:121</code>):</p>
+<pre><code>static void __init zone_sizes_init(void)
+{
+    unsigned long max_zone_pfns[MAX_NR_ZONES] = {0};
+    ...
+    max_zone_pfns[ZONE_DMA]   = PFN_DOWN(arm64_dma_phys_limit);  // DMA 上限
+    max_zone_pfns[ZONE_DMA32] = PFN_DOWN(dma32_phys_limit);      // DMA32 上限
+    max_zone_pfns[ZONE_NORMAL] = max_pfn;                        // Normal 上限
+
+    free_area_init(max_zone_pfns);   // ← 核心：建立 zone 结构与 free_area 链表
+}</code></pre>
+<p>它算出每个 zone 的 PFN 上界,然后调 <code>free_area_init()</code> 建立 buddy 分配器的<span class="accent">骨架</span>——每个 zone 的 <code>free_area[order]</code> 空闲链表(此时还是空的)、<code>zone->managed_pages</code>、<code>zone->present_pages</code> 等元数据。对应日志:</p>
+<pre><code>Zone ranges:
+  DMA      [mem 0x0000000040000000-0x000000007fffffff]
+  DMA32    empty
+  Normal   empty
+Early memory node ranges
+  node   0: [mem 0x0000000040000000-0x000000007fffffff]
+Initmem setup node 0 [mem 0x0000000040000000-0x000000007fffffff]</code></pre>
+<div class="note">本机 1GB 内存全部落在 <code>DMA</code> zone,所以 <code>DMA32 / Normal</code> 为空——这是 arm64 上「小内存机器」的典型现象。</div>
+
+<h3 id="3-7-dma-contiguous-reserve-预留-cma">3.7 dma_contiguous_reserve 预留 CMA</h3>
+<pre><code>dma_contiguous_reserve(arm64_dma_phys_limit);</code></pre>
+<p>预留连续内存区(CMA),供 DMA、设备驱动后续分配大块连续物理内存。对应日志:</p>
+<pre><code>__memblock_reserve: [0x7cc00000-0x7ebfffff] ...   // 32MB
+cma: Reserved 32 MiB at 0x000000007cc00000</code></pre>
+
+<h3 id="3-8-arch-reserve-crashkernel">3.8 arch_reserve_crashkernel</h3>
+<pre><code>arch_reserve_crashkernel();   // 解析 crashkernel= 参数并预留 kdump 内存</code></pre>
+<p>如果命令行指定了 <code>crashkernel=...</code>,这里为 kdump 内核预留内存。本机没配,no-op。</p>
+
+<h3 id="3-9-memblock-dump-all">3.9 memblock_dump_all</h3>
+<pre><code>memblock_dump_all();   // 打印 memblock 最终状态</code></pre>
+<p>最后,如果开启了 <code>memblock=debug</code>(本机就开了),这里打印 memblock 的最终形态——也就是日志里的 <code>MEMBLOCK configuration</code> 段落(10 个 reserved region 那张表)。它标志着 <span class="accent">memblock 时代的「账本」到此定格</span>。</p>
+</section>
+
+<section id="4--关键区分-bootmem-init-vs-memblock-free-all">
+<h2>4. 关键区分：bootmem_init vs memblock_free_all</h2>
+<p>一个最常见的误解是「<code>bootmem_init</code> 把内存交给了 buddy」。实际上 <span class="accent">并没有</span>——它只是<span class="accent">建好了数据结构</span>(struct page + zone),真正的「释放」发生在更后面的 <code>mm_core_init() → memblock_free_all()</code>。</p>
+<div class="two-col">
+<div>
+<h4>bootmem_init（arch 层）</h4>
+<ul>
+<li><span class="amber">做什么</span>：建 <code>struct page</code> 数组 + 建 zone 骨架</li>
+<li><span class="amber">空闲链表</span>：此时 <code>free_area[order]</code> 还是<span class="amber">空的</span></li>
+<li><span class="amber">位置</span>：<code>setup_arch()</code> 内</li>
+<li><span class="amber">本质</span>：准备「容器」</li>
+</ul>
+</div>
+<div>
+<h4>memblock_free_all（mm 层）</h4>
+<ul>
+<li><span class="green">做什么</span>：把 memblock.memory 的空闲页真正<span class="green">加入 buddy 空闲链表</span></li>
+<li><span class="green">空闲链表</span>：<code>__free_pages_core()</code> 逐页挂进 free_area</li>
+<li><span class="green">位置</span>：<code>start_kernel() → mm_core_init()</code>（<code>mm/mm_init.c:2706</code>）</li>
+<li><span class="green">本质</span>：往容器里「装货」</li>
+</ul>
+</div>
+</div>
+<p><code>memblock_free_all()</code> 的实现(<code>mm/memblock.c:2339</code>):</p>
+<pre><code>void __init memblock_free_all(void)
+{
+    free_unused_memmap();              // 释放多余的 struct page
+    reset_all_zones_managed_pages();   // 重置 zone 托管页计数
+    pages = free_low_memory_core_early();  // ★ 把空闲页真正加入 buddy
+    totalram_pages_add(pages);
+}</code></pre>
+<p>真正把页挂进 <code>free_area</code> 的是 <code>free_low_memory_core_early()</code>。它遍历 <code>memblock.memory</code> 的空闲区间,对每个页调用 <code>__free_pages_core()</code>,设置 <code>struct page</code> 的 order、挂进对应 <code>free_area[order]</code> 链表。之后 <code>mem_init()</code> 打印那句:</p>
+<pre><code>Memory: 952884K/1048576K available (...)   // 对应 serial.logs [0.169305]</code></pre>
+<div class="warn"><strong>一句话记住:</strong><code>bootmem_init</code> 建「骨架」,<code>memblock_free_all</code> 灌「血肉」。两者之间,系统处于「zone 已就绪、但 buddy 还没有任何空闲页」的过渡态。</div>
+</section>
+
+<section id="5--serial-logs-真实数据对照">
+<h2>5. serial.logs 真实数据对照</h2>
+<p>把 <code>bootmem_init</code> 的每一步和本机 <code>serial.logs</code> 的真实输出对齐(全部来自 QEMU 1GB 内存、<code>memblock=debug</code>):</p>
+<table>
+<tr><th>bootmem_init 步骤</th><th>日志输出（真实）</th><th>数值含义</th></tr>
+<tr><td>3.3 arch_numa_init</td><td><code>NUMA: Faking a node at [0x40000000-0x7fffffff]</code></td><td>单节点，1GB 全部归 node 0</td></tr>
+<tr><td>3.5 sparse_init</td><td><code>memmap_alloc: 16777216 bytes</code> @ <code>0x7ec00000</code></td><td>struct page 数组 16MB（262144 × 64B）</td></tr>
+<tr><td>3.6 zone_sizes_init</td><td><code>Zone ranges: DMA [0x40000000-0x7fffffff], DMA32/Normal empty</code></td><td>1GB 全落 DMA zone</td></tr>
+<tr><td>3.7 dma_contiguous_reserve</td><td><code>cma: Reserved 32 MiB at 0x7cc00000</code></td><td>CMA 32MB</td></tr>
+<tr><td>3.9 memblock_dump_all</td><td><code>MEMBLOCK configuration: memory.cnt=1, reserved.cnt=10</code></td><td>最终 1 个 memory + 10 个 reserved</td></tr>
+<tr><td>4. memblock_free_all 后</td><td><code>Built 1 zonelists ... Total pages: 262144</code> / <code>Memory: 952884K/1048576K available</code></td><td>buddy 就绪，952MB 可用</td></tr>
+</table>
+<p>几个能互相印证的交叉验证:</p>
+<ul>
+<li><span class="accent">262144 页 × 64B = 16MB</span> —— <code>Total pages</code> 与 <code>memmap_alloc</code> 的 16777216 字节严丝合缝。</li>
+<li><span class="accent">952884K + reserved ≈ 1048576K</span> —— <code>Memory: available</code> 与 memblock 的 reserved 账本对得上(952MB 空闲 + 内核镜像/CMA/memmap 等 ~90MB 占用)。</li>
+<li><span class="accent">CMA 32MB</span> —— 正是 <code>reserved[2]</code> 的 <code>0x2000000</code>(32MB)。</li>
+</ul>
+</section>
+
+<section id="6--总结表">
+<h2>6. 总结表</h2>
+<table>
+<tr><th>函数 / 步骤</th><th>作用</th><th>真实产物（本机）</th></tr>
+<tr><td><code>PFN 范围计算</code></td><td>地址 → 页号换算</td><td><code>0x40000 ~ 0x80000</code>（262144 页）</td></tr>
+<tr><td><code>arch_numa_init</code></td><td>NUMA 拓扑 + node_data</td><td>伪造 node 0 覆盖 1GB</td></tr>
+<tr><td><code>sparse_init</code></td><td>分配 <code>struct page</code> 数组</td><td>16MB @ 0x7ec00000</td></tr>
+<tr><td><code>zone_sizes_init</code></td><td>建 zone + free_area 骨架</td><td>仅 DMA zone</td></tr>
+<tr><td><code>dma_contiguous_reserve</code></td><td>预留 CMA</td><td>32MB @ 0x7cc00000</td></tr>
+<tr><td><code>memblock_dump_all</code></td><td>打印最终 memblock 状态</td><td><code>reserved.cnt=10</code></td></tr>
+<tr><td><code>memblock_free_all</code>（后续）</td><td>空闲页真正加入 buddy</td><td><code>952884K available</code></td></tr>
+</table>
+
+<h3>核心结论</h3>
+<ol>
+<li><span class="accent">bootmem_init 是「建骨架」</span>:它把 memblock 的粗粒度 region,转成 buddy 需要的 <code>struct page</code> 数组 + zone 空闲链表结构。</li>
+<li><span class="accent">顺序即依赖</span>:NUMA → sparse(memmap) → zone → CMA → crashkernel → dump,每步都建立在前一步的基础上(注释里反复强调)。</li>
+<li><span class="accent">交接点其实在 memblock_free_all</span>:bootmem_init 之后 buddy 还「空着」,直到 <code>mm_core_init → memblock_free_all</code> 才真正把空闲页灌进去。</li>
+<li><span class="accent">真实数据可交叉验证</span>:<code>Total pages × 64B = 16MB memmap</code>、<code>available + reserved = 总内存</code>、CMA = 32MB,三组数字在日志里严丝合缝。</li>
+</ol>
+</section>
+
+</main>
+</div></div>
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>

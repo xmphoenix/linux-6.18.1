@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARM64 paging_init 深度解析与内存映射总结</title>
+<style>
+:root {
+    --bg: #f8f9fa; --text: #2c3e50; --text-secondary: #5a6c7d;
+    --accent: #2563eb; --accent-light: #eff6ff;
+    --green: #059669; --amber: #d97706; --amber-bg: #fffbeb;
+    --code-bg: #f1f5f9; --border: #e2e8f0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55; font-size: 14px;
+}
+.page-wrapper { display: flex; }
+.sidebar {
+    position: sticky; top: 0; left: 0; height: 100vh; flex-shrink: 0;
+    background: #fff; border-right: 1px solid var(--border);
+    font-size: 0.85em; z-index: 10;
+    width: auto; max-width: 240px;
+    transition: max-width 0.25s ease; overflow: visible;
+}
+.sidebar-inner { padding: 16px 5px 30px 5px; overflow-y: auto; height: 100%; }
+.sidebar.collapsed { max-width: 0; min-width: 0; border-right: none; }
+.sidebar.collapsed .sidebar-inner { display: none; }
+.toggle-btn {
+    position: absolute; top: 15px; left: 100%; margin-left: -1px; cursor: pointer; z-index: 20;
+    background: #fff; border: 1px solid var(--accent); border-left: none;
+    border-radius: 0 4px 4px 0; padding: 2px 4px; font-size: 9px;
+    color: var(--accent); line-height: 1.2;
+}
+.toggle-btn:hover { background: var(--accent-light); }
+.sidebar h4 { font-size: 0.95em; color: #94a3b8; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 600; }
+.sidebar a { display: block; color: #64748b; text-decoration: none; padding: 2px 0; border-radius: 3px; white-space: nowrap; font-size: 0.9em; }
+.sidebar a:hover { color: var(--accent); background: var(--accent-light); }
+.sidebar a.sub { padding-left: 16px; font-size: 0.85em; }
+.sidebar a.sub2 { padding-left: 32px; font-size: 0.8em; }
+.main-content { flex: 1; min-width: 0; }
+header { padding: 32px 0 24px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+header h1 { font-size: 1.6em; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+header p { font-size: 0.85em; color: var(--text-secondary); }
+main { max-width: 1020px; margin: 0 auto; padding: 24px 22px 40px; }
+section { padding: 22px 0; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+section:last-of-type { border-bottom: none; }
+section h2 { font-size: 1.2em; font-weight: 700; color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 7px; margin: 20px 0 14px; }
+section h3 { font-size: 1.0em; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
+section h4 { font-size: 0.9em; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+section p { font-size: 0.85em; color: var(--text-secondary); margin: 4px 0; }
+section ul, section ol { margin-left: 22px; color: var(--text-secondary); }
+section li { margin-bottom: 3px; font-size: 0.85em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-family: 'Fira Code','Cascadia Code','Consolas','Menlo',monospace; font-size: 0.82em; color: #1e293b; border: 1px solid var(--border); }
+pre { background: #f8fafc; padding: 10px 14px; border-radius: 6px; overflow-x: auto; font-size: 0.76em; line-height: 1.55; margin: 8px 0; border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+pre code { background: none; padding: 0; border: none; color: #334155; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82em; }
+th { background: var(--accent); color: #fff; font-weight: 600; padding: 6px 10px; text-align: left; font-size: 0.8em; }
+td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+tr:nth-child(even) td { background: #f8fafc; }
+.accent { color: var(--accent); font-weight: 600; }
+.green  { color: var(--green);  font-weight: 600; }
+.amber  { color: var(--amber);  font-weight: 600; }
+.note { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #374151; }
+.warn { background: var(--amber-bg); border-left: 3px solid var(--amber); padding: 8px 14px; border-radius: 4px; margin: 10px 0; font-size: 0.83em; color: #78350f; }
+.diagram { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin: 8px 0; font-family: 'Fira Code','Cascadia Code','Consolas',monospace; font-size: 0.72em; line-height: 1.6; white-space: pre; overflow-x: auto; color: #334155; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 8px 0; }
+@media (max-width: 860px) {
+    .sidebar { max-width: 180px; font-size: 0.78em; }
+    .sidebar-inner { padding: 14px 4px 24px 4px; }
+    .main-content { padding: 16px 14px 30px; }
+    .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+<nav class="sidebar" id="sidebar">
+<button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+<div class="sidebar-inner">
+<h4>目录</h4>
+<a href="#arm64-paging-init-深度解析与内存映射总结" class="">ARM64 paging_init 深度解析</a>
+<a href="#1--paging-init-在启动流程中的位置" class="sub">1. paging_init 在启动流程中的位置</a>
+<a href="#2--前置知识回顾-memblock-三件套" class="sub">2. 前置知识回顾：memblock 三件套</a>
+<a href="#2-1-memblock-数据结构与-regions-数组" class="sub2">2.1 memblock 数据结构与 regions 数组</a>
+<a href="#2-2-memblock-isolate-range-输出参数" class="sub2">2.2 memblock_isolate_range 输出参数</a>
+<a href="#2-3-memblock-merge-regions-合并相邻-region" class="sub2">2.3 memblock_merge_regions 合并相邻 region</a>
+<a href="#3--paging-init-源码与调用时机" class="sub">3. paging_init 源码与调用时机</a>
+<a href="#4--步骤一-map-mem-建立线性映射" class="sub">4. 步骤一：map_mem 建立线性映射</a>
+<a href="#4-1-线性映射的定义" class="sub2">4.1 线性映射的定义</a>
+<a href="#4-2-两步映射内核镜像的技巧" class="sub2">4.2 两步映射内核镜像的技巧</a>
+<a href="#5--步骤二-memblock-allow-resize" class="sub">5. 步骤二：memblock_allow_resize</a>
+<a href="#6--步骤三-create-idmap-建立身份映射" class="sub">6. 步骤三：create_idmap 建立身份映射</a>
+<a href="#7--步骤四-declare-kernel-vmas-注册内核段" class="sub">7. 步骤四：declare_kernel_vmas 注册内核段</a>
+<a href="#8--两次映射的本质区别" class="sub">8. 两次映射的本质区别</a>
+<a href="#8-1-两个映射的精确时间点与代码位置" class="sub2">8.1 两个映射的精确时间点与代码位置</a>
+<a href="#9--完整启动时间线与页表切换" class="sub">9. 完整启动时间线与页表切换</a>
+<a href="#10--总结表" class="sub">10. 总结表</a>
+<a href="#11--附录-qemu-真实启动数据" class="sub">11. 附录：QEMU 真实启动数据</a>
+</div>
+</nav>
+<div class="main-content">
+<header>
+<h1>ARM64 paging_init 深度解析与内存映射总结</h1>
+<p>从 memblock 数据操作到内核页表建立的完整链路</p>
+</header>
+<main>
+
+<section id="1--paging-init-在启动流程中的位置">
+<h2>1. paging_init 在启动流程中的位置</h2>
+<p><code>paging_init()</code> 是 ARM64 启动早期<span class="accent">承上启下</span>的关键一环：它的上游是「memblock 已经就绪」，下游是「伙伴系统（buddy）即将接手物理内存」。它在 <code>setup_arch()</code> 中的调用位置如下（<code>arch/arm64/kernel/setup.c</code>）：</p>
+<pre><code>arm64_memblock_init();   // ① 解析 FDT/EFI，建立 memblock（知道系统有哪些内存 bank）
+
+paging_init();           // ② 建立线性映射 + 身份映射（本文主角）
+
+acpi_table_upgrade();
+acpi_boot_table_init();
+...
+bootmem_init();          // ③ 初始化 buddy 分配器（释放 memblock 中的空闲内存给伙伴系统）
+kasan_init();</code></pre>
+<p>为什么这个顺序是必然的？</p>
+<ul>
+<li><code>arm64_memblock_init()</code> 之前：内核还不知道「系统物理内存的完整布局」，只有 bootloader 传来的 FDT，无法映射全部内存。</li>
+<li><code>bootmem_init()</code> 要建立 zone、free page，必须能通过<span class="accent">线性映射</span>访问到每一页物理内存 —— 这正是 <code>paging_init()</code> 干的事。</li>
+<li>所以 <code>paging_init()</code> 正好卡在「memblock 就绪」与「buddy 接手」之间。</li>
+</ul>
+<div class="note"><strong>一句话定位：</strong><code>paging_init()</code> 在 memblock 建立之后、buddy 分配器启动之前，把「所有物理内存」映射进内核页表，使内核后续能自由访问全部 RAM。</div>
+</section>
+
+<section id="2--前置知识回顾-memblock-三件套">
+<h2>2. 前置知识回顾：memblock 三件套</h2>
+<p>理解 <code>paging_init</code> 之前，需要先回顾本系列前面讨论过的三个 memblock 核心机制。</p>
+
+<h3 id="2-1-memblock-数据结构与-regions-数组">2.1 memblock 数据结构与 regions 数组</h3>
+<p>memblock 是启动早期的物理内存分配器。系统有 <code>memblock.memory</code>（可用内存）和 <code>memblock.reserved</code>（保留内存）两类，每类都用一个 <span class="accent">按地址升序、不重叠</span> 的 region 数组表示：</p>
+<pre><code>struct memblock_region {
+    phys_addr_t base;   // 起始物理地址
+    phys_addr_t size;   // 大小
+    enum memblock_flags flags;  // 如 MEMBLOCK_NOMAP / MEMBLOCK_HOTPLUG
+    int nid;            // NUMA node
+};
+
+// 例：memblock.memory 的 regions 数组
+idx 0: [0x0000_0000, 0x2000_0000)   // 0~512MB
+idx 1: [0x2000_0000, 0x4000_0000)   // 512MB~1GB
+idx 2: [0x4000_0000, 0x6000_0000)   // 1GB~1.5GB</code></pre>
+
+<h3 id="2-2-memblock-isolate-range-输出参数">2.2 memblock_isolate_range 输出参数</h3>
+<p>函数签名：</p>
+<pre><code>static int memblock_isolate_range(struct memblock_type *type,
+                                  phys_addr_t base, phys_addr_t size,
+                                  int *start_rgn, int *end_rgn)</code></pre>
+<p>它把范围 <code>[base, base+size)</code> 从 region 数组中「隔离」出来——任何跨界的 region 都会在边界处被劈开。完成后，范围内的 region 恰好是<span class="accent">一段连续下标区间</span> <code>[start_rgn, end_rgn)</code>。</p>
+<ul>
+<li><code>*start_rgn</code>：范围内第一个 region 的下标（含）</li>
+<li><code>*end_rgn</code>：范围内最后一个 region 的下一个下标（不含，past-the-end）</li>
+</ul>
+<p>这两个是<span class="accent">输出参数</span>（不是回调）：C 函数只能 return 一个值，额外结果通过指针传回。调用方拿到下标区间后，就能精确批量操作这段 region。</p>
+
+<h3 id="2-3-memblock-merge-regions-合并相邻-region">2.3 memblock_merge_regions 合并相邻 region</h3>
+<pre><code>static void memblock_merge_regions(struct memblock_type *type,
+                                   unsigned long start_rgn,
+                                   unsigned long end_rgn)</code></pre>
+<p>它是 isolate 的「逆操作」：把<span class="accent">物理相邻、NUMA node 相同、flags 完全相同</span>的相邻 region 合并成一块，恢复数组的紧凑。典型使用是 <code>memblock_setclr_flag</code> 的「isolate → 改 flags → merge」三步曲——isolate 劈出的碎片在 flags 改完后属性一致，需要再并回去。</p>
+<div class="note">这一组「isolate / merge」机制是 memblock 大多数范围操作的公共底座，<code>map_mem</code> 里的 <code>memblock_mark_nomap</code>、<code>for_each_mem_range</code> 都建立在其上。</div>
+</section>
+
+<section id="3--paging-init-源码与调用时机">
+<h2>3. paging_init 源码与调用时机</h2>
+<p>完整源码（<code>arch/arm64/mm/mmu.c:1351</code>）非常简短，只有四个调用：</p>
+<pre><code>void __init paging_init(void)
+{
+    map_mem(swapper_pg_dir);   // ① 建立线性映射（映射所有物理内存）
+
+    memblock_allow_resize();   // ② 允许 memblock 动态扩容
+
+    create_idmap();            // ③ 建立身份映射（idmap）
+
+    declare_kernel_vmas();     // ④ 注册内核各段的早期 VM 区
+}</code></pre>
+<p>虽然只有四行，但每一行都承载了启动早期内存管理的核心任务。下面逐一展开。</p>
+</section>
+
+<section id="4--步骤一-map-mem-建立线性映射">
+<h2>4. 步骤一：map_mem 建立线性映射</h2>
+
+<h3 id="4-1-线性映射的定义">4.1 线性映射的定义</h3>
+<p>线性映射（linear map / direct map）是内核访问<span class="accent">所有物理内存</span>的固定映射，满足 <code>virt = phys + PAGE_OFFSET</code>（即 <code>__phys_to_virt()</code>）。<code>map_mem</code> 的核心循环：</p>
+<pre><code>for_each_mem_range(i, &start, &end) {          // 遍历 memblock.memory 每个 bank
+    __map_memblock(pgdp, start, end, pgprot_tagged(PAGE_KERNEL), flags);
+}
+
+// __map_memblock 是薄封装：
+__create_pgd_mapping(pgdp, start, __phys_to_virt(start), end - start,
+                     prot, early_pgtable_alloc, flags);</code></pre>
+<p>关键属性决策：</p>
+<table>
+<tr><th>属性</th><th>含义</th></tr>
+<tr><td><code>NO_EXEC_MAPPINGS</code></td><td>线性映射默认<span class="accent">不可执行</span>（PXN），内核 W^X 保护的一部分</td></tr>
+<tr><td><code>pgprot_tagged(PAGE_KERNEL)</code></td><td>用 <code>MT_NORMAL_TAGGED</code> 属性，支持 MTE 读写 allocation tags</td></tr>
+<tr><td><code>NO_BLOCK_MAPPINGS / NO_CONT_MAPPINGS</code></td><td><code>force_pte_mapping()</code> 时（rodata_full / KFENCE / Realm）退化为 4KB 页级映射，便于细粒度改权限</td></tr>
+</table>
+<div class="note"><strong>实测佐证：</strong>在本机 <code>serial.logs</code>（QEMU 1GB 内存）里，<code>map_mem</code> 建线性映射时 <code>early_pgtable_alloc()</code> 被调用了 <span class="accent">413 次</span>，每次分配 4KB 页表页，共 <code>413 × 4KB ≈ 1.65MB</code>，地址从 <code>0x7ffa5000</code> 向下（top-down）铺到 <code>0x7fe08000</code>，全部打上 <code>MEMBLOCK_RSRV_KERN (0x20)</code> 标志。详见 <a href="#11--附录-qemu-真实启动数据" style="color:var(--accent)">附录</a>。</div>
+
+<h3 id="4-2-两步映射内核镜像的技巧">4.2 两步映射内核镜像的技巧</h3>
+<p><code>map_mem</code> 最精巧的设计是<span class="accent">两步映射内核镜像</span>，避免给只读的 text/rodata 制造「可写 + 可执行」的危险别名：</p>
+<pre><code>// 第 0 步：先把内核镜像 [_text, __init_begin) 临时标记 NOMAP
+memblock_mark_nomap(kernel_start, kernel_end - kernel_start);
+
+// 第 1 步：循环映射所有内存 bank（for_each_mem_range 会自动跳过 NOMAP 的内核镜像）
+for_each_mem_range(i, &start, &end)
+    __map_memblock(pgdp, start, end, pgprot_tagged(PAGE_KERNEL), flags);
+
+// 第 2 步：单独映射内核镜像的线性别名（可写但不可执行，且后续可改 RO）
+__map_memblock(pgdp, kernel_start, kernel_end, PAGE_KERNEL, NO_CONT_MAPPINGS);
+memblock_clear_nomap(kernel_start, kernel_end - kernel_start);</code></pre>
+<div class="note">经过这一步，内核镜像有了两个虚拟映射：① 早期 <code>map_kernel</code> 建的链接地址映射（ROX 等）；② 这里的线性别名映射（暂时可写）。后者随后由 <code>mark_linear_text_alias_ro()</code> 改成只读。</div>
+</section>
+
+<section id="5--步骤二-memblock-allow-resize">
+<h2>5. 步骤二：memblock_allow_resize</h2>
+<p>源码（<code>mm/memblock.c:2106</code>）：</p>
+<pre><code>void __init memblock_allow_resize(void)
+{
+    memblock_can_resize = 1;
+}</code></pre>
+<p>作用只有一个：置位 <code>memblock_can_resize</code>，允许 memblock 的 region 数组在<span class="accent">容量不足时动态扩容</span>（调用 <code>memblock_double_array</code> 翻倍）。</p>
+<ul>
+<li>早期阶段，region 数组用的是静态预留的容量（<code>INIT_MEMBLOCK_REGIONS</code> / <code>INIT_MEMBLOCK_RESERVED_REGIONS</code>），扩容被禁止。</li>
+<li>现在线性映射已建好，内核可以安全地 <code>memblock_alloc</code> 更大数组来扩容，所以放开限制。</li>
+<li>这也是为什么 <code>paging_init</code> 把 <code>map_mem</code> 放在 <code>memblock_allow_resize</code> <span class="amber">之前</span>：扩容需要用到线性映射才能访问新分配的页表内存。</li>
+</ul>
+</section>
+
+<section id="6--步骤三-create-idmap-建立身份映射">
+<h2>6. 步骤三：create_idmap 建立身份映射</h2>
+<p>源码（<code>arch/arm64/mm/mmu.c:1324</code>）：</p>
+<pre><code>static void __init create_idmap(void)
+{
+    phys_addr_t start = __pa_symbol(__idmap_text_start);
+    phys_addr_t end   = __pa_symbol(__idmap_text_end);
+    phys_addr_t ptep  = __pa_symbol(idmap_ptes);
+
+    __pi_map_range(&ptep, start, end, start, PAGE_KERNEL_ROX,
+                   IDMAP_ROOT_LEVEL, (pte_t *)idmap_pg_dir, false,
+                   __phys_to_virt(ptep) - ptep);
+    ...
+}</code></pre>
+<p>身份映射（identity map）把 <code>__idmap_text</code> 段映射为 <code>virt == phys</code>，放进 <code>idmap_pg_dir</code>。它的用途是：</p>
+<ul>
+<li>在「关 MMU / 切 TTBR」的瞬间，CPU 还能继续执行（因为 idmap 下物理地址 == 虚拟地址，即使 MMU 状态变化也不会跑飞）。</li>
+<li>CPU 热插拔、休眠唤醒、KPTI 切换等场景都需要在 idmap 里执行临界代码。</li>
+</ul>
+<div class="warn"><strong>与早期 idmap 的区别：</strong>head.S 阶段已有 <code>__pi_init_idmap_pg_dir</code> 的临时 idmap；这里的 <code>create_idmap()</code> 是建立正式的、长期使用的 <code>idmap_pg_dir</code>，供内核后续运行期使用。</div>
+</section>
+
+<section id="7--步骤四-declare-kernel-vmas-注册内核段">
+<h2>7. 步骤四：declare_kernel_vmas 注册内核段</h2>
+<p>源码（<code>arch/arm64/mm/mmu.c:1306</code>）：</p>
+<pre><code>static void __init declare_kernel_vmas(void)
+{
+    static struct vm_struct vmlinux_seg[KERNEL_SEGMENT_COUNT];
+
+    declare_vma(&vmlinux_seg[0], _text, _etext, VM_NO_GUARD);
+    declare_vma(&vmlinux_seg[1], __start_rodata, __inittext_begin, VM_NO_GUARD);
+    declare_vma(&vmlinux_seg[2], __inittext_begin, __inittext_end, VM_NO_GUARD);
+    declare_vma(&vmlinux_seg[3], __initdata_begin, __initdata_end, VM_NO_GUARD);
+    declare_vma(&vmlinux_seg[4], _data, _end, 0);
+}</code></pre>
+<p>它把内核镜像的 5 个逻辑段（text / rodata / inittext / initdata / data）分别注册成<span class="accent">早期 VM 区</span>（early vmap area），通过 <code>vm_area_add_early()</code> 挂到 <code>vmlist</code>。</p>
+<p>这些 VMA 不参与实际映射（映射已在 <code>map_mem</code>/早期 <code>map_kernel</code> 完成），而是为运行期查询服务，典型用途：</p>
+<ul>
+<li><code>is_vmalloc_addr()</code>：判断某虚拟地址是否属于内核映像/vmalloc 区。</li>
+<li><code>/proc/kcore</code>、内核 core dump：需要知道内核各段的地址范围与物理地址。</li>
+<li>后续 <code>vmap_area</code> 体系接管前的过渡登记。</li>
+</ul>
+</section>
+
+<section id="8--两次映射的本质区别">
+<h2>8. 两次映射的本质区别</h2>
+<p>回到最初的问题：<code>head.S</code> 里 <code>bl __pi_early_map_kernel</code> 不是已经映射了一次吗？为什么 <code>map_mem(swapper_pg_dir)</code> 还要再映射一次？</p>
+<div class="two-col">
+<div>
+<h4>早期 __pi_early_map_kernel</h4>
+<ul>
+<li><span class="amber">映射对象</span>：只映射内核镜像 <code>[_text, _end)</code></li>
+<li><span class="amber">页表</span>：建在临时 <code>init_pg_dir</code>，随后拷根表并切到 <code>swapper_pg_dir</code></li>
+<li><span class="amber">虚拟地址</span>：链接地址 <code>KIMAGE_VADDR + kaslr_offset</code></li>
+<li><span class="amber">目的</span>：开 MMU、把内核搬到高半区虚拟地址跑</li>
+<li><span class="amber">约束</span>：位置无关、无动态分配、只用 2MB block、静态页表</li>
+</ul>
+</div>
+<div>
+<h4>paging_init → map_mem</h4>
+<ul>
+<li><span class="green">映射对象</span>：所有物理内存 bank（线性映射）</li>
+<li><span class="green">页表</span>：直接写入最终 <code>swapper_pg_dir</code></li>
+<li><span class="green">虚拟地址</span>：<code>phys + PAGE_OFFSET</code></li>
+<li><span class="green">目的</span>：内核以后访问/管理全部 RAM</li>
+<li><span class="green">约束</span>：memblock 就绪，可用 <code>early_pgtable_alloc</code> 动态分配页表</li>
+</ul>
+</div>
+</div>
+<p>两者不是「二选一」，而是「<span class="accent">补全</span>」。看 <code>map_kernel()</code> 的结尾（<code>pi/map_kernel.c:135</code>）：</p>
+<pre><code>/* Copy the root page table to its final location */
+memcpy((void *)swapper_pg_dir + va_offset, init_pg_dir, PAGE_SIZE);
+idmap_cpu_replace_ttbr1((phys_addr_t)swapper_pg_dir);  // TTBR1 切到 swapper_pg_dir</code></pre>
+<p>这里其实有<span class="accent">两次 TTBR1 切换</span>：<code>map_kernel()</code> 先把映射建进 <code>init_pg_dir</code>，line 99 第一次切到 <code>init_pg_dir</code> 让内核镜像映射生效；然后 line 136 把<span class="accent">根 PGD 那一页</span>拷到 <code>swapper_pg_dir</code>（低层 PUD/PMD/PTE 仍原地不动，<code>swapper_pg_dir</code> 的 PGD 项指向它们），line 138 第二次切到 <code>swapper_pg_dir</code>。所以 <code>early_map_kernel</code> 返回时，活动页表<span class="accent">已经是 swapper_pg_dir</span>，而非 <code>init_pg_dir</code>。</p>
+<div class="note"><strong>修正后的共识：</strong>早期 <code>map_kernel</code> 与 <code>map_mem</code> 最终<span class="accent">都收敛到 swapper_pg_dir</span>。区别只在「怎么进去」：早期是「建在 init_pg_dir → 拷根表 → 切过来」，<code>map_mem</code> 是「直接往 swapper_pg_dir 里写」。因此二者不是两个页表，而是同一个页表的两批映射。</div>
+<div class="warn"><strong>为什么不能一开始就 map_mem？</strong>因为早期阶段（1）memblock 还没建立，不知道系统有哪些内存 bank；（2）必须零依赖、无动态分配，只能用静态页表和 2MB block 映射；（3）NUMA node、NOMAP、MTE 等属性决策都要等 <code>setup_arch</code> 之后才有。</div>
+
+<h3 id="8-1-两个映射的精确时间点与代码位置">8.1 两个映射的精确时间点与代码位置</h3>
+<p>把「两个虚拟映射」落到具体的代码位置和时间点，共三条线、三个不同时刻：</p>
+<table>
+<tr><th>#</th><th>映射 / 改动</th><th>代码位置</th><th>调用链</th><th>时机（真实日志）</th></tr>
+<tr><td>①</td><td><span class="accent">链接地址映射</span>（text 天生 ROX）</td><td><code>pi/map_kernel.c:87</code></td><td><code>__primary_switch</code> → <code>__pi_early_map_kernel</code> → <code>early_map_kernel()</code> → <code>map_kernel()</code></td><td>head.S 开 MMU 时</td></tr>
+<tr><td>②</td><td><span class="accent">线性别名映射</span>（暂时可写）</td><td><code>mmu.c:1132-1133</code></td><td><code>start_kernel</code> → <code>setup_arch</code> → <code>paging_init</code> → <code>map_mem</code></td><td>早期 C 启动（~0.000s）</td></tr>
+<tr><td>③</td><td><span class="accent">线性别名改只读</span></td><td><code>mmu.c:980</code></td><td><code>kernel_init</code> → <code>smp_init</code> → <code>smp_cpus_done</code> → <code>mark_linear_text_alias_ro</code></td><td>SMP 就绪后（~0.112s）</td></tr>
+</table>
+
+<h4>① 链接地址映射：text 一开始就是 ROX</h4>
+<p>入口在 <code>head.S:518</code> 的 <code>bl __pi_early_map_kernel</code>，进入 <code>early_map_kernel()</code> 再到 <code>map_kernel()</code>：</p>
+<pre><code>pgprot_t text_prot = PAGE_KERNEL_ROX;      // text 一开始就是 ROX
+...
+map_segment(init_pg_dir, &pgdp, va_offset, _stext, _etext, prot, ...);  // text 段
+...
+memcpy((void *)swapper_pg_dir + va_offset, init_pg_dir, PAGE_SIZE);
+idmap_cpu_replace_ttbr1((phys_addr_t)swapper_pg_dir);   // 切 TTBR1</code></pre>
+<p>这份是内核镜像的<span class="accent">链接地址映射</span>（<code>KIMAGE_VADDR + kaslr_offset</code>），text 段用 <code>PAGE_KERNEL_ROX</code>（只读+可执行），是内核正式执行代码所依赖的映射。</p>
+
+<h4>② 线性别名映射：可写，且带 NO_CONT_MAPPINGS</h4>
+<pre><code>// mmu.c:1132-1133，在 map_mem() 的第二步
+__map_memblock(pgdp, kernel_start, kernel_end, PAGE_KERNEL, NO_CONT_MAPPINGS);  // 可写
+memblock_clear_nomap(kernel_start, kernel_end - kernel_start);</code></pre>
+<p><code>kernel_start/kernel_end</code> = <code>[_text, __init_begin)</code>，映射到线性别名 <code>phys + PAGE_OFFSET</code>，属性 <code>PAGE_KERNEL</code>（<span class="amber">可写</span>）。注释明确说「remove the write permission in <code>mark_linear_text_alias_ro()</code> below」，说明这份是给 hibernate 等子系统临时写访问用的。</p>
+
+<h4>③ 线性别名改只读：smp_cpus_done 里</h4>
+<pre><code>// mmu.c:980
+void __init mark_linear_text_alias_ro(void)
+{
+    update_mapping_prot(__pa_symbol(_text), (unsigned long)lm_alias(_text),
+                        (unsigned long)__init_begin - (unsigned long)_text,
+                        PAGE_KERNEL_RO);   // 把线性别名改成只读
+}</code></pre>
+<p>注意它操作的是 <code>lm_alias(_text)</code>（linear map alias），<span class="accent">不是</span> <code>_text</code> 本身——改的是线性别名这份，不动链接地址那份。调用链比预想晚很多：</p>
+<pre><code>// kernel/smp.c:1009 —— smp_init() 末尾
+void __init smp_init(void) {
+    bringup_nonboot_cpus(setup_max_cpus);   // 拉起次核
+    ...
+    smp_cpus_done(setup_max_cpus);          // → arch 的 smp_cpus_done
+}
+// arch/arm64/kernel/smp.c:438
+void __init smp_cpus_done(unsigned int max_cpus) {
+    ...
+    mark_linear_text_alias_ro();            // smp.c:444
+}</code></pre>
+<p><code>smp_cpus_done</code> 由 <code>kernel_init_freeable()</code>（<code>init/main.c:1585</code>）里的 <code>smp_init()</code> 触发，属于内核 init 线程（PID 1）阶段——比 <code>paging_init</code> 晚得多。</p>
+<p><strong>真实日志时间戳</strong>（<code>serial.logs</code>）：</p>
+<pre><code>[0.112370] SMP: Total of 4 processors activated.   ← smp_cpus_done 打的（smp.c:440）
+                                                   ← mark_linear_text_alias_ro 紧跟其后 ≈ 0.112s</code></pre>
+
+<div class="warn"><strong>别混淆第四步 mark_rodata_ro()：</strong>它和 <code>mark_linear_text_alias_ro()</code> 是两码事。<code>mark_rodata_ro()</code>（<code>mmu.c:1138</code>）改的是<span class="amber">主映射里的 rodata</span>（<code>__start_rodata..__init_begin</code> 从 RW 变 RO），调用链是 <code>kernel_init()</code> → <code>mark_readonly()</code>（<code>init/main.c:1457</code>）→ <code>mark_rodata_ro()</code>，发生在 <code>free_initmem()</code> 之后，对应日志 <code>Freeing unused kernel memory: 13056K</code>（<code>[1.899136]</code>），约 <span class="accent">1.9 秒</span>。</div>
+
+<h4>时序总结</h4>
+<pre><code>head.S (开MMU)                → ① 链接地址映射: text 已是 ROX                       (~0.000s)
+start_kernel → paging_init    → ② 线性别名映射: [_text,__init_begin) 可写            (~0.000s)
+kernel_init → smp_cpus_done   → ③ 线性别名改只读 (mark_linear_text_alias_ro)        (~0.112s)
+kernel_init → mark_readonly   → ④ 主映射 rodata 改只读 (mark_rodata_ro)             (~1.9s)</code></pre>
+<p>所以「线性别名暂时可写」这个窗口持续了约 <span class="accent">0.1 秒</span>（从 <code>map_mem</code> 到 <code>smp_cpus_done</code>），这期间 hibernate 等子系统可以写它，之后永久只读。</p>
+</section>
+
+<section id="9--完整启动时间线与页表切换">
+<h2>9. 完整启动时间线与页表切换</h2>
+<div class="diagram">head.S: __primary_switch
+  └─ __enable_mmu                    (临时空表 + 初始 idmap，先开 MMU)
+  └─ __pi_early_map_kernel           (映射内核镜像 → init_pg_dir)
+       └─ map_kernel()
+            ├─ 映射 _text.._end 各段到链接 VA
+            ├─ idmap_cpu_replace_ttbr1(init_pg_dir)   TTBR1 → init_pg_dir
+            ├─ (CONFIG_RELOCATABLE) relocate_kernel()
+            └─ memcpy swapper_pg_dir ← init_pg_dir 的 PGD 页
+                idmap_cpu_replace_ttbr1(swapper_pg_dir)  TTBR1 → swapper_pg_dir
+  └─ __primary_switched
+       └─ start_kernel()
+            └─ setup_arch()
+                 ├─ arm64_memblock_init()   (解析 FDT，memblock 就绪)
+                 ├─ paging_init()  ★本文主角
+                 │    ├─ map_mem(swapper_pg_dir)       补全线性映射
+                 │    ├─ memblock_allow_resize()        允许动态扩容
+                 │    ├─ create_idmap()                 正式 idmap
+                 │    └─ declare_kernel_vmas()          注册内核段 VMA
+                 ├─ bootmem_init()          (buddy 接手内存)
+                 └─ kasan_init()</div>
+<p>可以看到页表「接力」的关键节点：<code>init_pg_dir</code>（临时）→ <code>swapper_pg_dir</code>（最终），而 <code>paging_init</code> 负责在 <code>swapper_pg_dir</code> 里把「线性映射」这块拼图补全。</p>
+</section>
+
+<section id="10--总结表">
+<h2>10. 总结表</h2>
+<table>
+<tr><th>函数 / 机制</th><th>作用</th><th>页表 / 数据结构</th></tr>
+<tr><td><code>__pi_early_map_kernel</code></td><td>早期映射内核镜像、开 MMU、搬内核</td><td><code>init_pg_dir</code>（临时）</td></tr>
+<tr><td><code>memblock_isolate_range</code></td><td>隔离范围，返回 region 下标区间 <code>[start_rgn, end_rgn)</code></td><td><code>memblock.regions[]</code></td></tr>
+<tr><td><code>memblock_merge_regions</code></td><td>合并相邻且属性相同的 region</td><td><code>memblock.regions[]</code></td></tr>
+<tr><td><code>map_mem</code></td><td>建立线性映射（映射所有内存）</td><td><code>swapper_pg_dir</code></td></tr>
+<tr><td><code>memblock_allow_resize</code></td><td>允许 memblock region 数组动态扩容</td><td><code>memblock_can_resize</code></td></tr>
+<tr><td><code>create_idmap</code></td><td>建立正式身份映射 <code>__idmap_text</code></td><td><code>idmap_pg_dir</code></td></tr>
+<tr><td><code>declare_kernel_vmas</code></td><td>注册内核 5 个段的早期 VMA</td><td><code>vmlist</code></td></tr>
+</table>
+
+<h3>核心结论</h3>
+<ol>
+<li><span class="accent">memblock 是启动早期的内存账本</span>，<code>isolate / merge</code> 是它所有范围操作的公共底座。</li>
+<li><span class="accent">paging_init 是页表「交接」的枢纽</span>：它把 memblock 记录的物理内存变成内核能直接访问的线性映射。</li>
+<li><span class="accent">两次映射各司其职</span>：早期映射内核镜像自己（bootstrap），<code>map_mem</code> 映射全部内存（正式），两者在 <code>swapper_pg_dir</code> 里合流。</li>
+<li><span class="accent">顺序即约束</span>：memblock 就绪 → 线性映射 → 允许扩容 → 身份映射 → buddy 接手，每一步都依赖前一步的成果。</li>
+</ol>
+</section>
+
+<section id="11--附录-qemu-真实启动数据">
+<h2>11. 附录：QEMU 真实启动数据</h2>
+<p>以下数据全部来自本工程目录下的 <code>serial.logs</code>（QEMU 启动时开启 <code>memblock=debug</code> 抓到的真实日志），用来佐证前文的机制分析。</p>
+
+<h3>11.1 运行环境</h3>
+<table>
+<tr><th>项目</th><th>真实值</th><th>说明</th></tr>
+<tr><td>平台</td><td>QEMU arm64 <code>virt</code> 机型</td><td>4 个 CPU（<code>Brought up 1 node, 4 CPUs</code>）</td></tr>
+<tr><td>内存</td><td>1GB，单一 bank <code>[0x40000000, 0x7fffffff]</code></td><td>起始地址 1GB，共 0x40000000 字节</td></tr>
+<tr><td>NUMA</td><td><code>Faking a node at [0x40000000-0x7fffffff]</code></td><td>UMA 单节点模拟</td></tr>
+<tr><td>命令行</td><td><code>nokaslr rdinit=/linuxrc console=ttyAMA0 memblock=debug loglevel=8</code></td><td><span class="accent">nokaslr</span> 关闭随机化（内核固定在链接地址）；<span class="accent">memblock=debug</span> 打开调试打印</td></tr>
+<tr><td>Zone</td><td>仅 <code>DMA</code>（<code>DMA32 / Normal</code> 为空）</td><td>1GB 内存在 arm64 上全部落入 DMA zone</td></tr>
+<tr><td>总页数</td><td><code>Total pages: 262144</code></td><td>1GB ÷ 4KB = 262144 页</td></tr>
+</table>
+
+<h3>11.2 真实的 memblock 布局</h3>
+<p>日志里的 <code>MEMBLOCK configuration</code> 段落（对应前文第 2 节的 region 数组）：</p>
+<pre><code>MEMBLOCK configuration:
+ memory size = 0x0000000040000000  reserved size = 0x00000000056398fb
+ memory.cnt  = 0x1
+ memory[0x0] [0x0000000040000000-0x000000007fffffff], 0x40000000 bytes on node 0 flags: 0x0
+ reserved.cnt = 0xa</code></pre>
+<p>与「多 bank」的通用场景不同，这台机器只有 <span class="accent">1 个 memory region</span>（<code>memory.cnt = 1</code>），却有 <span class="accent">10 个 reserved region</span>（<code>reserved.cnt = 0xa</code>）。这正是前文讲的：memblock 用「按地址升序、不重叠」的 region 数组描述内存，<code>isolate / merge</code> 保证这个数组始终紧凑有序。</p>
+<p>10 个 reserved region 逐一拆解：</p>
+<table>
+<tr><th>region</th><th>地址范围</th><th>大小</th><th>flags</th><th>实际含义</th></tr>
+<tr><td><code>reserved[0]</code></td><td><code>0x40200000-0x4251ffff</code></td><td>35.1MB</td><td><code>0x0</code></td><td><span class="accent">内核镜像</span>（<code>_text .. _end</code>）</td></tr>
+<tr><td><code>reserved[1]</code></td><td><code>0x48000000-0x480fffff</code></td><td>1MB</td><td><code>0x0</code></td><td>1MB 保留区（日志未标注，通常为 initrd/DTB）</td></tr>
+<tr><td><code>reserved[2]</code></td><td><code>0x7cc00000-0x7ebfffff</code></td><td>32MB</td><td><code>0x20</code></td><td>CMA（<code>cma: Reserved 32 MiB at 0x7cc00000</code>）</td></tr>
+<tr><td><code>reserved[3]</code></td><td><code>0x7ec00000-0x7fbfffff</code></td><td>16MB</td><td><code>0x20</code></td><td>struct page 数组（<code>memmap_alloc</code>，262144 页 × 64B = 16MB）</td></tr>
+<tr><td><code>reserved[4]</code></td><td><code>0x7fde6000-0x7fde7fff</code></td><td>8KB</td><td><code>0x20</code></td><td rowspan="6">内核运行期小分配：页表、hash 表（dentry/inode）、<code>NODE_DATA(0)</code>、swiotlb 等</td></tr>
+<tr><td><code>reserved[5]</code></td><td><code>0x7fde8700-0x7fde99bf</code></td><td>~4.7KB</td><td><code>0x20</code></td></tr>
+<tr><td><code>reserved[6]</code></td><td><code>0x7fde99c0-0x7fdf99ff</code></td><td>~64KB</td><td><code>0x20</code></td></tr>
+<tr><td><code>reserved[7]</code></td><td><code>0x7fdf9a00-0x7fdfc0ae</code></td><td>~9.7KB</td><td><code>0x20</code></td></tr>
+<tr><td><code>reserved[8]</code></td><td><code>0x7fdfc0b0-0x7fe07ffb</code></td><td>~47.8KB</td><td><code>0x20</code></td></tr>
+<tr><td><code>reserved[9]</code></td><td><code>0x7fe08000-0x7fffffff</code></td><td>~2MB</td><td><code>0x20</code></td></tr>
+</table>
+<p class="note"><code>flags=0x20</code> 对应 <code>MEMBLOCK_RSRV_KERN</code>（「memory reserved for kernel use」，见 <code>include/linux/memblock.h</code>），表示这些是内核自己占用的内存；<code>flags=0x0</code> 是 <code>MEMBLOCK_NONE</code>。</p>
+
+<h3>11.3 线性映射页表分配（map_mem 的产物）</h3>
+<p>前文第 4 节提到 <code>map_mem</code> 通过 <code>early_pgtable_alloc()</code> 动态分配页表。日志里能精确数出来：</p>
+<pre><code>// 每次分配一页（4KB），early_pgtable_alloc 调用 __memblock_reserve 把页表页保留下来
+memblock_phys_alloc_range: 4096 bytes align=0x1000 ... early_pgtable_alloc+0x20/0x3c
+__memblock_reserve: [0x7ffa5000-0x7ffa5fff] nid=-1 flags=20 ...   // 第 1 次
+__memblock_reserve: [0x7ffa4000-0x7ffa4fff] nid=-1 flags=20 ...   // 第 2 次
+... （自高地址向下逐个分配）...
+__memblock_reserve: [0x7fe08000-0x7fe08fff] nid=-1 flags=20 ...   // 第 413 次</code></pre>
+<ul>
+<li><span class="accent">413 次</span>分配，每次 4096 字节 → 共 <code>413 × 4KB = 1,691,648 B ≈ 1.65MB</code> 页表页。</li>
+<li>地址<span class="accent">自高向下</span>（top-down）：从 <code>0x7ffa5000</code> 一路铺到 <code>0x7fe08000</code>，恰好落在内存顶部的 <code>reserved[9]</code> 区间内。</li>
+<li>验证：<code>0x7ffa5000 - 0x7fe08000 = 0x19D000 = 1,691,648 = 413 × 4096</code>，严丝合缝。</li>
+<li>这就是给 1GB RAM 建线性映射所需的页表总量 —— 也解释了为什么 <code>paging_init</code> 必须放在 memblock 就绪之后：这些页表页要靠 <code>memblock_phys_alloc_range</code> 来分配。</li>
+</ul>
+
+<h3>11.4 物理内存整体布局图</h3>
+<div class="diagram">1GB RAM 布局（0x40000000 ~ 0x7fffffff）
+0x40000000 ┌──────────────────────────────┐
+           │  2MB 空隙（bootloader 区）     │
+0x40200000 │  内核镜像 35.1MB              │ ← reserved[0]  (_text.._end)
+0x42520000 │  ... 空闲（后续 buddy 接管）  │
+0x48000000 │  1MB 保留区                  │ ← reserved[1]  (initrd/DTB?)
+0x480fffff │  ... 空闲                     │
+0x7cc00000 │  CMA 32MB                    │ ← reserved[2]
+0x7ec00000 │  struct page memmap 16MB     │ ← reserved[3]  (262144 页 × 64B)
+0x7fbfffff │  ... 小分配区                 │ ← reserved[4..8] (hash/NODE_DATA/...)
+0x7fe08000 │  页表页 1.65MB（top-down）    │ ← reserved[9] 前段（413×4KB）
+0x7ffa5000 │  其他保留 ~365KB              │ ← reserved[9] 后段
+0x7fffffff └──────────────────────────────┘</div>
+
+<h3>11.5 最终内存统计</h3>
+<p>bootmem_init 之后，buddy 系统接手的统计（日志 line 1001）：</p>
+<pre><code>Memory: 952884K/1048576K available
+ (15232K kernel code, 1390K rwdata, 5380K rodata,
+  13056K init, 611K bss, 58488K reserved, 32768K cma-reserved)</code></pre>
+<table>
+<tr><th>项目</th><th>大小</th><th>对应前文</th></tr>
+<tr><td>kernel code</td><td>15232K</td><td><code>_text .. _etext</code>（text 段）</td></tr>
+<tr><td>rodata</td><td>5380K</td><td><code>__start_rodata .. __inittext_begin</code></td></tr>
+<tr><td>init</td><td>13056K</td><td><code>__inittext / __initdata</code>，启动后释放（<code>Freeing unused kernel memory: 13056K</code>）</td></tr>
+<tr><td>rwdata + bss</td><td>1390K + 611K</td><td><code>_data .. _end</code>（数据段 + BSS）</td></tr>
+<tr><td>reserved</td><td>58488K</td><td>前文 <code>reserved.cnt=10</code> 的合计</td></tr>
+<tr><td>cma-reserved</td><td>32768K</td><td>CMA 32MB</td></tr>
+</table>
+<p>这一串数字正好把第 7 节 <code>declare_kernel_vmas</code> 注册的 5 个内核段（text / rodata / inittext / initdata / data）落到了实处 —— 每段都能在真实内存统计里找到对应的大小。</p>
+</section>
+
+</main>
+</div></div>
+<script>
+function toggleSidebar() {
+    var s = document.getElementById('sidebar');
+    var b = document.getElementById('toggleBtn');
+    s.classList.toggle('collapsed');
+    b.textContent = s.classList.contains('collapsed') ? '▶' : '◀';
+}
+</script>
+</body>
+</html>
